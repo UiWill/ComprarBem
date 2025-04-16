@@ -2,12 +2,18 @@
   <div class="catalogo-view">
     <header class="app-header">
       <div class="logo">
-        <h1>Comprar Bem: Compras Inteligentes</h1>
+        <div class="logo-content">
+          <h1>Comprar Bem</h1>
+          <span class="subtitle">Compras Inteligentes</span>
+        </div>
       </div>
       <nav class="main-nav">
-        <router-link to="/dashboard">Dashboard</router-link>
+        <router-link to="/dashboard">Painel CPM</router-link>
+        <router-link to="/ccl">Painel CCL</router-link>
         <router-link to="/cadastro">Cadastrar Produto</router-link>
         <router-link to="/catalogo">Catálogo</router-link>
+        <router-link to="/classificacao">Classificação</router-link>
+        <router-link to="/dcb">DCB</router-link>
         <router-link to="/feedback">RDM</router-link>
       </nav>
       <div class="user-menu">
@@ -59,9 +65,26 @@ export default {
   height: 60px;
 }
 
-.logo h1 {
+.logo {
+  margin-left: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.logo-content {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.logo-content h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
+}
+
+.logo-content .subtitle {
+  font-size: 0.75rem;
+  opacity: 0.9;
 }
 
 .main-nav {

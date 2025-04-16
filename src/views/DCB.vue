@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-view">
+  <div class="dcb-view">
     <header class="app-header">
       <div class="logo">
         <div class="logo-content">
@@ -22,19 +22,19 @@
     </header>
     
     <main class="main-content">
-      <DashboardCPM />
+      <FormularioDCB />
     </main>
   </div>
 </template>
 
 <script>
-import DashboardCPM from '@/components/dashboard/DashboardCPM.vue'
+import FormularioDCB from '@/components/dcb/FormularioDCB.vue'
 import { supabase } from '@/services/supabase'
 
 export default {
-  name: 'Dashboard',
+  name: 'DCB',
   components: {
-    DashboardCPM
+    FormularioDCB
   },
   methods: {
     async logout() {
@@ -50,7 +50,7 @@ export default {
 </script>
 
 <style scoped>
-.dashboard-view {
+.dcb-view {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -91,6 +91,8 @@ export default {
   margin-left: 40px;
   display: flex;
   flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 .main-nav a {

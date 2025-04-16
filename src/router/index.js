@@ -6,6 +6,9 @@ import Cadastro from '../views/Cadastro.vue'
 import Analise from '../views/Analise.vue'
 import Catalogo from '../views/Catalogo.vue'
 import Feedback from '../views/Feedback.vue'
+import DCB from '../views/DCB.vue'
+import CCL from '../views/CCL.vue'
+import Classificacao from '../views/Classificacao.vue'
 import { supabase } from '../services/supabase'
 
 Vue.use(VueRouter)
@@ -21,6 +24,12 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/ccl',
+    name: 'CCL',
+    component: CCL,
     meta: { requiresAuth: true }
   },
   {
@@ -45,6 +54,18 @@ const routes = [
     path: '/feedback',
     name: 'Feedback',
     component: Feedback,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/dcb',
+    name: 'DCB',
+    component: DCB,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/classificacao',
+    name: 'Classificacao',
+    component: Classificacao,
     meta: { requiresAuth: true }
   },
   {

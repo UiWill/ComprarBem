@@ -23,6 +23,18 @@
           <div class="info-item">
             <strong>CNPJ:</strong> {{ produto.cnpj }}
           </div>
+          <div class="info-item">
+            <strong>Origem:</strong> {{ produto.origem || 'Não informada' }}
+          </div>
+          <div class="info-item">
+            <strong>Registro na Anvisa/MS:</strong> {{ produto.registro_anvisa || 'Não informado' }}
+          </div>
+          <div class="info-item">
+            <strong>CBPF:</strong> {{ produto.cbpf || 'Não informado' }}
+          </div>
+          <div class="info-item">
+            <strong>Código do Material:</strong> {{ produto.codigo_material || 'Não informado' }}
+          </div>
           <div class="info-item full-width">
             <strong>Descrição:</strong> {{ produto.descricao || 'Não informada' }}
           </div>
@@ -94,6 +106,18 @@
             </div>
           </div>
           
+          <div class="form-group" v-if="analise.status === 'reprovado'">
+            <label for="motivacao">Motivação da Reprovação</label>
+            <textarea 
+              id="motivacao" 
+              v-model="analise.motivacao" 
+              rows="6" 
+              placeholder="Descreva detalhadamente os motivos que levaram à reprovação deste produto"
+              required
+            ></textarea>
+            <small class="helper-text">Este campo será exibido ao fornecedor para justificar a reprovação do produto</small>
+          </div>
+          
           <div class="form-actions">
             <button type="submit" class="btn-primary" :disabled="submitting">
               {{ submitting ? 'Salvando...' : 'Salvar Análise' }}
@@ -114,6 +138,10 @@
           </div>
           <div class="analise-conteudo">
             <p>{{ item.parecer }}</p>
+            <div v-if="item.status === 'reprovado' && item.motivacao" class="motivacao-reprovacao">
+              <h4>Motivação da Reprovação:</h4>
+              <p>{{ item.motivacao }}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -144,7 +172,8 @@ export default {
       analisesAnteriores: [],
       analise: {
         parecer: '',
-        status: ''
+        status: '',
+        motivacao: ''
       },
       loading: true,
       submitting: false
@@ -201,7 +230,16 @@ export default {
       try {
         this.submitting = true
         
-        // Obter ID do usuário atual da autenticação
+        if (this.analise.status === 'reprovado' && !this.analise.motivacao) {
+          this.$swal({
+            icon: 'error',
+            title: 'Campo obrigatório',
+            text: 'É necessário preencher a motivação da reprovação'
+          });
+          this.submitting = false;
+          return;
+        }
+        
         const { data: authData } = await supabase.auth.getSession()
         const authUser = authData?.session?.user
         
@@ -210,7 +248,6 @@ export default {
         if (authUser) {
           console.log('Usuário autenticado:', authUser.email)
           
-          // Buscar o ID do usuário na tabela usuarios pelo email
           const { data: usuarioData, error: usuarioError } = await supabase
             .from('usuarios')
             .select('id')
@@ -228,7 +265,6 @@ export default {
             console.warn('Usuário não encontrado na tabela, gerando UUID')
             avaliadorId = this.gerarUUID()
             
-            // Inserir usuário na tabela para futuras análises
             const { error: insertError } = await supabase
               .from('usuarios')
               .insert({
@@ -251,23 +287,27 @@ export default {
         
         console.log('Salvando análise com avaliador_id:', avaliadorId)
         
-        // Inserir análise
+        const dadosAnalise = {
+          produto_id: this.id,
+          tenant_id: this.produto.tenant_id,
+          avaliador_id: avaliadorId,
+          parecer: this.analise.parecer,
+          status: this.analise.status
+        };
+        
+        if (this.analise.status === 'reprovado') {
+          dadosAnalise.motivacao = this.analise.motivacao;
+        }
+        
         const { error: analiseError } = await supabase
           .from('analises')
-          .insert({
-            produto_id: this.id,
-            tenant_id: this.produto.tenant_id,
-            avaliador_id: avaliadorId,
-            parecer: this.analise.parecer,
-            status: this.analise.status
-          })
+          .insert(dadosAnalise)
         
         if (analiseError) {
           console.error('Erro detalhado ao salvar análise:', analiseError)
           throw new Error(`Erro ao salvar análise: ${analiseError.message}`)
         }
         
-        // Atualizar status do produto
         const { error: produtoError } = await supabase
           .from('produtos')
           .update({ status: this.analise.status })
@@ -282,19 +322,17 @@ export default {
           timer: 1500
         })
         
-        // Atualizar dados
         await this.carregarDados()
         
-        // Limpar formulário
         this.analise = {
           parecer: '',
-          status: ''
+          status: '',
+          motivacao: ''
         }
         
       } catch (error) {
         console.error('Erro ao salvar análise:', error)
         
-        // Mensagem de erro mais amigável
         let mensagemErro = 'Erro ao salvar análise.'
         
         if (error.message && error.message.includes('uuid')) {
@@ -334,7 +372,6 @@ export default {
     voltar() {
       this.$router.push('/dashboard')
     },
-    // Função para gerar UUID válido
     gerarUUID() {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         const r = Math.random() * 16 | 0, 
@@ -542,5 +579,26 @@ textarea {
 
 .analise-conteudo {
   font-style: italic;
+}
+
+.motivacao-reprovacao {
+  margin-top: 15px;
+  background-color: #ffecec;
+  padding: 12px;
+  border-radius: 4px;
+  border-left: 4px solid #e74c3c;
+}
+
+.motivacao-reprovacao h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #c0392b;
+}
+
+.helper-text {
+  display: block;
+  margin-top: 5px;
+  color: #7f8c8d;
+  font-size: 12px;
 }
 </style> 

@@ -15,25 +15,48 @@
         </div>
         
         <div class="form-group">
-          <label for="categoria">Categoria*</label>
+          <label for="grupo">Grupo*</label>
           <select 
-            id="categoria" 
-            v-model="produto.categoria_id" 
+            id="grupo" 
+            v-model="produto.grupo_id" 
             required
+            @change="onGrupoChange"
           >
             <option value="">Selecione...</option>
             <option 
-              v-for="categoria in categorias" 
-              :key="categoria.id" 
-              :value="categoria.id"
+              v-for="grupo in grupos" 
+              :key="grupo.id" 
+              :value="grupo.id"
             >
-              {{ categoria.nome }}
+              {{ grupo.nome }}
             </option>
           </select>
         </div>
       </div>
       
       <div class="form-row">
+        <div class="form-group">
+          <label for="classe">Classe*</label>
+          <select 
+            id="classe" 
+            v-model="produto.classe_id" 
+            required
+            :disabled="!produto.grupo_id || classes.length === 0"
+          >
+            <option value="">Selecione...</option>
+            <option 
+              v-for="classe in filteredClasses" 
+              :key="classe.id" 
+              :value="classe.id"
+            >
+              {{ classe.nome }}
+            </option>
+          </select>
+          <div v-if="produto.grupo_id && filteredClasses.length === 0" class="info-text">
+            Não há classes disponíveis para este grupo. Por favor, cadastre uma classe primeiro.
+          </div>
+        </div>
+        
         <div class="form-group">
           <label for="marca">Marca*</label>
           <input 
@@ -43,7 +66,9 @@
             required
           >
         </div>
-        
+      </div>
+      
+      <div class="form-row">
         <div class="form-group">
           <label for="modelo">Modelo*</label>
           <input 
@@ -53,9 +78,7 @@
             required
           >
         </div>
-      </div>
-      
-      <div class="form-row">
+        
         <div class="form-group">
           <label for="fabricante">Fabricante*</label>
           <input 
@@ -65,7 +88,9 @@
             required
           >
         </div>
-        
+      </div>
+      
+      <div class="form-row">
         <div class="form-group">
           <label for="cnpj">CNPJ*</label>
           <input 
@@ -78,6 +103,50 @@
             placeholder="00.000.000/0000-00"
           >
           <small v-if="cnpjInvalido" class="error-text">CNPJ inválido. Formato: 00.000.000/0000-00</small>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="origem">Origem</label>
+          <input 
+            id="origem" 
+            v-model="produto.origem" 
+            type="text" 
+            placeholder="Nacional ou Importado"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label for="registro_anvisa">Registro na Anvisa/MS</label>
+          <input 
+            id="registro_anvisa" 
+            v-model="produto.registro_anvisa" 
+            type="text" 
+            placeholder="Número do registro"
+          >
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cbpf">CBPF</label>
+          <input 
+            id="cbpf" 
+            v-model="produto.cbpf" 
+            type="text" 
+            placeholder="Certificado de Boas Práticas de Fabricação"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label for="codigo_material">Código do Material</label>
+          <input 
+            id="codigo_material" 
+            v-model="produto.codigo_material" 
+            type="text" 
+            placeholder="Código interno do material"
+          >
         </div>
       </div>
       
@@ -123,7 +192,7 @@
       
       <div class="form-actions">
         <button type="submit" class="btn-primary" :disabled="loading">
-          {{ loading ? 'Salvando...' : 'Salvar Produto' }}
+          {{ loading ? 'Salvando...' : 'Salvar' }}
         </button>
       </div>
     </form>
@@ -142,25 +211,37 @@ export default {
     return {
       produto: {
         nome: '',
-        categoria_id: '',
+        grupo_id: '',
+        classe_id: '',
         marca: '',
         modelo: '',
         fabricante: '',
         cnpj: '',
+        origem: '',
+        registro_anvisa: '',
+        cbpf: '',
+        codigo_material: '',
         descricao: '',
         status: 'pendente'
       },
       cnpjFormatado: '',
       cnpjInvalido: false,
-      categorias: [],
+      grupos: [],
+      classes: [],
       selectedFiles: [],
       arquivosInvalidos: [],
       loading: false,
       currentTenantId: null
     }
   },
+  computed: {
+    filteredClasses() {
+      if (!this.produto.grupo_id) return [];
+      return this.classes.filter(classe => classe.grupo_id === this.produto.grupo_id);
+    }
+  },
   async created() {
-    this.carregarCategorias()
+    this.carregarGrupos()
     await this.obterTenantId()
   },
   methods: {
@@ -245,11 +326,11 @@ export default {
         this.$router.push('/')
       }
     },
-    async carregarCategorias() {
+    async carregarGrupos() {
       try {
         // Tenta carregar do banco de dados primeiro
         const { data, error } = await supabase
-          .from('categorias')
+          .from('grupos')
           .select('*')
           .order('nome')
         
@@ -257,10 +338,10 @@ export default {
         
         // Se conseguir dados do banco, usa eles
         if (data && data.length > 0) {
-          this.categorias = data
+          this.grupos = data
         } else {
-          // Se não tiver dados ou der erro, usa categorias locais temporárias
-          this.categorias = [
+          // Se não tiver dados ou der erro, usa grupos locais temporários
+          this.grupos = [
             { id: 1, nome: 'Equipamentos Médicos' },
             { id: 2, nome: 'Equipamentos Odontológicos' },
             { id: 3, nome: 'Materiais Hospitalares' },
@@ -274,9 +355,58 @@ export default {
           ]
         }
       } catch (error) {
-        console.error('Erro ao carregar categorias:', error)
-        // Em caso de erro, usa categorias locais
-        this.categorias = [
+        console.error('Erro ao carregar grupos:', error)
+        // Em caso de erro, usa grupos locais
+        this.grupos = [
+          { id: 1, nome: 'Equipamentos Médicos' },
+          { id: 2, nome: 'Equipamentos Odontológicos' },
+          { id: 3, nome: 'Materiais Hospitalares' },
+          { id: 4, nome: 'Materiais de Escritório' },
+          { id: 5, nome: 'Equipamentos de Informática' },
+          { id: 6, nome: 'Mobiliário' },
+          { id: 7, nome: 'Medicamentos' },
+          { id: 8, nome: 'Material de Laboratório' },
+          { id: 9, nome: 'Equipamentos Administrativos' },
+          { id: 10, nome: 'Outros' }
+        ]
+      }
+    },
+    onGrupoChange() {
+      this.carregarClasses()
+    },
+    async carregarClasses() {
+      try {
+        // Tenta carregar do banco de dados primeiro
+        const { data, error } = await supabase
+          .from('classes')
+          .select('*')
+          .eq('grupo_id', this.produto.grupo_id)
+          .order('nome')
+        
+        if (error) throw error
+        
+        // Se conseguir dados do banco, usa eles
+        if (data && data.length > 0) {
+          this.classes = data
+        } else {
+          // Se não tiver dados ou der erro, usa classes locais temporárias
+          this.classes = [
+            { id: 1, nome: 'Equipamentos Médicos' },
+            { id: 2, nome: 'Equipamentos Odontológicos' },
+            { id: 3, nome: 'Materiais Hospitalares' },
+            { id: 4, nome: 'Materiais de Escritório' },
+            { id: 5, nome: 'Equipamentos de Informática' },
+            { id: 6, nome: 'Mobiliário' },
+            { id: 7, nome: 'Medicamentos' },
+            { id: 8, nome: 'Material de Laboratório' },
+            { id: 9, nome: 'Equipamentos Administrativos' },
+            { id: 10, nome: 'Outros' }
+          ]
+        }
+      } catch (error) {
+        console.error('Erro ao carregar classes:', error)
+        // Em caso de erro, usa classes locais
+        this.classes = [
           { id: 1, nome: 'Equipamentos Médicos' },
           { id: 2, nome: 'Equipamentos Odontológicos' },
           { id: 3, nome: 'Materiais Hospitalares' },
@@ -405,11 +535,16 @@ export default {
         const produtoObjeto = {
           nome: this.produto.nome,
           descricao: this.produto.descricao,
-          categoria_id: this.convertToUUID(this.produto.categoria_id), // Convertendo para UUID
+          grupo_id: this.produto.grupo_id,
+          classe_id: this.produto.classe_id,
           marca: this.produto.marca,
           modelo: this.produto.modelo,
           fabricante: this.produto.fabricante,
           cnpj: this.produto.cnpj, // CNPJ já tratado sem formatação
+          origem: this.produto.origem,
+          registro_anvisa: this.produto.registro_anvisa,
+          cbpf: this.produto.cbpf,
+          codigo_material: this.produto.codigo_material,
           status: 'pendente',
           tenant_id: this.currentTenantId
         };
@@ -513,11 +648,16 @@ export default {
     limparFormulario() {
       this.produto = {
         nome: '',
-        categoria_id: '',
+        grupo_id: '',
+        classe_id: '',
         marca: '',
         modelo: '',
         fabricante: '',
         cnpj: '',
+        origem: '',
+        registro_anvisa: '',
+        cbpf: '',
+        codigo_material: '',
         descricao: '',
         status: 'pendente'
       };
@@ -537,11 +677,20 @@ export default {
         return false;
       }
       
-      if (!this.produto.categoria_id) {
+      if (!this.produto.grupo_id) {
         this.$swal({
           icon: 'error',
           title: 'Erro de validação',
-          text: 'Selecione uma categoria para o produto'
+          text: 'Selecione um grupo para o produto'
+        });
+        return false;
+      }
+      
+      if (!this.produto.classe_id) {
+        this.$swal({
+          icon: 'error',
+          title: 'Erro de validação',
+          text: 'Selecione uma classe para o produto'
         });
         return false;
       }

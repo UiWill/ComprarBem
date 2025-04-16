@@ -5,9 +5,11 @@
         <h1>Comprar Bem: Compras Inteligentes</h1>
       </div>
       <nav class="main-nav">
-        <router-link to="/dashboard">Dashboard</router-link>
+        <router-link to="/dashboard">Painel CPM</router-link>
+        <router-link to="/ccl">Painel CCL</router-link>
         <router-link to="/cadastro">Cadastrar Produto</router-link>
         <router-link to="/catalogo">Catálogo</router-link>
+        <router-link to="/dcb">DCB</router-link>
         <router-link to="/feedback">RDM</router-link>
       </nav>
       <div class="user-menu">

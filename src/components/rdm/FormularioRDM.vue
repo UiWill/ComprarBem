@@ -37,7 +37,7 @@
       </div>
       
       <div class="form-group">
-        <label for="comentario">Descreva o problema ou feedback*</label>
+        <label for="comentario">Justificativa da Avaliação*</label>
         <textarea 
           id="comentario" 
           v-model="feedback.comentario" 
@@ -49,7 +49,7 @@
       
       <div class="form-actions">
         <button type="submit" class="btn-primary" :disabled="loading">
-          {{ loading ? 'Enviando...' : 'Enviar Feedback' }}
+          {{ loading ? 'Salvando...' : 'Salvar' }}
         </button>
       </div>
     </form>

@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-view">
+  <div class="ccl-view">
     <header class="app-header">
       <div class="logo">
         <div class="logo-content">
@@ -22,19 +22,19 @@
     </header>
     
     <main class="main-content">
-      <DashboardCPM />
+      <DashboardCCL />
     </main>
   </div>
 </template>
 
 <script>
-import DashboardCPM from '@/components/dashboard/DashboardCPM.vue'
 import { supabase } from '@/services/supabase'
+import DashboardCCL from '@/components/dashboard/DashboardCCL.vue'
 
 export default {
-  name: 'Dashboard',
+  name: 'CCL',
   components: {
-    DashboardCPM
+    DashboardCCL
   },
   methods: {
     async logout() {
@@ -50,7 +50,7 @@ export default {
 </script>
 
 <style scoped>
-.dashboard-view {
+.ccl-view {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -128,5 +128,25 @@ export default {
 .main-content {
   flex: 1;
   background-color: #f5f7fa;
+}
+
+.breadcrumbs {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.dashboard-header {
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h2 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+}
+
+.dashboard-header p {
+  margin: 0;
+  color: #666;
 }
 </style> 

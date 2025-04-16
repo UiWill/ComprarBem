@@ -4,9 +4,13 @@
       <h1>Catálogo Eletrônico</h1>
       <div class="filtros">
         <input type="text" v-model="filtroBusca" placeholder="Buscar produto">
-        <select v-model="filtroCategoria">
-          <option value="">Todas categorias</option>
-          <option v-for="categoria in categorias" :key="categoria.id" :value="categoria.id">{{ categoria.nome }}</option>
+        <select v-model="filtroGrupo" @change="onGrupoChange">
+          <option value="">Todos grupos</option>
+          <option v-for="grupo in grupos" :key="grupo.id" :value="grupo.id">{{ grupo.nome }}</option>
+        </select>
+        <select v-model="filtroClasse" :disabled="!filtroGrupo">
+          <option value="">Todas classes</option>
+          <option v-for="classe in classesFiltradas" :key="classe.id" :value="classe.id">{{ classe.nome }}</option>
         </select>
         <select v-model="filtroStatus">
           <option value="">Todos status</option>
@@ -23,7 +27,8 @@
           </div>
           <div class="produto-body">
             <div class="produto-info">
-              <p><strong>Categoria:</strong> {{ produto.categoria.nome }}</p>
+              <p><strong>Grupo:</strong> {{ produto.grupo?.nome || 'Não especificado' }}</p>
+              <p><strong>Classe:</strong> {{ produto.classe?.nome || 'Não especificada' }}</p>
               <p><strong>Status:</strong> {{ getStatusText(produto.status) }}</p>
             </div>
             <div class="produto-footer">
@@ -45,21 +50,78 @@
 </template>
 
 <script>
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../services/supabase';
 
 export default {
   data() {
     return {
       produtos: [],
-      categorias: [],
-      statuses: [],
+      grupos: [],
+      classes: [],
+      statuses: [
+        { id: 'pendente', nome: 'Pendente' },
+        { id: 'aprovado', nome: 'Aprovado' },
+        { id: 'reprovado', nome: 'Reprovado' }
+      ],
       filtroBusca: '',
-      filtroCategoria: '',
+      filtroGrupo: '',
+      filtroClasse: '',
       filtroStatus: '',
       isLoading: false
     };
   },
+  computed: {
+    classesFiltradas() {
+      if (!this.filtroGrupo) return [];
+      return this.classes.filter(classe => classe.grupo_id === this.filtroGrupo);
+    }
+  },
+  created() {
+    this.carregarGrupos();
+    this.carregarProdutos();
+  },
   methods: {
+    async carregarGrupos() {
+      try {
+        const { data: grupos, error } = await supabase
+          .from('grupos')
+          .select('*')
+          .order('nome');
+          
+        if (error) throw error;
+        this.grupos = grupos || [];
+      } catch (error) {
+        console.error('Erro ao carregar grupos:', error);
+      }
+    },
+    async carregarClasses() {
+      try {
+        let query = supabase.from('classes').select('*');
+        
+        if (this.filtroGrupo) {
+          query = query.eq('grupo_id', this.filtroGrupo);
+        }
+        
+        const { data: classes, error } = await query.order('nome');
+        
+        if (error) throw error;
+        this.classes = classes || [];
+      } catch (error) {
+        console.error('Erro ao carregar classes:', error);
+      }
+    },
+    onGrupoChange() {
+      this.filtroClasse = '';
+      this.carregarClasses();
+    },
+    getStatusText(status) {
+      const statusMap = {
+        pendente: 'Pendente',
+        aprovado: 'Aprovado',
+        reprovado: 'Reprovado'
+      };
+      return statusMap[status] || status;
+    },
     async carregarProdutos() {
       try {
         this.isLoading = true;
@@ -80,8 +142,6 @@ export default {
           tenantId = userData?.tenant_id;
         }
         
-        console.log('Filtrando produtos por tenant_id:', tenantId);
-        
         // Buscar produtos com filtragem
         let query = supabase.from('produtos').select('*');
         
@@ -90,18 +150,12 @@ export default {
           query = query.eq('tenant_id', tenantId);
         }
         
-        if (this.filtroCategoria) {
-          // Converter o ID da categoria para UUID se necessário
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          let categoriaId = this.filtroCategoria;
-          
-          // Se não for um UUID e for um número, converter para UUID
-          if (!uuidRegex.test(categoriaId) && !isNaN(parseInt(categoriaId))) {
-            const categoryNumber = parseInt(categoriaId, 10);
-            categoriaId = `00000000-0000-0000-0000-${categoryNumber.toString().padStart(12, '0')}`;
-          }
-          
-          query = query.eq('categoria_id', categoriaId);
+        if (this.filtroGrupo) {
+          query = query.eq('grupo_id', this.filtroGrupo);
+        }
+        
+        if (this.filtroClasse) {
+          query = query.eq('classe_id', this.filtroClasse);
         }
         
         if (this.filtroStatus) {
@@ -116,26 +170,42 @@ export default {
         
         if (error) throw error;
         
-        // Carregar informações de documentos
+        // Carregar informações adicionais
         if (produtos && produtos.length > 0) {
-          // Buscar categorias para cada produto
-          const categoriaIds = [...new Set(produtos.map(p => p.categoria_id))];
+          // Buscar grupos e classes para cada produto
+          const grupoIds = [...new Set(produtos.map(p => p.grupo_id).filter(Boolean))];
+          const classeIds = [...new Set(produtos.map(p => p.classe_id).filter(Boolean))];
           
-          const { data: categorias } = await supabase
-            .from('categorias')
+          // Carregar grupos
+          const { data: grupos } = await supabase
+            .from('grupos')
             .select('*')
-            .in('id', categoriaIds);
+            .in('id', grupoIds);
             
-          const categoriasMap = {};
-          if (categorias) {
-            categorias.forEach(cat => {
-              categoriasMap[cat.id] = cat;
+          const gruposMap = {};
+          if (grupos) {
+            grupos.forEach(grupo => {
+              gruposMap[grupo.id] = grupo;
             });
           }
           
-          // Associar categoria a cada produto
+          // Carregar classes
+          const { data: classes } = await supabase
+            .from('classes')
+            .select('*')
+            .in('id', classeIds);
+            
+          const classesMap = {};
+          if (classes) {
+            classes.forEach(classe => {
+              classesMap[classe.id] = classe;
+            });
+          }
+          
+          // Associar grupo e classe a cada produto
           produtos.forEach(produto => {
-            produto.categoria = categoriasMap[produto.categoria_id] || { nome: 'Categoria Desconhecida' };
+            produto.grupo = gruposMap[produto.grupo_id] || null;
+            produto.classe = classesMap[produto.classe_id] || null;
           });
           
           // Contar documentos por produto
@@ -181,6 +251,124 @@ export default {
 };
 </script>
 
-<style>
-  /* Adicione estilos CSS aqui */
+<style scoped>
+.produtos-container {
+  padding: 20px;
+}
+
+.produtos-header {
+  margin-bottom: 20px;
+}
+
+.produtos-header h1 {
+  margin-bottom: 15px;
+}
+
+.filtros {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filtros input,
+.filtros select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.filtros button {
+  padding: 8px 15px;
+  background-color: #2c3e50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.produtos-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.produto-item {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: white;
+}
+
+.produto-header {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+}
+
+.produto-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.produto-body {
+  padding: 15px;
+}
+
+.produto-info {
+  margin-bottom: 15px;
+}
+
+.produto-info p {
+  margin: 5px 0;
+}
+
+.produto-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 15px;
+}
+
+.produto-status {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.status-pendente {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-aprovado {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-reprovado {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.btn-detalhes,
+.btn-documentos {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-detalhes {
+  background-color: #2c3e50;
+  color: white;
+}
+
+.btn-documentos {
+  background-color: #3498db;
+  color: white;
+}
 </style> 

@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-view">
+  <div class="classificacao-view">
     <header class="app-header">
       <div class="logo">
         <div class="logo-content">
@@ -22,19 +22,19 @@
     </header>
     
     <main class="main-content">
-      <DashboardCPM />
+      <Classificacao />
     </main>
   </div>
 </template>
 
 <script>
-import DashboardCPM from '@/components/dashboard/DashboardCPM.vue'
+import Classificacao from '@/components/classificacao/Classificacao.vue'
 import { supabase } from '@/services/supabase'
 
 export default {
-  name: 'Dashboard',
+  name: 'ClassificacaoView',
   components: {
-    DashboardCPM
+    Classificacao
   },
   methods: {
     async logout() {
@@ -50,7 +50,7 @@ export default {
 </script>
 
 <style scoped>
-.dashboard-view {
+.classificacao-view {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
