@@ -14,7 +14,7 @@
       
       <div class="filters">
         <div class="categoria-filter">
-          <label><strong>Categoria:</strong></label>
+          <label><strong>Grupo:</strong></label>
           <div class="dropdown">
             <button class="dropdown-toggle" 
                     type="button" 
@@ -27,9 +27,9 @@
                 <span>Carregando...</span>
               </div>
               <template v-else>
-                <a class="dropdown-item" @click="selecionarCategoria(null)">Todas as categorias</a>
+                <a class="dropdown-item" @click="selecionarCategoria(null)">Todos os grupos</a>
                 <div v-if="categorias.length === 0" class="dropdown-item empty">
-                  Nenhuma categoria disponível
+                  Nenhum grupo disponível
                 </div>
                 <template v-else>
                   <a 
@@ -152,7 +152,7 @@ export default {
       categorias: [],
       searchTerm: '',
       filtroCategoria: '',
-      categoriaAtual: 'Todas as categorias',
+      categoriaAtual: 'Todos os grupos',
       showCategoriaDropdown: false,
       showAvaliacoes: false,
       produtoSelecionado: null,
@@ -449,7 +449,7 @@ export default {
     selecionarCategoria(categoria) {
       console.log('Categoria selecionada:', categoria)
       this.categoriaSelecionada = categoria
-      this.categoriaAtual = categoria ? categoria.nome : 'Todas as categorias'
+      this.categoriaAtual = categoria ? categoria.nome : 'Todos os grupos'
       this.filtroCategoria = categoria ? categoria.id : ''
       this.showCategoriaDropdown = false
       this.filtrarProdutos()
