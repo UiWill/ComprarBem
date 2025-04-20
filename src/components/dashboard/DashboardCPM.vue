@@ -12,6 +12,13 @@
       </div>
       <div 
         class="tab" 
+        :class="{ active: activeTab === 'editais' }" 
+        @click="activeTab = 'editais'"
+      >
+        Editais de Pré-Qualificação
+      </div>
+      <div 
+        class="tab" 
         :class="{ active: activeTab === 'pesquisa' }" 
         @click="activeTab = 'pesquisa'"
       >
@@ -106,23 +113,99 @@
         </table>
         <p v-else>Nenhum requerimento com diligência encontrado.</p>
       </div>
+      
+      <div class="impugnacoes-section">
+        <h3>Impugnações ao Edital</h3>
+        <table v-if="impugnacoes.length > 0">
+          <thead>
+            <tr>
+              <th>Impugnante</th>
+              <th>Produto</th>
+              <th>Data da Impugnação</th>
+              <th>Status</th>
+              <th>Prazo Final</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="impugnacao in impugnacoes" :key="impugnacao.id">
+              <td>{{ impugnacao.impugnante }}</td>
+              <td>{{ impugnacao.produto_nome }}</td>
+              <td>{{ formatDate(impugnacao.data_impugnacao) }}</td>
+              <td>
+                <span class="status-badge" :class="getImpugnacaoStatusClass(impugnacao.status)">
+                  {{ impugnacao.status }}
+                </span>
+              </td>
+              <td>{{ formatDate(impugnacao.prazo_final) }}</td>
+              <td>
+                <button @click="analisarImpugnacao(impugnacao.id)" class="btn-small">Analisar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else>Não há impugnações apresentadas.</p>
+      </div>
     </div>
     
     <!-- Aba Pesquisa de Mercado -->
     <div v-if="activeTab === 'pesquisa'" class="pesquisa-mercado">
       <div class="info-card">
         <h3>Pesquisa de Mercado</h3>
-        <p>Este módulo permitirá realizar pesquisas de preços e análises de mercado para produtos padronizados.</p>
+        <p>Este módulo permitirá registrar as pesquisas realizadas para conhecer e/ou avaliar as especificações técnicas e funcionalidades de produtos novos ou já existentes no mercado fornecedor, bem como os seus preços estimados, para fins de instrução dos processos destinados à padronização de marcas e modelos.</p>
         <p>Funcionalidades que serão implementadas:</p>
         <ul>
-          <li>Registro de cotações de fornecedores</li>
-          <li>Comparativo de preços e condições</li>
+          <li>Registro de especificações técnicas de produtos e cotações de fornecedores</li>
+          <li>Comparativo técnico de produtos, seus preços e condições gerais</li>
           <li>Análise de variação de preços</li>
-          <li>Geração de relatórios para processos de compra</li>
+          <li>Geração de relatórios para instrução de processos de compra</li>
           <li>Integração com bancos de preços públicos</li>
         </ul>
         <div class="em-desenvolvimento">
           <span>Em desenvolvimento</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Aba Editais -->
+    <div v-if="activeTab === 'editais'" class="editais">
+      <div class="info-card">
+        <h3>Editais de Pré-Qualificação</h3>
+        <p>Este módulo permite acessar os arquivos em PDF dos editais publicados pela Comissão de Padronização de Materiais.</p>
+        <p>Funcionalidades que serão implementadas:</p>
+        <ul>
+          <li>Upload de arquivos PDF dos editais</li>
+          <li>Organização dos editais por data e categoria</li>
+          <li>Pesquisa avançada nos editais</li>
+          <li>Controle de versões dos documentos</li>
+          <li>Histórico de publicações por período</li>
+        </ul>
+        
+        <div class="editais-list">
+          <h4>Editais Disponíveis</h4>
+          <table v-if="editais && editais.length > 0">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Descrição</th>
+                <th>Data de Publicação</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="edital in editais" :key="edital.id">
+                <td>{{ edital.numero }}</td>
+                <td>{{ edital.descricao }}</td>
+                <td>{{ formatDate(edital.data_publicacao) }}</td>
+                <td>
+                  <button @click="visualizarEdital(edital.id)" class="btn-small">Visualizar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="em-desenvolvimento">
+            <span>Em desenvolvimento</span>
+          </div>
         </div>
       </div>
     </div>
@@ -140,6 +223,7 @@
           <li>Restrições de uso para produtos despadronizados</li>
           <li>Notificação aos setores sobre despadronizações</li>
           <li>Relatórios de impacto por despadronização</li>
+          <li>Registro de comunicações aos órgãos de controle</li>
         </ul>
         <div class="em-desenvolvimento">
           <span>Em desenvolvimento</span>
@@ -163,7 +247,9 @@ export default {
       aprovados: 0,
       reprovados: 0,
       currentTenantId: null,
-      loading: false
+      loading: false,
+      editais: [],
+      impugnacoes: []
     }
   },
   created() {
@@ -255,6 +341,34 @@ export default {
         this.produtosComDiligencia = diligenciaData || []
         console.log(`${this.produtosComDiligencia.length} produtos com diligência carregados`)
         
+        // Dados simulados para impugnações (em uma implementação real, viriam do banco de dados)
+        this.impugnacoes = [
+          {
+            id: '1',
+            impugnante: 'MedTech Equipamentos LTDA',
+            produto_nome: 'Monitor de Sinais Vitais',
+            data_impugnacao: '2023-06-10',
+            status: 'EM ANÁLISE',
+            prazo_final: '2023-06-25'
+          },
+          {
+            id: '2',
+            impugnante: 'Hospital Santa Casa',
+            produto_nome: 'Desfibrilador Cardíaco',
+            data_impugnacao: '2023-06-15',
+            status: 'DEFERIDA',
+            prazo_final: '2023-06-30'
+          },
+          {
+            id: '3',
+            impugnante: 'Laboratórios Reunidos S.A.',
+            produto_nome: 'Autoclave Hospitalar',
+            data_impugnacao: '2023-06-20',
+            status: 'INDEFERIDA',
+            prazo_final: '2023-07-05'
+          }
+        ]
+        
         // Contar por status - também filtrando por tenant_id
         const statsCounts = await Promise.all([
           this.contarPorStatus('pendente'),
@@ -308,6 +422,27 @@ export default {
     },
     verProduto(id) {
       this.$router.push(`/analise/${id}`)
+    },
+    async visualizarEdital(id) {
+      // Implemente a lógica para visualizar o edital com base no ID
+      console.log(`Visualizando edital com ID: ${id}`)
+    },
+    getImpugnacaoStatusClass(status) {
+      switch (status) {
+        case 'EM ANÁLISE': return 'status-pendente'
+        case 'DEFERIDA': return 'status-aprovado'
+        case 'INDEFERIDA': return 'status-reprovado'
+        default: return ''
+      }
+    },
+    async analisarImpugnacao(id) {
+      // Implemente a lógica para analisar uma impugnação com base no ID
+      console.log(`Analisando impugnação com ID: ${id}`)
+      this.$swal({
+        title: 'Ação Simulada',
+        text: 'Em uma implementação completa, abriria um formulário para analisar a impugnação ao edital.',
+        icon: 'info'
+      })
     }
   }
 }
@@ -493,5 +628,21 @@ th {
 
 .marcas-despadronizadas {
   margin-top: 20px;
+}
+
+.editais {
+  margin-top: 20px;
+}
+
+.editais-list {
+  margin-top: 20px;
+}
+
+.impugnacoes-section {
+  margin-top: 30px;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 </style> 

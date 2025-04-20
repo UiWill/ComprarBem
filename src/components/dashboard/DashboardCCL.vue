@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <h2>Painel da Comissão de Contratação ou Licitação</h2>
+    <h2>Painel de Comissão de Contratação ou Licitação</h2>
     
     <div class="tabs">
       <div 
@@ -30,18 +30,18 @@
     <div v-if="activeTab === 'dashboard'">
       <div class="stats-container">
         <div class="stat-card status-pendente-card">
-          <h3>Produtos Aguardando Análise</h3>
+          <h3>Processos Aguardando Julgamento</h3>
           <div class="stat-value">{{ pendentes }}</div>
         </div>
         
         <div class="stat-card status-aprovado-card">
-          <h3>Produtos Homologados</h3>
+          <h3>Homologações</h3>
           <div class="stat-value">{{ aprovados }}</div>
         </div>
         
-        <div class="stat-card status-reprovado-card">
-          <h3>Produtos Não Homologados</h3>
-          <div class="stat-value">{{ reprovados }}</div>
+        <div class="stat-card status-diligencia-card">
+          <h3>Processos com Diligências</h3>
+          <div class="stat-value">{{ diligencias }}</div>
         </div>
       </div>
       
@@ -114,6 +114,7 @@
         <table v-if="recursos.length > 0">
           <thead>
             <tr>
+              <th>Recorrente</th>
               <th>Produto</th>
               <th>Data do Recurso</th>
               <th>Status</th>
@@ -123,6 +124,7 @@
           </thead>
           <tbody>
             <tr v-for="recurso in recursos" :key="recurso.id">
+              <td>{{ recurso.recorrente }}</td>
               <td>{{ recurso.produto_nome }}</td>
               <td>{{ formatDate(recurso.data_recurso) }}</td>
               <td>
@@ -132,7 +134,7 @@
               </td>
               <td>{{ formatDate(recurso.prazo_final) }}</td>
               <td>
-                <button @click="analisarRecurso(recurso.id)" class="btn-small">Analisar</button>
+                <button @click="julgarRecurso(recurso.id)" class="btn-small">Julgar</button>
               </td>
             </tr>
           </tbody>
@@ -165,14 +167,14 @@
     <div v-if="activeTab === 'homologacoes'" class="homologacoes">
       <div class="info-card">
         <h3>Homologações</h3>
-        <p>Este módulo permitirá o gerenciamento dos processos de homologação de produtos após análise técnica.</p>
+        <p>Este módulo permitirá o acesso a todos os arquivos em PDF de atos de homologação assinados digitalmente pela autoridade competente do órgão ou entidade.</p>
         <p>Funcionalidades que serão implementadas:</p>
         <ul>
+          <li>Acesso aos documentos de homologação de padronizações de marcas e modelos</li>
+          <li>Acesso aos documentos de despadronizações</li>
           <li>Registro de decisões da autoridade competente</li>
           <li>Emissão de certificados de homologação</li>
           <li>Controle de prazos de validade</li>
-          <li>Solicitação de renovação de homologação</li>
-          <li>Integração com catálogo eletrônico de produtos</li>
           <li>Notificação automática de homologações e indeferimentos</li>
         </ul>
         <div class="em-desenvolvimento">
@@ -193,13 +195,13 @@ export default {
       activeTab: 'dashboard',
       produtosPendentes: [],
       atasRecentes: [],
-      recursos: [],
       pendentes: 0,
       aprovados: 0,
-      reprovados: 0,
+      diligencias: 0,
       categorias: [],
       currentTenantId: null,
-      loading: false
+      loading: false,
+      recursos: []
     }
   },
   created() {
@@ -299,7 +301,7 @@ export default {
             id: '2',
             numero: 'ATA-002/2023',
             produto_nome: 'Desfibrilador',
-            decisao: 'reprovado',
+            decisao: 'diligencia',
             data_publicacao: '2023-05-20'
           },
           {
@@ -315,17 +317,27 @@ export default {
         this.recursos = [
           {
             id: '1',
+            recorrente: 'Hospital Médico LTDA',
             produto_nome: 'Desfibrilador',
             data_recurso: '2023-05-22',
-            status: 'Em análise',
+            status: 'EM ANÁLISE',
             prazo_final: '2023-06-06'
           },
           {
             id: '2',
+            recorrente: 'Equipamentos Hospitalares S.A.',
             produto_nome: 'Bomba de Infusão',
             data_recurso: '2023-06-05',
-            status: 'Pendente',
+            status: 'DEFERIDO',
             prazo_final: '2023-06-20'
+          },
+          {
+            id: '3',
+            recorrente: 'Medical Suprimentos Médicos',
+            produto_nome: 'Ventilador Pulmonar',
+            data_recurso: '2023-06-10',
+            status: 'INDEFERIDO',
+            prazo_final: '2023-06-25'
           }
         ]
         
@@ -333,12 +345,12 @@ export default {
         const statsCounts = await Promise.all([
           this.contarPorStatus('pendente'),
           this.contarPorStatus('aprovado'),
-          this.contarPorStatus('reprovado')
+          this.contarPorStatus('diligencia')
         ])
         
         this.pendentes = statsCounts[0]
         this.aprovados = statsCounts[1]
-        this.reprovados = statsCounts[2]
+        this.diligencias = statsCounts[2]
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
       } finally {
@@ -382,7 +394,7 @@ export default {
       switch (status) {
         case 'pendente': return 'Em avaliação'
         case 'aprovado': return 'Homologado'
-        case 'reprovado': return 'Não Homologado'
+        case 'diligencia': return 'Em diligência'
         default: return status
       }
     },
@@ -391,15 +403,7 @@ export default {
         case 'aprovado': return 'status-aprovado'
         case 'pendente': return 'status-pendente'
         case 'reprovado': return 'status-reprovado'
-        default: return ''
-      }
-    },
-    getRecursoStatusClass(status) {
-      switch (status) {
-        case 'Em análise': return 'status-pendente'
-        case 'Pendente': return 'status-pendente'
-        case 'Deferido': return 'status-aprovado'
-        case 'Indeferido': return 'status-reprovado'
+        case 'diligencia': return 'status-diligencia'
         default: return ''
       }
     },
@@ -417,10 +421,18 @@ export default {
         icon: 'info'
       })
     },
-    analisarRecurso(id) {
+    getRecursoStatusClass(status) {
+      switch (status) {
+        case 'EM ANÁLISE': return 'status-pendente'
+        case 'DEFERIDO': return 'status-aprovado'
+        case 'INDEFERIDO': return 'status-reprovado'
+        default: return ''
+      }
+    },
+    julgarRecurso(id) {
       this.$swal({
         title: 'Ação Simulada',
-        text: 'Em uma implementação completa, abriria um formulário para analisar e registrar a decisão sobre o recurso apresentado.',
+        text: 'Em uma implementação completa, abriria um formulário para julgar o recurso.',
         icon: 'info'
       })
     }
@@ -605,5 +617,14 @@ th {
 
 .status-reprovado-card {
   border-top: 5px solid #e74c3c;
+}
+
+.status-diligencia-card {
+  border-top: 5px solid #9b59b6;
+}
+
+.status-diligencia {
+  background-color: #9b59b6;
+  color: white;
 }
 </style> 
