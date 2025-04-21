@@ -61,7 +61,7 @@
               <th>Marca</th>
               <th>Status</th>
               <th>Data</th>
-              <th>Ações</th>
+              <th>Documentação</th>
             </tr>
           </thead>
           <tbody>
@@ -75,7 +75,7 @@
               </td>
               <td>{{ formatDate(produto.criado_em) }}</td>
               <td>
-                <button @click="verProduto(produto.id)" class="btn-small">Ver</button>
+                <button @click="verProduto(produto.id)" class="btn-small">Visualizar</button>
               </td>
             </tr>
           </tbody>
@@ -92,7 +92,7 @@
               <th>Marca</th>
               <th>Status</th>
               <th>Data</th>
-              <th>Ações</th>
+              <th>Documentação</th>
             </tr>
           </thead>
           <tbody>
@@ -106,7 +106,7 @@
               </td>
               <td>{{ formatDate(produto.criado_em) }}</td>
               <td>
-                <button @click="verProduto(produto.id)" class="btn-small">Ver</button>
+                <button @click="verProduto(produto.id)" class="btn-small">Visualizar</button>
               </td>
             </tr>
           </tbody>
@@ -122,9 +122,9 @@
               <th>Impugnante</th>
               <th>Produto</th>
               <th>Data da Impugnação</th>
-              <th>Status</th>
               <th>Prazo Final</th>
-              <th>Ações</th>
+              <th>Status</th>
+              <th>Documentação</th>
             </tr>
           </thead>
           <tbody>
@@ -132,14 +132,14 @@
               <td>{{ impugnacao.impugnante }}</td>
               <td>{{ impugnacao.produto_nome }}</td>
               <td>{{ formatDate(impugnacao.data_impugnacao) }}</td>
+              <td>{{ formatDate(impugnacao.prazo_final) }}</td>
               <td>
                 <span class="status-badge" :class="getImpugnacaoStatusClass(impugnacao.status)">
                   {{ impugnacao.status }}
                 </span>
               </td>
-              <td>{{ formatDate(impugnacao.prazo_final) }}</td>
               <td>
-                <button @click="analisarImpugnacao(impugnacao.id)" class="btn-small">Analisar</button>
+                <button @click="analisarImpugnacao(impugnacao.id)" class="btn-small">Visualizar</button>
               </td>
             </tr>
           </tbody>
@@ -189,7 +189,7 @@
                 <th>Número</th>
                 <th>Descrição</th>
                 <th>Data de Publicação</th>
-                <th>Ações</th>
+                <th>Documentação</th>
               </tr>
             </thead>
             <tbody>
@@ -349,7 +349,8 @@ export default {
             produto_nome: 'Monitor de Sinais Vitais',
             data_impugnacao: '2023-06-10',
             status: 'EM ANÁLISE',
-            prazo_final: '2023-06-25'
+            prazo_final: '2023-06-25',
+            url_documento: 'https://comprabem.gov.br/docs/impugnacoes/imp_2023_001.pdf'
           },
           {
             id: '2',
@@ -357,7 +358,8 @@ export default {
             produto_nome: 'Desfibrilador Cardíaco',
             data_impugnacao: '2023-06-15',
             status: 'DEFERIDA',
-            prazo_final: '2023-06-30'
+            prazo_final: '2023-06-30',
+            url_documento: 'https://comprabem.gov.br/docs/impugnacoes/imp_2023_002.pdf'
           },
           {
             id: '3',
@@ -365,7 +367,8 @@ export default {
             produto_nome: 'Autoclave Hospitalar',
             data_impugnacao: '2023-06-20',
             status: 'INDEFERIDA',
-            prazo_final: '2023-07-05'
+            prazo_final: '2023-07-05',
+            url_documento: null
           }
         ]
         
@@ -440,7 +443,7 @@ export default {
       console.log(`Analisando impugnação com ID: ${id}`)
       this.$swal({
         title: 'Ação Simulada',
-        text: 'Em uma implementação completa, abriria um formulário para analisar a impugnação ao edital.',
+        text: 'Em uma implementação completa, abriria um formulário para analisar a impugnação ao edital e permitiria acesso ao documento PDF assinado digitalmente.',
         icon: 'info'
       })
     }
@@ -644,5 +647,29 @@ th {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.link-documento {
+  display: flex;
+  align-items: center;
+  color: #3498db;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.link-documento:hover {
+  text-decoration: underline;
+}
+
+.link-documento i {
+  margin-right: 5px;
+  font-size: 1.1rem;
+  color: #e74c3c;
+}
+
+.sem-documento {
+  color: #999;
+  font-size: 0.9rem;
+  font-style: italic;
 }
 </style> 

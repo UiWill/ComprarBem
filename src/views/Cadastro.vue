@@ -4,15 +4,21 @@
       <div class="logo">
         <div class="logo-content">
           <h1>Comprar Bem</h1>
-          <span class="subtitle">Compras Inteligentes</span>
+          <span class="subtitle">Compras Públicas Inteligentes</span>
         </div>
       </div>
       <nav class="main-nav">
         <router-link to="/dashboard">Painel CPM</router-link>
         <router-link to="/ccl">Painel CCL</router-link>
         <router-link to="/cadastro">Cadastrar Produto</router-link>
-        <router-link to="/catalogo">Catálogo</router-link>
-        <router-link to="/classificacao">Classificação</router-link>
+        <router-link to="/catalogo" class="nav-item">
+          <span>Catálogo</span>
+          <span class="nav-subtitle">de Marcas</span>
+        </router-link>
+        <router-link to="/classificacao" class="nav-item">
+          <span>Classificação</span>
+          <span class="nav-subtitle">de Bens</span>
+        </router-link>
         <router-link to="/dcb">DCB</router-link>
         <router-link to="/feedback">RDM</router-link>
       </nav>
@@ -96,16 +102,33 @@ export default {
 .main-nav a {
   color: white;
   text-decoration: none;
-  padding: 0 15px;
   height: 60px;
   display: flex;
   align-items: center;
   transition: background-color 0.3s;
 }
 
+.main-nav a:not(.nav-item) {
+  padding: 0 15px;
+}
+
 .main-nav a:hover,
 .main-nav a.router-link-active {
   background-color: #34495e;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  padding: 0 15px;
+}
+
+.nav-subtitle {
+  font-size: 0.65rem;
+  opacity: 0.9;
 }
 
 .user-menu {

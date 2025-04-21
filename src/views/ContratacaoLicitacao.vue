@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-view">
+  <div class="contratalicitacao-view">
     <header class="app-header">
       <div class="logo">
         <div class="logo-content">
@@ -28,19 +28,19 @@
     </header>
     
     <main class="main-content">
-      <DashboardCPM />
+      <DashboardCCL />
     </main>
   </div>
 </template>
 
 <script>
-import DashboardCPM from '@/components/dashboard/DashboardCPM.vue'
+import DashboardCCL from '@/components/dashboard/DashboardCCL.vue'
 import { supabase } from '@/services/supabase'
 
 export default {
-  name: 'Dashboard',
+  name: 'ContratacaoLicitacao',
   components: {
-    DashboardCPM
+    DashboardCCL
   },
   methods: {
     async logout() {
@@ -56,7 +56,7 @@ export default {
 </script>
 
 <style scoped>
-.dashboard-view {
+.contratalicitacao-view {
   min-height: 100vh;
   display: flex;
   flex-direction: column;

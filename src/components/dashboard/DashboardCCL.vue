@@ -30,7 +30,7 @@
     <div v-if="activeTab === 'dashboard'">
       <div class="stats-container">
         <div class="stat-card status-pendente-card">
-          <h3>Processos Aguardando Julgamento</h3>
+          <h3>Processos em Julgamento</h3>
           <div class="stat-value">{{ pendentes }}</div>
         </div>
         
@@ -55,7 +55,7 @@
               <th>Categoria</th>
               <th>Status</th>
               <th>Data</th>
-              <th>Ações</th>
+              <th>Documentação</th>
             </tr>
           </thead>
           <tbody>
@@ -70,7 +70,7 @@
               </td>
               <td>{{ formatDate(produto.criado_em) }}</td>
               <td>
-                <button @click="publicarDecisao(produto.id)" class="btn-small">Julgamento</button>
+                <button @click="publicarDecisao(produto.id)" class="btn-small">Visualizar</button>
               </td>
             </tr>
           </tbody>
@@ -87,7 +87,7 @@
               <th>Produto</th>
               <th>Decisão</th>
               <th>Data de Publicação</th>
-              <th>Ações</th>
+              <th>Documentação</th>
             </tr>
           </thead>
           <tbody>
@@ -117,9 +117,9 @@
               <th>Recorrente</th>
               <th>Produto</th>
               <th>Data do Recurso</th>
-              <th>Status</th>
               <th>Prazo Final</th>
-              <th>Ações</th>
+              <th>Status</th>
+              <th>Documentação</th>
             </tr>
           </thead>
           <tbody>
@@ -127,14 +127,14 @@
               <td>{{ recurso.recorrente }}</td>
               <td>{{ recurso.produto_nome }}</td>
               <td>{{ formatDate(recurso.data_recurso) }}</td>
+              <td>{{ formatDate(recurso.prazo_final) }}</td>
               <td>
                 <span class="status-badge" :class="getRecursoStatusClass(recurso.status)">
                   {{ recurso.status }}
                 </span>
               </td>
-              <td>{{ formatDate(recurso.prazo_final) }}</td>
               <td>
-                <button @click="julgarRecurso(recurso.id)" class="btn-small">Julgar</button>
+                <button @click="julgarRecurso(recurso.id)" class="btn-small">Visualizar</button>
               </td>
             </tr>
           </tbody>
@@ -351,6 +351,19 @@ export default {
         this.pendentes = statsCounts[0]
         this.aprovados = statsCounts[1]
         this.diligencias = statsCounts[2]
+        
+        // Ajustar contadores com base nos dados simulados
+        // Verificar diligências nas atas recentes
+        const atasEmDiligencia = this.atasRecentes.filter(ata => ata.decisao === 'diligencia').length
+        if (atasEmDiligencia > 0) {
+          this.diligencias = atasEmDiligencia
+        }
+        
+        // Verificar homologações nas atas recentes
+        const atasHomologadas = this.atasRecentes.filter(ata => ata.decisao === 'aprovado').length
+        if (atasHomologadas > 0 && this.aprovados === 0) {
+          this.aprovados = atasHomologadas
+        }
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
       } finally {
@@ -432,7 +445,7 @@ export default {
     julgarRecurso(id) {
       this.$swal({
         title: 'Ação Simulada',
-        text: 'Em uma implementação completa, abriria um formulário para julgar o recurso.',
+        text: 'Em uma implementação completa, abriria um formulário para julgar o recurso e permitiria acesso ao documento PDF assinado digitalmente.',
         icon: 'info'
       })
     }
