@@ -31,6 +31,13 @@
       >
         Marcas Despadronizadas
       </div>
+      <div 
+        class="tab" 
+        :class="{ active: activeTab === 'certificados' }" 
+        @click="activeTab = 'certificados'"
+      >
+        Emissão de Certificados (DCB)
+      </div>
     </div>
     
     <!-- Aba Dashboard -->
@@ -158,7 +165,7 @@
           <li>Registro de especificações técnicas de produtos e cotações de fornecedores</li>
           <li>Comparativo técnico de produtos, seus preços e condições gerais</li>
           <li>Análise de variação de preços</li>
-          <li>Geração de relatórios para instrução de processos de compra</li>
+          <li>Geração de relatórios para instrução de processos de compras</li>
           <li>Integração com bancos de preços públicos</li>
         </ul>
         <div class="em-desenvolvimento">
@@ -214,16 +221,37 @@
     <div v-if="activeTab === 'despadronizadas'" class="marcas-despadronizadas">
       <div class="info-card">
         <h3>Marcas Despadronizadas</h3>
-        <p>Este módulo permitirá gerenciar marcas e produtos que foram despadronizados ou que não atendem mais aos requisitos de padronização.</p>
+        <p>Este módulo permitirá gerenciar marcas e modelos que foram despadronizados ou que não atendem mais aos requisitos de padronização.</p>
         <p>Funcionalidades que serão implementadas:</p>
         <ul>
-          <li>Registro de marcas e produtos despadronizados</li>
+          <li>Registro de marcas e modelos despadronizados</li>
           <li>Motivos e justificativas para despadronização</li>
-          <li>Histórico de padronizações e revogações</li>
-          <li>Restrições de uso para produtos despadronizados</li>
+          <li>Histórico de despadronizações</li>
+          <li>Restrições de uso para modelos despadronizados</li>
           <li>Notificação aos setores sobre despadronizações</li>
           <li>Relatórios de impacto por despadronização</li>
           <li>Registro de comunicações aos órgãos de controle</li>
+        </ul>
+        <div class="em-desenvolvimento">
+          <span>Em desenvolvimento</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Aba Emissão de Certificados (DCB) -->
+    <div v-if="activeTab === 'certificados'" class="certificados">
+      <div class="info-card">
+        <h3>Emissão de Certificados (DCB)</h3>
+        <p>Este módulo permitirá o acesso e emissão de certificados DCB (Documento de Comprovação de Bem) para produtos aprovados.</p>
+        <p>Funcionalidades que serão implementadas:</p>
+        <ul>
+          <li>Emissão de certificados de homologação</li>
+          <li>Controle e gerenciamento de certificados emitidos</li>
+          <li>Validação e verificação de autenticidade</li>
+          <li>Histórico de certificações por produto</li>
+          <li>Relatórios de produtos certificados</li>
+          <li>Notificação automática de certificações realizadas</li>
+          <li>Controle de prazos de validade de DCB</li>
         </ul>
         <div class="em-desenvolvimento">
           <span>Em desenvolvimento</span>
@@ -249,7 +277,8 @@ export default {
       currentTenantId: null,
       loading: false,
       editais: [],
-      impugnacoes: []
+      impugnacoes: [],
+      certificados: []
     }
   },
   created() {
@@ -671,5 +700,9 @@ th {
   color: #999;
   font-size: 0.9rem;
   font-style: italic;
+}
+
+.certificados {
+  margin-top: 20px;
 }
 </style> 

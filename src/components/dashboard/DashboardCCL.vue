@@ -173,8 +173,6 @@
           <li>Acesso aos documentos de homologação de padronizações de marcas e modelos</li>
           <li>Acesso aos documentos de despadronizações</li>
           <li>Registro de decisões da autoridade competente</li>
-          <li>Emissão de certificados de homologação</li>
-          <li>Controle de prazos de validade</li>
           <li>Notificação automática de homologações e indeferimentos</li>
         </ul>
         <div class="em-desenvolvimento">
