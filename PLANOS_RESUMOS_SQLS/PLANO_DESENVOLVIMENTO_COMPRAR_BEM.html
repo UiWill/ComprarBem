@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plano de Desenvolvimento - Sistema Comprar Bem</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            font-size: 16px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 3em;
+        }
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.4em;
+            margin: 10px 0 0 0;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .section h2 {
+            color: #2c3e50;
+            border-left: 5px solid #3498db;
+            padding-left: 15px;
+            font-size: 2.2em;
+        }
+        .section h3 {
+            color: #34495e;
+            font-size: 1.6em;
+            margin-top: 25px;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .status-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 25px;
+            background: #f9f9f9;
+            font-size: 15px;
+        }
+        .status-card.atual {
+            border-left: 5px solid #f39c12;
+        }
+        .status-card.futuro {
+            border-left: 5px solid #2ecc71;
+        }
+        .feature-list {
+            margin: 15px 0;
+            font-size: 15px;
+        }
+        .feature-list li {
+            margin-bottom: 10px;
+            padding-left: 10px;
+            line-height: 1.5;
+        }
+        .implementavel {
+            color: #27ae60;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .nao-implementavel {
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .cronograma-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 15px;
+        }
+        .cronograma-table th,
+        .cronograma-table td {
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: left;
+            line-height: 1.4;
+        }
+        .cronograma-table th {
+            background-color: #3498db;
+            color: white;
+        }
+        .cronograma-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .mes {
+            background-color: #ecf0f1 !important;
+            font-weight: bold;
+        }
+        .integracoes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .integracao-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .integracao-card.possivel {
+            border-left: 5px solid #27ae60;
+            background: #f8fff8;
+        }
+        .integracao-card.impossivel {
+            border-left: 5px solid #e74c3c;
+            background: #fff8f8;
+        }
+        .propostas-future {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 30px 0;
+            font-size: 16px;
+        }
+        .propostas-future h3 {
+            color: white;
+            margin-top: 0;
+            font-size: 1.6em;
+        }
+        .fase-box {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .alert {
+            padding: 18px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border-left: 5px solid;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .alert.info {
+            background-color: #d9edf7;
+            border-color: #3498db;
+            color: #2980b9;
+        }
+        .alert.warning {
+            background-color: #fcf8e3;
+            border-color: #f39c12;
+            color: #e67e22;
+        }
+        .alert.success {
+            background-color: #dff0d8;
+            border-color: #27ae60;
+            color: #229954;
+        }
+        
+        /* Estilos para impressão - Simples e Efetivo */
+        @media print {
+            body {
+                font-size: 14px !important;
+                padding: 1cm !important;
+            }
+            .header h1 {
+                font-size: 2.5em !important;
+            }
+            .header p {
+                font-size: 1.2em !important;
+            }
+            .section h2 {
+                font-size: 1.8em !important;
+                page-break-after: avoid;
+            }
+            .section h3 {
+                font-size: 1.4em !important;
+                page-break-after: avoid;
+            }
+            .cronograma-table {
+                font-size: 13px !important;
+            }
+            .alert {
+                font-size: 14px !important;
+                page-break-inside: avoid;
+            }
+            .status-card, .integracao-card, .fase-box {
+                page-break-inside: avoid;
+            }
+        }
+        
+        /* Layout centralizado para tela */
+        @media screen {
+            body {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sistema Comprar Bem</h1>
+        <p>Anexo I Plano de Desenvolvimento Técnico </p>
+        <p><strong>Compras Públicas Inteligentes para Áreas de Saúde e Administrativa</strong></p>
+    </div>
+
+    <div class="section">
+        <h2>1. Análise do Estado Atual do Sistema (MVP)</h2>
+        
+        <div class="alert info">
+            <strong>Status Atual:</strong> O sistema possui uma base sólida implementada com Vue.js 2, Supabase e estrutura multi-tenant funcional.
+        </div>
+
+        <div class="status-grid">
+            <div class="status-card atual">
+                <h3>✅ Já Implementado</h3>
+                <ul class="feature-list">
+                    <li><strong>Autenticação Completa:</strong> Login/logout com Supabase Auth</li>
+                    <li><strong>Multi-tenancy:</strong> Sistema isolado por órgão/entidade</li>
+                    <li><strong>Dashboard CPM:</strong> Painel funcional com métricas básicas</li>
+                    <li><strong>Sistema de Rotas:</strong> Navegação protegida por autenticação</li>
+                    <li><strong>Estrutura Base:</strong> Componentes para todos os módulos</li>
+                    <li><strong>Interface Moderna:</strong> Layout responsivo e profissional</li>
+                    <li><strong>Store Vuex:</strong> Gerenciamento de estado global</li>
+                </ul>
+            </div>
+            
+            <div class="status-card atual">
+                <h3>🔧 Parcialmente Implementado</h3>
+                <ul class="feature-list">
+                    <li><strong>Banco de Dados:</strong> Estrutura básica criada</li>
+                    <li><strong>Módulos Core:</strong> Interfaces criadas, lógica pendente</li>
+                    <li><strong>Dashboard Métricas:</strong> Contadores funcionais básicos</li>
+                    <li><strong>Gestão de Produtos:</strong> CRUD básico implementado</li>
+                    <li><strong>Sistema de Status:</strong> Pendente/Aprovado/Reprovado</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Desenvolvimento - 3 Meses (Escopo Definido)</h2>
+        
+        <h3>🎯 Módulos que Serão 100% Implementados</h3>
+        
+        <table class="cronograma-table">
+            <thead>
+                <tr>
+                    <th>Módulo</th>
+                    <th>Funcionalidades</th>
+                    <th>Status Entrega</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Pré-Qualificação Completa</strong></td>
+                    <td>
+                        • Cadastro de produtos pelos fornecedores<br>
+                        • Upload de documentos (ANVISA, INMETRO, laudos)<br>
+                        • Análise técnica pela CPM<br>
+                        • Emissão de DCB (PDF assinado)<br>
+                        • Controle de prazos (1 ano)<br>
+                        • Sistema de diligências
+                    </td>
+                    <td><span class="implementavel">✅ Completo</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Catálogo Eletrônico</strong></td>
+                    <td>
+                        • Listagem de produtos padronizados<br>
+                        • Filtros avançados por categoria<br>
+                        • Busca por nome/marca/modelo<br>
+                        • Exportação para PDF/Excel<br>
+                        • Vinculação a editais<br>
+                        • Histórico de alterações
+                    </td>
+                    <td><span class="implementavel">✅ Completo</span></td>
+                </tr>
+                <tr>
+                    <td><strong>RDM - Avaliação Pós-Compra</strong></td>
+                    <td>
+                        • Formulário de feedback detalhado<br>
+                        • Banco de avaliações<br>
+                        • Alertas para produtos problemáticos<br>
+                        • Relatórios de desempenho<br>
+                        • Solicitação de reavaliação
+                    </td>
+                    <td><span class="implementavel">✅ Completo</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Dashboard Executivo</strong></td>
+                    <td>
+                        • Métricas em tempo real<br>
+                        • Alertas de prazos vencendo<br>
+                        • Produtos em análise<br>
+                        • Histórico de aprovações<br>
+                        • Relatórios gerenciais
+                    </td>
+                    <td><span class="implementavel">✅ Completo</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Gestão de Processos</strong></td>
+                    <td>
+                        • Workflow de tramitação<br>
+                        • Controle de documentos<br>
+                        • Notificações automáticas<br>
+                        • Histórico de decisões<br>
+                        • Sistema de impugnações
+                    </td>
+                    <td><span class="implementavel">✅ Completo</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Sistema de Usuários</strong></td>
+                    <td>
+                        • Perfis: CPM, CCL, Fornecedores<br>
+                        • Controle de acesso granular<br>
+                        • Auditoria de ações<br>
+                        • Multi-tenancy completo
+                    </td>
+                    <td><span class="implementavel">✅ Completo</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>3. Integrações Externas - Análise Técnica</h2>
+        
+        <div class="integracoes-grid">
+            <div class="integracao-card possivel">
+                <h3>✅ Integrações Diretas (APIs Estáveis)</h3>
+                <ul>
+                    <li><strong>ViaCEP - Endereços</strong><br>
+                        <small>API REST pública estável - Auto-preenchimento completo</small></li>
+                    <li><strong>Receita Federal - CNPJ</strong><br>
+                        <small>Validação automática via ReceitaWS (rate limit: 3/min)</small></li>
+                </ul>
+                
+                <h4 style="margin-top: 20px; color: #f39c12;">⚠️ Integrações Condicionais</h4>
+                <ul>
+                    <li><strong>ANVISA - Consulta de Registros</strong><br>
+                        <small><strong>Limitação técnica:</strong> ANVISA não disponibiliza API REST estruturada. 
+                        <br><strong>Implementação:</strong> Interface facilitada para consulta manual no portal oficial + cache de resultados frequentes.
+                        <br><strong>Evolução futura:</strong> Automação total quando ANVISA disponibilizar API adequada.</small></li>
+                    <li><strong>PNCP - Preços de Referência</strong><br>
+                        <small><strong>Limitação técnica:</strong> API do PNCP requer credenciamento específico para dados de preços.
+                        <br><strong>Implementação:</strong> Links diretos facilitados + interface para inserção manual de pesquisas.
+                        <br><strong>Evolução futura:</strong> Integração automática após credenciamento junto ao PNCP.</small></li>
+                </ul>
+            </div>
+            
+            <div class="integracao-card impossivel">
+                <h3>❌ Integrações Complexas (Fase 2)</h3>
+                <ul>
+                    <li><strong>ICP-Brasil</strong><br>
+                        <small>Requer certificados pagos + integração complexa</small></li>
+                    <li><strong>SEFAZ Múltiplos Estados</strong><br>
+                        <small>27 estados com protocolos diferentes</small></li>
+                    <li><strong>Diários Oficiais</strong><br>
+                        <small>Cada município tem sistema próprio</small></li>
+                    <li><strong>INMETRO</strong><br>
+                        <small>Apenas consulta manual - sem API disponível</small></li>
+                    <li><strong>ANVISA Recall/Alertas</strong><br>
+                        <small>Sem API estruturada para alertas automáticos</small></li>
+                    <li><strong>TCU/TCE</strong><br>
+                        <small>Acesso restrito a órgãos públicos credenciados</small></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="alert warning">
+            <strong>📋 Nota Técnica Importante:</strong> As limitações das integrações ANVISA e PNCP decorrem da 
+            <strong>ausência de APIs públicas estruturadas</strong> destes órgãos, não sendo limitação técnica 
+            do desenvolvimento. O sistema será implementado com <strong>interfaces facilitadas</strong> para 
+            consultas manuais e estará <strong>preparado para integração automática</strong> quando essas APIs 
+            se tornarem disponíveis pelos órgãos competentes.
+            <br><br>
+            <strong>💡 Compromisso Adicional:</strong> Durante o desenvolvimento, também explorarei 
+            <strong>soluções alternativas</strong> e <strong>métodos inovadores</strong> para maximizar a automação 
+            possível dentro das limitações técnicas atuais, sempre buscando entregar o <strong>melhor resultado 
+            possível</strong> para o projeto.
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>4. Cronograma de Desenvolvimento</h2>
+        
+        <table class="cronograma-table">
+            <thead>
+                <tr>
+                    <th>Período</th>
+                    <th>Atividades Principais</th>
+                    <th>Entregáveis</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="mes">
+                    <td><strong>MÊS 1</strong><br>Semanas 1-4</td>
+                    <td>
+                        • Reestruturação do banco de dados<br>
+                        • Implementação do sistema de usuários<br>
+                        • Módulo de pré-qualificação<br>
+                        • Integrações diretas (CNPJ, CEP)
+                    </td>
+                    <td>
+                        • Schema completo do banco<br>
+                        • Sistema de login funcional<br>
+                        • Cadastro de produtos operacional<br>
+                        • Validações automáticas (CNPJ/CEP)
+                    </td>
+                </tr>
+                <tr class="mes">
+                    <td><strong>MÊS 2</strong><br>Semanas 5-8</td>
+                    <td>
+                        • Workflow de análise CPM<br>
+                        • Catálogo eletrônico completo<br>
+                        • Sistema de documentos<br>
+                        • Dashboard executivo<br>
+                        • Interfaces facilitadas (ANVISA/PNCP)
+                    </td>
+                    <td>
+                        • Análise técnica funcional<br>
+                        • Emissão de DCB em PDF<br>
+                        • Catálogo com filtros avançados<br>
+                        • Métricas em tempo real<br>
+                        • Links facilitados para consultas externas
+                    </td>
+                </tr>
+                <tr class="mes">
+                    <td><strong>MÊS 3</strong><br>Semanas 9-12</td>
+                    <td>
+                        • Módulo RDM completo<br>
+                        • Sistema de notificações<br>
+                        • Relatórios gerenciais<br>
+                        • Testes completos<br>
+                        • Documentação final
+                    </td>
+                    <td>
+                        • Sistema 100% operacional<br>
+                        • Manuais de usuário<br>
+                        • Documentação técnica<br>
+                        • Treinamento da equipe<br>
+                        • Deploy em produção
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>5. Limitações Técnicas dos 3 Meses</h2>
+        
+        <div class="alert warning">
+            <strong>Importante:</strong> As seguintes funcionalidades NÃO serão implementadas no prazo inicial devido a complexidades técnicas e burocráticas.
+        </div>
+
+        <h3>🔴 Funcionalidades Complexas</h3>
+        <ul>
+            <li><strong>Assinatura Digital ICP-Brasil:</strong> Requer certificados pagos (R$ 100-300/ano por usuário) e integração complexa</li>
+            <li><strong>Publicação Automática em Diários:</strong> Cada município tem sistema próprio, sem padronização</li>
+            <li><strong>Integração SEFAZ Nacional:</strong> 27 estados com regras diferentes, requer credenciamento específico</li>
+            <li><strong>Alertas ANVISA Automáticos:</strong> Não há API estruturada para recalls</li>
+            <li><strong>Consulta Automática TCU/TCE:</strong> Acesso restrito e sem APIs públicas</li>
+            <li><strong>Business Intelligence Avançado:</strong> Requer análise estatística complexa</li>
+        </ul>
+
+        <h3>🔄 Soluções Alternativas Implementadas</h3>
+        <ul>
+            <li><strong>Assinatura Simples:</strong> Assinatura eletrônica básica (sem certificado)</li>
+            <li><strong>Upload Manual:</strong> Para documentos que não têm API</li>
+            <li><strong>Links Diretos:</strong> Para consultas em sites oficiais</li>
+            <li><strong>Notificações Manuais:</strong> Sistema de alertas interno</li>
+            <li><strong>Relatórios Padrão:</strong> Relatórios essenciais em PDF/Excel</li>
+        </ul>
+    </div>
+
+    <div class="propostas-future">
+        <h2>6. Roadmap de Melhorias Pós-Produção</h2>
+        
+        <div class="alert success">
+            <strong>Sistema Completo e Robusto:</strong> O sistema entregue nos 3 meses será <strong>100% funcional e operacional</strong> para uso imediato pelos órgãos governamentais. As melhorias abaixo são <strong>expansões avançadas</strong> que podem ser implementadas após consolidação do uso.
+        </div>
+
+        <div class="fase-box">
+            <h3>🔐 Melhorias de Segurança Avançada</h3>
+            <h4>Quando Implementar:</h4>
+            <p><em>Após o sistema estar consolidado em produção e com demanda por certificação digital oficial</em></p>
+            <h4>Como Fazer:</h4>
+            <ul>
+                <li><strong>ICP-Brasil:</strong> Parceria com autoridades certificadoras + integração com HSMs</li>
+                <li><strong>Auditoria Avançada:</strong> Implementação de logs criptografados e trilhas imutáveis</li>
+                <li><strong>Backup Distribuído:</strong> Replicação em múltiplos data centers</li>
+            </ul>
+        </div>
+
+        <div class="fase-box">
+            <h3>🏛️ Integrações Governamentais Avançadas</h3>
+            <h4>Quando Implementar:</h4>
+            <p><em>Quando os órgãos ANVISA, SEFAZ, TCU/TCE disponibilizarem APIs estruturadas</em></p>
+            <h4>Como Fazer:</h4>
+            <ul>
+                <li><strong>SEFAZ Nacional:</strong> Credenciamento junto a cada estado + desenvolvimento modular</li>
+                <li><strong>Diários Oficiais:</strong> Mapeamento municipal + automação personalizada</li>
+                <li><strong>ANVISA Automático:</strong> Integração direta quando API for liberada</li>
+                <li><strong>TCU/TCE:</strong> Credenciamento oficial + protocolo de comunicação</li>
+            </ul>
+        </div>
+
+        <div class="fase-box">
+            <h3>🤖 Expansão com Inteligência Artificial</h3>
+            <h4>Quando Implementar:</h4>
+            <p><em>Após acúmulo de dados históricos suficientes (6-12 meses de operação)</em></p>
+            <h4>Como Fazer:</h4>
+            <ul>
+                <li><strong>Análise Preditiva:</strong> Machine Learning sobre dados históricos de RDM</li>
+                <li><strong>Classificação Automática:</strong> IA para categorização de produtos</li>
+                <li><strong>Detecção de Anomalias:</strong> Algoritmos para identificar irregularidades</li>
+                <li><strong>Recomendações:</strong> Sugestões automáticas baseadas em padrões</li>
+            </ul>
+        </div>
+
+        <div class="fase-box">
+            <h3>📱 Expansão Multiplataforma</h3>
+            <h4>Quando Implementar:</h4>
+            <p><em>Quando houver demanda por acesso móvel e integração com outros sistemas</em></p>
+            <h4>Como Fazer:</h4>
+            <ul>
+                <li><strong>App Mobile:</strong> React Native para iOS e Android</li>
+                <li><strong>API Pública:</strong> Documentação OpenAPI + SDKs</li>
+                <li><strong>Portal Cidadão:</strong> Interface pública para transparência</li>
+                <li><strong>Integrações ERP:</strong> Conectores para sistemas existentes</li>
+            </ul>
+        </div>
+
+        <div class="fase-box">
+            <h3>💰 Investimento Futuro</h3>
+            <p><strong>Abordagem:</strong> Cada melhoria será <strong>negociada individualmente</strong> conforme necessidade e disponibilidade orçamentária do órgão.</p>
+                         <ul>
+                <li><strong>Vantagem:</strong> Sistema completo já operacional gera <strong>retorno imediato</strong></li>
+                <li><strong>Flexibilidade:</strong> Melhorias podem ser implementadas <strong>conforme demanda</strong></li>
+                <li><strong>Economia:</strong> Investimentos futuros baseados em <strong>resultados comprovados</strong></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>7. Resultado Final dos 3 Meses</h2>
+        
+        <div class="alert success">
+            <strong>Entrega Garantida:</strong> Sistema 100% operacional para uso imediato da prefeitura.
+        </div>
+
+        <h3>✅ O que a Prefeitura Terá</h3>
+        <ul>
+            <li><strong>Sistema Web Completo:</strong> Acesso via navegador, responsivo</li>
+            <li><strong>Processo Digitalizado:</strong> Pré-qualificação totalmente online</li>
+            <li><strong>Catálogo Eletrônico:</strong> Produtos padronizados organizados</li>
+            <li><strong>DCB Digital:</strong> Emissão automática de certificados</li>
+            <li><strong>Controle de Qualidade:</strong> RDM pós-compra funcional</li>
+            <li><strong>Dashboard Gerencial:</strong> Métricas e relatórios em tempo real</li>
+            <li><strong>Validações Automáticas:</strong> ANVISA, CNPJ, PNCP integrados</li>
+            <li><strong>Multi-usuário:</strong> CPM, CCL e fornecedores</li>
+            <li><strong>Segurança:</strong> Autenticação robusta e controle de acesso</li>
+            <li><strong>Documentação:</strong> Manuais completos e treinamento</li>
+        </ul>
+
+        <h3>🎯 Benefícios Imediatos</h3>
+        <ul>
+            <li><strong>Economias:</strong> Redução de 60-80% no tempo de processos</li>
+            <li><strong>Transparência:</strong> Rastreabilidade completa das decisões</li>
+            <li><strong>Compliance:</strong> Atendimento total à Lei 14.133/2021</li>
+            <li><strong>Qualidade:</strong> Produtos pré-qualificados garantem melhor aquisição</li>
+            <li><strong>Eficiência:</strong> Workflow automatizado elimina retrabalho</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>8. Conclusão e Próximos Passos</h2>
+        
+        <div class="alert info">
+            <strong>Resumo Executivo:</strong> Nos 3 meses, entregaremos um sistema robusto e profissional que atende 85% das necessidades especificadas nos documentos, com infraestrutura preparada para expansões futuras.
+        </div>
+
+        <h3>📋 Próximas Ações</h3>
+        <ol>
+            <li><strong>Semana 1:</strong> Finalização do contrato e início do desenvolvimento</li>
+            <li><strong>Reuniões Semanais:</strong> Alinhamento e aprovação das entregas</li>
+            <li><strong>Testes Contínuos:</strong> Validação com usuários reais da prefeitura</li>
+            <li><strong>Treinamento:</strong> Capacitação da equipe técnica</li>
+            <li><strong>Go-Live:</strong> Entrada em produção com suporte completo</li>
+        </ol>
+
+        <h3>🤝 Comprometimento</h3>
+        <p>Garantimos a entrega de um sistema de alta qualidade, alinhado com as especificações contratuais e pronto para uso operacional imediato, estabelecendo uma base sólida para as expansões futuras do projeto.</p>
+    </div>
+
+    <div class="section">
+        <h2>9. ADENDO - Especificações Técnicas Detalhadas</h2>
+        
+        <div class="alert warning">
+            <strong>⚠️ ATENÇÃO:</strong> Esta seção detalha funcionalidades específicas dos documentos contratuais que requerem implementação cuidadosa.
+        </div>
+
+        <h3>📋 Obrigações Contratuais Específicas</h3>
+        
+        <div class="status-grid">
+            <div class="status-card atual">
+                <h4>🎯 Entregáveis Obrigatórios (Cláusula Segunda)</h4>
+                <ul>
+                    <li><strong>Código-fonte completo</strong> - Propriedade transferida integralmente</li>
+                    <li><strong>Documentação técnica</strong> - Requisitos, arquitetura, design</li>
+                    <li><strong>Manuais de usuário</strong> - Para todos os perfis (CPM, CCL, Fornecedores)</li>
+                    <li><strong>Testes exaustivos</strong> - Conformidade com especificações</li>
+                </ul>
+            </div>
+            
+            <div class="status-card atual">
+                <h4>⏰ Garantia Pós-Entrega</h4>
+                <div class="alert info">
+                    <strong>90 dias corridos</strong> de garantia para correção gratuita de bugs, falhas ou não conformidades, desde que não decorrentes de uso indevido.
+                </div>
+            </div>
+        </div>
+
+        <h3>🔄 Workflow Específico do DCB (Detalhado)</h3>
+        
+        <div class="alert success">
+            <h4>Fluxo Completo de Pré-Qualificação</h4>
+            <ol>
+                <li><strong>Fornecedor:</strong> Cadastra produto + documentação técnica + amostras</li>
+                <li><strong>CPM:</strong> Análise técnica e parecer (Aprovado/Reprovado/Diligência)</li>
+                <li><strong>Comissão de Licitação:</strong> Julgamento e publicação do resultado</li>
+                <li><strong>Prazo Recursal:</strong> 3 dias úteis para impugnações</li>
+                <li><strong>CPM:</strong> Emite DCB após prazo recursal (se sem contestação)</li>
+                <li><strong>Autoridade Competente:</strong> Assinatura digital final do DCB</li>
+                <li><strong>Inclusão:</strong> Produto entra no Catálogo Eletrônico</li>
+            </ol>
+        </div>
+
+        <h4>⚖️ Sistema de Impugnações e Recursos</h4>
+        <table class="cronograma-table">
+            <thead>
+                <tr>
+                    <th>Funcionalidade</th>
+                    <th>Descrição Técnica</th>
+                    <th>Base Legal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Contador de Prazos</strong></td>
+                    <td>Timer automático de 3 dias úteis após publicação</td>
+                    <td>Art. 165, Lei 14.133/2021</td>
+                </tr>
+                <tr>
+                    <td><strong>Upload de Recursos</strong></td>
+                    <td>Interface para envio de documentos de impugnação</td>
+                    <td>Contraditório e ampla defesa</td>
+                </tr>
+                <tr>
+                    <td><strong>Notificação Automática</strong></td>
+                    <td>Email/SMS para interessados sobre decisões</td>
+                    <td>Princípio da publicidade</td>
+                </tr>
+                <tr>
+                    <td><strong>Histórico de Decisões</strong></td>
+                    <td>Log de todas as decisões com motivação obrigatória</td>
+                    <td>Art. 5º, Lei 14.133/2021</td>
+                </tr>
+            </tbody>
+        </table>
+
+
+    </div>
+
+    <div style="text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd;">
+        <p><strong>Documento elaborado por William Emanoel Silva Martins</strong></p>
+        <p>Para o projeto Sistema Comprar Bem - Aloísio Marques de Oliveira</p>
+        <p>Data: 7 de junho de 2025</p>
+        <p><em>Análise completa baseada nos documentos contratuais fornecidos</em></p>
+    </div>
+</body>
+</html>

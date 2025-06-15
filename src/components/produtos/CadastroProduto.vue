@@ -104,6 +104,18 @@
           >
           <small v-if="cnpjInvalido" class="error-text">CNPJ inválido. Formato: 00.000.000/0000-00</small>
         </div>
+        
+        <div class="form-group">
+          <label for="email_fornecedor">Email do Fornecedor*</label>
+          <input 
+            id="email_fornecedor" 
+            v-model="produto.email_fornecedor" 
+            type="email" 
+            required
+            placeholder="contato@empresa.com"
+          >
+          <small class="info-text">Email para comunicações sobre diligências</small>
+        </div>
       </div>
       
       <div class="form-row">
@@ -217,6 +229,7 @@ export default {
         modelo: '',
         fabricante: '',
         cnpj: '',
+        email_fornecedor: '',
         origem: '',
         registro_anvisa: '',
         cbpf: '',
@@ -541,6 +554,7 @@ export default {
           modelo: this.produto.modelo,
           fabricante: this.produto.fabricante,
           cnpj: this.produto.cnpj, // CNPJ já tratado sem formatação
+          email_fornecedor: this.produto.email_fornecedor, // 📧 CAMPO EMAIL ADICIONADO
           origem: this.produto.origem,
           registro_anvisa: this.produto.registro_anvisa,
           cbpf: this.produto.cbpf,

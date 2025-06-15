@@ -23,24 +23,66 @@
         <router-link to="/feedback">RDM</router-link>
       </nav>
       <div class="user-menu">
-        <button @click="logout" class="btn-logout">Sair</button>
+        <div class="profile-dropdown">
+          <button @click="toggleDropdown" class="profile-btn">
+            <div class="profile-avatar">
+              👤
+            </div>
+            <div class="profile-info">
+              <span class="profile-name">{{ nomeUsuario }}</span>
+              <span class="profile-email">{{ emailUsuario }}</span>
+            </div>
+            <span class="dropdown-arrow" :class="{ rotated: dropdownOpen }">▼</span>
+          </button>
+          
+          <div v-if="dropdownOpen" class="dropdown-menu">
+            <a href="#" @click.prevent="abrirConfiguracaoEmail" class="dropdown-item">
+              ⚙️ Configuração
+            </a>
+            <a href="#" @click.prevent="abrirConfiguracaoEmail" class="dropdown-item">
+              📧 Configurar Email
+            </a>
+            <hr class="dropdown-divider">
+            <a href="#" @click.prevent="logout" class="dropdown-item logout">
+              🚪 Sair
+            </a>
+          </div>
+        </div>
       </div>
     </header>
     
     <main class="main-content">
       <FormularioDCB />
     </main>
+
   </div>
 </template>
 
 <script>
 import FormularioDCB from '@/components/dcb/FormularioDCB.vue'
 import { supabase } from '@/services/supabase'
+import emailService from '@/services/emailService'
 
 export default {
   name: 'DCB',
   components: {
     FormularioDCB
+  },
+  data() {
+    return {
+      dropdownOpen: false,
+      nomeUsuario: 'comprarBemTeste',
+      emailUsuario: 'comprarbemteste@gmail.com',
+      emailRemetente: 'cpm@suaorganizacao.com.br',
+      nomeRemetente: 'CPM - Comissão de Padronização de Materiais'
+    }
+  },
+  mounted() {
+    this.carregarConfiguracoes()
+    document.addEventListener('click', this.fecharDropdownFora)
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.fecharDropdownFora)
   },
   methods: {
     async logout() {
@@ -49,6 +91,82 @@ export default {
         this.$router.push('/')
       } catch (error) {
         console.error('Erro ao fazer logout:', error)
+      }
+    },
+    toggleDropdown() {
+      this.dropdownOpen = !this.dropdownOpen
+    },
+    
+    fecharDropdownFora(event) {
+      if (!this.$el.querySelector('.profile-dropdown').contains(event.target)) {
+        this.dropdownOpen = false
+      }
+    },
+    
+    async abrirConfiguracaoEmail() {
+      this.dropdownOpen = false
+      
+      const { value: formValues } = await this.$swal({
+        title: '📧 Configurar Email do Sistema',
+        html: `
+          <div style="text-align: left; padding: 10px;">
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Email Remetente (CPM):</label>
+              <input id="emailRemetente" class="swal2-input" value="${this.emailRemetente}" type="email" placeholder="cpm@suaorganizacao.com.br">
+              <small style="color: #666; font-size: 11px;">Email que aparece como remetente das diligências</small>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Nome do Remetente:</label>
+              <input id="nomeRemetente" class="swal2-input" value="${this.nomeRemetente}" type="text" placeholder="CPM - Comissão de Padronização de Materiais">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: '💾 Salvar',
+        cancelButtonText: '❌ Cancelar',
+        preConfirm: () => {
+          const emailRemetente = document.getElementById('emailRemetente').value
+          const nomeRemetente = document.getElementById('nomeRemetente').value
+          
+          if (!emailRemetente || !nomeRemetente) {
+            this.$swal.showValidationMessage('Por favor, preencha todos os campos')
+            return false
+          }
+          
+          return { emailRemetente, nomeRemetente }
+        }
+      })
+      
+      if (formValues) {
+        this.emailRemetente = formValues.emailRemetente
+        this.nomeRemetente = formValues.nomeRemetente
+        
+        // Salvar no localStorage
+        const configs = {
+          emailRemetente: formValues.emailRemetente,
+          nomeRemetente: formValues.nomeRemetente
+        }
+        localStorage.setItem('configsSistema', JSON.stringify(configs))
+        
+        this.$swal({
+          title: '✅ Sucesso!',
+          text: 'Configurações de email salvas com sucesso!',
+          icon: 'success'
+        })
+      }
+    },
+    
+    carregarConfiguracoes() {
+      try {
+        const configsSalvas = localStorage.getItem('configsSistema')
+        if (configsSalvas) {
+          const configs = JSON.parse(configsSalvas)
+          this.emailRemetente = configs.emailRemetente || this.emailRemetente
+          this.nomeRemetente = configs.nomeRemetente || this.nomeRemetente
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error)
       }
     }
   }
@@ -137,21 +255,205 @@ export default {
   margin-left: auto;
 }
 
-.btn-logout {
-  background: none;
-  border: 1px solid white;
-  color: white;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
+.profile-dropdown {
+  position: relative;
 }
 
-.btn-logout:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.profile-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.profile-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.profile-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: white;
+}
+
+.profile-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.profile-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.profile-email {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  transition: transform 0.3s ease;
+}
+
+.dropdown-arrow.rotated {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  z-index: 1000;
+  margin-top: 5px;
+  color: #333;
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 12px 15px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #333;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.dropdown-divider {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 8px 0;
+}
+
+.logout {
+  color: #dc3545;
+}
+
+.logout:hover {
+  background-color: #fff5f5;
 }
 
 .main-content {
   flex: 1;
   background-color: #f5f7fa;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  width: 100%;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #333;
+  cursor: pointer;
+}
+
+.modal-body {
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-secondary,
+.btn-primary {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background-color: #f0f0f0;
+  margin-right: 10px;
+}
+
+.btn-primary {
+  background-color: #3498db;
+  color: #fff;
 }
 </style> 

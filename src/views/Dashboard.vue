@@ -22,8 +22,56 @@
         <router-link to="/dcb">DCB</router-link>
         <router-link to="/feedback">RDM</router-link>
       </nav>
+      <!-- 👤 MENU DE PERFIL COM DROPDOWN -->
       <div class="user-menu">
-        <button @click="logout" class="btn-logout">Sair</button>
+        <div class="profile-dropdown" ref="profileDropdown">
+          <button 
+            @click="toggleDropdown" 
+            class="profile-button"
+            :class="{ active: showDropdown }"
+          >
+            <div class="profile-avatar">
+              <span class="profile-icon">👤</span>
+            </div>
+            <div class="profile-info">
+              <span class="profile-name">{{ usuarioNome }}</span>
+              <span class="profile-email">{{ usuarioEmail }}</span>
+            </div>
+            <span class="dropdown-arrow" :class="{ rotated: showDropdown }">▼</span>
+          </button>
+          
+          <div v-if="showDropdown" class="dropdown-menu">
+            <div class="dropdown-header">
+              <div class="user-avatar-large">👤</div>
+              <div class="user-details">
+                <strong>{{ usuarioNome }}</strong>
+                <small>{{ usuarioEmail }}</small>
+              </div>
+            </div>
+            
+            <hr class="dropdown-divider">
+            
+            <button @click="abrirConfiguracoes" class="dropdown-item">
+              <span class="item-icon">⚙️</span>
+              <span>Configurações</span>
+            </button>
+            
+            <button @click="abrirConfiguracoesEmail" class="dropdown-item">
+              <span class="item-icon">📧</span>
+              <span>Configurar Email</span>
+            </button>
+            
+            <hr class="dropdown-divider">
+            
+            <button @click="logout" class="dropdown-item logout-item">
+              <span class="item-icon">🚪</span>
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- OVERLAY PARA FECHAR DROPDOWN -->
+        <div v-if="showDropdown" class="dropdown-overlay" @click="closeDropdown"></div>
       </div>
     </header>
     
@@ -42,7 +90,115 @@ export default {
   components: {
     DashboardCPM
   },
+  data() {
+    return {
+      showDropdown: false,
+      usuarioNome: 'Usuário',
+      usuarioEmail: '',
+      emailRemetente: 'cpm@suaorganizacao.com.br',
+      nomeRemetente: 'CPM - Comissão de Padronização de Materiais'
+    }
+  },
+  async created() {
+    await this.carregarDadosUsuario()
+    this.carregarConfiguracoes()
+  },
   methods: {
+    async carregarDadosUsuario() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          this.usuarioEmail = user.email
+          this.usuarioNome = user.user_metadata?.nome || user.email.split('@')[0]
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error)
+      }
+    },
+    
+    carregarConfiguracoes() {
+      try {
+        const configsSalvas = localStorage.getItem('configsSistema')
+        if (configsSalvas) {
+          const configs = JSON.parse(configsSalvas)
+          this.emailRemetente = configs.emailRemetente || this.emailRemetente
+          this.nomeRemetente = configs.nomeRemetente || this.nomeRemetente
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error)
+      }
+    },
+    
+    toggleDropdown() {
+      this.showDropdown = !this.showDropdown
+    },
+    
+    closeDropdown() {
+      this.showDropdown = false
+    },
+    
+    abrirConfiguracoes() {
+      this.closeDropdown()
+      this.mostrarConfigEmail()
+    },
+    
+    abrirConfiguracoesEmail() {
+      this.closeDropdown()
+      this.mostrarConfigEmail()
+    },
+    
+    async mostrarConfigEmail() {
+      const { value: formValues } = await this.$swal({
+        title: '📧 Configurar Email do Sistema',
+        html: `
+          <div style="text-align: left; padding: 10px;">
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Email Remetente (CPM):</label>
+              <input id="emailRemetente" class="swal2-input" value="${this.emailRemetente}" type="email" placeholder="cpm@suaorganizacao.com.br">
+              <small style="color: #666; font-size: 11px;">Email que aparece como remetente das diligências</small>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Nome do Remetente:</label>
+              <input id="nomeRemetente" class="swal2-input" value="${this.nomeRemetente}" type="text" placeholder="CPM - Comissão de Padronização de Materiais">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: '💾 Salvar',
+        cancelButtonText: '❌ Cancelar',
+        preConfirm: () => {
+          const emailRemetente = document.getElementById('emailRemetente').value
+          const nomeRemetente = document.getElementById('nomeRemetente').value
+          
+          if (!emailRemetente || !nomeRemetente) {
+            this.$swal.showValidationMessage('Por favor, preencha todos os campos')
+            return false
+          }
+          
+          return { emailRemetente, nomeRemetente }
+        }
+      })
+      
+      if (formValues) {
+        this.emailRemetente = formValues.emailRemetente
+        this.nomeRemetente = formValues.nomeRemetente
+        
+        // Salvar no localStorage
+        const configs = {
+          emailRemetente: formValues.emailRemetente,
+          nomeRemetente: formValues.nomeRemetente
+        }
+        localStorage.setItem('configsSistema', JSON.stringify(configs))
+        
+        this.$swal({
+          title: '✅ Sucesso!',
+          text: 'Configurações de email salvas com sucesso!',
+          icon: 'success'
+        })
+      }
+    },
+    
     async logout() {
       try {
         await supabase.auth.signOut()
@@ -50,6 +206,7 @@ export default {
       } catch (error) {
         console.error('Erro ao fazer logout:', error)
       }
+      this.closeDropdown()
     }
   }
 }
@@ -131,21 +288,170 @@ export default {
   background-color: #34495e;
 }
 
+/* 👤 PERFIL DROPDOWN */
 .user-menu {
   margin-left: auto;
+  position: relative;
 }
 
-.btn-logout {
-  background: none;
-  border: 1px solid white;
+.profile-dropdown {
+  position: relative;
+}
+
+.profile-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  padding: 5px 10px;
-  border-radius: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  min-width: 200px;
 }
 
-.btn-logout:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.profile-button:hover,
+.profile-button.active {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.profile-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.profile-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.profile-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.profile-email {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  transition: transform 0.3s ease;
+}
+
+.dropdown-arrow.rotated {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  z-index: 1000;
+  margin-top: 5px;
+  color: #333;
+}
+
+.dropdown-header {
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.user-avatar-large {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: white;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-details strong {
+  display: block;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.user-details small {
+  color: #666;
+  font-size: 12px;
+}
+
+.dropdown-divider {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 8px 0;
+}
+
+.dropdown-item {
+  width: 100%;
+  padding: 12px 15px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #333;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.logout-item {
+  color: #dc3545;
+}
+
+.logout-item:hover {
+  background-color: #fff5f5;
+}
+
+.item-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.dropdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
 }
 
 .main-content {
