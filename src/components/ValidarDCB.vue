@@ -82,12 +82,40 @@
 
           <!-- Declaração -->
           <div class="declaracao-oficial">
-            <h4>⚖️ DECLARAÇÃO OFICIAL</h4>
+            <h4>⚖️ DECLARAÇÃO DE CONFORMIDADE</h4>
             <p>
               Este documento certifica que o produto foi submetido à análise técnica pela 
               Comissão de Padronização de Materiais (CPM) e foi <strong>APROVADO</strong> 
-              para utilização em processos licitatórios, conforme Lei Federal nº 14.133/2021.
+              para utilização em processos licitatórios, conforme:
             </p>
+            <ul class="legislacao-list">
+              <li>Lei Federal nº 14.133/2021 (Lei de Licitações e Contratos)</li>
+              <li>Programa "Comprar Bem - Compras Públicas Inteligentes"</li>
+              <li>Normas técnicas específicas da categoria do produto</li>
+            </ul>
+            <p class="conformidade-status">
+              <strong>Status de Conformidade:</strong> 
+              <span :class="verificarConformidadeLegal() ? 'conforme' : 'nao-conforme'">
+                {{ verificarConformidadeLegal() ? '✅ CONFORME' : '❌ NÃO CONFORME' }}
+              </span>
+            </p>
+          </div>
+
+          <!-- Segurança e Integridade -->
+          <div class="seguranca-section" v-if="dcb.hash_documento">
+            <h4>🔒 VERIFICAÇÃO DE SEGURANÇA</h4>
+            <div class="verificacao-item">
+              <span class="label">Integridade do Documento:</span>
+              <span class="value" :class="dcb.integridade_verificada ? 'verificado' : 'nao-verificado'">
+                {{ dcb.integridade_verificada ? '✅ VERIFICADA' : '⚠️ NÃO VERIFICADA' }}
+              </span>
+            </div>
+            <div v-if="dcb.alerta_seguranca" class="alerta-seguranca">
+              ⚠️ {{ dcb.alerta_seguranca }}
+            </div>
+            <div class="hash-info">
+              <small>Hash SHA-256: {{ dcb.hash_documento?.substring(0, 16) }}...</small>
+            </div>
           </div>
         </div>
       </div>
@@ -227,6 +255,11 @@ export default {
           produto_cnpj: data.produtos?.cnpj_fabricante || data.produtos?.cnpj || 'N/A'
         }
 
+        // Verificar integridade do documento (se hash_documento existir)
+        if (data.hash_documento) {
+          await this.verificarIntegridade(data)
+        }
+
         console.log('DCB encontrado:', this.dcb)
 
       } catch (error) {
@@ -283,6 +316,62 @@ export default {
         'situacao-vencido': situacao === 'VENCIDO',
         'situacao-invalido': situacao === 'INVÁLIDO PARA USO'
       }
+    },
+
+    async verificarIntegridade(dcbData) {
+      try {
+        // Gerar hash dos dados principais para verificação
+        const dadosParaHash = {
+          numero_dcb: dcbData.numero_dcb,
+          produto_id: dcbData.produto_id,
+          data_emissao: dcbData.data_emissao,
+          data_validade: dcbData.data_validade
+        }
+        
+        const hashCalculado = await this.calcularHash(JSON.stringify(dadosParaHash))
+        
+        if (hashCalculado !== dcbData.hash_documento) {
+          console.warn('⚠️ ALERTA: Hash do documento não confere - possível alteração')
+          this.dcb.integridade_verificada = false
+          this.dcb.alerta_seguranca = 'Documento pode ter sido alterado'
+        } else {
+          console.log('✅ Integridade do documento verificada')
+          this.dcb.integridade_verificada = true
+        }
+      } catch (error) {
+        console.error('Erro na verificação de integridade:', error)
+        this.dcb.integridade_verificada = false
+      }
+    },
+
+    async calcularHash(dados) {
+      // Usar Web Crypto API para calcular hash SHA-256
+      const encoder = new TextEncoder()
+      const data = encoder.encode(dados)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    },
+
+    verificarConformidadeLegal() {
+      if (!this.dcb) return false
+      
+      // Verificações conforme documentação "Comprar Bem"
+      const verificacoes = {
+        numero_dcb: !!this.dcb.numero_dcb,
+        data_emissao: !!this.dcb.data_emissao,
+        data_validade: !!this.dcb.data_validade,
+        produto_identificado: !!(this.dcb.produto_nome && this.dcb.produto_marca),
+        dentro_validade: new Date(this.dcb.data_validade) > new Date(),
+        status_ativo: this.dcb.status === 'ativo'
+      }
+      
+      return Object.values(verificacoes).every(v => v === true)
+    },
+
+    getNumeroReferencia() {
+      // Formato conforme documentação: DCB nº XXX/YYYY
+      return this.dcb ? `DCB nº ${this.dcb.numero_dcb}` : ''
     }
   }
 }
@@ -485,6 +574,7 @@ export default {
   padding: 25px;
   border-radius: 8px;
   border-left: 4px solid #3498db;
+  margin-bottom: 20px;
 }
 
 .declaracao-oficial h4 {
@@ -494,8 +584,82 @@ export default {
 
 .declaracao-oficial p {
   line-height: 1.6;
-  margin: 0;
+  margin: 0 0 10px 0;
   color: #555;
+}
+
+.legislacao-list {
+  margin: 15px 0;
+  padding-left: 20px;
+}
+
+.legislacao-list li {
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.conformidade-status {
+  margin-top: 15px;
+  padding: 10px;
+  background: #fff;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+}
+
+.conforme {
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.nao-conforme {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+/* Segurança */
+.seguranca-section {
+  background: #fff3cd;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #ffc107;
+  margin-bottom: 20px;
+}
+
+.seguranca-section h4 {
+  color: #856404;
+  margin: 0 0 15px 0;
+}
+
+.verificacao-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.verificado {
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.nao-verificado {
+  color: #f39c12;
+  font-weight: bold;
+}
+
+.alerta-seguranca {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+  border: 1px solid #f5c6cb;
+}
+
+.hash-info {
+  margin-top: 10px;
+  color: #6c757d;
+  font-family: monospace;
 }
 
 /* DCB Inválido */
