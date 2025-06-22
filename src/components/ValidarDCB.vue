@@ -211,22 +211,11 @@ export default {
         this.erro = false
 
         console.log('Buscando DCB:', this.numeroCompleto)
-        console.log('Parâmetros da busca:', { numero_dcb: this.numeroCompleto })
 
-        // Buscar DCB com dados do produto (sem restrição de tenant para validação pública)
+        // 1. Buscar DCB primeiro (sem JOIN)
         const { data, error } = await supabase
           .from('dcb_certificados')
-          .select(`
-            *,
-            produtos (
-              nome,
-              marca,
-              modelo,
-              fabricante,
-              cnpj_fabricante,
-              cnpj
-            )
-          `)
+          .select('*')
           .eq('numero_dcb', this.numeroCompleto)
           .single()
 
@@ -234,36 +223,55 @@ export default {
         console.log('Resposta do Supabase - data:', data)
 
         if (error) {
-          console.error('Erro ao buscar DCB:', error)
+          console.error('❌ Erro ao buscar DCB:', error)
           this.erro = true
           return
         }
 
         if (!data) {
-          console.log('Nenhum DCB encontrado para:', this.numeroCompleto)
+          console.log('❌ Nenhum DCB encontrado para:', this.numeroCompleto)
           this.erro = true
           return
         }
 
-        // Montar objeto DCB com dados do produto
-        this.dcb = {
-          ...data,
-          produto_nome: data.produtos?.nome || 'N/A',
-          produto_marca: data.produtos?.marca || 'N/A',
-          produto_modelo: data.produtos?.modelo || 'N/A',
-          produto_fabricante: data.produtos?.fabricante || 'N/A',
-          produto_cnpj: data.produtos?.cnpj_fabricante || data.produtos?.cnpj || 'N/A'
+        // 2. Se encontrou DCB, buscar dados do produto separadamente
+        let produtoData = null
+        if (data.produto_id) {
+          console.log('Buscando produto com ID:', data.produto_id)
+          
+          const { data: produto, error: produtoError } = await supabase
+            .from('produtos')
+            .select('nome, marca, modelo, fabricante, cnpj')
+            .eq('id', data.produto_id)
+            .single()
+          
+          if (!produtoError && produto) {
+            produtoData = produto
+            console.log('✅ Produto encontrado:', produto)
+          } else {
+            console.log('⚠️ Produto não encontrado:', produtoError)
+          }
         }
 
-        // Verificar integridade do documento (se hash_documento existir)
+        // 3. Montar objeto DCB final
+        this.dcb = {
+          ...data,
+          produto_nome: produtoData?.nome || 'Produto Certificado',
+          produto_marca: produtoData?.marca || 'Marca Certificada', 
+          produto_modelo: produtoData?.modelo || 'N/A',
+          produto_fabricante: produtoData?.fabricante || 'Fabricante Certificado',
+          produto_cnpj: produtoData?.cnpj || 'N/A'
+        }
+
+        console.log('✅ DCB montado com sucesso:', this.dcb)
+
+        // 4. Verificar integridade se existir hash
         if (data.hash_documento) {
           await this.verificarIntegridade(data)
         }
 
-        console.log('DCB encontrado:', this.dcb)
-
       } catch (error) {
-        console.error('Erro na validação:', error)
+        console.error('❌ Erro geral na validação:', error)
         this.erro = true
       } finally {
         this.loading = false
