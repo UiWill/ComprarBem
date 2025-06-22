@@ -1,5 +1,18 @@
 <template>
   <div class="validar-dcb-container">
+    <!-- Teste de renderização básica -->
+    <div class="teste-basico">
+      <h1>🔧 TESTE DE VALIDAÇÃO DCB</h1>
+      <p>Se você está vendo esta mensagem, o Vue.js está funcionando!</p>
+      <div class="info-debug">
+        <p><strong>Número recebido:</strong> {{ numero || 'NENHUM' }}</p>
+        <p><strong>Estado loading:</strong> {{ loading }}</p>
+        <p><strong>Estado erro:</strong> {{ erro }}</p>
+        <p><strong>DCB encontrado:</strong> {{ !!dcb }}</p>
+        <p><strong>Timestamp:</strong> {{ new Date().toLocaleString('pt-BR') }}</p>
+      </div>
+    </div>
+
     <!-- Cabeçalho Oficial -->
     <div class="header-oficial">
       <div class="brasao">🇧🇷</div>
@@ -92,6 +105,16 @@
         </div>
       </div>
 
+      <!-- Debug Info (temporário) -->
+      <div v-else-if="!dcb && !loading && !erro" class="debug-info">
+        <div class="status-validacao debug">
+          <div class="status-icon">🔧</div>
+          <h2>DEBUG MODE</h2>
+          <p>Loading: {{ loading }}, Erro: {{ erro }}, DCB: {{ !!dcb }}</p>
+          <p>Número: {{ numeroConsultado }}</p>
+        </div>
+      </div>
+
       <!-- DCB Não Encontrado -->
       <div v-else-if="erro" class="dcb-invalido">
         <div class="status-validacao invalido">
@@ -148,83 +171,56 @@
 </template>
 
 <script>
-import { supabase } from '../services/supabase'
-
 export default {
   name: 'ValidarDCB',
   props: {
     numero: {
       type: String,
-      required: true
+      required: false,
+      default: 'TESTE'
     }
   },
   data() {
     return {
       dcb: null,
-      loading: true,
+      loading: false,
       erro: false,
       numeroConsultado: ''
     }
   },
-  async mounted() {
-    this.numeroConsultado = this.numero
-    await this.buscarDCB()
+  mounted() {
+    console.log('=== ValidarDCB MOUNTED ===')
+    console.log('Numero prop:', this.numero)
+    console.log('Route params:', this.$route.params)
+    
+    this.numeroConsultado = this.numero || this.$route.params.numero || 'SEM_NUMERO'
+    
+    // Simular busca por agora
+    setTimeout(() => {
+      this.simularBusca()
+    }, 2000)
   },
   methods: {
-    async buscarDCB() {
-      try {
-        this.loading = true
-        this.erro = false
-
-        console.log('Buscando DCB:', this.numero)
-
-        // Buscar DCB com dados do produto
-        const { data, error } = await supabase
-          .from('dcb_certificados')
-          .select(`
-            *,
-            produtos (
-              nome,
-              marca,
-              modelo,
-              fabricante,
-              cnpj_fabricante,
-              cnpj
-            )
-          `)
-          .eq('numero_dcb', this.numero)
-          .eq('status', 'ativo')
-          .single()
-
-        if (error) {
-          console.error('Erro ao buscar DCB:', error)
-          this.erro = true
-          return
-        }
-
-        if (!data) {
-          this.erro = true
-          return
-        }
-
-        // Montar objeto DCB com dados do produto
+    simularBusca() {
+      console.log('=== SIMULANDO BUSCA DCB ===')
+      this.loading = true
+      
+      setTimeout(() => {
+        // Simular DCB encontrado
         this.dcb = {
-          ...data,
-          produto_nome: data.produtos?.nome || 'N/A',
-          produto_marca: data.produtos?.marca || 'N/A',
-          produto_modelo: data.produtos?.modelo || 'N/A',
-          produto_fabricante: data.produtos?.fabricante || 'N/A',
-          produto_cnpj: data.produtos?.cnpj_fabricante || data.produtos?.cnpj || 'N/A'
+          numero_dcb: this.numeroConsultado,
+          data_emissao: '2024-06-22',
+          data_validade: '2025-06-22',
+          status: 'ativo',
+          produto_nome: 'Produto Teste',
+          produto_marca: 'Marca Teste',
+          produto_modelo: 'Modelo Teste',
+          produto_fabricante: 'Fabricante Teste'
         }
-
-        console.log('DCB encontrado:', this.dcb)
-
-      } catch (error) {
-        console.error('Erro na validação:', error)
-        this.erro = true
-      } finally {
         this.loading = false
-      }
+        this.erro = false
+        console.log('DCB simulado criado:', this.dcb)
+      }, 1000)
     },
 
     formatDate(dateString) {
@@ -284,6 +280,32 @@ export default {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Teste básico */
+.teste-basico {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 3px solid #e74c3c;
+}
+
+.teste-basico h1 {
+  color: #e74c3c;
+  margin: 0 0 15px 0;
+}
+
+.info-debug {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  border-left: 4px solid #3498db;
+}
+
+.info-debug p {
+  margin: 5px 0;
+  font-family: monospace;
 }
 
 .header-oficial {
@@ -468,6 +490,19 @@ export default {
 .situacao-valido { color: #27ae60; font-weight: bold; }
 .situacao-vencido { color: #f39c12; font-weight: bold; }
 .situacao-invalido { color: #e74c3c; font-weight: bold; }
+
+/* Debug */
+.debug-info {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  margin-bottom: 30px;
+}
+
+.status-validacao.debug {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+}
 
 /* Declaração */
 .declaracao-oficial {
