@@ -9,6 +9,8 @@ import Feedback from '../views/Feedback.vue'
 import DCB from '../views/DCB.vue'
 import CCL from '../views/CCL.vue'
 import Classificacao from '../views/Classificacao.vue'
+import EditaisPublicos from '../views/EditaisPublicos.vue'
+
 import { supabase } from '../services/supabase'
 
 Vue.use(VueRouter)
@@ -20,6 +22,13 @@ const routes = [
     component: Home,
     meta: { requiresAuth: false }
   },
+  {
+    path: '/editais-publicos',
+    name: 'EditaisPublicos',
+    component: EditaisPublicos,
+    meta: { requiresAuth: false }
+  },
+
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -74,6 +83,12 @@ const routes = [
     component: () => import('../components/produtos/DetalheProduto.vue'),
     props: true,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/validar-dcb/:numero',
+    name: 'ValidarDCB',
+    component: () => import('../components/ValidarDCB.vue'),
+    props: true
   }
 ]
 

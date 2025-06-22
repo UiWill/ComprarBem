@@ -124,6 +124,20 @@
       
       <p class="error-message" v-if="errorMsg">{{ errorMsg }}</p>
       
+      <!-- Link para Editais Públicos -->
+      <div class="public-access">
+        <hr style="margin: 20px 0;">
+        <p style="text-align: center; color: #666; margin-bottom: 15px;">
+          <strong>Área Pública</strong>
+        </p>
+        <router-link to="/editais-publicos" class="btn-public">
+          📋 Ver Editais de Pré-Qualificação
+        </router-link>
+        <p style="font-size: 12px; color: #888; text-align: center; margin-top: 10px;">
+          Empresas podem consultar e se inscrever nos editais públicos
+        </p>
+      </div>
+      
       <!-- Botão para teste -->
       <div class="test-buttons" v-if="activeTab === 'register'">
         <button @click="testarSupabase" class="btn-test">Testar Conexão Supabase</button>
@@ -454,5 +468,33 @@ input {
 .validation-info ul {
   margin-top: 5px;
   padding-left: 20px;
+}
+
+.btn-public {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #27ae60, #229954);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn-public:hover {
+  background: linear-gradient(135deg, #229954, #1e8449);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+  color: white;
+  text-decoration: none;
+}
+
+.public-access {
+  margin-top: 20px;
 }
 </style> 
