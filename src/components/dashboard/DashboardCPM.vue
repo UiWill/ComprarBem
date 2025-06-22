@@ -2688,8 +2688,12 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
           // ========================================
           
           try {
-            // Criar URL de validação
-            const urlValidacao = `${window.location.origin}/validar-dcb/${dcb.numero_dcb}`
+            // Criar URL de validação compatível com GitHub Pages
+            const baseUrl = window.location.origin
+            const isGitHubPages = baseUrl.includes('github.io')
+            const urlValidacao = isGitHubPages 
+              ? `${baseUrl}/ComprarBem/#/validar-dcb/${dcb.numero_dcb}`
+              : `${baseUrl}/validar-dcb/${dcb.numero_dcb}`
             
             // Gerar QR Code
             const qrCodeDataURL = await QRCode.toDataURL(urlValidacao, {
