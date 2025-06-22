@@ -88,7 +88,8 @@ const routes = [
     path: '/validar-dcb/:numero',
     name: 'ValidarDCB',
     component: () => import('../components/ValidarDCB.vue'),
-    props: true
+    props: true,
+    meta: { requiresAuth: false }
   }
 ]
 
@@ -100,14 +101,31 @@ const router = new VueRouter({
 
 // Navegação guard para verificar autenticação
 router.beforeEach(async (to, from, next) => {
-  const { data } = await supabase.auth.getSession()
-  const user = data?.session?.user
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-
-  if (requiresAuth && !user) {
-    next('/')
-  } else {
+  
+  // Pular verificação de auth para rotas públicas
+  if (!requiresAuth) {
     next()
+    return
+  }
+
+  try {
+    const { data } = await supabase.auth.getSession()
+    const user = data?.session?.user
+
+    if (requiresAuth && !user) {
+      next('/')
+    } else {
+      next()
+    }
+  } catch (error) {
+    console.error('Erro na verificação de autenticação:', error)
+    // Se houver erro no Supabase, permitir acesso para rotas públicas
+    if (!requiresAuth) {
+      next()
+    } else {
+      next('/')
+    }
   }
 })
 
