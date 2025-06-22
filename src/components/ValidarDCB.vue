@@ -6,7 +6,13 @@
     <br><br>
     Número: {{ numero || $route.params.numero || 'NENHUM' }}
     <br>
+    Ano: {{ ano || $route.params.ano || 'NENHUM' }}
+    <br>
     Data: {{ new Date().toLocaleString('pt-BR') }}
+    <br><br>
+    <button @click="testarAlert" style="background: white; color: red; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+      CLIQUE PARA TESTAR JAVASCRIPT
+    </button>
   </div>
 </template>
 
@@ -14,7 +20,24 @@
 export default {
   name: 'ValidarDCB',
   props: {
-    numero: String
+    numero: String,
+    ano: String
+  },
+  mounted() {
+    console.log('=== COMPONENTE VALIDAR DCB CARREGOU ===')
+    console.log('Params:', this.$route.params)
+    console.log('Numero:', this.numero)
+    console.log('Ano:', this.ano)
+    
+    // Alert para confirmar que o componente carregou
+    setTimeout(() => {
+      alert('🎯 COMPONENTE VALIDAR DCB CARREGOU COM SUCESSO!')
+    }, 500)
+  },
+  methods: {
+    testarAlert() {
+      alert('✅ JavaScript está funcionando!')
+    }
   }
 }
 </script> 

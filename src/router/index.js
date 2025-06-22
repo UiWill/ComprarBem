@@ -85,7 +85,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/validar-dcb/:numero',
+    path: '/validar-dcb/:numero/:ano',
     name: 'ValidarDCB',
     component: () => import('../components/ValidarDCB.vue'),
     props: true,
