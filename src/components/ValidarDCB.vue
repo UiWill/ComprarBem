@@ -183,27 +183,9 @@ export default {
         this.erro = false
 
         console.log('Buscando DCB:', this.numeroCompleto)
+        console.log('Parâmetros da busca:', { numero_dcb: this.numeroCompleto })
 
-        // Para teste: se for 004/2025, simular DCB encontrado
-        if (this.numeroCompleto === '004/2025') {
-          this.dcb = {
-            numero_dcb: '004/2025',
-            data_emissao: '2024-06-22T00:00:00Z',
-            data_validade: '2025-06-22',
-            status: 'ativo',
-            produto_nome: 'Equipamento Médico Hospitalar',
-            produto_marca: 'MedTech Pro',
-            produto_modelo: 'MT-2024',
-            produto_fabricante: 'Indústria Médica Brasil Ltda',
-            produto_cnpj: '12.345.678/0001-90'
-          }
-          this.loading = false
-          this.erro = false
-          console.log('DCB simulado criado para teste:', this.dcb)
-          return
-        }
-
-        // Buscar DCB com dados do produto
+        // Buscar DCB com dados do produto (sem restrição de tenant para validação pública)
         const { data, error } = await supabase
           .from('dcb_certificados')
           .select(`
@@ -218,8 +200,10 @@ export default {
             )
           `)
           .eq('numero_dcb', this.numeroCompleto)
-          .eq('status', 'ativo')
           .single()
+
+        console.log('Resposta do Supabase - error:', error)
+        console.log('Resposta do Supabase - data:', data)
 
         if (error) {
           console.error('Erro ao buscar DCB:', error)
@@ -228,6 +212,7 @@ export default {
         }
 
         if (!data) {
+          console.log('Nenhum DCB encontrado para:', this.numeroCompleto)
           this.erro = true
           return
         }
