@@ -5232,7 +5232,7 @@ O usuário já pode fazer login no sistema!`)
 Envie manualmente os dados de acesso:
 📧 Email: ${this.usuarioAtual.email}
 🔑 Senha: ${senhaTemporaria}
-🔗 Link: ${window.location.origin}/rdm
+🔗 Link: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/ComprarBem/#/rdm'}
 
 O sistema funciona normalmente, apenas o email automático falhou.`)
           }
@@ -5666,7 +5666,7 @@ Unidade/Setor: ${usuario.unidade_setor}
 Coordenador: ${usuario.nome_coordenador}
 
 === COMO ACESSAR ===
-1. Acesse: ${window.location.origin}/rdm
+1. Acesse: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/ComprarBem/#/rdm'}
 2. Faça login com seu email e senha
 3. Comece a emitir suas RDMs online!
 
