@@ -47,6 +47,16 @@
         ></textarea>
       </div>
       
+      <div class="form-group">
+        <label for="sugestoes">Sugestões</label>
+        <textarea 
+          id="sugestoes" 
+          v-model="feedback.sugestoes" 
+          rows="3" 
+          placeholder="Ex: Recomendo melhorar a qualidade do material utilizado, adicionar garantia estendida..."
+        ></textarea>
+      </div>
+      
       <div class="form-actions">
         <button type="submit" class="btn-primary" :disabled="loading">
           {{ loading ? 'Salvando...' : 'Salvar' }}
@@ -67,7 +77,8 @@ export default {
       feedback: {
         produto_id: '',
         avaliacao: 0,
-        comentario: ''
+        comentario: '',
+        sugestoes: ''
       },
       produtos: [],
       loading: false,
@@ -208,7 +219,8 @@ export default {
             usuario_id: usuarioId, // ID da tabela usuarios
             tenant_id: this.currentTenantId,
             avaliacao: this.feedback.avaliacao,
-            comentario: this.feedback.comentario
+            comentario: this.feedback.comentario,
+            sugestoes: this.feedback.sugestoes
           })
         
         if (error) throw error
@@ -235,7 +247,8 @@ export default {
       this.feedback = {
         produto_id: '',
         avaliacao: 0,
-        comentario: ''
+        comentario: '',
+        sugestoes: ''
       }
     }
   }

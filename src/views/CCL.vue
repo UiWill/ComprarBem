@@ -153,7 +153,7 @@ export default {
          this.mostrarConfigEmail()
        },
       
-      async logout() {
+    async logout() {
       try {
         await supabase.auth.signOut()
         this.$router.push('/')

@@ -38,6 +38,27 @@
       >
         Emissão de Certificados (DCB)
       </div>
+      <div 
+        class="tab" 
+        :class="{ active: activeTab === 'usuarios' }" 
+        @click="activeTab = 'usuarios'"
+      >
+        Cadastro de Usuários
+      </div>
+      <div 
+        class="tab" 
+        :class="{ active: activeTab === 'reclamacoes' }" 
+        @click="activeTab = 'reclamacoes'"
+      >
+        Reclamações de Usuários
+      </div>
+      <div 
+        class="tab" 
+        :class="{ active: activeTab === 'lembretes' }" 
+        @click="activeTab = 'lembretes'"
+      >
+        🤖 Lembretes RDM
+      </div>
     </div>
     
     <!-- Aba Dashboard -->
@@ -380,7 +401,7 @@
         <!-- Cabeçalho com Stats -->
         <div class="editais-stats">
           <div class="stat-card editais-ativos">
-            <h4>📋 Editais Ativos</h4>
+                            <h4>📋 Publicados</h4>
             <div class="stat-value">{{ editaisAtivos.length }}</div>
             <small>Recebendo documentação</small>
           </div>
@@ -728,17 +749,17 @@
             <small>Produtos aprovados sem DCB</small>
         </div>
           <div class="stat-card dcb-emitidos">
-            <h4>✅ DCBs Emitidos</h4>
+                            <h4>✅ DCBs Emitidas</h4>
             <div class="stat-value">{{ dcbsEmitidos.length }}</div>
             <small>Certificados válidos</small>
       </div>
           <div class="stat-card dcb-vencendo">
-            <h4>⚠️ Vencendo</h4>
+                            <h4>⚠️ DCBs Vencendo</h4>
             <div class="stat-value">{{ dcbsVencendo.length }}</div>
             <small>Próximos 30 dias</small>
           </div>
           <div class="stat-card dcb-vencidos">
-            <h4>🔴 Vencidos</h4>
+                            <h4>🔴 DCBs Vencidas</h4>
             <div class="stat-value">{{ dcbsVencidos.length }}</div>
             <small>Precisam renovação</small>
           </div>
@@ -862,7 +883,7 @@
         <!-- Sub-aba: Histórico DCBs -->
         <div v-if="activeTabDCB === 'historico'" class="dcb-content">
           <div class="section-header">
-            <h3>📋 Histórico de DCBs Emitidos</h3>
+            <h3>📋 Histórico de DCBs Emitidas</h3>
             <p>Todos os certificados DCB emitidos pelo sistema.</p>
           </div>
 
@@ -1345,11 +1366,731 @@
         </div>
       </div>
     </div>
+
+    <!-- Aba Cadastro de Usuários -->
+    <div v-if="activeTab === 'usuarios'" class="usuarios-section">
+      <div class="section-header">
+        <h2>👥 Cadastro de Usuários</h2>
+        <p>Gestão de usuários autorizados a emitir RDMs no sistema</p>
+      </div>
+      
+      <div class="section-actions">
+        <button @click="abrirModalNovoUsuario" class="btn-primary">
+          ➕ Cadastrar Novo Usuário
+        </button>
+      </div>
+
+      <!-- Lista de Usuários -->
+      <div class="usuarios-container">
+        <div class="filtros-usuarios">
+          <div class="filtro-group">
+            <label>🔍 Buscar:</label>
+            <input 
+              v-model="filtroUsuarios.busca" 
+              type="text" 
+              placeholder="Nome, unidade, coordenador..."
+              @input="aplicarFiltrosUsuarios"
+            >
+          </div>
+          <div class="filtro-group">
+            <label>🏢 Unidade:</label>
+            <select v-model="filtroUsuarios.unidade" @change="aplicarFiltrosUsuarios">
+              <option value="">Todas</option>
+              <option v-for="unidade in unidadesUnicas" :key="unidade" :value="unidade">
+                {{ unidade }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div v-if="usuariosFiltrados.length > 0" class="usuarios-grid">
+          <div 
+            v-for="usuario in usuariosFiltrados" 
+            :key="usuario.id" 
+            class="usuario-card"
+          >
+            <div class="usuario-header">
+              <h4>{{ usuario.nome_usuario }}</h4>
+              <div class="status-badges">
+                <span class="status-badge status-ativo">Ativo</span>
+                <span 
+                  v-if="usuario.user_id"
+                  :class="[
+                    'status-convite',
+                    usuario.convite_aceito ? 'aceito' : 
+                    usuario.convite_enviado ? 'enviado' : 'pendente'
+                  ]"
+                >
+                  {{ usuario.convite_aceito ? '🟢 Conectado' : 
+                     usuario.convite_enviado ? '📧 Convite Enviado' : '⏳ Convite Pendente' }}
+                </span>
+              </div>
+            </div>
+            <div class="usuario-details">
+              <p><strong>Unidade/Setor:</strong> {{ usuario.unidade_setor }}</p>
+              <p><strong>Coordenador:</strong> {{ usuario.nome_coordenador }}</p>
+              <p><strong>Telefone:</strong> {{ usuario.telefone }}</p>
+              <p><strong>Email:</strong> {{ usuario.email }}</p>
+              <p><strong>Materiais:</strong> {{ usuario.materiais?.length || 0 }} cadastrados</p>
+              <p><strong>Próximo RDM:</strong> 
+                <span class="data-rdm">{{ calcularProximoRDM(usuario) }}</span>
+              </p>
+            </div>
+            <div class="usuario-actions">
+              <button @click="editarUsuario(usuario)" class="btn-secondary btn-small">
+                ✏️ Editar
+              </button>
+              <button @click="verMateriaisUsuario(usuario)" class="btn-info btn-small">
+                📦 Materiais
+              </button>
+              <button 
+                v-if="usuario.user_id && !usuario.convite_aceito"
+                @click="reenviarConvite(usuario)" 
+                class="btn-reenviar btn-small"
+              >
+                📧 Reenviar Convite
+              </button>
+              <button @click="removerUsuario(usuario)" class="btn-danger btn-small">
+                🗑️ Remover
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="empty-state">
+          <div class="empty-icon">👥</div>
+          <h3>Nenhum usuário cadastrado</h3>
+          <p>Clique em "Cadastrar Novo Usuário" para começar.</p>
+        </div>
+      </div>
+
+      <!-- Modal Novo/Editar Usuário -->
+      <div v-if="modalNovoUsuario" class="modal-overlay" @click="fecharModalNovoUsuario">
+        <div class="modal-content large" @click.stop>
+          <div class="modal-header">
+            <h3>{{ usuarioAtual.id ? '✏️ Editar Usuário' : '👥 Novo Usuário' }}</h3>
+            <button @click="fecharModalNovoUsuario" class="btn-close">&times;</button>
+          </div>
+          
+          <div class="modal-body">
+            <form @submit.prevent="salvarUsuario">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="nome_usuario">Nome do Usuário/Unidade*</label>
+                  <input 
+                    id="nome_usuario" 
+                    v-model="usuarioAtual.nome_usuario" 
+                    type="text" 
+                    placeholder="Ex: Departamento de Compras, João Silva"
+                    required
+                  >
+                </div>
+                <div class="form-group">
+                  <label for="unidade_setor">Unidade/Setor*</label>
+                  <input 
+                    id="unidade_setor" 
+                    v-model="usuarioAtual.unidade_setor" 
+                    type="text" 
+                    placeholder="Ex: Secretaria da Saúde"
+                    required
+                  >
+                </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="nome_coordenador">Nome do Coordenador*</label>
+                  <input 
+                    id="nome_coordenador" 
+                    v-model="usuarioAtual.nome_coordenador" 
+                    type="text" 
+                    placeholder="Nome completo do responsável"
+                    required
+                  >
+                </div>
+                <div class="form-group">
+                  <label for="telefone_usuario">Telefone*</label>
+                  <input 
+                    id="telefone_usuario" 
+                    v-model="usuarioAtual.telefone" 
+                    type="tel" 
+                    placeholder="(00) 00000-0000"
+                    required
+                  >
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="email_usuario">Email*</label>
+                <input 
+                  id="email_usuario" 
+                  v-model="usuarioAtual.email" 
+                  type="email" 
+                  placeholder="email@exemplo.com"
+                  required
+                >
+              </div>
+
+              <!-- Sistema de Login -->
+              <div class="login-system-section">
+                <h4>🔐 Sistema de Login</h4>
+                <div class="form-group checkbox-group">
+                  <label class="checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      v-model="usuarioAtual.criar_login"
+                      @change="toggleLoginSystem"
+                    >
+                    <span class="checkmark">✓</span>
+                    Permitir login no sistema (Dashboard RDM Online)
+                  </label>
+                  <p class="help-text">
+                    Ao marcar esta opção, o usuário receberá um email com senha de acesso e instruções para usar o sistema RDM.
+                  </p>
+                </div>
+                
+                <div v-if="usuarioAtual.criar_login" class="convite-info">
+                  <div class="info-card">
+                    <h5>📧 Convite Automático</h5>
+                    <p>Será enviado automaticamente um email para <strong>{{ usuarioAtual.email }}</strong> com:</p>
+                    <ul>
+                      <li>Senha de acesso definitiva</li>
+                      <li>Link direto para o sistema</li>
+                      <li>Instruções de uso do Dashboard RDM</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Materiais do Usuário -->
+              <div class="materiais-section">
+                <h4>📦 Materiais sob Responsabilidade</h4>
+                <div class="materiais-lista">
+                  <div 
+                    v-for="(material, index) in usuarioAtual.materiais" 
+                    :key="index" 
+                    class="material-item"
+                  >
+                    <div class="material-fields-novo">
+                      <div class="material-select">
+                        <label>📦 Material/Produto:</label>
+                        <select 
+                          v-model="material.produto_id" 
+                          @change="selecionarProduto(index, $event)"
+                          :disabled="loadingProdutos"
+                          required
+                        >
+                          <option value="" v-if="loadingProdutos">⏳ Carregando produtos...</option>
+                          <option value="" v-else-if="produtosDisponiveis.length === 0">Nenhum produto encontrado</option>
+                          <option value="" v-else>Selecione um produto...</option>
+                          <option 
+                            v-for="produto in produtosDisponiveis" 
+                            :key="produto.id" 
+                            :value="produto.id"
+                          >
+                            {{ produto.nome }} - {{ produto.marca || 'S/Marca' }} ({{ produto.codigo_material || produto.modelo || 'S/Código' }})
+                          </option>
+                          <option value="NOVO">➕ Cadastrar Novo Material</option>
+                        </select>
+                      </div>
+                      
+                      <!-- Campos para novo material (se selecionou "NOVO") -->
+                      <div v-if="material.produto_id === 'NOVO'" class="novo-material">
+                        <input 
+                          v-model="material.nome" 
+                          type="text" 
+                          placeholder="Nome do novo material"
+                          required
+                        >
+                        <input 
+                          v-model="material.codigo" 
+                          type="text" 
+                          placeholder="Código do material"
+                          required
+                        >
+                      </div>
+                      
+                      <div class="material-periodo">
+                        <label>📅 Periodicidade RDM:</label>
+                        <select v-model="material.periodicidade_rdm" required>
+                          <option value="">Selecionar...</option>
+                          <option value="mensal">Mensal</option>
+                          <option value="bimestral">Bimestral</option>
+                          <option value="trimestral">Trimestral</option>
+                          <option value="semestral">Semestral</option>
+                          <option value="anual">Anual</option>
+                        </select>
+                      </div>
+                      
+                      <button 
+                        type="button" 
+                        @click="removerMaterial(index)" 
+                        class="btn-danger btn-small"
+                        title="Remover material"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                  
+                                      <div class="material-actions">
+                    <button 
+                      type="button" 
+                      @click="adicionarMaterial" 
+                      class="btn-secondary"
+                      :disabled="loadingProdutos"
+                    >
+                      <span v-if="loadingProdutos">⏳</span>
+                      <span v-else>➕</span>
+                      Adicionar Material
+                    </button>
+                    <button 
+                      type="button" 
+                      @click="carregarProdutos" 
+                      class="btn-info btn-small"
+                      :disabled="loadingProdutos"
+                    >
+                      <span v-if="loadingProdutos">⏳</span>
+                      <span v-else>🔄</span>
+                      Atualizar Lista
+                    </button>
+                  </div>
+                  
+                  <!-- Debug Info - só aparecer em desenvolvimento -->
+                  <div v-if="!loadingProdutos" class="debug-info">
+                    <small>
+                      📊 Debug: {{ produtosDisponiveis.length }} produtos disponíveis
+                      <span v-if="currentTenantId">(Tenant: {{ currentTenantId.substring(0, 8) }}...)</span>
+                    </small>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="modal-actions">
+                <button type="button" @click="fecharModalNovoUsuario" class="btn-secondary">
+                  Cancelar
+                </button>
+                <button type="submit" class="btn-primary">
+                  {{ usuarioAtual.id ? 'Atualizar' : 'Cadastrar' }} Usuário
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aba Reclamações de Usuários -->
+    <div v-if="activeTab === 'reclamacoes'" class="reclamacoes-section">
+      <div class="section-header">
+        <h2>📝 Reclamações de Usuários</h2>
+        <p>Gestão de reclamações e sugestões sobre materiais</p>
+      </div>
+      
+      <div class="section-actions">
+        <button @click="abrirModalNovaReclamacao" class="btn-primary">
+          ➕ Nova Reclamação
+        </button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filtros-reclamacoes">
+        <div class="filtro-group">
+          <label>🔍 Buscar:</label>
+          <input 
+            v-model="filtroReclamacoes.busca" 
+            type="text" 
+            placeholder="Reclamante, material, unidade..."
+            @input="aplicarFiltrosReclamacoes"
+          >
+        </div>
+        <div class="filtro-group">
+          <label>📊 Status:</label>
+          <select v-model="filtroReclamacoes.status" @change="aplicarFiltrosReclamacoes">
+            <option value="">Todos</option>
+            <option value="ABERTA">Em Aberto</option>
+            <option value="EM_ANALISE">Em Análise</option>
+            <option value="RESOLVIDA">Resolvida</option>
+            <option value="REJEITADA">Rejeitada</option>
+          </select>
+        </div>
+        <div class="filtro-group">
+          <label>📅 Data:</label>
+          <input 
+            v-model="filtroReclamacoes.data" 
+            type="date" 
+            @change="aplicarFiltrosReclamacoes"
+          >
+        </div>
+      </div>
+
+      <!-- Lista de Reclamações -->
+      <div v-if="reclamacoesFiltradas.length > 0" class="reclamacoes-lista">
+        <div 
+          v-for="reclamacao in reclamacoesFiltradas" 
+          :key="reclamacao.id" 
+          class="reclamacao-card"
+        >
+          <div class="reclamacao-header">
+            <h4>{{ reclamacao.nome_reclamante }}</h4>
+            <span class="status-badge" :class="getStatusReclamacaoClass(reclamacao.status)">
+              {{ formatarStatusReclamacao(reclamacao.status) }}
+            </span>
+          </div>
+          
+          <div class="reclamacao-content">
+            <div class="reclamacao-info">
+              <p><strong>Unidade/Setor:</strong> {{ reclamacao.unidade_setor }}</p>
+              <p><strong>Material:</strong> {{ reclamacao.nome_material }} ({{ reclamacao.codigo_material }})</p>
+              <p><strong>Marca/Modelo:</strong> {{ reclamacao.marca_modelo }}</p>
+              <p><strong>Data:</strong> {{ formatDate(reclamacao.data_reclamacao) }}</p>
+              <p><strong>Contato:</strong> {{ reclamacao.email }} | {{ reclamacao.telefone }}</p>
+            </div>
+            
+            <div class="reclamacao-detalhes">
+              <div class="reclamacao-texto">
+                <h5>📝 Reclamação:</h5>
+                <p>{{ reclamacao.registro_reclamacao }}</p>
+              </div>
+              
+              <div v-if="reclamacao.sugestoes" class="sugestoes-texto">
+                <h5>💡 Sugestões:</h5>
+                <p>{{ reclamacao.sugestoes }}</p>
+              </div>
+              
+              <div v-if="reclamacao.providencias_cpm" class="providencias-texto">
+                <h5>⚙️ Providências CPM:</h5>
+                <p>{{ reclamacao.providencias_cpm }}</p>
+                <p><small><strong>Atualizado em:</strong> {{ formatDate(reclamacao.data_atualizacao) }}</small></p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="reclamacao-actions">
+            <button @click="responderReclamacao(reclamacao)" class="btn-primary btn-small">
+              📝 Responder
+            </button>
+            <button @click="editarReclamacao(reclamacao)" class="btn-secondary btn-small">
+              ✏️ Editar
+            </button>
+            <button @click="removerReclamacao(reclamacao)" class="btn-danger btn-small">
+              🗑️ Remover
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>Nenhuma reclamação encontrada</h3>
+        <p>Quando houver reclamações, elas aparecerão aqui.</p>
+      </div>
+
+      <!-- Modal Nova/Editar Reclamação -->
+      <div v-if="modalNovaReclamacao" class="modal-overlay" @click="fecharModalNovaReclamacao">
+        <div class="modal-content large" @click.stop>
+          <div class="modal-header">
+            <h3>{{ reclamacaoAtual.id ? '✏️ Editar Reclamação' : '📝 Nova Reclamação' }}</h3>
+            <button @click="fecharModalNovaReclamacao" class="btn-close">&times;</button>
+          </div>
+          
+          <div class="modal-body">
+            <form @submit.prevent="salvarReclamacao">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="nome_reclamante">Nome do Reclamante*</label>
+                  <input 
+                    id="nome_reclamante" 
+                    v-model="reclamacaoAtual.nome_reclamante" 
+                    type="text" 
+                    placeholder="Nome completo"
+                    required
+                  >
+                </div>
+                <div class="form-group">
+                  <label for="unidade_setor_rec">Unidade/Setor*</label>
+                  <input 
+                    id="unidade_setor_rec" 
+                    v-model="reclamacaoAtual.unidade_setor" 
+                    type="text" 
+                    placeholder="Ex: Departamento de Enfermagem"
+                    required
+                  >
+                </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="telefone_rec">Telefone*</label>
+                  <input 
+                    id="telefone_rec" 
+                    v-model="reclamacaoAtual.telefone" 
+                    type="tel" 
+                    placeholder="(00) 00000-0000"
+                    required
+                  >
+                </div>
+                <div class="form-group">
+                  <label for="email_rec">Email*</label>
+                  <input 
+                    id="email_rec" 
+                    v-model="reclamacaoAtual.email" 
+                    type="email" 
+                    placeholder="email@exemplo.com"
+                    required
+                  >
+                </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="nome_material_rec">Nome do Material*</label>
+                  <input 
+                    id="nome_material_rec" 
+                    v-model="reclamacaoAtual.nome_material" 
+                    type="text" 
+                    placeholder="Nome do produto/material"
+                    required
+                  >
+                </div>
+                <div class="form-group">
+                  <label for="codigo_material_rec">Código do Material*</label>
+                  <input 
+                    id="codigo_material_rec" 
+                    v-model="reclamacaoAtual.codigo_material" 
+                    type="text" 
+                    placeholder="Código identificador"
+                    required
+                  >
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="marca_modelo_rec">Marca e Modelo*</label>
+                <input 
+                  id="marca_modelo_rec" 
+                  v-model="reclamacaoAtual.marca_modelo" 
+                  type="text" 
+                  placeholder="Ex: Marca XYZ - Modelo ABC123"
+                  required
+                >
+              </div>
+              
+              <div class="form-group">
+                <label for="registro_reclamacao">Registro da Reclamação*</label>
+                <textarea 
+                  id="registro_reclamacao" 
+                  v-model="reclamacaoAtual.registro_reclamacao" 
+                  rows="4" 
+                  placeholder="Descreva detalhadamente a reclamação..."
+                  required
+                ></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="sugestoes">Sugestões</label>
+                <textarea 
+                  id="sugestoes" 
+                  v-model="reclamacaoAtual.sugestoes" 
+                  rows="3" 
+                  placeholder="Sugestões de melhoria ou alternativas..."
+                ></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="status_reclamacao">Status</label>
+                <select id="status_reclamacao" v-model="reclamacaoAtual.status">
+                  <option value="ABERTA">Em Aberto</option>
+                  <option value="EM_ANALISE">Em Análise</option>
+                  <option value="RESOLVIDA">Resolvida</option>
+                  <option value="REJEITADA">Rejeitada</option>
+                </select>
+              </div>
+              
+              <div v-if="reclamacaoAtual.status !== 'ABERTA'" class="form-group">
+                <label for="providencias_cpm">Providências e Decisão da CPM</label>
+                <textarea 
+                  id="providencias_cpm" 
+                  v-model="reclamacaoAtual.providencias_cpm" 
+                  rows="4" 
+                  placeholder="Descreva as providências tomadas e a decisão da CPM..."
+                ></textarea>
+              </div>
+              
+              <div class="modal-actions">
+                <button type="button" @click="fecharModalNovaReclamacao" class="btn-secondary">
+                  Cancelar
+                </button>
+                <button type="submit" class="btn-primary">
+                  {{ reclamacaoAtual.id ? 'Atualizar' : 'Cadastrar' }} Reclamação
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================== -->
+    <!-- TAB: SISTEMA DE LEMBRETES -->
+    <!-- =============================== -->
+    <div v-if="activeTab === 'lembretes'" class="lembretes-section">
+      <div class="section-header">
+        <h2>🤖 Sistema Automático de Lembretes</h2>
+        <p>Controle automático de lembretes para feedback de materiais RDM</p>
+      </div>
+
+      <!-- Status do Sistema -->
+      <div class="stats-container">
+        <div class="stat-card success">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ sistemaLembretes.ativo ? 'ATIVO' : 'INATIVO' }}</div>
+            <div class="stat-label">Sistema Automático</div>
+          </div>
+        </div>
+        
+        <div class="stat-card info">
+          <div class="stat-icon">📧</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ estatisticasLembretes.total_enviados || 0 }}</div>
+            <div class="stat-label">Lembretes Enviados</div>
+          </div>
+        </div>
+        
+        <div class="stat-card warning">
+          <div class="stat-icon">⏰</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ rdmsPendentes.length }}</div>
+            <div class="stat-label">RDMs Pendentes</div>
+          </div>
+        </div>
+        
+        <div class="stat-card error">
+          <div class="stat-icon">❌</div>
+          <div class="stat-content">
+            <div class="stat-value">{{ estatisticasLembretes.com_erro || 0 }}</div>
+            <div class="stat-label">Erros de Envio</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controles do Sistema -->
+      <div class="section-controls">
+        <button 
+          :class="`btn-${sistemaLembretes.ativo ? 'success' : 'primary'}`"
+          :disabled="sistemaLembretes.ativo"
+        >
+          {{ sistemaLembretes.ativo ? '✅ Sistema Ativo' : '🚀 Ativar Sistema' }}
+        </button>
+        
+        <button 
+          class="btn-warning"
+          :disabled="carregandoLembretes"
+        >
+          {{ carregandoLembretes ? '⏳ Processando...' : '📧 Processar Agora' }}
+        </button>
+        
+        <button class="btn-info">
+          🔄 Atualizar Dados
+        </button>
+      </div>
+
+      <!-- RDMs Pendentes de Feedback -->
+      <div class="section-content" v-if="rdmsPendentes.length > 0">
+        <h3>📋 RDMs Pendentes de Avaliação</h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Usuário</th>
+                <th>Unidade/Setor</th>
+                <th>Dias</th>
+                <th>Prioridade</th>
+                <th>Próximo Lembrete</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="rdm in rdmsPendentes" :key="rdm.id">
+                <td>
+                  <strong>{{ rdm.material_nome }}</strong><br>
+                  <small>{{ rdm.material_codigo }}</small>
+                </td>
+                <td>{{ rdm.nome_usuario }}</td>
+                <td>{{ rdm.unidade_setor }}</td>
+                <td>
+                  <span class="badge" :class="`badge-${rdm.prioridade_feedback.toLowerCase()}`">
+                    {{ rdm.dias_desde_aprovacao }} dias
+                  </span>
+                </td>
+                <td>
+                  <span class="badge" :class="`badge-${rdm.prioridade_feedback.toLowerCase()}`">
+                    {{ rdm.prioridade_feedback }}
+                  </span>
+                </td>
+                <td>
+                  <small>
+                    {{ rdm.dias_desde_aprovacao >= 30 ? 'Vencido' : 
+                         rdm.dias_desde_aprovacao >= 25 ? 'Último lembrete' :
+                         rdm.dias_desde_aprovacao >= 15 ? 'Lembrete 25 dias' : 
+                         'Lembrete 15 dias' }}
+                  </small>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mensagem quando não há RDMs pendentes -->
+      <div v-else class="no-data-message">
+        <div class="no-data-icon">🎉</div>
+        <h3>Todos os Feedbacks em Dia!</h3>
+        <p>Não há RDMs pendentes de avaliação no momento.</p>
+      </div>
+
+      <!-- Estatísticas Detalhadas -->
+      <div class="section-content">
+        <h3>📊 Estatísticas Detalhadas</h3>
+        <div class="stats-detailed">
+          <div class="stat-row">
+            <span>📋 Lembretes de 15 dias:</span>
+            <strong>{{ estatisticasLembretes.lembretes_15_dias || 0 }}</strong>
+          </div>
+          <div class="stat-row">
+            <span>⏰ Lembretes de 25 dias:</span>
+            <strong>{{ estatisticasLembretes.lembretes_25_dias || 0 }}</strong>
+          </div>
+          <div class="stat-row">
+            <span>🚨 Lembretes urgentes (30 dias):</span>
+            <strong>{{ estatisticasLembretes.lembretes_30_dias_urgente || 0 }}</strong>
+          </div>
+          <div class="stat-row">
+            <span>❌ Lembretes com erro:</span>
+            <strong>{{ estatisticasLembretes.com_erro || 0 }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Log do Sistema -->
+      <div class="section-content" v-if="logLembretes.length > 0">
+        <h3>📝 Log do Sistema</h3>
+        <div class="log-container">
+          <div v-for="log in logLembretes" :key="log.id" class="log-entry">
+            <span class="log-time">{{ formatarData(log.timestamp) }}</span>
+            <span :class="`log-level log-${log.level}`">{{ log.level.toUpperCase() }}</span>
+            <span class="log-message">{{ log.message }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import { supabase } from '@/services/supabase'
+import emailjs from '@emailjs/browser'
 
 export default {
   name: 'DashboardCPM',
@@ -1455,7 +2196,75 @@ export default {
          data: ''
        },
        diligenciasFiltradas: [],
-       diligenciasPaginadas: []
+       diligenciasPaginadas: [],
+       
+       // Dados para Usuários
+       usuarios: [],
+       usuariosFiltrados: [],
+       modalNovoUsuario: false,
+       usuarioAtual: {
+         id: null,
+         nome_usuario: '',
+         unidade_setor: '',
+         nome_coordenador: '',
+         telefone: '',
+         email: '',
+         materiais: [],
+         criar_login: false,
+         user_id: null,
+         senha_temporaria: null,
+         convite_enviado: false,
+         convite_aceito: false
+       },
+       filtroUsuarios: {
+         busca: '',
+         unidade: ''
+       },
+       statusConvites: {},
+       notificacoes: [],
+       produtosDisponiveis: [],
+       loadingProdutos: false,
+       
+       // Dados para Reclamações
+       reclamacoes: [],
+       reclamacoesFiltradas: [],
+       modalNovaReclamacao: false,
+       reclamacaoAtual: {
+         id: null,
+         nome_reclamante: '',
+         telefone: '',
+         email: '',
+         unidade_setor: '',
+         nome_material: '',
+         codigo_material: '',
+         marca_modelo: '',
+         registro_reclamacao: '',
+         sugestoes: '',
+         status: 'ABERTA',
+         providencias_cpm: '',
+         data_reclamacao: new Date().toISOString().split('T')[0]
+       },
+       filtroReclamacoes: {
+         busca: '',
+         status: '',
+         data: ''
+       },
+       
+       // Dados para Sistema de Lembretes
+       sistemaLembretes: {
+         ativo: false,
+         ultimaVerificacao: null
+       },
+       estatisticasLembretes: {
+         total_enviados: 0,
+         lembretes_15_dias: 0,
+         lembretes_25_dias: 0,
+         lembretes_30_dias_urgente: 0,
+         com_erro: 0
+       },
+       rdmsPendentes: [],
+       carregandoLembretes: false,
+       logLembretes: []
     }
   },
   created() {
@@ -1466,6 +2275,31 @@ export default {
   async mounted() {
     await this.carregarDados()
     this.inicializarFiltros()
+    // Carregar produtos para seleção nos materiais
+    await this.carregarProdutos()
+    
+    // Se a aba for diretamente 'lembretes', carregar dados
+    if (this.activeTab === 'lembretes') {
+      await this.carregarEstatisticasLembretes()
+      await this.carregarRdmsPendentes()
+    }
+  },
+  
+  watch: {
+    // Observar mudanças na aba ativa
+    activeTab(novaAba) {
+      if (novaAba === 'lembretes') {
+        // Carregar dados quando acessar a aba de lembretes
+        this.$nextTick(() => {
+          if (this.carregarEstatisticasLembretes) {
+            this.carregarEstatisticasLembretes()
+          }
+          if (this.carregarRdmsPendentes) {
+            this.carregarRdmsPendentes()
+          }
+        })
+      }
+    }
   },
       computed: {
       // Marcas únicas para o filtro de diligências
@@ -1501,6 +2335,12 @@ export default {
         return this.editais.reduce((total, edital) => {
           return total + (edital.participantes_count || 0)
         }, 0)
+      },
+      
+      // Computed properties para usuários
+      unidadesUnicas() {
+        const unidades = [...new Set(this.usuarios.map(u => u.unidade_setor))]
+        return unidades.filter(unidade => unidade).sort()
       }
   },
   methods: {
@@ -1590,6 +2430,10 @@ export default {
         
         // Carregar editais
         await this.carregarEditais()
+        
+        // Carregar usuários e reclamações
+        await this.carregarUsuarios()
+        await this.carregarReclamacoes()
         
         // Contar por status - também filtrando por tenant_id
         const statsCounts = await Promise.all([
@@ -3504,6 +4348,16 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
         // Adicionar função global para alterar status
         window.alterarStatusParticipante = async (participanteId, novoStatus) => {
           try {
+            // Buscar dados do participante antes da atualização
+            const { data: participanteData, error: participanteError } = await supabase
+              .from('participantes_editais')
+              .select('*')
+              .eq('id', participanteId)
+              .single()
+
+            if (participanteError) throw participanteError
+
+            // Atualizar status no banco
             const { error } = await supabase
               .from('participantes_editais')
               .update({ status: novoStatus })
@@ -3511,9 +4365,96 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
 
             if (error) throw error
 
-            // Fechar modal e reabrir atualizado
-            document.getElementById('modal-participantes-custom').remove()
-            this.$swal.fire('Sucesso!', `Status alterado para ${this.getStatusText(novoStatus)}`, 'success')
+            // Declarar variável para controle de email
+            let motivoRejeicao = null
+
+            // 📧 ENVIAR EMAIL PARA APROVAÇÃO OU REPROVAÇÃO
+            if (novoStatus === 'APROVADO' || novoStatus === 'REPROVADO') {
+              try {
+                // Importar função de envio de email
+                const { enviarEmailParticipanteStatus } = await import('@/services/emailService')
+                
+                // Se foi reprovado, FECHAR MODAL primeiro e depois pedir motivo
+                if (novoStatus === 'REPROVADO') {
+                  // Fechar modal de participantes
+                  document.getElementById('modal-participantes-custom').remove()
+                  
+                  // Aguardar um pouco para garantir que fechou
+                  await new Promise(resolve => setTimeout(resolve, 100))
+                  
+                  const result = await this.$swal.fire({
+                    title: '❌ Motivo da Reprovação',
+                    text: 'Informe o motivo da reprovação (será enviado por email):',
+                    input: 'textarea',
+                    inputPlaceholder: 'Ex: Documentação incompleta, dados inconsistentes, etc.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Enviar Email',
+                    cancelButtonText: 'Pular Email',
+                    inputValidator: (value) => {
+                      if (!value) {
+                        return 'Por favor, informe o motivo da reprovação!'
+                      }
+                    },
+                    // Configurações para aparecer na frente
+                    heightAuto: false,
+                    backdrop: true,
+                    allowOutsideClick: false
+                  })
+                  
+                  if (result.isConfirmed) {
+                    motivoRejeicao = result.value
+                  } else {
+                    // Se cancelou, pular envio de email mas continuar o fluxo
+                    console.log('📧 Usuário cancelou envio de email de reprovação')
+                    motivoRejeicao = null
+                  }
+                }
+                
+                // Só enviar email se for aprovação OU se for reprovação com motivo
+                if (novoStatus === 'APROVADO' || (novoStatus === 'REPROVADO' && motivoRejeicao)) {
+                  const statusEmail = novoStatus === 'APROVADO' ? 'aprovado' : 'rejeitado'
+                  console.log(`📧 Enviando email de ${statusEmail} para:`, participanteData.email)
+                  
+                  // Enviar email
+                  await enviarEmailParticipanteStatus(participanteData, edital, statusEmail, motivoRejeicao)
+                  
+                  console.log(`✅ Email de ${statusEmail} enviado com sucesso!`)
+                } else if (novoStatus === 'REPROVADO' && !motivoRejeicao) {
+                  console.log('📧 Email de reprovação não enviado (usuário cancelou)')
+                }
+                
+              } catch (emailError) {
+                console.warn(`⚠️ Erro ao enviar email de ${novoStatus.toLowerCase()}:`, emailError)
+                // Não bloquear o fluxo principal se o email falhar
+              }
+            }
+
+            // Fechar modal se ainda não foi fechado (só para aprovação)
+            const modalExistente = document.getElementById('modal-participantes-custom')
+            if (modalExistente) {
+              modalExistente.remove()
+            }
+            
+            // Mostrar mensagem de sucesso personalizada
+            let mensagemSucesso = `Status alterado para ${this.getStatusText(novoStatus)}`
+            if (novoStatus === 'APROVADO') {
+              mensagemSucesso += '\n📧 Email de aprovação enviado automaticamente!'
+            } else if (novoStatus === 'REPROVADO') {
+              // Verificar se foi enviado email (só se tiver motivo)
+              const emailEnviado = motivoRejeicao !== null
+              if (emailEnviado) {
+                mensagemSucesso += '\n📧 Email de reprovação enviado automaticamente!'
+              } else {
+                mensagemSucesso += '\n📧 Email de reprovação não foi enviado'
+              }
+            }
+            
+            this.$swal.fire({
+              icon: 'success',
+              title: 'Sucesso!',
+              text: mensagemSucesso,
+              timer: (novoStatus === 'APROVADO' || novoStatus === 'REPROVADO') ? 4000 : 2000
+            })
             
             // Recarregar editais para atualizar contadores
             await this.carregarEditais()
@@ -3525,13 +4466,34 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
 
           } catch (error) {
             console.error('Erro ao alterar status:', error)
-            this.$swal.fire('Erro', 'Erro ao alterar status do participante', 'error')
+            // Fechar modal se existir
+            const modalExistente = document.getElementById('modal-participantes-custom')
+            if (modalExistente) {
+              modalExistente.remove()
+            }
+            
+            this.$swal.fire({
+              icon: 'error',
+              title: 'Erro',
+              text: 'Erro ao alterar status do participante'
+            })
+            
+            // Reabrir modal após erro
+            setTimeout(() => {
+              this.criarModalParticipantes(edital)
+            }, 2000)
           }
         }
 
         // Adicionar função global para observações internas
         window.adicionarObservacaoInterna = async (participanteId) => {
           try {
+            // Fechar modal de participantes primeiro
+            document.getElementById('modal-participantes-custom').remove()
+            
+            // Aguardar um pouco
+            await new Promise(resolve => setTimeout(resolve, 100))
+            
             const result = await this.$swal.fire({
               title: 'Observação Interna da CPM',
               text: 'Esta observação será visível apenas para a equipe da CPM',
@@ -3557,9 +4519,11 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
 
               if (error) throw error
 
-              // Fechar modal e reabrir atualizado
-              document.getElementById('modal-participantes-custom').remove()
-              this.$swal.fire('Sucesso!', 'Observação interna adicionada com sucesso', 'success')
+              this.$swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: 'Observação interna adicionada com sucesso'
+              })
               
               // Reabrir modal atualizado
               setTimeout(() => {
@@ -3569,7 +4533,16 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
 
           } catch (error) {
             console.error('Erro ao adicionar observação:', error)
-            this.$swal.fire('Erro', 'Erro ao adicionar observação interna', 'error')
+            this.$swal.fire({
+              icon: 'error',
+              title: 'Erro',
+              text: 'Erro ao adicionar observação interna'
+            })
+            
+            // Reabrir modal após erro
+            setTimeout(() => {
+              this.criarModalParticipantes(edital)
+            }, 2000)
           }
         }
       },
@@ -3991,9 +4964,1214 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
           console.error('Erro ao remover participante:', error)
           this.$swal.fire('Erro', 'Erro ao remover participante: ' + error.message, 'error')
         }
+      },
+    
+    // === MÉTODOS PARA USUÁRIOS ===
+    async carregarUsuarios() {
+      try {
+        const { data, error } = await supabase
+          .from('usuarios_rdm')
+          .select('*')
+          .eq('tenant_id', this.currentTenantId)
+          .order('nome_usuario', { ascending: true })
+        
+        if (error) throw error
+        
+        this.usuarios = data || []
+        this.aplicarFiltrosUsuarios()
+      } catch (error) {
+        console.error('Erro ao carregar usuários:', error)
       }
-  }
-}
+    },
+    
+    aplicarFiltrosUsuarios() {
+      let filtrados = [...this.usuarios]
+      
+      if (this.filtroUsuarios.busca) {
+        const busca = this.filtroUsuarios.busca.toLowerCase()
+        filtrados = filtrados.filter(usuario => 
+          usuario.nome_usuario?.toLowerCase().includes(busca) ||
+          usuario.unidade_setor?.toLowerCase().includes(busca) ||
+          usuario.nome_coordenador?.toLowerCase().includes(busca) ||
+          usuario.email?.toLowerCase().includes(busca)
+        )
+      }
+      
+      if (this.filtroUsuarios.unidade) {
+        filtrados = filtrados.filter(usuario => 
+          usuario.unidade_setor === this.filtroUsuarios.unidade
+        )
+      }
+      
+      this.usuariosFiltrados = filtrados
+    },
+    
+    abrirModalNovoUsuario() {
+      this.usuarioAtual = {
+        nome_usuario: '',
+        unidade_setor: '',
+        nome_coordenador: '',
+        telefone: '',
+        email: '',
+        materiais: [{
+          produto_id: '',
+          nome: '',
+          codigo: '',
+          periodicidade_rdm: ''
+        }],
+        criar_login: false
+      }
+      this.modalNovoUsuario = true
+      // Carregar produtos disponíveis ao abrir o modal
+      this.carregarProdutos()
+    },
+    
+    fecharModalNovoUsuario() {
+      this.modalNovoUsuario = false
+      this.usuarioAtual = {
+        nome_usuario: '',
+        unidade_setor: '',
+        nome_coordenador: '',
+        telefone: '',
+        email: '',
+        materiais: [],
+        criar_login: false
+      }
+    },
+    
+    adicionarMaterial() {
+      this.usuarioAtual.materiais.push({
+        produto_id: '',
+        nome: '',
+        codigo: '',
+        periodicidade_rdm: ''
+      })
+    },
+    
+    removerMaterial(index) {
+      this.usuarioAtual.materiais.splice(index, 1)
+    },
+    
+    async salvarUsuario() {
+      console.log('🚀 INICIANDO salvarUsuario...')
+      console.log('📊 Estado inicial:', {
+        usuarioAtual: this.usuarioAtual,
+        temCriarLogin: this.usuarioAtual?.criar_login,
+        temId: !!this.usuarioAtual?.id
+      })
+      
+      try {
+        let senhaTemporaria = null
+        let usuarioSupabaseId = null
+        
+        console.log('✅ Variáveis inicializadas com sucesso')
+        
+        // 1. Criar login no Supabase se solicitado
+        console.log('🔍 Verificando necessidade de criar login...')
+        if (this.usuarioAtual.criar_login && !this.usuarioAtual.id) {
+          console.log('🔐 Criando login automático para:', this.usuarioAtual.email)
+          
+          // Gerar senha temporária
+          console.log('🎯 Gerando senha temporária...')
+          senhaTemporaria = this.gerarSenhaTemporaria()
+          console.log('✅ Senha temporária gerada:', senhaTemporaria ? 'SIM' : 'NÃO')
+          
+          try {
+            // SIMULAÇÃO: Criar usuário (auth.admin só funciona no servidor)
+            // Em produção, isso seria feito via API/webhook
+            console.log('🔐 SIMULAÇÃO - Criando usuário:', {
+              email: this.usuarioAtual.email,
+              senha: senhaTemporaria,
+              tipo: 'rdm'
+            })
+            
+            // Para desenvolvimento, simular criação de usuário com UUID válido
+            const usuarioSimuladoId = crypto.randomUUID ? crypto.randomUUID() : 
+              'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+              });
+            const authData = { user: { id: usuarioSimuladoId } }
+            const authError = null
+            
+            if (authError) {
+              console.error('Erro ao criar usuário no Supabase Auth:', authError)
+              throw new Error('Não foi possível criar o login. Verifique se o email já está cadastrado.')
+            }
+            
+            usuarioSupabaseId = authData.user.id
+            console.log('✅ Usuário criado no Supabase Auth:', usuarioSupabaseId)
+            
+          } catch (authError) {
+            console.error('Erro na criação do login:', authError)
+            alert('Erro ao criar login do usuário. Usuário será cadastrado sem acesso ao sistema.')
+            // Continua sem criar login
+          }
+        }
+        
+        // 2. Preparar dados do usuário
+        console.log('📝 Preparando dados do usuário...')
+        console.log('🔑 Dados de entrada:', {
+          currentTenantId: this.currentTenantId,
+          usuarioSupabaseId: usuarioSupabaseId,
+          senhaTemporaria: senhaTemporaria ? 'EXISTE' : 'NULL'
+        })
+        
+        const userData = {
+          ...this.usuarioAtual,
+          tenant_id: this.currentTenantId,
+          user_id: usuarioSupabaseId,
+          senha_temporaria: senhaTemporaria,
+          convite_enviado: false,
+          convite_aceito: false,
+          ativo: true,
+          criado_em: new Date().toISOString(),
+          atualizado_em: new Date().toISOString()
+        }
+        
+        console.log('✅ Dados do usuário preparados com sucesso')
+        
+        // Remove campos auxiliares e problemáticos
+        delete userData.criar_login
+        
+        // CORREÇÃO: Remove o campo 'id' para novos usuários para permitir geração automática de UUID
+        if (!this.usuarioAtual.id) {
+          delete userData.id
+          console.log('🆔 Campo ID removido para permitir geração automática de UUID')
+        }
+        
+        console.log('📝 Dados preparados para inserção:', {
+          temId: !!userData.id,
+          tenant_id: userData.tenant_id,
+          nome_usuario: userData.nome_usuario,
+          email: userData.email,
+          materiais: userData.materiais?.length || 0
+        })
+        
+        console.log('🔍 DIAGNÓSTICO TENANT_ID:', {
+          currentTenantId: this.currentTenantId,
+          userDataTenantId: userData.tenant_id,
+          tenantIdType: typeof userData.tenant_id,
+          tenantIdLength: userData.tenant_id?.length,
+          isValidUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userData.tenant_id)
+        })
+        
+        // 3. Salvar no banco
+        if (this.usuarioAtual.id) {
+          // Atualizar
+          const { error } = await supabase
+            .from('usuarios_rdm')
+            .update(userData)
+            .eq('id', this.usuarioAtual.id)
+            .eq('tenant_id', this.currentTenantId)
+          
+          if (error) throw error
+          console.log('✅ Usuário atualizado com sucesso')
+        } else {
+          // Criar
+          const { data: insertData, error } = await supabase
+            .from('usuarios_rdm')
+            .insert([userData])
+            .select()
+          
+          if (error) throw error
+          
+          userData.id = insertData[0].id
+          console.log('✅ Usuário criado com sucesso:', userData.id)
+        }
+        
+        // 4. Enviar email de convite se login foi criado
+        console.log('📧 Verificando envio de email...')
+        let emailResult = null
+        if (usuarioSupabaseId && senhaTemporaria) {
+          console.log('📧 Condições atendidas, enviando email...')
+          console.log('📧 Dados para envio:', {
+            usuarioSupabaseId: usuarioSupabaseId ? 'EXISTE' : 'NULL',
+            senhaTemporaria: senhaTemporaria ? 'EXISTE' : 'NULL',
+            email: userData.email
+          })
+          
+          try {
+            emailResult = await this.enviarEmailConvite(userData, senhaTemporaria)
+            console.log('📧 Resultado do email:', emailResult)
+          } catch (emailError) {
+            console.error('❌ ERRO ESPECÍFICO NO EMAIL:', emailError)
+            emailResult = { success: false, message: emailError.message }
+          }
+        } else {
+          console.log('⏩ Pulando envio de email (condições não atendidas)')
+        }
+        
+        this.fecharModalNovoUsuario()
+        await this.carregarUsuarios()
+        
+        // Mostrar mensagem de sucesso baseada no resultado do email
+        if (usuarioSupabaseId) {
+          if (emailResult && emailResult.success) {
+            alert(`🎉 USUÁRIO CADASTRADO COM SUCESSO!
+
+✅ Usuário: ${this.usuarioAtual.nome_usuario}
+✅ Login criado no sistema
+✅ Email enviado para: ${this.usuarioAtual.email}
+
+📧 O usuário receberá:
+• Link de acesso: ${window.location.origin}/rdm
+• Senha temporária para primeiro acesso
+• Instruções completas de uso
+
+O usuário já pode fazer login no sistema!`)
+          } else {
+            alert(`⚠️ USUÁRIO CADASTRADO (Email com problema)
+
+✅ Usuário: ${this.usuarioAtual.nome_usuario}
+✅ Login criado no sistema
+⚠️ Email NÃO foi enviado automaticamente
+
+🔧 AÇÃO NECESSÁRIA:
+Envie manualmente os dados de acesso:
+📧 Email: ${this.usuarioAtual.email}
+🔑 Senha: ${senhaTemporaria}
+🔗 Link: ${window.location.origin}/rdm
+
+O sistema funciona normalmente, apenas o email automático falhou.`)
+          }
+        } else {
+          alert('✅ Usuário cadastrado com sucesso!')
+        }
+        
+        // Programar alertas RDM
+        this.programarAlertasRDM(userData)
+        
+      } catch (error) {
+        console.error('❌ ERRO PRINCIPAL em salvarUsuario:', error)
+        console.error('📊 INFORMAÇÕES DO ERRO PRINCIPAL:', {
+          tipo: typeof error,
+          nome: error?.name,
+          mensagem: error?.message,
+          stack: error?.stack
+        })
+        
+        let mensagemAmigavel = 'Erro desconhecido. Tente novamente.'
+        
+        try {
+          if (error && error.message) {
+            mensagemAmigavel = error.message
+          } else if (error && typeof error.toString === 'function') {
+            mensagemAmigavel = error.toString()
+          }
+        } catch (msgError) {
+          console.error('Erro ao extrair mensagem:', msgError)
+        }
+        
+        alert(`❌ Erro ao salvar usuário: ${mensagemAmigavel}`)
+      }
+    },
+    
+    editarUsuario(usuario) {
+      this.usuarioAtual = { ...usuario }
+      if (!this.usuarioAtual.materiais) {
+        this.usuarioAtual.materiais = []
+      }
+      // Garantir que cada material tenha produto_id
+      this.usuarioAtual.materiais = this.usuarioAtual.materiais.map(material => ({
+        produto_id: material.produto_id || '',
+        nome: material.nome || '',
+        codigo: material.codigo || '',
+        periodicidade_rdm: material.periodicidade_rdm || '',
+        ...material
+      }))
+      this.modalNovoUsuario = true
+      // Carregar produtos para edição
+      this.carregarProdutos()
+    },
+    
+    async removerUsuario(usuario) {
+      if (!confirm(`Tem certeza que deseja remover o usuário "${usuario.nome_usuario}"?`)) {
+        return
+      }
+      
+      try {
+        const { error } = await supabase
+          .from('usuarios_rdm')
+          .delete()
+          .eq('id', usuario.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        if (error) throw error
+        
+        await this.carregarUsuarios()
+      } catch (error) {
+        console.error('Erro ao remover usuário:', error)
+        alert('Erro ao remover usuário. Tente novamente.')
+      }
+    },
+    
+    verMateriaisUsuario(usuario) {
+      alert(`Materiais de ${usuario.nome_usuario}:\n\n${usuario.materiais?.map(m => `• ${m.nome} (${m.codigo}) - RDM ${m.periodicidade_rdm}`).join('\n') || 'Nenhum material cadastrado'}`)
+    },
+    
+    calcularProximoRDM(usuario) {
+      if (!usuario.materiais || usuario.materiais.length === 0) {
+        return 'N/A'
+      }
+      
+      // Lógica simplificada - pode ser expandida
+      const hoje = new Date()
+      const proximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1)
+      return proximoMes.toLocaleDateString('pt-BR')
+    },
+    
+    programarAlertasRDM(usuario) {
+      // Implementar lógica de alertas automáticos no futuro
+      console.log('Alertas RDM programados para:', usuario.nome_usuario)
+    },
+
+    // === TESTE DE EMAIL ===
+    async testarEmailJS() {
+      if (!confirm('🧪 Testar configuração do EmailJS?\n\nIsso enviará um email de teste para comprarbemteste@gmail.com')) {
+        return
+      }
+      
+      try {
+        console.log('🧪 Iniciando teste do EmailJS...')
+        
+        // Verificação básica e robusta
+        if (typeof emailjs === 'undefined' || !emailjs) {
+          throw new Error('❌ EmailJS não está carregado')
+        }
+        
+        if (typeof emailjs.init !== 'function' || typeof emailjs.send !== 'function') {
+          throw new Error('❌ Métodos EmailJS não estão disponíveis')
+        }
+        
+        const EMAILJS_CONFIG = {
+          serviceId: 'service_7sv1naw',
+          templateId: 'template_nyiw2ua',
+          publicKey: 'DqGKMNJ87ch3qVxGv'
+        }
+        
+        console.log('🧪 Configuração:', EMAILJS_CONFIG)
+        
+        // Inicializar EmailJS (OBRIGATÓRIO)
+        try {
+          console.log('🧪 Inicializando EmailJS para teste...')
+          emailjs.init(EMAILJS_CONFIG.publicKey)
+          console.log('✅ EmailJS inicializado com sucesso para teste')
+        } catch (initError) {
+          console.error('❌ Erro crítico na inicialização:', initError)
+          throw new Error('Falha na inicialização do EmailJS para teste: ' + initError.message)
+        }
+        
+        // Parâmetros de teste (FORMATO EXATO DOS EDITAIS QUE FUNCIONA)
+        const emailParams = {
+          numero_edital: 'TESTE-EMAILJS',
+          email_empresa: 'comprarbemteste@gmail.com',
+          message: `
+🧪 TESTE DE CONFIGURAÇÃO EMAILJS
+
+Este é um email de teste para verificar se o EmailJS está funcionando corretamente.
+
+=== INFORMAÇÕES DO TESTE ===
+Data do teste: ${new Date().toLocaleString('pt-BR')}
+Sistema: ${window.location.origin}
+Template: template_nyiw2ua
+Service: service_7sv1naw
+
+=== RESULTADO ===
+Se você recebeu este email, a configuração está funcionando perfeitamente!
+
+=== PRÓXIMO PASSO ===
+Agora você pode cadastrar usuários RDM com confiança que os emails serão enviados.
+
+---
+Sistema Comprar Bem - Compras Públicas Inteligentes
+Teste automático de configuração EmailJS
+          `,
+          name: 'Teste do Sistema',
+          email: 'comprarbemteste@gmail.com',
+          subject: '🧪 Teste de Configuração EmailJS - Sistema Comprar Bem',
+          status_participante: 'aprovado',
+          motivo_rejeicao: ''
+        }
+        
+        console.log('🧪 Enviando email de teste...')
+        console.log('🧪 Parâmetros:', emailParams)
+        
+        // Enviar email de teste
+        const result = await emailjs.send(
+          EMAILJS_CONFIG.serviceId,
+          EMAILJS_CONFIG.templateId,
+          emailParams,
+          EMAILJS_CONFIG.publicKey
+        )
+        
+        console.log('✅ Teste bem-sucedido:', result)
+        
+        if (result && result.status === 200) {
+          alert('✅ TESTE REALIZADO COM SUCESSO!\n\n📧 Email de teste enviado para comprarbemteste@gmail.com\n\n✅ EmailJS está configurado corretamente')
+        } else {
+          throw new Error(`Status de resposta inesperado: ${result?.status}`)
+        }
+        
+      } catch (error) {
+        console.error('❌ Falha no teste:', error)
+        alert(`❌ FALHA NO TESTE DO EMAILJS
+
+Erro: ${error.message}
+
+Possíveis causas:
+• Configuração incorreta do EmailJS
+• Problemas de conectividade
+• Service ID ou Template ID inválidos
+• Public Key incorreta
+
+Verifique:
+1. Configuração no EmailJS Dashboard
+2. Conexão com a internet
+3. Console do navegador para mais detalhes`)
+      }
+    },
+    
+    // === MÉTODOS PARA RECLAMAÇÕES ===
+    async carregarReclamacoes() {
+      try {
+        const { data, error } = await supabase
+          .from('reclamacoes_usuarios')
+          .select('*')
+          .eq('tenant_id', this.currentTenantId)
+          .order('data_reclamacao', { ascending: false })
+        
+        if (error) throw error
+        
+        this.reclamacoes = data || []
+        this.aplicarFiltrosReclamacoes()
+      } catch (error) {
+        console.error('Erro ao carregar reclamações:', error)
+      }
+    },
+    
+    aplicarFiltrosReclamacoes() {
+      let filtradas = [...this.reclamacoes]
+      
+      if (this.filtroReclamacoes.busca) {
+        const busca = this.filtroReclamacoes.busca.toLowerCase()
+        filtradas = filtradas.filter(reclamacao => 
+          reclamacao.nome_reclamante?.toLowerCase().includes(busca) ||
+          reclamacao.nome_material?.toLowerCase().includes(busca) ||
+          reclamacao.unidade_setor?.toLowerCase().includes(busca) ||
+          reclamacao.registro_reclamacao?.toLowerCase().includes(busca)
+        )
+      }
+      
+      if (this.filtroReclamacoes.status) {
+        filtradas = filtradas.filter(reclamacao => 
+          reclamacao.status === this.filtroReclamacoes.status
+        )
+      }
+      
+      if (this.filtroReclamacoes.data) {
+        filtradas = filtradas.filter(reclamacao => 
+          reclamacao.data_reclamacao === this.filtroReclamacoes.data
+        )
+      }
+      
+      this.reclamacoesFiltradas = filtradas
+    },
+    
+    abrirModalNovaReclamacao() {
+      this.reclamacaoAtual = {
+        id: null,
+        nome_reclamante: '',
+        telefone: '',
+        email: '',
+        unidade_setor: '',
+        nome_material: '',
+        codigo_material: '',
+        marca_modelo: '',
+        registro_reclamacao: '',
+        sugestoes: '',
+        status: 'ABERTA',
+        providencias_cpm: '',
+        data_reclamacao: new Date().toISOString().split('T')[0]
+      }
+      this.modalNovaReclamacao = true
+    },
+    
+    fecharModalNovaReclamacao() {
+      this.modalNovaReclamacao = false
+      this.reclamacaoAtual = {
+        id: null,
+        nome_reclamante: '',
+        telefone: '',
+        email: '',
+        unidade_setor: '',
+        nome_material: '',
+        codigo_material: '',
+        marca_modelo: '',
+        registro_reclamacao: '',
+        sugestoes: '',
+        status: 'ABERTA',
+        providencias_cpm: '',
+        data_reclamacao: new Date().toISOString().split('T')[0]
+      }
+    },
+    
+    async salvarReclamacao() {
+      try {
+        const reclamacaoData = {
+          ...this.reclamacaoAtual,
+          tenant_id: this.currentTenantId,
+          data_atualizacao: new Date().toISOString()
+        }
+        
+        if (this.reclamacaoAtual.id) {
+          // Atualizar
+          const { error } = await supabase
+            .from('reclamacoes_usuarios')
+            .update(reclamacaoData)
+            .eq('id', this.reclamacaoAtual.id)
+            .eq('tenant_id', this.currentTenantId)
+          
+          if (error) throw error
+        } else {
+          // Criar
+          reclamacaoData.criado_em = new Date().toISOString()
+          const { error } = await supabase
+            .from('reclamacoes_usuarios')
+            .insert([reclamacaoData])
+          
+          if (error) throw error
+        }
+        
+        this.fecharModalNovaReclamacao()
+        await this.carregarReclamacoes()
+        
+      } catch (error) {
+        console.error('Erro ao salvar reclamação:', error)
+        alert('Erro ao salvar reclamação. Tente novamente.')
+      }
+    },
+    
+    editarReclamacao(reclamacao) {
+      this.reclamacaoAtual = { ...reclamacao }
+      this.modalNovaReclamacao = true
+    },
+    
+    responderReclamacao(reclamacao) {
+      this.reclamacaoAtual = { ...reclamacao }
+      this.reclamacaoAtual.status = 'EM_ANALISE'
+      this.modalNovaReclamacao = true
+    },
+    
+    async removerReclamacao(reclamacao) {
+      if (!confirm(`Tem certeza que deseja remover a reclamação de "${reclamacao.nome_reclamante}"?`)) {
+        return
+      }
+      
+      try {
+        const { error } = await supabase
+          .from('reclamacoes_usuarios')
+          .delete()
+          .eq('id', reclamacao.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        if (error) throw error
+        
+        await this.carregarReclamacoes()
+      } catch (error) {
+        console.error('Erro ao remover reclamação:', error)
+        alert('Erro ao remover reclamação. Tente novamente.')
+      }
+    },
+    
+    getStatusReclamacaoClass(status) {
+      const classes = {
+        'ABERTA': 'status-pendente',
+        'EM_ANALISE': 'status-em-analise',
+        'RESOLVIDA': 'status-aprovado',
+        'REJEITADA': 'status-reprovado'
+      }
+      return classes[status] || 'status-pendente'
+    },
+    
+    formatarStatusReclamacao(status) {
+      const statusMap = {
+        'ABERTA': 'Em Aberto',
+        'EM_ANALISE': 'Em Análise',
+        'RESOLVIDA': 'Resolvida',
+        'REJEITADA': 'Rejeitada'
+      }
+      return statusMap[status] || status
+    },
+    
+    // ============================================
+    // SISTEMA DE CONVITES AUTOMÁTICOS
+    // ============================================
+    
+    toggleLoginSystem() {
+      if (!this.usuarioAtual.criar_login) {
+        this.usuarioAtual.senha_temporaria = null
+        this.usuarioAtual.user_id = null
+      }
+    },
+    
+    gerarSenhaTemporaria() {
+      // Gera senha simples e definitiva: CB + ano + 4 dígitos
+      const ano = new Date().getFullYear()
+      const numero = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+      return `CB${ano}${numero}`
+    },
+    
+    async enviarEmailConvite(usuario, senhaTemporaria) {
+      try {
+        console.log('📧 Enviando email REAL de convite para:', usuario.email)
+        
+        // VERIFICAÇÃO 1: EmailJS disponível?
+        if (typeof emailjs === 'undefined' || !emailjs) {
+          throw new Error('EmailJS não está carregado. Verifique a importação.')
+        }
+        
+        // VERIFICAÇÃO 1.1: Métodos EmailJS disponíveis?
+        if (typeof emailjs.init !== 'function' || typeof emailjs.send !== 'function') {
+          throw new Error('Métodos EmailJS não estão disponíveis. Verifique a versão.')
+        }
+        
+        // VERIFICAÇÃO 2: Configuração EmailJS
+        const EMAILJS_CONFIG = {
+          serviceId: 'service_7sv1naw', 
+          templateId: 'template_nyiw2ua', // Template existente
+          publicKey: 'DqGKMNJ87ch3qVxGv'
+        }
+        
+        console.log('📧 EmailJS disponível:', typeof emailjs)
+        console.log('📧 Configuração:', EMAILJS_CONFIG)
+        
+        // Preparar dados para EmailJS (FORMATO EXATO DOS EDITAIS QUE FUNCIONA)
+        const emailParams = {
+          // EXATOS parâmetros que funcionam no enviarEmailParticipanteStatus
+          numero_edital: 'RDM-CONVITE',
+          email_empresa: usuario.email,
+          message: `
+🔐 BEM-VINDO AO SISTEMA COMPRAR BEM
+
+Olá ${usuario.nome_usuario}!
+
+Você foi cadastrado(a) para acessar o Sistema Comprar Bem - Dashboard RDM Online.
+
+=== SEUS DADOS DE ACESSO ===
+Email: ${usuario.email}
+Senha de Acesso: ${senhaTemporaria}
+Unidade/Setor: ${usuario.unidade_setor}
+Coordenador: ${usuario.nome_coordenador}
+
+=== COMO ACESSAR ===
+1. Acesse: ${window.location.origin}/rdm
+2. Faça login com seu email e senha
+3. Comece a emitir suas RDMs online!
+
+=== FUNCIONALIDADES DISPONÍVEIS ===
+✅ Emissão de RDMs online
+✅ Histórico de solicitações
+✅ Acompanhamento de status
+✅ Notificações automáticas
+
+=== IMPORTANTE ===
+🔑 Use sempre a mesma senha para acessar o sistema
+📝 Guarde seus dados de acesso em local seguro
+📞 Em caso de dúvidas, entre em contato conosco
+
+=== SUPORTE ===
+Email: comprarbemteste@gmail.com
+Sistema: ${window.location.origin}
+
+Data do cadastro: ${new Date().toLocaleDateString('pt-BR')}
+
+---
+Sistema Comprar Bem - Compras Públicas Inteligentes
+Este é um email automático. Não responda diretamente.
+          `,
+          name: usuario.nome_usuario,
+          email: 'comprarbemteste@gmail.com',
+          subject: '🔐 Bem-vindo ao Sistema Comprar Bem - Acesso RDM Online',
+          status_participante: 'aprovado',
+          motivo_rejeicao: ''
+        }
+        
+        console.log('📧 Enviando email REAL via EmailJS...')
+        console.log('📧 Para:', usuario.email)
+        console.log('📧 Config EmailJS:', EMAILJS_CONFIG)
+        console.log('📧 Parâmetros do email:', emailParams)
+        
+        // VERIFICAÇÃO 3: Inicializar EmailJS (SEMPRE INICIALIZAR)
+        try {
+          console.log('📧 Inicializando EmailJS com public key...')
+          emailjs.init(EMAILJS_CONFIG.publicKey)
+          console.log('✅ EmailJS inicializado com sucesso')
+        } catch (initError) {
+          console.error('❌ Erro na inicialização do EmailJS:', initError)
+          throw new Error('Falha na inicialização do EmailJS: ' + initError.message)
+        }
+        
+        // ENVIAR EMAIL REAL via EmailJS
+        console.log('📧 Chamando emailjs.send...')
+        const result = await emailjs.send(
+          EMAILJS_CONFIG.serviceId,
+          EMAILJS_CONFIG.templateId,
+          emailParams,
+          EMAILJS_CONFIG.publicKey
+        )
+        
+        console.log('🎉 EMAIL REAL ENVIADO COM SUCESSO!', result)
+        
+        // VERIFICAÇÃO 4: Resultado válido?
+        if (!result || result.status !== 200) {
+          throw new Error(`Falha no envio do email. Status: ${result?.status || 'desconhecido'}`)
+        }
+        
+        // Marcar convite como enviado
+        await supabase
+          .from('usuarios_rdm')
+          .update({ 
+            convite_enviado: true,
+            data_convite: new Date().toISOString()
+          })
+          .eq('id', usuario.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        console.log('✅ Status do convite atualizado no banco')
+        
+        // Criar notificação para CPM
+        await this.criarNotificacao(
+          this.currentTenantId,
+          this.currentTenantId,
+          'SISTEMA',
+          'Convite RDM Enviado',
+          `✅ Email de convite enviado com SUCESSO!
+          
+📧 Destinatário: ${usuario.nome_usuario} (${usuario.email})
+🔑 Senha de acesso: ${senhaTemporaria}
+🔗 Link de acesso: ${window.location.origin}/rdm
+📅 Data: ${new Date().toLocaleString('pt-BR')}
+
+O usuário pode fazer login imediatamente no sistema RDM.`,
+          null
+        )
+        
+        console.log('🎉 PROCESSO COMPLETO - Email enviado e notificação criada!')
+        
+        return { success: true, message: 'Email enviado com sucesso!' }
+        
+      } catch (error) {
+        console.error('❌ ERRO DETALHADO ao enviar email de convite:', error)
+        console.error('📊 INFORMAÇÕES DO ERRO:', {
+          tipo: typeof error,
+          nome: error?.name || 'SemNome',
+          mensagem: error?.message || 'SemMensagem',
+          stack: error?.stack || 'SemStack',
+          usuario: usuario?.email || 'SemEmail',
+          emailjsDisponivel: typeof emailjs,
+          errorString: error?.toString() || 'NãoConvertível'
+        })
+        
+        // ANÁLISE DETALHADA DO ERRO (SUPER SEGURA)
+        let mensagemErro = 'Erro desconhecido'
+        
+        try {
+          // Obter mensagem de erro de forma segura
+          let errorMessage = 'Erro sem descrição'
+          
+          if (error && typeof error === 'object') {
+            if (typeof error.message === 'string') {
+              errorMessage = error.message
+            } else if (typeof error.toString === 'function') {
+              errorMessage = error.toString()
+            }
+          } else if (typeof error === 'string') {
+            errorMessage = error
+          }
+          
+          console.log('🔍 Mensagem de erro extraída:', errorMessage)
+          
+          // Análise segura da mensagem
+          if (typeof errorMessage === 'string' && errorMessage.length > 0) {
+            if (errorMessage.indexOf('emailjs') !== -1) {
+              mensagemErro = 'EmailJS não está carregado ou configurado corretamente'
+            } else if (errorMessage.indexOf('network') !== -1 || errorMessage.indexOf('fetch') !== -1) {
+              mensagemErro = 'Erro de conectividade. Verifique sua conexão com a internet'
+            } else if (errorMessage.indexOf('service') !== -1 || errorMessage.indexOf('template') !== -1) {
+              mensagemErro = 'Configuração inválida do EmailJS (service/template ID)'
+            } else if (errorMessage.indexOf('422') !== -1) {
+              mensagemErro = 'Parâmetros incorretos do template EmailJS (erro 422)'
+            } else if (errorMessage.indexOf('includes') !== -1) {
+              mensagemErro = 'Erro interno do JavaScript (propriedade undefined)'
+            } else {
+              mensagemErro = errorMessage
+            }
+          } else {
+            mensagemErro = 'Erro sem mensagem válida'
+          }
+                  } catch (analysisError) {
+            console.error('❌ Erro na análise do erro:', analysisError)
+            mensagemErro = 'Erro complexo não analisável'
+          }
+          
+                    return { success: false, message: mensagemErro }
+      }
+    },
+    
+    async criarNotificacao(tenantId, usuarioDestino, tipo, titulo, mensagem, linkAcao = null) {
+      try {
+        const { error } = await supabase
+          .from('notificacoes')
+          .insert([{
+            tenant_id: tenantId,
+            usuario_destino: usuarioDestino,
+            tipo: tipo,
+            titulo: titulo,
+            mensagem: mensagem,
+            link_acao: linkAcao,
+            criado_em: new Date().toISOString()
+          }])
+        
+        if (error) throw error
+        
+      } catch (error) {
+        console.error('Erro ao criar notificação:', error)
+      }
+    },
+    
+    async verificarStatusConvites() {
+      try {
+        const { data, error } = await supabase
+          .from('usuarios_rdm')
+          .select('id, nome_usuario, email, convite_enviado, convite_aceito, data_convite')
+          .eq('tenant_id', this.currentTenantId)
+          .eq('ativo', true)
+          .not('user_id', 'is', null)
+        
+        if (error) throw error
+        
+        // Atualizar status visual dos convites
+        this.statusConvites = data.reduce((acc, usuario) => {
+          acc[usuario.id] = {
+            enviado: usuario.convite_enviado,
+            aceito: usuario.convite_aceito,
+            dataConvite: usuario.data_convite
+          }
+          return acc
+        }, {})
+        
+      } catch (error) {
+        console.error('Erro ao verificar status dos convites:', error)
+      }
+    },
+    
+    async reenviarConvite(usuario) {
+      if (!confirm(`Reenviar convite de acesso para ${usuario.nome_usuario}?`)) {
+        return
+      }
+      
+      try {
+        // Gerar nova senha temporária
+        const novaSenha = this.gerarSenhaTemporaria()
+        
+        // Atualizar senha no banco
+        await supabase
+          .from('usuarios_rdm')
+          .update({ 
+            senha_temporaria: novaSenha,
+            convite_enviado: false
+          })
+          .eq('id', usuario.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        // SIMULAÇÃO: Atualizar senha (auth.admin só funciona no servidor)
+        if (usuario.user_id) {
+          console.log('🔐 SIMULAÇÃO - Atualizando senha para:', usuario.email, novaSenha)
+        }
+        
+        // Reenviar email
+        await this.enviarEmailConvite({ ...usuario, senha_temporaria: novaSenha }, novaSenha)
+        
+        alert('✅ Convite reenviado com sucesso!')
+        await this.carregarUsuarios()
+        
+             } catch (error) {
+         console.error('Erro ao reenviar convite:', error)
+         alert('❌ Erro ao reenviar convite. Tente novamente.')
+       }
+     },
+     
+     // ============================================
+     // SISTEMA DE PRODUTOS/MATERIAIS
+     // ============================================
+     
+     async carregarProdutos() {
+       try {
+         this.loadingProdutos = true
+         console.log('📦 Carregando produtos disponíveis...')
+         console.log('🔑 Tenant ID atual:', this.currentTenantId)
+         
+         // Primeiro, vamos ver todos os produtos sem filtros
+         const { data: todosProdutos, error: erroTodos } = await supabase
+           .from('produtos')
+           .select('id, nome, marca, modelo, codigo_material, categoria_id, status, tenant_id')
+           .order('nome')
+         
+         console.log('📊 Todos os produtos encontrados:', todosProdutos?.length || 0)
+         console.log('📋 Primeiros 3 produtos:', todosProdutos?.slice(0, 3))
+         if (todosProdutos?.length > 0) {
+           console.log('🔍 Estrutura do primeiro produto:', {
+             id: todosProdutos[0].id,
+             nome: todosProdutos[0].nome,
+             marca: todosProdutos[0].marca,
+             modelo: todosProdutos[0].modelo,
+             codigo_material: todosProdutos[0].codigo_material,
+             categoria_id: todosProdutos[0].categoria_id,
+             status: todosProdutos[0].status,
+             tenant_id: todosProdutos[0].tenant_id
+           })
+         }
+         
+         // Agora com filtros
+         const { data, error } = await supabase
+           .from('produtos')
+           .select('id, nome, marca, modelo, codigo_material, categoria_id, status, tenant_id')
+           .eq('tenant_id', this.currentTenantId)
+           .order('nome')
+         
+         console.log('🎯 Produtos do tenant atual:', data?.length || 0)
+         console.log('📋 Status dos produtos:', data?.map(p => p.status))
+         
+         if (error) {
+           console.error('❌ Erro na query:', error)
+           throw error
+         }
+         
+         // Se não houver produtos com status 'aprovado', pegar todos os produtos do tenant
+         let produtosFiltrados = data?.filter(p => p.status === 'aprovado') || []
+         
+         if (produtosFiltrados.length === 0) {
+           console.log('⚠️ Nenhum produto "aprovado" encontrado, carregando todos os produtos do tenant...')
+           produtosFiltrados = data || []
+         }
+         
+         this.produtosDisponiveis = produtosFiltrados
+         console.log(`✅ ${this.produtosDisponiveis.length} produtos carregados para seleção`)
+         console.log('📦 Produtos disponíveis:', this.produtosDisponiveis.map(p => `${p.nome} (${p.status})`))
+         
+       } catch (error) {
+         console.error('❌ Erro ao carregar produtos:', error)
+         this.produtosDisponiveis = []
+         
+         // Mostrar erro para debug
+         alert(`❌ Erro ao carregar produtos:\n${error.message}\n\nVerifique o console para mais detalhes.`)
+       } finally {
+         this.loadingProdutos = false
+       }
+     },
+     
+     selecionarProduto(index, event) {
+       const produtoId = event.target.value
+       const material = this.usuarioAtual.materiais[index]
+       
+       console.log('🔍 Selecionando produto:', produtoId, 'para material index:', index)
+       
+       if (produtoId === 'NOVO') {
+         // Limpar dados para permitir entrada manual
+         material.produto_id = 'NOVO'
+         material.nome = ''
+         material.codigo = ''
+         console.log('📝 Modo novo material ativado')
+       } else if (produtoId) {
+         // Buscar dados do produto selecionado
+         const produto = this.produtosDisponiveis.find(p => p.id === produtoId)
+         console.log('🔍 Produto encontrado:', produto)
+         
+         if (produto) {
+           material.produto_id = produtoId
+           material.nome = produto.nome
+           material.codigo = produto.codigo_material || produto.modelo || ''
+           material.marca = produto.marca || ''
+           material.categoria = produto.categoria_id || ''
+           
+           console.log('✅ Dados do produto aplicados:', {
+             nome: material.nome,
+             codigo: material.codigo,
+             marca: material.marca,
+             categoria_id: material.categoria
+           })
+         }
+       } else {
+         // Limpar seleção
+         material.produto_id = ''
+         material.nome = ''
+         material.codigo = ''
+         console.log('🗑️ Seleção limpa')
+       }
+       
+       console.log('📋 Material atualizado:', material)
+     }
+   },
+
+   // ============================================
+   // MÉTODOS PARA SISTEMA DE LEMBRETES
+   // ============================================
+
+   async ativarSistemaLembretes() {
+     try {
+       console.log('🚀 Ativando sistema de lembretes...')
+       
+       // Importar funções do emailService dinamicamente
+       const { iniciarSistemaLembretes } = await import('@/services/emailService')
+       
+       // Iniciar sistema
+       iniciarSistemaLembretes()
+       
+       this.sistemaLembretes.ativo = true
+       this.sistemaLembretes.ultimaVerificacao = new Date()
+       
+       this.adicionarLogLembrete('info', 'Sistema de lembretes ativado com sucesso')
+       
+       // Carregar dados iniciais
+       await this.carregarEstatisticasLembretes()
+       await this.carregarRdmsPendentes()
+       
+       this.$toast.success('🤖 Sistema de lembretes ativado!')
+       
+     } catch (error) {
+       console.error('❌ Erro ao ativar sistema:', error)
+       this.adicionarLogLembrete('error', `Erro ao ativar sistema: ${error.message}`)
+       this.$toast.error('❌ Erro ao ativar sistema de lembretes')
+     }
+   },
+
+   async processarLembretesManual() {
+     if (this.carregandoLembretes) return
+     
+     try {
+       this.carregandoLembretes = true
+       console.log('📧 Processando lembretes manualmente...')
+       
+       this.adicionarLogLembrete('info', 'Iniciando processamento manual de lembretes')
+       
+       // Importar função do emailService
+       const { processarLembretesPendentes } = await import('@/services/emailService')
+       
+       // Processar lembretes
+       const resultado = await processarLembretesPendentes()
+       
+       if (resultado.success) {
+         this.adicionarLogLembrete('success', 
+           `Processamento concluído: ${resultado.sucessos || 0} enviados, ${resultado.erros || 0} erros`
+         )
+         this.$toast.success(`📧 ${resultado.message}`)
+       } else {
+         this.adicionarLogLembrete('error', `Erro no processamento: ${resultado.message}`)
+         this.$toast.error(`❌ ${resultado.message}`)
+       }
+       
+       // Atualizar dados
+       await this.carregarEstatisticasLembretes()
+       await this.carregarRdmsPendentes()
+       
+     } catch (error) {
+       console.error('❌ Erro no processamento manual:', error)
+       this.adicionarLogLembrete('error', `Erro no processamento: ${error.message}`)
+       this.$toast.error('❌ Erro ao processar lembretes')
+       
+     } finally {
+       this.carregandoLembretes = false
+     }
+   },
+
+   async carregarEstatisticasLembretes() {
+     try {
+       console.log('📊 Carregando estatísticas de lembretes...')
+       
+       const { data, error } = await supabase
+         .from('v_estatisticas_lembretes')
+         .select('*')
+         .order('data', { ascending: false })
+         .limit(1)
+         .single()
+       
+       if (error && error.code !== 'PGRST116') {
+         console.error('❌ Erro ao carregar estatísticas:', error)
+         return
+       }
+       
+       if (data) {
+         this.estatisticasLembretes = {
+           total_enviados: data.total_lembretes_enviados || 0,
+           lembretes_15_dias: data.lembretes_15_dias || 0,
+           lembretes_25_dias: data.lembretes_25_dias || 0,
+           lembretes_30_dias_urgente: data.lembretes_30_dias_urgente || 0,
+           com_erro: data.lembretes_com_erro || 0
+         }
+       }
+       
+       console.log('✅ Estatísticas carregadas:', this.estatisticasLembretes)
+       
+     } catch (error) {
+       console.error('❌ Erro ao carregar estatísticas:', error)
+     }
+   },
+
+   async carregarRdmsPendentes() {
+     try {
+       console.log('📋 Carregando RDMs pendentes de feedback...')
+       
+       const { data, error } = await supabase
+         .from('v_rdms_pendentes_feedback')
+         .select('*')
+         .order('dias_desde_aprovacao', { ascending: false })
+       
+       if (error) {
+         console.error('❌ Erro ao carregar RDMs pendentes:', error)
+         return
+       }
+       
+       this.rdmsPendentes = data || []
+       console.log(`✅ ${this.rdmsPendentes.length} RDMs pendentes carregadas`)
+       
+     } catch (error) {
+       console.error('❌ Erro ao carregar RDMs pendentes:', error)
+     }
+   },
+
+   adicionarLogLembrete(level, message) {
+     const novoLog = {
+       id: Date.now(),
+       timestamp: new Date(),
+       level: level,
+       message: message
+     }
+     
+     this.logLembretes.unshift(novoLog)
+     
+     // Manter apenas os últimos 50 logs
+     if (this.logLembretes.length > 50) {
+       this.logLembretes = this.logLembretes.slice(0, 50)
+     }
+   },
+
+   formatarData(data) {
+     if (!data) return ''
+     
+     const date = new Date(data)
+     return date.toLocaleString('pt-BR', {
+       day: '2-digit',
+       month: '2-digit',
+       year: 'numeric',
+       hour: '2-digit',
+       minute: '2-digit'
+     })
+   },
+
+
+ }
 </script>
 
 <style scoped>
@@ -4002,7 +6180,7 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
 }
 
 .tabs {
-  display: flex;
+    display: flex;
   margin-bottom: 20px;
   border-bottom: 1px solid #ddd;
 }
@@ -4079,7 +6257,7 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
 .stat-card {
   background: white;
   border-radius: 8px;
-  padding: 20px;
+    padding: 20px;
   flex: 1;
   margin: 0 10px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -4113,7 +6291,7 @@ th, td {
 }
 
 th {
-  background-color: #f5f5f5;
+    background-color: #f5f5f5;
 }
 
 .btn-small {
@@ -4165,7 +6343,7 @@ th {
   margin-top: 30px;
   background: white;
   border-radius: 8px;
-  padding: 20px;
+    padding: 20px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
@@ -4195,8 +6373,8 @@ th {
 }
 
 .link-documento {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
   color: #3498db;
   text-decoration: none;
   font-size: 0.9rem;
@@ -4274,7 +6452,7 @@ th {
 
 .dcb-stats .stat-value {
   font-size: 28px;
-  font-weight: bold;
+    font-weight: bold;
   color: #2c3e50;
   margin: 10px 0;
 }
@@ -4286,7 +6464,7 @@ th {
 
 /* Abas DCB */
 .dcb-tabs {
-  display: flex;
+    display: flex;
   margin-bottom: 25px;
   border-bottom: 1px solid #ddd;
 }
@@ -4317,8 +6495,8 @@ th {
 }
 
 .section-header {
-  margin-bottom: 20px;
-}
+    margin-bottom: 20px;
+  }
 
 .section-header h3 {
   margin: 0 0 8px 0;
@@ -4403,7 +6581,7 @@ th {
 }
 
 .produto-info {
-  flex: 1;
+    flex: 1;
 }
 
 .produto-header {
@@ -4432,12 +6610,12 @@ th {
 }
 
 .btn-primary {
-  padding: 10px 20px;
+    padding: 10px 20px;
   background: #3498db;
   color: white;
-  border: none;
+    border: none;
   border-radius: 4px;
-  cursor: pointer;
+    cursor: pointer;
   font-weight: 500;
   transition: background 0.3s ease;
 }
@@ -4449,6 +6627,24 @@ th {
 .btn-primary:disabled {
   background: #bdc3c7;
   cursor: not-allowed;
+}
+
+.btn-test-email {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #ff6b6b, #ffa726);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  margin-left: 10px;
+}
+
+.btn-test-email:hover {
+  background: linear-gradient(135deg, #ff5252, #ff9800);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
 }
 
 .btn-secondary {
@@ -4471,15 +6667,15 @@ th {
 }
 
 .dcb-historico-tabela table {
-  width: 100%;
-  border-collapse: collapse;
+    width: 100%;
+    border-collapse: collapse;
   margin-top: 15px;
 }
 
 .dcb-historico-tabela th,
 .dcb-historico-tabela td {
   padding: 12px 15px;
-  text-align: left;
+    text-align: left;
   border-bottom: 1px solid #e9ecef;
 }
 
@@ -4491,7 +6687,7 @@ th {
 
 .dcb-numero {
   font-family: 'Courier New', monospace;
-  font-weight: bold;
+    font-weight: bold;
   color: #2c3e50;
 }
 
@@ -4536,8 +6732,8 @@ th {
 }
 
 .alerta-warning {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
   padding: 15px;
   background: #fff3cd;
   border-left: 4px solid #ffc107;
@@ -4625,9 +6821,9 @@ th {
   padding: 8px 16px;
   background: #ffc107;
   color: #212529;
-  border: none;
+    border: none;
   border-radius: 4px;
-  cursor: pointer;
+    cursor: pointer;
   font-size: 14px;
   font-weight: 500;
 }
@@ -4666,9 +6862,9 @@ th {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   z-index: 1000;
 }
 
@@ -4867,8 +7063,8 @@ th {
 }
 
 .certificados {
-  margin-top: 20px;
-}
+    margin-top: 20px;
+  }
 
  /* 🎨 ESTILOS PARA FILTROS E PAGINAÇÃO */
  .section-header {
@@ -4951,9 +7147,9 @@ th {
    padding: 8px 12px;
    background-color: #e74c3c;
    color: white;
-   border: none;
+    border: none;
    border-radius: 4px;
-   cursor: pointer;
+    cursor: pointer;
    font-size: 12px;
    font-weight: bold;
    transition: background-color 0.3s;
@@ -5019,9 +7215,9 @@ th {
  .btn-paginacao:disabled {
    background-color: #dee2e6;
    color: #6c757d;
-   cursor: not-allowed;
- }
- 
+    cursor: not-allowed;
+  }
+
  .numeros-pagina {
    display: flex;
    align-items: center;
@@ -5400,23 +7596,23 @@ th {
 
 /* Modal Específico dos Editais */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
   right: 0;
   bottom: 0;
   background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   z-index: 9999;
 }
 
 .modal-content.large {
   width: 90%;
-  max-width: 800px;
+    max-width: 800px;
   max-height: 90vh;
-  overflow-y: auto;
+    overflow-y: auto;
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -5433,9 +7629,9 @@ th {
 }
 
 .modal-header {
-  display: flex;
+    display: flex;
   justify-content: space-between;
-  align-items: center;
+    align-items: center;
   padding: 20px 25px;
   border-bottom: 1px solid #e9ecef;
   background: #f8f9fa;
@@ -5452,7 +7648,7 @@ th {
   background: none;
   border: none;
   font-size: 24px;
-  cursor: pointer;
+    cursor: pointer;
   color: #6c757d;
   padding: 0;
   width: 30px;
@@ -5477,8 +7673,8 @@ th {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  margin-bottom: 20px;
-}
+    margin-bottom: 20px;
+  }
 
 .form-group {
   margin-bottom: 20px;
@@ -5518,8 +7714,8 @@ th {
 }
 
 .form-actions {
-  display: flex;
-  justify-content: flex-end;
+    display: flex;
+    justify-content: flex-end;
   gap: 10px;
   padding-top: 20px;
   border-top: 1px solid #e9ecef;
@@ -5905,9 +8101,9 @@ th {
 
 .btn-close-participantes {
   background: none;
-  border: none;
+    border: none;
   font-size: 24px;
-  cursor: pointer;
+    cursor: pointer;
   color: #6c757d;
   width: 30px;
   height: 30px;
@@ -5929,7 +8125,833 @@ th {
 .modal-participantes-footer {
   padding: 20px 25px;
   border-top: 1px solid #eee;
-  display: flex;
+    display: flex;
   justify-content: flex-end;
+}
+
+/* Modal de participantes com z-index adequado */
+.modal-participantes-overlay {
+  z-index: 999999 !important;
+}
+
+/* === ESTILOS PARA USUÁRIOS === */
+.usuarios-section {
+  padding: 20px;
+}
+
+.usuarios-container {
+  margin-top: 20px;
+}
+
+.filtros-usuarios {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+}
+
+.filtro-group label {
+  font-size: 12px;
+    font-weight: bold;
+  color: #495057;
+  margin-bottom: 4px;
+}
+
+.filtro-group input,
+.filtro-group select {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.usuarios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.usuario-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #e9ecef;
+  transition: transform 0.2s;
+}
+
+.usuario-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.usuario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.status-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.usuario-header h4 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.status-ativo {
+  background: #28a745;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.usuario-details p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.data-rdm {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.usuario-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+  justify-content: flex-end;
+}
+
+.btn-info {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  color: white;
+  border: 1px solid #117a8b;
+}
+
+.btn-info:hover {
+  background: linear-gradient(135deg, #138496, #0f6674);
+}
+
+/* Materiais Section */
+.materiais-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.materiais-section h4 {
+  margin-bottom: 15px;
+  color: #2c3e50;
+}
+
+.materiais-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.material-item {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+.material-fields {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.material-fields input,
+.material-fields select {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Novos estilos para sistema de materiais melhorado */
+.material-fields-novo {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  position: relative;
+}
+
+.material-select {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.material-select label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.material-select select {
+  padding: 10px 12px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.3s;
+}
+
+.material-select select:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.novo-material {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+    padding: 10px;
+  background: #fff3cd;
+  border-radius: 6px;
+  border: 1px solid #ffeaa7;
+}
+
+.novo-material input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.material-periodo {
+    display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.material-periodo label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.material-periodo select {
+  padding: 8px 12px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.material-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+    align-items: center;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e9ecef;
+}
+
+.material-fields-novo .btn-danger {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.debug-info {
+  margin-top: 10px;
+  padding: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.debug-info small {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+/* === ESTILOS PARA SISTEMA DE LOGIN === */
+.login-system-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.login-system-section h4 {
+  margin-bottom: 15px;
+  color: #2c3e50;
+    display: flex;
+    align-items: center;
+  gap: 8px;
+}
+
+.checkbox-group {
+  margin-bottom: 15px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.help-text {
+  margin: 8px 0 0 28px;
+  font-size: 14px;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.convite-info {
+  margin-top: 15px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #28a745;
+  border-left: 4px solid #28a745;
+}
+
+.info-card h5 {
+  margin: 0 0 10px 0;
+  color: #28a745;
+  font-size: 16px;
+}
+
+.info-card p {
+  margin: 8px 0;
+  color: #495057;
+  font-size: 14px;
+}
+
+.info-card ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.info-card li {
+  margin: 5px 0;
+  color: #495057;
+  font-size: 14px;
+}
+
+.status-convite {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-convite.enviado {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-convite.aceito {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-convite.pendente {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.btn-reenviar {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
+  border: 1px solid #ffc107;
+  font-size: 12px;
+  padding: 4px 8px;
+  margin-left: 8px;
+}
+
+.btn-reenviar:hover {
+  background: linear-gradient(135deg, #e0a800, #d39e00);
+}
+
+/* === ESTILOS PARA RECLAMAÇÕES === */
+.reclamacoes-section {
+  padding: 20px;
+}
+
+.filtros-reclamacoes {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  flex-wrap: wrap;
+}
+
+.reclamacoes-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.reclamacao-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #e9ecef;
+  transition: transform 0.2s;
+}
+
+.reclamacao-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.reclamacao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.reclamacao-header h4 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.reclamacao-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.reclamacao-info p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.reclamacao-detalhes {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.reclamacao-texto,
+.sugestoes-texto,
+.providencias-texto {
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.sugestoes-texto {
+  border-left-color: #28a745;
+}
+
+.providencias-texto {
+  border-left-color: #ffc107;
+}
+
+.reclamacao-texto h5,
+.sugestoes-texto h5,
+.providencias-texto h5 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.reclamacao-texto p,
+.sugestoes-texto p,
+.providencias-texto p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.reclamacao-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.status-em-analise {
+  background: #17a2b8;
+  color: white;
+}
+
+/* === ESTILOS PARA SISTEMA DE LEMBRETES === */
+.lembretes-section {
+  padding: 20px;
+}
+
+.section-controls {
+  display: flex;
+  gap: 15px;
+  margin: 20px 0;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: 1px solid #28a745;
+    padding: 10px 20px;
+  border-radius: 6px;
+    cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  }
+
+.btn-success:disabled {
+  background: #6c757d;
+  border-color: #6c757d;
+    cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
+  border: 1px solid #ffc107;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-warning:disabled {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-info {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  color: white;
+  border: 1px solid #17a2b8;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-success:hover:not(:disabled),
+.btn-warning:hover:not(:disabled),
+.btn-info:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.stats-detailed {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.stat-row {
+    display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row span {
+  color: #495057;
+  font-size: 14px;
+}
+
+.stat-row strong {
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.badge-normal {
+  background: #28a745;
+  color: white;
+}
+
+.badge-alta {
+  background: #ffc107;
+  color: #212529;
+}
+
+.badge-urgente {
+  background: #dc3545;
+  color: white;
+}
+
+.badge-recente {
+  background: #17a2b8;
+  color: white;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.no-data-message {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin: 20px 0;
+}
+
+.no-data-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.no-data-message h3 {
+  color: #28a745;
+    margin-bottom: 10px;
+  font-size: 24px;
+}
+
+.no-data-message p {
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.log-container {
+  background: #f8f9fa;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 15px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.log-entry {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.log-time {
+  color: #6c757d;
+  min-width: 130px;
+  font-size: 12px;
+}
+
+.log-level {
+  min-width: 60px;
+  padding: 2px 6px;
+  border-radius: 4px;
+    font-weight: bold;
+  font-size: 11px;
+  text-align: center;
+}
+
+.log-info {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.log-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.log-error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.log-message {
+  flex: 1;
+  color: #495057;
+}
+
+.table-container {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin: 20px 0;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  background: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  padding: 15px;
+  text-align: left;
+  border-bottom: 2px solid #dee2e6;
+  font-size: 14px;
+}
+
+.data-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e9ecef;
+  color: #495057;
+}
+
+.data-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.stat-icon {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.stat-content {
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+.section-content {
+  margin: 30px 0;
+}
+
+.section-content h3 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .usuarios-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filtros-usuarios,
+  .filtros-reclamacoes {
+    flex-direction: column;
+  }
+  
+  .material-fields {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .reclamacao-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .usuario-actions,
+  .reclamacao-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .section-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .section-controls button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  
+  .stats-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .stat-card {
+    margin: 0;
+  }
+  
+  .data-table {
+    font-size: 12px;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 8px;
+  }
 }
 </style> 

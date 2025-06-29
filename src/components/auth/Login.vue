@@ -138,6 +138,20 @@
         </p>
       </div>
       
+      <!-- Link para Sistema RDM -->
+      <div class="rdm-access">
+        <hr style="margin: 20px 0;">
+        <p style="text-align: center; color: #666; margin-bottom: 15px;">
+          <strong>🏥 Sistema RDM Online</strong>
+        </p>
+        <router-link to="/rdm" class="btn-rdm">
+          📝 Acessar Dashboard RDM
+        </router-link>
+        <p style="font-size: 12px; color: #888; text-align: center; margin-top: 10px;">
+          Para usuários cadastrados emitir Requisições de Materiais
+        </p>
+      </div>
+      
       <!-- Botão para teste -->
       <div class="test-buttons" v-if="activeTab === 'register'">
         <button @click="testarSupabase" class="btn-test">Testar Conexão Supabase</button>
@@ -495,6 +509,34 @@ input {
 }
 
 .public-access {
+  margin-top: 20px;
+}
+
+.btn-rdm {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn-rdm:hover {
+  background: linear-gradient(135deg, #764ba2, #667eea);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  color: white;
+  text-decoration: none;
+}
+
+.rdm-access {
   margin-top: 20px;
 }
 </style> 

@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <h2>Painel de Comissão de Contratação ou Licitação</h2>
+    <h2>Painel Comissão de Contratação ou Licitação</h2>
     
     <div class="tabs">
       <div 
@@ -79,7 +79,7 @@
       </div>
       
       <div class="dashboard-section">
-        <h3>Atas de Julgamento Recentes</h3>
+        <h3>Atas de Julgamento</h3>
         <table v-if="atasRecentes.length > 0">
           <thead>
             <tr>
@@ -106,7 +106,7 @@
             </tr>
           </tbody>
         </table>
-        <p v-else>Não há atas de julgamento recentes.</p>
+        <p v-else>Não há atas de julgamento.</p>
       </div>
       
       <div class="dashboard-section">
@@ -404,7 +404,8 @@ export default {
     formatarStatus(status) {
       switch (status) {
         case 'pendente': return 'Em avaliação'
-        case 'aprovado': return 'Homologado'
+        case 'aprovado': return 'Em Diligência'
+        case 'reprovado': return 'Em Análise'
         case 'diligencia': return 'Em diligência'
         default: return status
       }

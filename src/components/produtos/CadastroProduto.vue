@@ -92,7 +92,7 @@
       
       <div class="form-row">
         <div class="form-group">
-          <label for="cnpj">CNPJ*</label>
+          <label for="cnpj">CNPJ do Requerente*</label>
           <input 
             id="cnpj" 
             v-model="cnpjFormatado" 
@@ -106,7 +106,7 @@
         </div>
         
         <div class="form-group">
-          <label for="email_fornecedor">Email do Fornecedor*</label>
+          <label for="email_fornecedor">E-mail do Requerente*</label>
           <input 
             id="email_fornecedor" 
             v-model="produto.email_fornecedor" 
@@ -162,8 +162,30 @@
         </div>
       </div>
       
+      <div class="form-row">
+        <div class="form-group">
+          <label for="norma_abnt">Norma ABNT</label>
+          <input 
+            id="norma_abnt" 
+            v-model="produto.norma_abnt" 
+            type="text" 
+            placeholder="Número da norma ABNT"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label for="norma_regulamentadora">Norma Regulamentadora</label>
+          <input 
+            id="norma_regulamentadora" 
+            v-model="produto.norma_regulamentadora" 
+            type="text" 
+            placeholder="Número da norma regulamentadora"
+          >
+        </div>
+      </div>
+      
       <div class="form-group">
-        <label for="descricao">Descrição</label>
+        <label for="descricao">Especificação Detalhada</label>
         <textarea 
           id="descricao" 
           v-model="produto.descricao" 
@@ -172,7 +194,7 @@
       </div>
       
       <div class="form-group">
-        <label>Documentos (apenas PDF)</label>
+        <label>Documentação do Produto (apenas PDF)</label>
         <div class="file-upload">
           <input 
             type="file" 
@@ -233,6 +255,8 @@ export default {
         origem: '',
         registro_anvisa: '',
         cbpf: '',
+        norma_abnt: '',
+        norma_regulamentadora: '',
         codigo_material: '',
         descricao: '',
         status: 'pendente'
@@ -558,6 +582,8 @@ export default {
           origem: this.produto.origem,
           registro_anvisa: this.produto.registro_anvisa,
           cbpf: this.produto.cbpf,
+          norma_abnt: this.produto.norma_abnt,
+          norma_regulamentadora: this.produto.norma_regulamentadora,
           codigo_material: this.produto.codigo_material,
           status: 'pendente',
           tenant_id: this.currentTenantId
@@ -671,6 +697,8 @@ export default {
         origem: '',
         registro_anvisa: '',
         cbpf: '',
+        norma_abnt: '',
+        norma_regulamentadora: '',
         codigo_material: '',
         descricao: '',
         status: 'pendente'

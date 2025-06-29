@@ -10,6 +10,8 @@ import DCB from '../views/DCB.vue'
 import CCL from '../views/CCL.vue'
 import Classificacao from '../views/Classificacao.vue'
 import EditaisPublicos from '../views/EditaisPublicos.vue'
+import LoginRDM from '../views/LoginRDM.vue'
+import DashboardRDM from '../views/DashboardRDM.vue'
 
 import { supabase } from '../services/supabase'
 
@@ -90,6 +92,18 @@ const routes = [
     component: () => import('../components/ValidarDCB.vue'),
     props: true,
     meta: { requiresAuth: false }
+  },
+  {
+    path: '/rdm',
+    name: 'LoginRDM',
+    component: LoginRDM,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/dashboard-rdm',
+    name: 'DashboardRDM',
+    component: DashboardRDM,
+    meta: { requiresAuth: false } // Autenticação personalizada dentro do componente
   }
 ]
 

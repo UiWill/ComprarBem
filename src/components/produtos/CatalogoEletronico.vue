@@ -12,10 +12,6 @@
           <option value="">Todas classes</option>
           <option v-for="classe in classesFiltradas" :key="classe.id" :value="classe.id">{{ classe.nome }}</option>
         </select>
-        <select v-model="filtroStatus">
-          <option value="">Todos status</option>
-          <option v-for="status in statuses" :key="status.id" :value="status.id">{{ status.nome }}</option>
-        </select>
         <button @click="carregarProdutos">Buscar</button>
       </div>
     </div>
@@ -29,12 +25,10 @@
             <div class="produto-info">
               <p><strong>Grupo:</strong> {{ produto.grupo?.nome || 'Não especificado' }}</p>
               <p><strong>Classe:</strong> {{ produto.classe?.nome || 'Não especificada' }}</p>
-              <p><strong>Status:</strong> {{ getStatusText(produto.status) }}</p>
+              <p><strong>Marca:</strong> {{ produto.marca || 'Não especificada' }}</p>
+              <p><strong>Modelo:</strong> {{ produto.modelo || 'Não especificado' }}</p>
             </div>
             <div class="produto-footer">
-              <div class="produto-status" :class="'status-' + produto.status">
-                {{ getStatusText(produto.status) }}
-              </div>
               <button class="btn-detalhes" @click="verDetalhes(produto.id)">
                 Ver Detalhes
               </button>
@@ -58,15 +52,9 @@ export default {
       produtos: [],
       grupos: [],
       classes: [],
-      statuses: [
-        { id: 'pendente', nome: 'Pendente' },
-        { id: 'aprovado', nome: 'Aprovado' },
-        { id: 'reprovado', nome: 'Reprovado' }
-      ],
       filtroBusca: '',
       filtroGrupo: '',
       filtroClasse: '',
-      filtroStatus: '',
       isLoading: false
     };
   },
@@ -114,14 +102,6 @@ export default {
       this.filtroClasse = '';
       this.carregarClasses();
     },
-    getStatusText(status) {
-      const statusMap = {
-        pendente: 'Pendente',
-        aprovado: 'Aprovado',
-        reprovado: 'Reprovado'
-      };
-      return statusMap[status] || status;
-    },
     async carregarProdutos() {
       try {
         this.isLoading = true;
@@ -142,8 +122,11 @@ export default {
           tenantId = userData?.tenant_id;
         }
         
-        // Buscar produtos com filtragem
-        let query = supabase.from('produtos').select('*');
+        // Buscar apenas produtos aprovados (pré-qualificados e padronizados)
+        let query = supabase
+          .from('produtos')
+          .select('*')
+          .eq('status', 'aprovado'); // Apenas produtos aprovados
         
         // Filtrar por tenant_id se disponível
         if (tenantId) {
@@ -156,10 +139,6 @@ export default {
         
         if (this.filtroClasse) {
           query = query.eq('classe_id', this.filtroClasse);
-        }
-        
-        if (this.filtroStatus) {
-          query = query.eq('status', this.filtroStatus);
         }
         
         if (this.filtroBusca) {
@@ -202,53 +181,33 @@ export default {
             });
           }
           
-          // Associar grupo e classe a cada produto
-          produtos.forEach(produto => {
-            produto.grupo = gruposMap[produto.grupo_id] || null;
-            produto.classe = classesMap[produto.classe_id] || null;
-          });
-          
-          // Contar documentos por produto
-          const produtosIds = produtos.map(p => p.id);
-          const { data: documentos } = await supabase
-            .from('documentos')
-            .select('produto_id')
-            .in('produto_id', produtosIds);
-            
-          // Contar documentos por produto
-          const docsCount = {};
-          if (documentos) {
-            documentos.forEach(doc => {
-              docsCount[doc.produto_id] = (docsCount[doc.produto_id] || 0) + 1;
-            });
-          }
-          
-          // Adicionar flag tem_documentos
-          produtos.forEach(produto => {
-            produto.tem_documentos = (docsCount[produto.id] || 0) > 0;
-          });
+          // Adicionar informações de grupo e classe aos produtos
+          this.produtos = produtos.map(produto => ({
+            ...produto,
+            grupo: gruposMap[produto.grupo_id] || null,
+            classe: classesMap[produto.classe_id] || null,
+            tem_documentos: produto.documentos_count > 0
+          }));
+        } else {
+          this.produtos = [];
         }
         
-        this.produtos = produtos || [];
       } catch (error) {
         console.error('Erro ao carregar produtos:', error);
-        this.$swal({
-          icon: 'error',
-          title: 'Erro',
-          text: 'Não foi possível carregar os produtos.'
-        });
+        this.produtos = [];
       } finally {
         this.isLoading = false;
       }
     },
-    verDetalhes(produtoId) {
-      this.$router.push(`/produtos/${produtoId}`);
+    verDetalhes(id) {
+      this.$router.push(`/produto/${id}`);
     },
-    verDocumentos(produtoId) {
-      this.$router.push(`/produtos/${produtoId}?tab=documentos`);
+    verDocumentos(id) {
+      // Implementar visualização de documentos se necessário
+      console.log('Ver documentos do produto:', id);
     }
   }
-};
+}
 </script>
 
 <style scoped>
@@ -262,104 +221,115 @@ export default {
 
 .produtos-header h1 {
   margin-bottom: 15px;
+  color: #2c3e50;
 }
 
 .filtros {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 15px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .filtros input,
 .filtros select {
-  padding: 8px;
+  padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-size: 14px;
+}
+
+.filtros input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.filtros select {
+  min-width: 150px;
 }
 
 .filtros button {
-  padding: 8px 15px;
-  background-color: #2c3e50;
+  padding: 10px 20px;
+  background-color: #3498db;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.filtros button:hover {
+  background-color: #2980b9;
+}
+
+.produtos-content {
+  margin-top: 20px;
 }
 
 .produtos-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 20px;
 }
 
 .produto-item {
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  background-color: white;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.produto-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-color: #2c3e50;
 }
 
 .produto-header {
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #ddd;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .produto-header h2 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 18px;
+  color: #2c3e50;
+  font-weight: 600;
 }
 
 .produto-body {
-  padding: 15px;
+  padding: 20px;
 }
 
 .produto-info {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .produto-info p {
-  margin: 5px 0;
+  margin: 8px 0;
+  color: #666;
+  font-size: 14px;
 }
 
 .produto-footer {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
-  align-items: center;
-  margin-top: 15px;
-}
-
-.produto-status {
-  font-size: 0.8rem;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.status-pendente {
-  background-color: #f8d7da;
-  color: #721c24;
-}
-
-.status-aprovado {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.status-reprovado {
-  background-color: #f8d7da;
-  color: #721c24;
+  justify-content: flex-end;
 }
 
 .btn-detalhes,
 .btn-documentos {
-  padding: 6px 12px;
+  padding: 8px 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
 
 .btn-detalhes {
@@ -367,8 +337,47 @@ export default {
   color: white;
 }
 
+.btn-detalhes:hover {
+  background-color: #34495e;
+}
+
 .btn-documentos {
   background-color: #3498db;
   color: white;
+}
+
+.btn-documentos:hover {
+  background-color: #2980b9;
+}
+
+.icon-document {
+  margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+  .filtros {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filtros input,
+  .filtros select,
+  .filtros button {
+    width: 100%;
+  }
+  
+  .produtos-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .produto-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .produto-footer {
+    justify-content: flex-start;
+  }
 }
 </style> 

@@ -1,0 +1,31 @@
+CORREÇÕES NECESSÁRIAS NO ARQUIVO DashboardCPM.vue:
+
+1. LINHA 1987: Remover @click="processarLembretesManual" 
+   DE: <button @click="processarLembretesManual" class="btn-warning"
+   PARA: <button class="btn-warning"
+
+2. LINHA 1994: Remover @click="carregarEstatisticasLembretes"
+   DE: <button @click="carregarEstatisticasLembretes" class="btn-info">
+   PARA: <button class="btn-info">
+
+3. LINHA 2282-2283: Comentar chamadas no mounted
+   DE: await this.carregarEstatisticasLembretes()
+       await this.carregarRdmsPendentes()
+   PARA: // await this.carregarEstatisticasLembretes()
+         // await this.carregarRdmsPendentes()
+
+4. LINHA 2295-2299: Comentar chamadas no watcher
+   DE: if (this.carregarEstatisticasLembretes) {
+         this.carregarEstatisticasLembretes()
+       }
+       if (this.carregarRdmsPendentes) {
+         this.carregarRdmsPendentes()
+       }
+   PARA: // if (this.carregarEstatisticasLembretes) {
+         //   this.carregarEstatisticasLembretes()
+         // }
+         // if (this.carregarRdmsPendentes) {
+         //   this.carregarRdmsPendentes()
+         // }
+
+FAÇA ESSAS 4 CORREÇÕES MANUALMENTE NO ARQUIVO E O ERRO SERÁ RESOLVIDO! 

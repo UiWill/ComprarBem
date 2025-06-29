@@ -61,9 +61,6 @@
           <p><strong>Modelo:</strong> {{ produto.modelo }}</p>
           <p><strong>Fabricante:</strong> {{ produto.fabricante }}</p>
         </div>
-        <div class="produto-status" :class="getStatusClass(produto.status)">
-          {{ produto.status }}
-        </div>
       </div>
     </div>
     
@@ -84,7 +81,6 @@
             <p><strong>Fabricante:</strong> {{ produtoSelecionado.fabricante }}</p>
             <p><strong>CNPJ:</strong> {{ produtoSelecionado.cnpj }}</p>
             <p v-if="produtoSelecionado.descricao"><strong>Descrição:</strong> {{ produtoSelecionado.descricao }}</p>
-            <p><strong>Status:</strong> <span :class="getStatusClass(produtoSelecionado.status)">{{ produtoSelecionado.status }}</span></p>
             
             <!-- Seção de Avaliações RDM -->
             <div class="avaliacoes-section">
@@ -247,63 +243,43 @@ export default {
         const { data: categorias, error: errorCategorias } = await supabase
           .from('categorias')
           .select('*')
-        
-        if (errorCategorias) {
-          console.error('Erro ao carregar categorias:', errorCategorias.message)
-          this.$swal({
-            icon: 'error',
-            title: 'Erro ao carregar categorias',
-            text: 'Não foi possível carregar as categorias. Por favor, tente novamente.'
-          })
-        } else {
-          console.log('Categorias carregadas:', categorias)
-          this.categorias = categorias || []
           
-          if (this.categorias.length === 0) {
-            console.warn('Nenhuma categoria encontrada no banco de dados')
-          }
+        if (errorCategorias) {
+          console.error('Erro ao carregar categorias:', errorCategorias)
+        } else {
+          this.categorias = categorias || []
+          console.log(`${this.categorias.length} categorias carregadas`)
         }
         
-        this.carregandoCategorias = false
-        
-        // Carregar produtos APENAS do tenant atual
-        console.log("Buscando produtos do Supabase para tenant_id:", this.currentTenantId)
-        const { data: produtos, error: errorProdutos } = await supabase
+        // Carregar produtos - apenas produtos pré-qualificados e padronizados
+        console.log("Buscando produtos padronizados do Supabase...")
+        let query = supabase
           .from('produtos')
           .select('*')
-          .eq('tenant_id', this.currentTenantId) // Filtrar por tenant_id
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status', 'aprovado') // Apenas produtos aprovados (pré-qualificados)
+        
+        const { data: produtos, error: errorProdutos } = await query
         
         if (errorProdutos) {
-          console.error('Erro ao carregar produtos:', errorProdutos.message)
-          this.$swal({
-            icon: 'error',
-            title: 'Erro ao carregar produtos',
-            text: 'Não foi possível carregar os produtos. Por favor, tente novamente.'
-          })
+          console.error('Erro ao carregar produtos:', errorProdutos)
+          this.produtos = []
         } else {
-          console.log('Produtos carregados:', produtos)
           this.produtos = produtos || []
-          console.log(`${this.produtos.length} produtos carregados para o tenant atual`)
-          
-          // Mapear IDs de categorias para nomes
-          this.produtos = this.produtos.map(produto => {
-            const categoria = this.categorias.find(c => c.id === produto.categoria_id)
-            return {
-              ...produto,
-              categoria_nome: categoria ? categoria.nome : 'Categoria não encontrada'
-            }
-          })
-          
-          this.produtosFiltrados = [...this.produtos]
+          console.log(`${this.produtos.length} produtos padronizados carregados`)
         }
+        
+        this.filtrarProdutos()
+        
       } catch (error) {
-        console.error('Erro ao carregar dados:', error)
+        console.error('Erro no carregamento de dados:', error)
         this.$swal({
           icon: 'error',
           title: 'Erro ao carregar dados',
-          text: 'Ocorreu um erro inesperado. Por favor, tente novamente.'
+          text: 'Ocorreu um erro ao carregar os dados. Tente novamente.'
         })
       } finally {
+        this.carregandoCategorias = false
         this.loading = false
       }
     },
@@ -430,14 +406,6 @@ export default {
       this.avaliacoes = [];
       this.avaliacaoMedia = 0;
       this.showAvaliacoes = false; // Reset ao fechar modal
-    },
-    getStatusClass(status) {
-      switch (status) {
-        case 'aprovado': return 'status-aprovado'
-        case 'pendente': return 'status-pendente'
-        case 'reprovado': return 'status-reprovado'
-        default: return ''
-      }
     },
     closeDropdownOnClickOutside(event) {
       // Método melhorado para fechar dropdown quando clica fora
@@ -620,112 +588,104 @@ h2 {
   width: 1rem;
   height: 1rem;
   vertical-align: text-bottom;
-  border: 0.2em solid currentColor;
+  border: 0.15em solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: spinner-border .75s linear infinite;
+  animation: spinner-border 0.75s linear infinite;
 }
 
 @keyframes spinner-border {
   to { transform: rotate(360deg); }
 }
 
-input {
+.search-box input {
   width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-size: 14px;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #2c3e50;
 }
 
 .produtos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
+  margin-top: 20px;
 }
 
 .produto-card {
   background: white;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  padding: 15px;
+  padding: 20px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  position: relative;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .produto-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-color: #2c3e50;
 }
 
 .produto-info h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 600;
 }
 
-.produto-status {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.status-aprovado {
-  background-color: #2ecc71;
-  color: white;
-}
-
-.status-pendente {
-  background-color: #f39c12;
-  color: white;
-}
-
-.status-reprovado {
-  background-color: #e74c3c;
-  color: white;
+.produto-info p {
+  margin: 8px 0;
+  color: #666;
+  font-size: 14px;
 }
 
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #7f8c8d;
+  color: #666;
 }
 
 .produto-modal {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   z-index: 1000;
 }
 
 .modal-content {
   background: white;
   border-radius: 8px;
-  width: 90%;
   max-width: 600px;
+  width: 90%;
   max-height: 80vh;
   overflow-y: auto;
 }
 
 .modal-header {
-  padding: 15px;
-  border-bottom: 1px solid #eee;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
 }
 
 .modal-header h3 {
   margin: 0;
+  color: #2c3e50;
 }
 
 .btn-close {
@@ -733,71 +693,61 @@ input {
   border: none;
   font-size: 24px;
   cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  color: #2c3e50;
 }
 
 .modal-body {
-  padding: 15px;
+  padding: 20px;
 }
 
-.documentos {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
-}
-
-.documentos h4 {
-  margin-top: 0;
-}
-
-.documentos ul {
-  padding-left: 20px;
-}
-
-.documentos a {
-  color: #3498db;
-  text-decoration: none;
-}
-
-.documentos a:hover {
-  text-decoration: underline;
+.produto-detalhes p {
+  margin: 12px 0;
+  color: #666;
 }
 
 .avaliacoes-section {
   margin-top: 20px;
-  padding-top: 20px;
   border-top: 1px solid #eee;
+  padding-top: 20px;
 }
 
 .avaliacoes-header {
   cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 10px;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  transition: background-color 0.2s;
+  border-radius: 4px;
+  transition: background-color 0.3s;
 }
 
 .avaliacoes-header:hover {
-  background-color: #e9ecef;
+  background-color: #f8f9fa;
 }
 
 .avaliacoes-header h4 {
   margin: 0;
-  font-size: 16px;
   color: #2c3e50;
 }
 
 .avaliacao-summary {
   display: flex;
   align-items: center;
+  gap: 10px;
+  margin-top: 5px;
 }
 
 .stars-container {
   display: flex;
   align-items: center;
-  margin-right: 10px;
+  gap: 5px;
 }
 
 .stars {
@@ -805,84 +755,61 @@ input {
 }
 
 .star {
-  font-size: 18px;
-  margin-right: 2px;
   color: #ddd;
+  font-size: 18px;
 }
 
 .star.filled {
-  color: #f1c40f;
+  color: #ffc107;
 }
 
-.half {
-  position: relative;
-}
-
-.half:after {
-  content: '★';
-  color: #f1c40f;
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 50%;
-  overflow: hidden;
+.star.half {
+  color: #ffc107;
 }
 
 .rating-number {
-  margin: 0 5px;
   font-weight: bold;
+  color: #2c3e50;
 }
 
 .rating-count {
-  color: #7f8c8d;
-  font-size: 14px;
+  color: #666;
+  font-size: 12px;
 }
 
 .no-ratings {
-  color: #7f8c8d;
+  color: #666;
   font-style: italic;
 }
 
 .toggle-icon {
-  color: #7f8c8d;
+  color: #666;
   font-size: 12px;
-  transition: transform 0.3s;
-}
-
-.avaliacoes-header.active .toggle-icon {
-  transform: rotate(180deg);
+  margin-left: auto;
 }
 
 .avaliacoes-content {
-  margin-top: 15px;
-  padding: 10px;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  max-height: 300px;
-  overflow-y: auto;
+  padding: 15px 0;
 }
 
 .no-avaliacoes {
-  color: #7f8c8d;
+  color: #666;
   font-style: italic;
   text-align: center;
   padding: 20px;
 }
 
 .avaliacoes-list {
-  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .avaliacao-item {
-  margin-bottom: 15px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #eee;
-}
-
-.avaliacao-item:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 4px;
+  border-left: 3px solid #2c3e50;
 }
 
 .avaliacao-stars {
@@ -890,13 +817,47 @@ input {
 }
 
 .avaliacao-comentario {
+  color: #666;
   margin-bottom: 8px;
-  line-height: 1.5;
-  white-space: pre-line;
 }
 
 .avaliacao-data {
-  color: #7f8c8d;
+  color: #999;
   font-size: 12px;
+}
+
+.documentos {
+  margin-top: 20px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+}
+
+.documentos h4 {
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.documentos ul {
+  list-style: none;
+  padding: 0;
+}
+
+.documentos li {
+  margin-bottom: 8px;
+}
+
+.documentos a {
+  color: #3498db;
+  text-decoration: none;
+  padding: 5px 10px;
+  border: 1px solid #3498db;
+  border-radius: 4px;
+  display: inline-block;
+  transition: all 0.3s;
+}
+
+.documentos a:hover {
+  background-color: #3498db;
+  color: white;
 }
 </style> 
