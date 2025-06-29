@@ -5216,7 +5216,7 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
 ✅ Email enviado para: ${this.usuarioAtual.email}
 
 📧 O usuário receberá:
-• Link de acesso: ${window.location.origin}/ComprarBem/#/rdm
+• Link de acesso: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/ComprarBem/#/rdm'}
 • Senha temporária para primeiro acesso
 • Instruções completas de uso
 
@@ -5751,7 +5751,7 @@ Este é um email automático. Não responda diretamente.
           
 📧 Destinatário: ${usuario.nome_usuario} (${usuario.email})
 🔑 Senha de acesso: ${senhaTemporaria}
-🔗 Link de acesso: ${window.location.origin}/ComprarBem/#/rdm
+🔗 Link de acesso: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/ComprarBem/#/rdm'}
 📅 Data: ${new Date().toLocaleString('pt-BR')}
 
 O usuário pode fazer login imediatamente no sistema RDM.`,
