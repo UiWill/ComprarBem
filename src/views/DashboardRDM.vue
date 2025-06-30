@@ -25,11 +25,11 @@
       <div class="container">
         <div class="tabs">
           <button 
-            @click="activeTab = 'nova-rdm'" 
-            :class="{ active: activeTab === 'nova-rdm' }"
+            @click="activeTab = 'avaliacao'" 
+            :class="{ active: activeTab === 'avaliacao' }"
             class="tab-btn"
           >
-            📝 Nova RDM
+            ⭐ Avaliação de Materiais
           </button>
           <button 
             @click="activeTab = 'historico'" 
@@ -46,13 +46,6 @@
             📦 Meus Materiais
           </button>
           <button 
-            @click="activeTab = 'feedback'" 
-            :class="{ active: activeTab === 'feedback' }"
-            class="tab-btn"
-          >
-            ⭐ Feedback
-          </button>
-          <button 
             @click="activeTab = 'perfil'" 
             :class="{ active: activeTab === 'perfil' }"
             class="tab-btn"
@@ -67,106 +60,174 @@
     <main class="main-content">
       <div class="container">
         
-        <!-- Tab: Nova RDM -->
-        <div v-if="activeTab === 'nova-rdm'" class="tab-content">
+        <!-- Tab: Avaliação de Materiais -->
+        <div v-if="activeTab === 'avaliacao'" class="tab-content">
           <div class="page-header">
-            <h2>📝 Emitir Nova RDM</h2>
-            <p>Solicite materiais de forma rápida e organizada</p>
+            <h2>⭐ Avaliação de Materiais</h2>
+            <p>Avalie a qualidade dos materiais e registre problemas ou sugestões</p>
           </div>
 
-          <!-- Formulário Nova RDM -->
-          <div class="rdm-form-card">
-            <form @submit.prevent="emitirRDM">
-              
-              <!-- Seleção de Material -->
+          <div class="reclamacao-form-card">
+            <form @submit.prevent="enviarReclamacao">
               <div class="form-section">
-                <h3>📦 Selecionar Material</h3>
-                
-                <div class="form-group">
-                  <label>Material:</label>
-                  <select v-model="novaRDM.material_id" @change="selecionarMaterial" :disabled="carregandoProdutos" required>
-                    <option value="">{{ carregandoProdutos ? 'Carregando materiais...' : 'Selecione um material' }}</option>
-                    <option 
-                      v-for="produto in produtos" 
-                      :key="produto.id"
-                      :value="produto.id"
-                    >
-                      {{ produto.nome }} - {{ produto.modelo || produto.codigo_material }}
-                    </option>
-                  </select>
-                  <small v-if="produtos.length === 0 && !carregandoProdutos" class="error-text">
-                    ⚠️ Nenhum material encontrado. Contate o CPM.
-                  </small>
-                </div>
-
-                <div v-if="materialSelecionado" class="material-info">
-                  <h4>📋 Dados do Material:</h4>
-                  <p><strong>Nome:</strong> {{ materialSelecionado.nome }}</p>
-                  <p><strong>Modelo:</strong> {{ materialSelecionado.modelo }}</p>
-                  <p><strong>Código:</strong> {{ materialSelecionado.codigo_material }}</p>
-                  <p><strong>Marca:</strong> {{ materialSelecionado.marca }}</p>
-                  <p><strong>Fabricante:</strong> {{ materialSelecionado.fabricante }}</p>
-                </div>
-              </div>
-
-              <!-- Quantidade e Justificativa -->
-              <div class="form-section">
-                <h3>📊 Detalhes da Solicitação</h3>
-                
+                <h3>👤 Dados do Reclamante</h3>
                 <div class="form-row">
                   <div class="form-group">
-                    <label>Quantidade:</label>
+                    <label>Nome do Reclamante:</label>
                     <input 
-                      type="number" 
-                      v-model="novaRDM.quantidade" 
-                      min="1" 
-                      max="9999"
+                      type="text" 
+                      v-model="novaReclamacao.nome_reclamante" 
                       required 
                     />
                   </div>
-                  
                   <div class="form-group">
-                    <label>Unidade:</label>
-                    <select v-model="novaRDM.unidade_medida">
-                      <option value="UN">Unidade (UN)</option>
-                      <option value="CX">Caixa (CX)</option>
-                      <option value="KG">Quilograma (KG)</option>
-                      <option value="LT">Litro (LT)</option>
-                      <option value="MT">Metro (MT)</option>
-                      <option value="PC">Peça (PC)</option>
-                    </select>
-                  </div>
-                  
-                  <div class="form-group">
-                    <label>Urgência:</label>
-                    <select v-model="novaRDM.urgencia">
-                      <option value="BAIXA">🟢 Baixa</option>
-                      <option value="NORMAL">🟡 Normal</option>
-                      <option value="ALTA">🟠 Alta</option>
-                      <option value="URGENTE">🔴 Urgente</option>
-                    </select>
+                    <label>Telefone:</label>
+                    <input 
+                      type="tel" 
+                      v-model="novaReclamacao.telefone" 
+                      placeholder="(00) 00000-0000"
+                      required 
+                    />
                   </div>
                 </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Email:</label>
+                    <input 
+                      type="email" 
+                      v-model="novaReclamacao.email" 
+                      required 
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>Unidade/Setor:</label>
+                    <input 
+                      type="text" 
+                      v-model="novaReclamacao.unidade_setor" 
+                      required 
+                    />
+                  </div>
+                </div>
+              </div>
 
+              <div class="form-section">
+                <h3>📦 Dados do Material</h3>
                 <div class="form-group">
-                  <label>Justificativa:</label>
-                  <textarea 
-                    v-model="novaRDM.justificativa" 
-                    rows="4"
-                    placeholder="Descreva a necessidade do material, onde será usado, etc."
+                  <label>Selecionar Material:</label>
+                  <select 
+                    v-model="materialSelecionadoReclamacao" 
+                    @change="preencherDadosMaterial"
                     required
+                  >
+                    <option value="">Selecione um material sob sua responsabilidade</option>
+                    <option 
+                      v-for="material in usuarioAtual.materiais" 
+                      :key="material.produto_id"
+                      :value="material"
+                    >
+                      {{ material.nome }} - {{ material.codigo }}
+                    </option>
+                  </select>
+                  <small v-if="usuarioAtual.materiais?.length === 0" class="error-text">
+                    ⚠️ Você não possui materiais cadastrados. Entre em contato com a CPM.
+                  </small>
+                </div>
+                
+                <div v-if="materialSelecionadoReclamacao" class="material-info-reclamacao">
+                  <h4>📋 Dados do Material Selecionado:</h4>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Nome do Material:</label>
+                      <input 
+                        type="text" 
+                        v-model="novaReclamacao.nome_material" 
+                        readonly
+                        class="readonly-input"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label>Código do Material:</label>
+                      <input 
+                        type="text" 
+                        v-model="novaReclamacao.codigo_material" 
+                        readonly
+                        class="readonly-input"
+                      />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Marca e Modelo:</label>
+                    <input 
+                      type="text" 
+                      v-model="novaReclamacao.marca_modelo" 
+                      placeholder="Informe a marca e modelo específicos (se necessário)"
+                    />
+                  </div>
+                  
+                  <!-- Sistema de Estrelas para Avaliação -->
+                  <div class="form-group">
+                    <label>⭐ Avaliação da Qualidade (obrigatório):</label>
+                    <div class="star-rating">
+                      <span 
+                        v-for="i in 5" 
+                        :key="i"
+                        @click="novaReclamacao.rating = i"
+                        :class="{ active: (novaReclamacao.rating || 0) >= i }"
+                        class="star"
+                        :title="`${i} estrela${i > 1 ? 's' : ''}`"
+                      >
+                        ⭐
+                      </span>
+                    </div>
+                    <small v-if="novaReclamacao.rating" class="rating-info">
+                      Avaliação: {{ novaReclamacao.rating }}/5 estrelas
+                    </small>
+                    <small v-else class="error-text">
+                      ⚠️ Por favor, dê uma avaliação de 1 a 5 estrelas
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <h3>💬 Comentários e Observações</h3>
+                <div class="form-group">
+                  <label>Observações sobre o Material:</label>
+                  <textarea 
+                    v-model="novaReclamacao.comentario" 
+                    rows="3"
+                    placeholder="Como está sendo a experiência com este material? Qualidade, durabilidade, eficácia..."
                   ></textarea>
                 </div>
               </div>
 
-              <!-- Botões -->
+              <div class="form-section">
+                <h3>🚨 Problemas e Reclamações (opcional)</h3>
+                <div class="form-group">
+                  <label>Descrição de Problemas:</label>
+                  <textarea 
+                    v-model="novaReclamacao.registro_reclamacao" 
+                    rows="4"
+                    placeholder="Se houver problemas, defeitos ou situações negativas, descreva detalhadamente aqui... (opcional)"
+                  ></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Sugestões de Melhoria:</label>
+                  <textarea 
+                    v-model="novaReclamacao.sugestoes" 
+                    rows="3"
+                    placeholder="Sugestões para melhorias ou soluções... (opcional)"
+                  ></textarea>
+                </div>
+              </div>
+
               <div class="form-actions">
-                <button type="button" @click="limparFormulario" class="btn-secondary">
+                <button type="button" @click="limparAvaliacao" class="btn-secondary">
                   🗑️ Limpar
                 </button>
-                <button type="submit" :disabled="salvandoRDM" class="btn-primary">
-                  <span v-if="salvandoRDM">⏳ Emitindo...</span>
-                  <span v-else">🚀 Emitir RDM</span>
+                <button type="submit" :disabled="enviandoReclamacao || !novaReclamacao.rating" class="btn-primary">
+                  <span v-if="enviandoReclamacao">⏳ Enviando...</span>
+                  <span v-else>⭐ Enviar Avaliação</span>
                 </button>
               </div>
             </form>
@@ -176,91 +237,90 @@
         <!-- Tab: Histórico -->
         <div v-if="activeTab === 'historico'" class="tab-content">
           <div class="page-header">
-            <h2>📋 Histórico de RDMs</h2>
-            <p>Acompanhe suas solicitações emitidas</p>
+            <h2>📋 Histórico de Avaliações</h2>
+            <p>Veja suas avaliações e feedbacks anteriores</p>
           </div>
 
-          <!-- Filtros -->
-          <div class="filters-card">
-            <div class="filters-row">
-              <div class="filter-group">
-                <label>🔍 Buscar:</label>
-                <input 
-                  type="text" 
-                  v-model="filtros.busca" 
-                  placeholder="Material, código..."
-                  @input="aplicarFiltros"
-                />
-              </div>
-              
-              <div class="filter-group">
-                <label>📊 Status:</label>
-                <select v-model="filtros.status" @change="aplicarFiltros">
-                  <option value="">Todos</option>
-                  <option value="PENDENTE">🟡 Pendente</option>
-                  <option value="APROVADO">🟢 Aprovado</option>
-                  <option value="REJEITADO">🔴 Rejeitado</option>
-                  <option value="EM_ANALISE">🔄 Em Análise</option>
-                </select>
-              </div>
-              
-              <div class="filter-group">
-                <label>📅 Período:</label>
-                <select v-model="filtros.periodo" @change="aplicarFiltros">
-                  <option value="">Todos</option>
-                  <option value="hoje">Hoje</option>
-                  <option value="semana">Esta Semana</option>
-                  <option value="mes">Este Mês</option>
-                  <option value="trimestre">Último Trimestre</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Lista de RDMs -->
-          <div class="rdms-list">
-            <div v-if="carregandoRDMs" class="loading">
-              ⏳ Carregando RDMs...
-            </div>
-
-            <div v-else-if="rdmsFiltradas.length === 0" class="empty-state">
-              <div class="empty-icon">📭</div>
-              <h3>Nenhuma RDM encontrada</h3>
-              <p>Você ainda não emitiu nenhuma RDM ou nenhuma corresponde aos filtros aplicados.</p>
-              <button @click="activeTab = 'nova-rdm'" class="btn-primary">
-                📝 Emitir Primeira RDM
-              </button>
-            </div>
-
-            <div v-else class="rdms-grid">
-              <div 
-                v-for="rdm in rdmsFiltradas" 
-                :key="rdm.id"
-                class="rdm-card"
-                :class="'status-' + rdm.status.toLowerCase()"
-              >
-                <div class="rdm-header">
-                  <span class="rdm-id">#{{ rdm.id.substring(0, 8) }}</span>
-                  <span class="rdm-status" :class="'status-' + rdm.status.toLowerCase()">
-                    {{ getStatusLabel(rdm.status) }}
-                  </span>
+          <div class="historico-container">
+            <!-- Filtros -->
+            <div class="filters-card">
+              <div class="filters-row">
+                <div class="filter-group">
+                  <label>🔍 Buscar:</label>
+                  <input 
+                    type="text" 
+                    v-model="filtros.busca" 
+                    placeholder="Material, código..."
+                    @input="aplicarFiltros"
+                  />
                 </div>
                 
-                <div class="rdm-content">
-                  <h4>{{ rdm.material_nome }}</h4>
-                  <p class="rdm-details">
-                    <strong>Código:</strong> {{ rdm.material_codigo }}<br>
-                    <strong>Quantidade:</strong> {{ rdm.quantidade }} {{ rdm.unidade_medida }}<br>
-                    <strong>Urgência:</strong> {{ getUrgenciaLabel(rdm.urgencia) }}
-                  </p>
-                  <p class="rdm-justificativa">{{ rdm.justificativa }}</p>
+                <div class="filter-group">
+                  <label>⭐ Avaliação:</label>
+                  <select v-model="filtros.rating" @change="aplicarFiltros">
+                    <option value="">Todas</option>
+                    <option value="5">⭐⭐⭐⭐⭐ (5 estrelas)</option>
+                    <option value="4">⭐⭐⭐⭐ (4 estrelas)</option>
+                    <option value="3">⭐⭐⭐ (3 estrelas)</option>
+                    <option value="2">⭐⭐ (2 estrelas)</option>
+                    <option value="1">⭐ (1 estrela)</option>
+                  </select>
                 </div>
                 
-                <div class="rdm-footer">
-                  <span class="rdm-date">📅 {{ formatDate(rdm.criado_em) }}</span>
-                  <button @click="verDetalhesRDM(rdm)" class="btn-details">
-                    👁️ Detalhes
-                  </button>
+                <div class="filter-group">
+                  <label>📅 Período:</label>
+                  <select v-model="filtros.periodo" @change="aplicarFiltros">
+                    <option value="">Todos</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="semana">Esta Semana</option>
+                    <option value="mes">Este Mês</option>
+                    <option value="trimestre">Último Trimestre</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de Feedbacks -->
+            <div class="feedbacks-list">
+              <div v-if="carregandoHistorico" class="loading-card">
+                ⏳ Carregando histórico...
+              </div>
+
+              <div v-else-if="historicoFeedbacks.length === 0" class="empty-state-card">
+                <div class="empty-icon">📭</div>
+                <h3>Nenhuma avaliação encontrada</h3>
+                <p>Você ainda não enviou nenhuma avaliação de material.</p>
+                <button @click="activeTab = 'avaliacao'" class="btn-primary">
+                  ⭐ Fazer Primeira Avaliação
+                </button>
+              </div>
+
+              <div v-else class="feedbacks-grid">
+                <div 
+                  v-for="feedback in historicoFeedbacks" 
+                  :key="feedback.id"
+                  class="feedback-card-history"
+                >
+                  <div class="feedback-header">
+                    <h4>{{ feedback.material_nome }}</h4>
+                    <div class="rating-display">
+                      <span v-for="i in 5" :key="i" :class="{ active: feedback.rating >= i }" class="star">⭐</span>
+                    </div>
+                  </div>
+                  
+                  <div class="feedback-content">
+                    <p class="feedback-details">
+                      <strong>Código:</strong> {{ feedback.material_codigo }}<br>
+                      <strong>Avaliação:</strong> {{ feedback.rating }}/5 estrelas
+                    </p>
+                    <p class="feedback-comentario" v-if="feedback.comentario">
+                      <strong>Comentário:</strong> {{ feedback.comentario }}
+                    </p>
+                  </div>
+                  
+                  <div class="feedback-footer">
+                    <span class="feedback-date">📅 {{ formatDate(feedback.criado_em) }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -271,105 +331,47 @@
         <div v-if="activeTab === 'materiais'" class="tab-content">
           <div class="page-header">
             <h2>📦 Meus Materiais</h2>
-            <p>Materiais que você está autorizado a solicitar</p>
+            <p>Materiais sob sua responsabilidade para avaliação</p>
           </div>
 
-          <div class="materiais-grid">
-            <div 
-              v-for="material in usuarioAtual.materiais" 
-              :key="material.produto_id"
-              class="material-card"
-            >
-              <div class="material-header">
-                <h4>{{ material.nome }}</h4>
-                <span class="material-code">{{ material.codigo }}</span>
-              </div>
-              
-              <div class="material-info">
-                <p><strong>Periodicidade RDM:</strong> {{ material.periodicidade_rdm }}</p>
-              </div>
-              
-              <div class="material-actions">
-                <button 
-                  @click="emitirRDMRapida(material)" 
-                  class="btn-quick-rdm"
-                >
-                  ⚡ RDM Rápida
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab: Feedback -->
-        <div v-if="activeTab === 'feedback'" class="tab-content">
-          <div class="page-header">
-            <h2>⭐ Feedback dos Materiais</h2>
-            <p>Avalie os materiais que você já recebeu</p>
-          </div>
-
-          <!-- Lista de materiais para feedback -->
-          <div class="feedback-card">
-            <div v-if="carregandoFeedback" class="loading-state">
-              <div class="loading-spinner"></div>
-              Carregando materiais recebidos...
+          <div class="materiais-container">
+            <div v-if="usuarioAtual.materiais?.length === 0" class="empty-state-card">
+              <div class="empty-icon">📦</div>
+              <h3>Nenhum material cadastrado</h3>
+              <p>Você ainda não possui materiais sob sua responsabilidade.</p>
+              <p>Entre em contato com a CPM para solicitar acesso aos materiais do seu setor.</p>
             </div>
 
-            <div v-else-if="materiaisParaFeedback.length === 0" class="empty-state">
-              <h3>📭 Nenhum material para avaliar</h3>
-              <p>Você ainda não recebeu nenhum material aprovado.</p>
-              <p>Quando suas RDMs forem aprovadas e os materiais entregues, eles aparecerão aqui para avaliação.</p>
-            </div>
-
-            <div v-else class="materiais-feedback">
-              <h3>📋 Materiais Recebidos ({{ materiaisParaFeedback.length }})</h3>
-              
-              <div class="material-feedback-item" v-for="material in materiaisParaFeedback" :key="material.id">
-                <div class="material-info">
-                  <h4>{{ material.material_nome }}</h4>
-                  <p><strong>Código:</strong> {{ material.material_codigo }}</p>
-                  <p><strong>Recebido em:</strong> {{ formatDate(material.data_aprovacao || material.criado_em) }}</p>
+            <div v-else class="materiais-grid">
+              <div 
+                v-for="material in usuarioAtual.materiais" 
+                :key="material.produto_id"
+                class="material-card"
+              >
+                <div class="material-header">
+                  <h4>{{ material.nome }}</h4>
+                  <span class="material-code">{{ material.codigo }}</span>
                 </div>
                 
-                <div class="feedback-form">
-                  <div class="rating-section">
-                    <label>⭐ Avaliação:</label>
-                    <div class="star-rating">
-                      <span 
-                        v-for="i in 5" 
-                        :key="i"
-                        @click="setRating(material.id, i)"
-                        :class="{ active: (material.rating || 0) >= i }"
-                        class="star"
-                      >
-                        ⭐
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div class="comment-section">
-                    <label>💬 Comentário:</label>
-                    <textarea 
-                      v-model="material.comentario"
-                      placeholder="Como foi sua experiência com este material? Qualidade, durabilidade, eficácia..."
-                      rows="3"
-                    ></textarea>
-                  </div>
-                  
-                  <div class="feedback-actions">
-                    <button 
-                      @click="enviarFeedback(material)" 
-                      :disabled="!material.rating"
-                      class="btn-primary btn-small"
-                    >
-                      💾 Enviar Feedback
-                    </button>
-                  </div>
+                <div class="material-info">
+                  <p><strong>Periodicidade de Avaliação:</strong> {{ material.periodicidade_rdm }}</p>
+                  <p><strong>Próxima Avaliação:</strong> {{ calcularProximaAvaliacao(material) }}</p>
+                </div>
+                
+                <div class="material-actions">
+                  <button 
+                    @click="activeTab = 'avaliacao'" 
+                    class="btn-avaliar"
+                  >
+                    ⭐ Avaliar Material
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+
 
         <!-- Tab: Perfil -->
         <div v-if="activeTab === 'perfil'" class="tab-content">
@@ -378,7 +380,8 @@
             <p>Informações da sua conta e configurações</p>
           </div>
 
-          <div class="perfil-cards">
+          <div class="perfil-container">
+            <div class="perfil-cards">
             <div class="perfil-card">
               <h3>👤 Dados Pessoais</h3>
               <div class="perfil-info">
@@ -393,20 +396,16 @@
               <h3>📊 Estatísticas</h3>
               <div class="stats-grid">
                 <div class="stat-item">
-                  <span class="stat-number">{{ rdmsEmitidas }}</span>
-                  <span class="stat-label">RDMs Emitidas</span>
+                  <span class="stat-number">{{ totalFeedbacks }}</span>
+                  <span class="stat-label">Avaliações Enviadas</span>
                 </div>
                 <div class="stat-item">
-                  <span class="stat-number">{{ rdmsAprovadas }}</span>
-                  <span class="stat-label">Aprovadas</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-number">{{ rdmsPendentes }}</span>
-                  <span class="stat-label">Pendentes</span>
+                  <span class="stat-number">{{ feedbacksRecentes }}</span>
+                  <span class="stat-label">Últimos 30 dias</span>
                 </div>
                 <div class="stat-item">
                   <span class="stat-number">{{ usuarioAtual.materiais?.length || 0 }}</span>
-                  <span class="stat-label">Materiais Autorizados</span>
+                  <span class="stat-label">Materiais Sob Responsabilidade</span>
                 </div>
               </div>
             </div>
@@ -445,57 +444,12 @@
               </form>
             </div>
           </div>
+          </div>
         </div>
       </div>
     </main>
 
-    <!-- Modal Detalhes RDM -->
-    <div v-if="modalDetalhes" class="modal-overlay" @click="modalDetalhes = false">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h3>📋 Detalhes da RDM #{{ rdmSelecionada?.id?.substring(0, 8) }}</h3>
-          <button @click="modalDetalhes = false" class="btn-close">✕</button>
-        </div>
-        <div class="modal-body" v-if="rdmSelecionada">
-          <div class="detalhes-grid">
-            <div class="detalhe-item">
-              <strong>Status:</strong>
-              <span :class="'status-' + rdmSelecionada.status.toLowerCase()">
-                {{ getStatusLabel(rdmSelecionada.status) }}
-              </span>
-            </div>
-            <div class="detalhe-item">
-              <strong>Material:</strong>
-              {{ rdmSelecionada.material_nome }}
-            </div>
-            <div class="detalhe-item">
-              <strong>Código:</strong>
-              {{ rdmSelecionada.material_codigo }}
-            </div>
-            <div class="detalhe-item">
-              <strong>Quantidade:</strong>
-              {{ rdmSelecionada.quantidade }} {{ rdmSelecionada.unidade_medida }}
-            </div>
-            <div class="detalhe-item">
-              <strong>Urgência:</strong>
-              {{ getUrgenciaLabel(rdmSelecionada.urgencia) }}
-            </div>
-            <div class="detalhe-item">
-              <strong>Data de Emissão:</strong>
-              {{ formatDate(rdmSelecionada.criado_em) }}
-            </div>
-            <div class="detalhe-item full-width">
-              <strong>Justificativa:</strong>
-              <p>{{ rdmSelecionada.justificativa }}</p>
-            </div>
-            <div v-if="rdmSelecionada.observacoes_cpm" class="detalhe-item full-width">
-              <strong>Observações do CPM:</strong>
-              <p>{{ rdmSelecionada.observacoes_cpm }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -506,41 +460,36 @@ export default {
   name: 'DashboardRDM',
   data() {
     return {
-      activeTab: 'nova-rdm',
+      activeTab: 'avaliacao',
       usuarioAtual: {},
       
-      // Produtos para seleção
-      produtos: [],
-      carregandoProdutos: false,
+
       
-      // Nova RDM
-      novaRDM: {
-        material_id: '',
-        quantidade: 1,
-        unidade_medida: 'UN',
-        urgencia: 'NORMAL',
-        justificativa: ''
+      // Avaliação (antigo Reclamações)
+      novaReclamacao: {
+        nome_reclamante: '',
+        telefone: '',
+        email: '',
+        unidade_setor: '',
+        nome_material: '',
+        codigo_material: '',
+        marca_modelo: '',
+        rating: 0,
+        comentario: '',
+        registro_reclamacao: '',
+        sugestoes: ''
       },
-      materialSelecionado: null,
-      salvandoRDM: false,
+      materialSelecionadoReclamacao: null,
+      enviandoReclamacao: false,
       
-      // Histórico
-      rdms: [],
-      rdmsFiltradas: [],
-      carregandoRDMs: false,
+      // Histórico de Feedbacks
+      historicoFeedbacks: [],
+      carregandoHistorico: false,
       filtros: {
         busca: '',
-        status: '',
+        rating: '',
         periodo: ''
       },
-      
-      // Modal
-      modalDetalhes: false,
-      rdmSelecionada: null,
-      
-      // Feedback
-      materiaisParaFeedback: [],
-      carregandoFeedback: false,
       
       // Perfil
       alteracaoSenha: {
@@ -552,25 +501,27 @@ export default {
     }
   },
   computed: {
-    rdmsEmitidas() {
-      return this.rdms.length
+    totalFeedbacks() {
+      return this.historicoFeedbacks.length
     },
-    rdmsAprovadas() {
-      return this.rdms.filter(rdm => rdm.status === 'APROVADO').length
-    },
-    rdmsPendentes() {
-      return this.rdms.filter(rdm => rdm.status === 'PENDENTE').length
+    feedbacksRecentes() {
+      return this.historicoFeedbacks.filter(f => {
+        const umMesAtras = new Date()
+        umMesAtras.setMonth(umMesAtras.getMonth() - 1)
+        return new Date(f.criado_em) >= umMesAtras
+      }).length
     }
   },
   async mounted() {
     await this.carregarDadosUsuario()
-    await this.carregarProdutos()
-    await this.carregarRDMs()
+    await this.carregarHistoricoFeedbacks()
+    // Inicializar campos de avaliação com dados do usuário
+    this.inicializarReclamacao()
   },
   watch: {
     activeTab(newTab) {
-      if (newTab === 'feedback') {
-        this.carregarMateriaisParaFeedback()
+      if (newTab === 'historico') {
+        this.carregarHistoricoFeedbacks()
       }
     }
   },
@@ -581,6 +532,10 @@ export default {
         if (dadosLocal) {
           this.usuarioAtual = JSON.parse(dadosLocal)
           console.log('✅ Dados do usuário carregados:', this.usuarioAtual.nome_usuario)
+          console.log('📦 Materiais do usuário:', this.usuarioAtual.materiais?.length || 0)
+          
+
+          
         } else {
           throw new Error('Dados do usuário não encontrados')
         }
@@ -590,211 +545,275 @@ export default {
       }
     },
 
-    async carregarProdutos() {
-      this.carregandoProdutos = true
-      try {
-        console.log('🔍 [RDM] Carregando TODOS os produtos para solicitação')
-        console.log('📝 [RDM] Usuário pode solicitar qualquer material do catálogo')
-        
-        // Para SOLICITAR materiais (Nova RDM): mostrar TODOS os produtos disponíveis
-        const { data: produtos, error } = await supabase
-          .from('produtos')
-          .select('id, nome, modelo, codigo_material, marca, fabricante, categoria_id, status')
-          .eq('tenant_id', this.usuarioAtual.tenant_id)
-          .order('nome')
-        
-        if (error) {
-          console.error('❌ [RDM] Erro ao carregar catálogo de produtos:', error)
-          this.produtos = []
-          return
-        }
-        
-        this.produtos = produtos || []
-        console.log('📦 [RDM] Catálogo completo carregado:', this.produtos.length, 'produtos')
-        console.log('✅ [RDM] Usuário pode solicitar qualquer material disponível')
-        
-      } catch (error) {
-        console.error('❌ [RDM] Erro ao carregar produtos:', error)
-        this.produtos = []
-      } finally {
-        this.carregandoProdutos = false
-      }
+
+
+    inicializarReclamacao() {
+      this.novaReclamacao.nome_reclamante = this.usuarioAtual.nome_usuario || ''
+      this.novaReclamacao.email = this.usuarioAtual.email || ''
+      this.novaReclamacao.unidade_setor = this.usuarioAtual.unidade_setor || ''
+      this.novaReclamacao.rating = 0
+      this.novaReclamacao.comentario = ''
     },
 
-    // Função separada para carregar produtos para FEEDBACK (apenas os que já recebeu)
-    async carregarProdutosParaFeedback() {
+
+
+    async carregarHistoricoFeedbacks() {
+      this.carregandoHistorico = true
       try {
-        console.log('🔍 [FEEDBACK] Carregando produtos que o usuário já recebeu')
+        console.log('🔍 [HISTÓRICO] Carregando feedbacks anteriores')
         
-        // Buscar RDMs APROVADAS do usuário para saber quais materiais ele já recebeu
-        const { data: rdmsAprovadas, error } = await supabase
-          .from('rdms_online')
-          .select('material_nome, material_codigo')
-          .eq('usuario_rdm_id', this.usuarioAtual.id)
-          .eq('status', 'APROVADO')
-        
-        if (error) {
-          console.error('❌ [FEEDBACK] Erro ao carregar RDMs aprovadas:', error)
-          return []
+        // Carregar feedbacks do banco de dados
+        try {
+          const { data: feedbacks, error } = await supabase
+            .from('material_feedbacks')
+            .select('*')
+            .eq('usuario_rdm_id', this.usuarioAtual.id)
+            .order('criado_em', { ascending: false })
+          
+          if (error) {
+            console.error('❌ [HISTÓRICO] Erro ao carregar feedbacks:', error)
+            // Se der erro, inicializar com array vazio
+            this.historicoFeedbacks = []
+          } else {
+            this.historicoFeedbacks = feedbacks || []
+            console.log('✅ [HISTÓRICO] Feedbacks carregados do banco:', this.historicoFeedbacks.length)
+          }
+        } catch (erro) {
+          console.error('❌ [HISTÓRICO] Exceção ao carregar feedbacks:', erro)
+          this.historicoFeedbacks = []
         }
         
-        console.log('📋 [FEEDBACK] Materiais já recebidos:', rdmsAprovadas?.length || 0)
-        return rdmsAprovadas || []
-        
-      } catch (error) {
-        console.error('❌ [FEEDBACK] Erro ao carregar materiais para feedback:', error)
-        return []
-      }
-    },
-
-    async carregarRDMs() {
-      this.carregandoRDMs = true
-      try {
-        const { data, error } = await supabase
-          .from('rdms_online')
-          .select('*')
-          .eq('usuario_rdm_id', this.usuarioAtual.id)
-          .order('criado_em', { ascending: false })
-        
-        if (error) throw error
-        
-        this.rdms = data || []
         this.aplicarFiltros()
         
-        console.log('✅ RDMs carregadas:', this.rdms.length)
-      } catch (error) {
-        console.error('❌ Erro ao carregar RDMs:', error)
-      } finally {
-        this.carregandoRDMs = false
-      }
-    },
-
-    selecionarMaterial() {
-      this.materialSelecionado = this.produtos.find(
-        p => p.id === this.novaRDM.material_id
-      )
-      console.log('📦 [RDM] Material selecionado:', this.materialSelecionado)
-    },
-
-    async emitirRDM() {
-      if (this.salvandoRDM) return
-      
-      this.salvandoRDM = true
-      try {
-        const material = this.materialSelecionado
-        
-        const rdmData = {
-          tenant_id: this.usuarioAtual.tenant_id,
-          usuario_rdm_id: this.usuarioAtual.id,
-          material_nome: material.nome,
-          material_codigo: material.codigo_material || material.modelo,
-          quantidade: parseInt(this.novaRDM.quantidade),
-          unidade_medida: this.novaRDM.unidade_medida,
-          urgencia: this.novaRDM.urgencia,
-          justificativa: this.novaRDM.justificativa,
-          status: 'PENDENTE'
-        }
-        
-        const { data, error } = await supabase
-          .from('rdms_online')
-          .insert([rdmData])
-          .select()
-        
-        if (error) throw error
-        
-        alert('🎉 RDM emitida com sucesso!')
-        this.limparFormulario()
-        this.activeTab = 'historico'
-        await this.carregarRDMs()
+        console.log('✅ [HISTÓRICO] Feedbacks carregados:', this.historicoFeedbacks.length)
         
       } catch (error) {
-        console.error('❌ Erro ao emitir RDM:', error)
-        alert('❌ Erro ao emitir RDM: ' + error.message)
+        console.error('❌ [HISTÓRICO] Erro ao carregar histórico:', error)
+        this.historicoFeedbacks = []
       } finally {
-        this.salvandoRDM = false
+        this.carregandoHistorico = false
       }
-    },
-
-    limparFormulario() {
-      this.novaRDM = {
-        material_id: '',
-        quantidade: 1,
-        unidade_medida: 'UN',
-        urgencia: 'NORMAL',
-        justificativa: ''
-      }
-      this.materialSelecionado = null
     },
 
     aplicarFiltros() {
-      let filtradas = [...this.rdms]
+      if (!this.historicoFeedbacks) {
+        return
+      }
+      
+      let filtrados = [...this.historicoFeedbacks]
       
       if (this.filtros.busca) {
         const busca = this.filtros.busca.toLowerCase()
-        filtradas = filtradas.filter(rdm =>
-          rdm.material_nome.toLowerCase().includes(busca) ||
-          rdm.material_codigo.toLowerCase().includes(busca)
+        filtrados = filtrados.filter(feedback =>
+          feedback.material_nome?.toLowerCase().includes(busca) ||
+          feedback.material_codigo?.toLowerCase().includes(busca)
         )
       }
       
-      if (this.filtros.status) {
-        filtradas = filtradas.filter(rdm => rdm.status === this.filtros.status)
+      if (this.filtros.rating) {
+        filtrados = filtrados.filter(feedback => feedback.rating == this.filtros.rating)
       }
       
       if (this.filtros.periodo) {
         const hoje = new Date()
-        filtradas = filtradas.filter(rdm => {
-          const dataRdm = new Date(rdm.criado_em)
+        filtrados = filtrados.filter(feedback => {
+          const dataFeedback = new Date(feedback.criado_em)
           
           switch (this.filtros.periodo) {
             case 'hoje':
-              return dataRdm.toDateString() === hoje.toDateString()
+              return dataFeedback.toDateString() === hoje.toDateString()
             case 'semana':
               const semanaAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000)
-              return dataRdm >= semanaAtras
+              return dataFeedback >= semanaAtras
             case 'mes':
-              return dataRdm.getMonth() === hoje.getMonth() && dataRdm.getFullYear() === hoje.getFullYear()
+              return dataFeedback.getMonth() === hoje.getMonth() && dataFeedback.getFullYear() === hoje.getFullYear()
             case 'trimestre':
               const trimestre = new Date(hoje.getTime() - 90 * 24 * 60 * 60 * 1000)
-              return dataRdm >= trimestre
+              return dataFeedback >= trimestre
             default:
               return true
           }
         })
       }
       
-      this.rdmsFiltradas = filtradas
+      // Atualizar lista filtrada se necessário
+      // this.historicoFeedbacksFiltrados = filtrados
     },
 
-    verDetalhesRDM(rdm) {
-      this.rdmSelecionada = rdm
-      this.modalDetalhes = true
-    },
-
-    emitirRDMRapida(produto) {
-      this.novaRDM.material_id = produto.id
-      this.selecionarMaterial()
-      this.activeTab = 'nova-rdm'
-    },
-
-    getStatusLabel(status) {
-      const labels = {
-        'PENDENTE': '🟡 Pendente',
-        'APROVADO': '🟢 Aprovado',
-        'REJEITADO': '🔴 Rejeitado',
-        'EM_ANALISE': '🔄 Em Análise'
+    calcularProximaAvaliacao(material) {
+      // Calcular próxima data de avaliação baseada na periodicidade
+      const hoje = new Date()
+      const periodicidade = material.periodicidade_rdm || 'MENSAL'
+      
+      switch (periodicidade.toUpperCase()) {
+        case 'SEMANAL':
+          hoje.setDate(hoje.getDate() + 7)
+          break
+        case 'QUINZENAL':
+          hoje.setDate(hoje.getDate() + 15)
+          break
+        case 'MENSAL':
+          hoje.setMonth(hoje.getMonth() + 1)
+          break
+        case 'TRIMESTRAL':
+          hoje.setMonth(hoje.getMonth() + 3)
+          break
+        case 'SEMESTRAL':
+          hoje.setMonth(hoje.getMonth() + 6)
+          break
+        case 'ANUAL':
+          hoje.setFullYear(hoje.getFullYear() + 1)
+          break
+        default:
+          hoje.setMonth(hoje.getMonth() + 1)
       }
-      return labels[status] || status
+      
+      return hoje.toLocaleDateString('pt-BR')
     },
 
-    getUrgenciaLabel(urgencia) {
-      const labels = {
-        'BAIXA': '🟢 Baixa',
-        'NORMAL': '🟡 Normal',
-        'ALTA': '🟠 Alta',
-        'URGENTE': '🔴 Urgente'
+
+
+    // Métodos para Avaliação
+    async enviarReclamacao() {
+      if (this.enviandoReclamacao) return
+      
+      this.enviandoReclamacao = true
+      try {
+        console.log('📤 [RECLAMAÇÃO] Enviando reclamação...')
+        
+        // Obter o tenant_id correto (auth.uid())
+        const { data: { user } } = await supabase.auth.getUser()
+        const tenantId = user?.id
+        
+        if (!tenantId) {
+          alert('❌ Erro: usuário não autenticado')
+          return
+        }
+        
+        const avaliacaoData = {
+          tenant_id: tenantId,
+          usuario_rdm_id: this.usuarioAtual.id,
+          nome_reclamante: this.novaReclamacao.nome_reclamante,
+          telefone: this.novaReclamacao.telefone,
+          email: this.novaReclamacao.email,
+          unidade_setor: this.novaReclamacao.unidade_setor,
+          nome_material: this.novaReclamacao.nome_material,
+          codigo_material: this.novaReclamacao.codigo_material,
+          marca_modelo: this.novaReclamacao.marca_modelo,
+          rating: this.novaReclamacao.rating,
+          comentario: this.novaReclamacao.comentario,
+          registro_reclamacao: this.novaReclamacao.registro_reclamacao,
+          sugestoes: this.novaReclamacao.sugestoes,
+          status: 'ABERTA',
+          data_reclamacao: new Date().toISOString().split('T')[0] // Apenas a data (DATE field)
+        }
+        
+        console.log('💾 [AVALIAÇÃO] Dados preparados:', avaliacaoData)
+        
+        // Salvar avaliação na tabela material_feedbacks
+        console.log('💾 [AVALIAÇÃO] Salvando avaliação no banco...')
+        
+        const feedbackData = {
+          tenant_id: avaliacaoData.tenant_id,
+          usuario_rdm_id: avaliacaoData.usuario_rdm_id,
+          produto_id: this.materialSelecionadoReclamacao?.produto_id || null,
+          material_nome: avaliacaoData.nome_material,
+          material_codigo: avaliacaoData.codigo_material,
+          rating: avaliacaoData.rating,
+          comentario: avaliacaoData.comentario
+        }
+        
+        const { error: feedbackError } = await supabase
+          .from('material_feedbacks')
+          .insert([feedbackData])
+        
+        if (feedbackError) {
+          console.error('❌ [AVALIAÇÃO] Erro ao salvar feedback:', feedbackError)
+          alert('❌ Erro ao enviar avaliação: ' + feedbackError.message)
+          return
+        }
+        
+        console.log('✅ [AVALIAÇÃO] Feedback salvo com sucesso!')
+        
+        // Se há problemas descritos, salvar também como reclamação
+        const temProblemas = avaliacaoData.registro_reclamacao && avaliacaoData.registro_reclamacao.trim().length > 0
+        
+        if (temProblemas) {
+          console.log('💾 [RECLAMAÇÃO] Salvando reclamação no banco...')
+          
+          // Dados específicos para reclamações (sem campos que não existem na tabela)
+          const reclamacaoData = {
+            tenant_id: avaliacaoData.tenant_id,
+            nome_reclamante: avaliacaoData.nome_reclamante,
+            telefone: avaliacaoData.telefone,
+            email: avaliacaoData.email,
+            unidade_setor: avaliacaoData.unidade_setor,
+            nome_material: avaliacaoData.nome_material,
+            codigo_material: avaliacaoData.codigo_material,
+            marca_modelo: avaliacaoData.marca_modelo,
+            registro_reclamacao: avaliacaoData.registro_reclamacao,
+            sugestoes: avaliacaoData.sugestoes,
+            status: avaliacaoData.status,
+            data_reclamacao: avaliacaoData.data_reclamacao
+          }
+          
+          const { error } = await supabase
+            .from('reclamacoes_usuarios')
+            .insert([reclamacaoData])
+          
+          if (error) {
+            console.error('❌ [RECLAMAÇÃO] Erro ao salvar reclamação:', error)
+            alert('❌ Erro ao enviar reclamação: ' + error.message)
+            return
+          }
+          
+          console.log('✅ [RECLAMAÇÃO] Salva no banco com sucesso!')
+        }
+        
+        // Recarregar histórico para mostrar nova avaliação
+        await this.carregarHistoricoFeedbacks()
+        
+        const mensagem = temProblemas 
+          ? '🎉 Avaliação e reclamação enviadas com sucesso!\n📝 Protocolo: RCL' + Date.now().toString().slice(-6) + '\n\nA CPM analisará sua reclamação e entrará em contato pelos dados informados.'
+          : '🎉 Avaliação enviada com sucesso!\n⭐ Avaliação: ' + avaliacaoData.rating + ' estrelas'
+        
+        alert(mensagem)
+        this.limparAvaliacao()
+        
+        console.log('✅ [AVALIAÇÃO] Processada com sucesso')
+        
+      } catch (error) {
+        console.error('❌ [RECLAMAÇÃO] Erro ao enviar reclamação:', error)
+        alert('❌ Erro ao enviar reclamação: ' + error.message)
+      } finally {
+        this.enviandoReclamacao = false
       }
-      return labels[urgencia] || urgencia
+    },
+
+    preencherDadosMaterial() {
+      if (this.materialSelecionadoReclamacao) {
+        this.novaReclamacao.nome_material = this.materialSelecionadoReclamacao.nome
+        this.novaReclamacao.codigo_material = this.materialSelecionadoReclamacao.codigo
+        this.novaReclamacao.marca_modelo = '' // Usuário pode preencher informações específicas
+        console.log('📦 [RECLAMAÇÃO] Material selecionado:', this.materialSelecionadoReclamacao.nome)
+      }
+    },
+
+    limparAvaliacao() {
+      this.novaReclamacao = {
+        nome_reclamante: this.usuarioAtual.nome_usuario || '',
+        telefone: '',
+        email: this.usuarioAtual.email || '',
+        unidade_setor: this.usuarioAtual.unidade_setor || '',
+        nome_material: '',
+        codigo_material: '',
+        marca_modelo: '',
+        rating: 0,
+        comentario: '',
+        registro_reclamacao: '',
+        sugestoes: ''
+      }
+      this.materialSelecionadoReclamacao = null
     },
 
     formatDate(dateString) {
@@ -838,89 +857,7 @@ export default {
       }
     },
 
-    // Métodos para Feedback
-    async carregarMateriaisParaFeedback() {
-      this.carregandoFeedback = true
-      try {
-        console.log('🔍 [FEEDBACK] Carregando materiais para avaliação')
-        
-        // Buscar RDMs APROVADAS do usuário
-        const { data: rdmsAprovadas, error } = await supabase
-          .from('rdms_online')
-          .select('id, material_nome, material_codigo, criado_em, atualizado_em')
-          .eq('usuario_rdm_id', this.usuarioAtual.id)
-          .eq('status', 'APROVADO')
-        
-        if (error) {
-          console.error('❌ [FEEDBACK] Erro ao carregar RDMs aprovadas:', error)
-          this.materiaisParaFeedback = []
-          return
-        }
-        
-        console.log('📋 [FEEDBACK] RDMs aprovadas encontradas:', rdmsAprovadas?.length || 0)
-        
-        // Adicionar campos de feedback aos materiais
-        this.materiaisParaFeedback = (rdmsAprovadas || []).map(rdm => ({
-          ...rdm,
-          rating: 0,
-          comentario: '',
-          feedbackEnviado: false
-        }))
-        
-        console.log('✅ [FEEDBACK] Materiais prontos para avaliação:', this.materiaisParaFeedback.length)
-        
-      } catch (error) {
-        console.error('❌ [FEEDBACK] Erro ao carregar materiais:', error)
-        this.materiaisParaFeedback = []
-      } finally {
-        this.carregandoFeedback = false
-      }
-    },
 
-    setRating(materialId, rating) {
-      const material = this.materiaisParaFeedback.find(m => m.id === materialId)
-      if (material) {
-        material.rating = rating
-        console.log(`⭐ [FEEDBACK] Rating ${rating} definido para ${material.material_nome}`)
-      }
-    },
-
-    async enviarFeedback(material) {
-      if (!material.rating) {
-        alert('❌ Por favor, dê uma avaliação de 1 a 5 estrelas')
-        return
-      }
-
-      try {
-        console.log('📤 [FEEDBACK] Enviando feedback para:', material.material_nome)
-        
-        // Aqui você pode implementar o salvamento do feedback no banco
-        // Por enquanto, vou simular o envio
-        
-        const feedbackData = {
-          rdm_id: material.id,
-          usuario_rdm_id: this.usuarioAtual.id,
-          material_nome: material.material_nome,
-          material_codigo: material.material_codigo,
-          rating: material.rating,
-          comentario: material.comentario || '',
-          criado_em: new Date().toISOString()
-        }
-        
-        console.log('💾 [FEEDBACK] Dados do feedback:', feedbackData)
-        
-        // Simular sucesso por enquanto
-        material.feedbackEnviado = true
-        alert(`🎉 Feedback enviado com sucesso para ${material.material_nome}!`)
-        
-        // Remover da lista após envio
-        this.materiaisParaFeedback = this.materiaisParaFeedback.filter(m => m.id !== material.id)
-        
-      } catch (error) {
-        console.error('❌ [FEEDBACK] Erro ao enviar feedback:', error)
-        alert('❌ Erro ao enviar feedback: ' + error.message)
-      }
-    }
   }
 }
 </script>
@@ -1552,18 +1489,36 @@ export default {
   font-size: 1.5rem;
   cursor: pointer;
   opacity: 0.3;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   user-select: none;
+  display: inline-block;
+  padding: 0.2rem;
+  border-radius: 50%;
 }
 
 .star:hover,
 .star.active {
   opacity: 1;
-  transform: scale(1.1);
+  transform: scale(1.2);
+  color: #FFD700;
+}
+
+.star.active {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+  opacity: 1;
 }
 
 .star:hover {
   filter: drop-shadow(0 0 8px rgba(255, 193, 7, 0.6));
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.rating-info {
+  display: block;
+  margin-top: 0.5rem;
+  color: #667eea;
+  font-weight: 600;
+  font-style: italic;
 }
 
 .comment-section textarea {
@@ -1600,6 +1555,94 @@ export default {
   box-shadow: none;
 }
 
+/* Reclamação Styles */
+.reclamacao-form-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.form-section h3 {
+  color: #333;
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea {
+  padding: 1rem;
+  border: 2px solid #e1e5e9;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.btn-secondary {
+  background: #f8f9fa;
+  color: #666;
+  border: 2px solid #e1e5e9;
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
 /* Responsive para Feedback */
 @media (max-width: 768px) {
   .material-feedback-item {
@@ -1612,6 +1655,103 @@ export default {
   
   .feedback-actions {
     justify-content: center;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .reclamacao-form-card {
+    padding: 1.5rem;
+  }
+}
+
+/* Containers principais */
+.materiais-container,
+.historico-container,
+.perfil-container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  margin-top: 1.5rem;
+}
+
+/* Estados vazios melhorados */
+.empty-state-card,
+.loading-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Seleção de material nas reclamações */
+.material-info-reclamacao {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border: 2px solid #e9ecef;
+}
+
+.material-info-reclamacao h4 {
+  color: #495057;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.readonly-input {
+  background: #f8f9fa !important;
+  color: #6c757d !important;
+  cursor: not-allowed !important;
+}
+
+.error-text {
+  color: #dc3545;
+  font-style: italic;
+  margin-top: 0.5rem;
+}
+
+/* Melhorias para os dropdowns */
+.form-group select {
+  padding: 1rem;
+  border: 2px solid #e1e5e9;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Responsividade dos containers */
+@media (max-width: 768px) {
+  .materiais-container,
+  .historico-container,
+  .perfil-container {
+    padding: 1.5rem;
+    margin-top: 1rem;
+  }
+  
+  .empty-state-card,
+  .loading-card {
+    padding: 2rem 1.5rem;
+  }
+  
+  .material-info-reclamacao {
+    padding: 1rem;
   }
 }
 </style> 

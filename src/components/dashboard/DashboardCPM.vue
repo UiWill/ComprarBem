@@ -52,13 +52,7 @@
       >
         Reclamações de Usuários
       </div>
-      <div 
-        class="tab" 
-        :class="{ active: activeTab === 'lembretes' }" 
-        @click="activeTab = 'lembretes'"
-      >
-        🤖 Lembretes RDM
-      </div>
+    
     </div>
     
     <!-- Aba Dashboard -->
@@ -1661,6 +1655,11 @@
                     <small>
                       📊 Debug: {{ produtosDisponiveis.length }} produtos disponíveis
                       <span v-if="currentTenantId">(Tenant: {{ currentTenantId.substring(0, 8) }}...)</span>
+                      <br>
+                      📋 Materiais do usuário: {{ usuarioAtual.materiais?.length || 0 }}
+                      <span v-if="usuarioAtual.materiais?.length > 0">
+                        ({{ usuarioAtual.materiais.map(m => m.nome || 'Sem nome').join(', ') }})
+                      </span>
                     </small>
                   </div>
                 </div>
@@ -1683,18 +1682,45 @@
     <!-- Aba Reclamações de Usuários -->
     <div v-if="activeTab === 'reclamacoes'" class="reclamacoes-section">
       <div class="section-header">
-        <h2>📝 Reclamações de Usuários</h2>
-        <p>Gestão de reclamações e sugestões sobre materiais</p>
+        <h2>📝 Reclamações e Avaliações de Usuários</h2>
+        <p>Gestão de reclamações, avaliações e sugestões sobre materiais</p>
       </div>
       
-      <div class="section-actions">
+      <!-- Sub-abas: Reclamações e Avaliações -->
+      <div class="sub-tabs">
+        <button 
+          @click="subTabReclamacoes = 'reclamacoes'" 
+          :class="{ 'active': subTabReclamacoes === 'reclamacoes' }"
+          class="sub-tab-btn"
+        >
+          📝 Reclamações ({{ reclamacoesFiltradas.length }})
+        </button>
+        <button 
+          @click="subTabReclamacoes = 'avaliacoes'" 
+          :class="{ 'active': subTabReclamacoes === 'avaliacoes' }"
+          class="sub-tab-btn"
+        >
+          ⭐ Avaliações ({{ avaliacoesFiltradas.length }})
+        </button>
+      </div>
+      
+      <div v-if="subTabReclamacoes === 'reclamacoes'" class="section-actions">
         <button @click="abrirModalNovaReclamacao" class="btn-primary">
           ➕ Nova Reclamação
         </button>
       </div>
+      
+      <div v-if="subTabReclamacoes === 'avaliacoes'" class="section-actions">
+        <button @click="carregarAvaliacoes" class="btn-info">
+          🔄 Recarregar Avaliações
+        </button>
+        <small style="margin-left: 10px; color: #666;">
+          📊 Total: {{ avaliacoes.length }} | Filtradas: {{ avaliacoesFiltradas.length }}
+        </small>
+      </div>
 
-      <!-- Filtros -->
-      <div class="filtros-reclamacoes">
+      <!-- Filtros para Reclamações -->
+      <div v-if="subTabReclamacoes === 'reclamacoes'" class="filtros-reclamacoes">
         <div class="filtro-group">
           <label>🔍 Buscar:</label>
           <input 
@@ -1723,9 +1749,47 @@
           >
         </div>
       </div>
+      
+      <!-- Filtros para Avaliações -->
+      <div v-if="subTabReclamacoes === 'avaliacoes'" class="filtros-avaliacoes">
+        <div class="filtro-group">
+          <label>🔍 Buscar:</label>
+          <input 
+            v-model="filtroAvaliacoes.busca" 
+            type="text" 
+            placeholder="Material, usuário, comentário..."
+            @input="aplicarFiltrosAvaliacoes"
+          >
+        </div>
+        <div class="filtro-group">
+          <label>⭐ Avaliação:</label>
+          <select v-model="filtroAvaliacoes.rating" @change="aplicarFiltrosAvaliacoes">
+            <option value="">Todas</option>
+            <option value="5">⭐⭐⭐⭐⭐ (5 estrelas)</option>
+            <option value="4">⭐⭐⭐⭐ (4 estrelas)</option>
+            <option value="3">⭐⭐⭐ (3 estrelas)</option>
+            <option value="2">⭐⭐ (2 estrelas)</option>
+            <option value="1">⭐ (1 estrela)</option>
+          </select>
+        </div>
+        <div class="filtro-group">
+          <label>👤 Usuário:</label>
+          <input 
+            v-model="filtroAvaliacoes.usuario" 
+            type="text" 
+            placeholder="Nome do usuário..."
+            @input="aplicarFiltrosAvaliacoes"
+          >
+        </div>
+        <div class="filtro-group">
+          <button @click="carregarAvaliacoes" class="btn-debug-avaliacoes">
+            🔄 Recarregar Avaliações (Debug)
+          </button>
+        </div>
+      </div>
 
       <!-- Lista de Reclamações -->
-      <div v-if="reclamacoesFiltradas.length > 0" class="reclamacoes-lista">
+      <div v-if="subTabReclamacoes === 'reclamacoes' && reclamacoesFiltradas.length > 0" class="reclamacoes-lista">
         <div 
           v-for="reclamacao in reclamacoesFiltradas" 
           :key="reclamacao.id" 
@@ -1780,10 +1844,55 @@
         </div>
       </div>
 
-      <div v-else class="empty-state">
+      <!-- Estado vazio para Reclamações -->
+      <div v-if="subTabReclamacoes === 'reclamacoes' && reclamacoesFiltradas.length === 0" class="empty-state">
         <div class="empty-icon">📝</div>
         <h3>Nenhuma reclamação encontrada</h3>
         <p>Quando houver reclamações, elas aparecerão aqui.</p>
+      </div>
+      
+      <!-- Lista de Avaliações -->
+      <div v-if="subTabReclamacoes === 'avaliacoes' && avaliacoesFiltradas.length > 0" class="avaliacoes-lista">
+        <div 
+          v-for="avaliacao in avaliacoesFiltradas" 
+          :key="avaliacao.id" 
+          class="avaliacao-card"
+        >
+          <div class="avaliacao-header">
+            <h4>{{ avaliacao.usuario_rdm?.nome_usuario || 'Usuário não encontrado' }}</h4>
+            <div class="rating-display">
+              <span v-for="i in 5" :key="i" :class="{ active: avaliacao.rating >= i }" class="star">⭐</span>
+              <span class="rating-text">{{ avaliacao.rating }}/5</span>
+            </div>
+          </div>
+          
+          <div class="avaliacao-content">
+            <div class="avaliacao-info">
+              <p><strong>Unidade/Setor:</strong> {{ avaliacao.usuario_rdm?.unidade_setor || 'N/A' }}</p>
+              <p><strong>Material:</strong> {{ avaliacao.material_nome }} ({{ avaliacao.material_codigo }})</p>
+              <p><strong>Data:</strong> {{ formatDate(avaliacao.criado_em) }}</p>
+              <p><strong>Contato:</strong> {{ avaliacao.usuario_rdm?.email || 'N/A' }} | {{ avaliacao.usuario_rdm?.telefone || 'N/A' }}</p>
+            </div>
+            
+            <div class="avaliacao-detalhes">
+              <div v-if="avaliacao.comentario" class="comentario-texto">
+                <h5>💬 Comentário:</h5>
+                <p>{{ avaliacao.comentario }}</p>
+              </div>
+              
+              <div v-if="!avaliacao.comentario" class="sem-comentario">
+                <p><em>Nenhum comentário adicional fornecido.</em></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Estado vazio para Avaliações -->
+      <div v-if="subTabReclamacoes === 'avaliacoes' && avaliacoesFiltradas.length === 0" class="empty-state">
+        <div class="empty-icon">⭐</div>
+        <h3>Nenhuma avaliação encontrada</h3>
+        <p>Quando houver avaliações de materiais, elas aparecerão aqui.</p>
       </div>
 
       <!-- Modal Nova/Editar Reclamação -->
@@ -1931,160 +2040,6 @@
       </div>
     </div>
 
-    <!-- =============================== -->
-    <!-- TAB: SISTEMA DE LEMBRETES -->
-    <!-- =============================== -->
-    <div v-if="activeTab === 'lembretes'" class="lembretes-section">
-      <div class="section-header">
-        <h2>🤖 Sistema Automático de Lembretes</h2>
-        <p>Controle automático de lembretes para feedback de materiais RDM</p>
-      </div>
-
-      <!-- Status do Sistema -->
-      <div class="stats-container">
-        <div class="stat-card success">
-          <div class="stat-icon">⚡</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ sistemaLembretes.ativo ? 'ATIVO' : 'INATIVO' }}</div>
-            <div class="stat-label">Sistema Automático</div>
-          </div>
-        </div>
-        
-        <div class="stat-card info">
-          <div class="stat-icon">📧</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ estatisticasLembretes.total_enviados || 0 }}</div>
-            <div class="stat-label">Lembretes Enviados</div>
-          </div>
-        </div>
-        
-        <div class="stat-card warning">
-          <div class="stat-icon">⏰</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ rdmsPendentes.length }}</div>
-            <div class="stat-label">RDMs Pendentes</div>
-          </div>
-        </div>
-        
-        <div class="stat-card error">
-          <div class="stat-icon">❌</div>
-          <div class="stat-content">
-            <div class="stat-value">{{ estatisticasLembretes.com_erro || 0 }}</div>
-            <div class="stat-label">Erros de Envio</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Controles do Sistema -->
-      <div class="section-controls">
-        <button 
-          :class="`btn-${sistemaLembretes.ativo ? 'success' : 'primary'}`"
-          :disabled="sistemaLembretes.ativo"
-        >
-          {{ sistemaLembretes.ativo ? '✅ Sistema Ativo' : '🚀 Ativar Sistema' }}
-        </button>
-        
-        <button 
-          class="btn-warning"
-          :disabled="carregandoLembretes"
-        >
-          {{ carregandoLembretes ? '⏳ Processando...' : '📧 Processar Agora' }}
-        </button>
-        
-        <button class="btn-info">
-          🔄 Atualizar Dados
-        </button>
-      </div>
-
-      <!-- RDMs Pendentes de Feedback -->
-      <div class="section-content" v-if="rdmsPendentes.length > 0">
-        <h3>📋 RDMs Pendentes de Avaliação</h3>
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Material</th>
-                <th>Usuário</th>
-                <th>Unidade/Setor</th>
-                <th>Dias</th>
-                <th>Prioridade</th>
-                <th>Próximo Lembrete</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="rdm in rdmsPendentes" :key="rdm.id">
-                <td>
-                  <strong>{{ rdm.material_nome }}</strong><br>
-                  <small>{{ rdm.material_codigo }}</small>
-                </td>
-                <td>{{ rdm.nome_usuario }}</td>
-                <td>{{ rdm.unidade_setor }}</td>
-                <td>
-                  <span class="badge" :class="`badge-${rdm.prioridade_feedback.toLowerCase()}`">
-                    {{ rdm.dias_desde_aprovacao }} dias
-                  </span>
-                </td>
-                <td>
-                  <span class="badge" :class="`badge-${rdm.prioridade_feedback.toLowerCase()}`">
-                    {{ rdm.prioridade_feedback }}
-                  </span>
-                </td>
-                <td>
-                  <small>
-                    {{ rdm.dias_desde_aprovacao >= 30 ? 'Vencido' : 
-                         rdm.dias_desde_aprovacao >= 25 ? 'Último lembrete' :
-                         rdm.dias_desde_aprovacao >= 15 ? 'Lembrete 25 dias' : 
-                         'Lembrete 15 dias' }}
-                  </small>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Mensagem quando não há RDMs pendentes -->
-      <div v-else class="no-data-message">
-        <div class="no-data-icon">🎉</div>
-        <h3>Todos os Feedbacks em Dia!</h3>
-        <p>Não há RDMs pendentes de avaliação no momento.</p>
-      </div>
-
-      <!-- Estatísticas Detalhadas -->
-      <div class="section-content">
-        <h3>📊 Estatísticas Detalhadas</h3>
-        <div class="stats-detailed">
-          <div class="stat-row">
-            <span>📋 Lembretes de 15 dias:</span>
-            <strong>{{ estatisticasLembretes.lembretes_15_dias || 0 }}</strong>
-          </div>
-          <div class="stat-row">
-            <span>⏰ Lembretes de 25 dias:</span>
-            <strong>{{ estatisticasLembretes.lembretes_25_dias || 0 }}</strong>
-          </div>
-          <div class="stat-row">
-            <span>🚨 Lembretes urgentes (30 dias):</span>
-            <strong>{{ estatisticasLembretes.lembretes_30_dias_urgente || 0 }}</strong>
-          </div>
-          <div class="stat-row">
-            <span>❌ Lembretes com erro:</span>
-            <strong>{{ estatisticasLembretes.com_erro || 0 }}</strong>
-          </div>
-        </div>
-      </div>
-
-      <!-- Log do Sistema -->
-      <div class="section-content" v-if="logLembretes.length > 0">
-        <h3>📝 Log do Sistema</h3>
-        <div class="log-container">
-          <div v-for="log in logLembretes" :key="log.id" class="log-entry">
-            <span class="log-time">{{ formatarData(log.timestamp) }}</span>
-            <span :class="`log-level log-${log.level}`">{{ log.level.toUpperCase() }}</span>
-            <span class="log-message">{{ log.message }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -2250,21 +2205,18 @@ export default {
          data: ''
        },
        
-       // Dados para Sistema de Lembretes
-       sistemaLembretes: {
-         ativo: false,
-         ultimaVerificacao: null
+       // Dados para Avaliações dos Usuários RDM
+       avaliacoes: [],
+       avaliacoesFiltradas: [],
+       filtroAvaliacoes: {
+         busca: '',
+         rating: '',
+         usuario: ''
        },
-       estatisticasLembretes: {
-         total_enviados: 0,
-         lembretes_15_dias: 0,
-         lembretes_25_dias: 0,
-         lembretes_30_dias_urgente: 0,
-         com_erro: 0
-       },
-       rdmsPendentes: [],
-       carregandoLembretes: false,
-       logLembretes: []
+       
+       // Controle de abas internas na seção de reclamações
+       subTabReclamacoes: 'reclamacoes', // 'reclamacoes' ou 'avaliacoes'
+       
     }
   },
   created() {
@@ -2298,6 +2250,21 @@ export default {
             this.carregarRdmsPendentes()
           }
         })
+      } else if (novaAba === 'reclamacoes') {
+        // Carregar dados quando acessar a aba de reclamações/avaliações
+        this.$nextTick(() => {
+          this.carregarReclamacoes()
+          this.carregarAvaliacoes()
+        })
+      }
+    },
+    
+    // Observar mudanças na sub-aba de reclamações
+    subTabReclamacoes(novaSubAba) {
+      if (novaSubAba === 'avaliacoes') {
+        this.carregarAvaliacoes()
+      } else if (novaSubAba === 'reclamacoes') {
+        this.carregarReclamacoes()
       }
     }
   },
@@ -2431,9 +2398,10 @@ export default {
         // Carregar editais
         await this.carregarEditais()
         
-        // Carregar usuários e reclamações
+        // Carregar usuários, reclamações e avaliações
         await this.carregarUsuarios()
         await this.carregarReclamacoes()
+        await this.carregarAvaliacoes()
         
         // Contar por status - também filtrando por tenant_id
         const statsCounts = await Promise.all([
@@ -5006,7 +4974,12 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
       this.usuariosFiltrados = filtrados
     },
     
-    abrirModalNovoUsuario() {
+    async abrirModalNovoUsuario() {
+      console.log('➕ Abrindo modal de novo usuário...')
+      
+      // Primeiro carregar produtos disponíveis
+      await this.carregarProdutos()
+      
       this.usuarioAtual = {
         nome_usuario: '',
         unidade_setor: '',
@@ -5021,9 +4994,11 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
         }],
         criar_login: false
       }
+      
+      console.log('✅ Modal novo usuário preparado')
+      console.log('📦 Produtos disponíveis:', this.produtosDisponiveis.length)
+      
       this.modalNovoUsuario = true
-      // Carregar produtos disponíveis ao abrir o modal
-      this.carregarProdutos()
     },
     
     fecharModalNovoUsuario() {
@@ -5159,10 +5134,21 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
         
         // 3. Salvar no banco
         if (this.usuarioAtual.id) {
-          // Atualizar
+          // Atualizar - CORREÇÃO: Não sobrescrever dados de login existentes
+          const updateData = { ...userData }
+          
+          // Se não está criando novo login, remover campos de senha para não sobrescrever
+          if (!this.usuarioAtual.criar_login) {
+            delete updateData.user_id
+            delete updateData.senha_temporaria
+            delete updateData.convite_enviado  
+            delete updateData.convite_aceito
+            console.log('🔐 Campos de login preservados (não serão sobrescritos)')
+          }
+          
           const { error } = await supabase
             .from('usuarios_rdm')
-            .update(userData)
+            .update(updateData)
             .eq('id', this.usuarioAtual.id)
             .eq('tenant_id', this.currentTenantId)
           
@@ -5268,22 +5254,45 @@ O sistema funciona normalmente, apenas o email automático falhou.`)
       }
     },
     
-    editarUsuario(usuario) {
+    async editarUsuario(usuario) {
+      console.log('🔧 Editando usuário:', usuario.nome_usuario)
+      console.log('📋 Materiais do usuário:', usuario.materiais)
+      
+      // Primeiro carregar produtos disponíveis
+      await this.carregarProdutos()
+      
+      // Copiar dados do usuário
       this.usuarioAtual = { ...usuario }
-      if (!this.usuarioAtual.materiais) {
+      
+      // Garantir que materiais existe como array
+      if (!this.usuarioAtual.materiais || !Array.isArray(this.usuarioAtual.materiais)) {
+        console.log('⚠️ Materiais não encontrados, inicializando array vazio')
         this.usuarioAtual.materiais = []
       }
-      // Garantir que cada material tenha produto_id
-      this.usuarioAtual.materiais = this.usuarioAtual.materiais.map(material => ({
-        produto_id: material.produto_id || '',
-        nome: material.nome || '',
-        codigo: material.codigo || '',
-        periodicidade_rdm: material.periodicidade_rdm || '',
-        ...material
-      }))
+      
+      // Processar cada material existente
+      this.usuarioAtual.materiais = this.usuarioAtual.materiais.map((material, index) => {
+        console.log(`📦 Processando material ${index + 1}:`, material)
+        
+        const materialProcessado = {
+          produto_id: material.produto_id || '',
+          nome: material.nome || '',
+          codigo: material.codigo || '',
+          periodicidade_rdm: material.periodicidade_rdm || 'mensal',
+          marca: material.marca || '',
+          categoria: material.categoria || '',
+          ...material
+        }
+        
+        console.log(`✅ Material ${index + 1} processado:`, materialProcessado)
+        return materialProcessado
+      })
+      
+      console.log('✅ Usuário preparado para edição:', this.usuarioAtual)
+      console.log('📦 Produtos disponíveis:', this.produtosDisponiveis.length)
+      
+      // Abrir modal
       this.modalNovoUsuario = true
-      // Carregar produtos para edição
-      this.carregarProdutos()
     },
     
     async removerUsuario(usuario) {
@@ -5449,6 +5458,153 @@ Verifique:
       } catch (error) {
         console.error('Erro ao carregar reclamações:', error)
       }
+    },
+    
+    // === MÉTODOS PARA AVALIAÇÕES ===
+    async carregarAvaliacoes() {
+      try {
+        console.log('🔍 [AVALIAÇÕES CPM] === DEBUG COMPLETO ===')
+        console.log('🔍 [AVALIAÇÕES CPM] Tenant ID atual:', this.currentTenantId)
+        
+        // PRIMEIRO: Testar SEM filtro de tenant para ver se tem dados
+        console.log('🔍 [AVALIAÇÕES CPM] TESTE 1: TODAS as avaliações (sem filtro)')
+        const { data: todasSemFiltro, error: erroSemFiltro } = await supabase
+          .from('material_feedbacks')
+          .select('*')
+          .order('criado_em', { ascending: false })
+        
+        console.log('📊 [AVALIAÇÕES CPM] TESTE 1 - Total geral:', todasSemFiltro?.length || 0)
+        if (todasSemFiltro && todasSemFiltro.length > 0) {
+          console.log('📊 [AVALIAÇÕES CPM] TESTE 1 - Primeira avaliação:', todasSemFiltro[0])
+          console.log('📊 [AVALIAÇÕES CPM] TESTE 1 - Tenant IDs encontrados:', [...new Set(todasSemFiltro.map(a => a.tenant_id))])
+        }
+        
+        // SEGUNDO: Com filtro de tenant (como estava antes)
+        console.log('🔍 [AVALIAÇÕES CPM] TESTE 2: Com filtro de tenant')
+        const { data: todasAvaliacoes, error: erroTodas } = await supabase
+          .from('material_feedbacks')
+          .select('*')
+          .eq('tenant_id', this.currentTenantId)
+          .order('criado_em', { ascending: false })
+        
+        console.log('📊 [AVALIAÇÕES CPM] TESTE 2 - Com tenant:', todasAvaliacoes?.length || 0)
+        
+        if (erroTodas) {
+          console.error('❌ [AVALIAÇÕES CPM] Erro ao carregar avaliações básicas:', erroTodas)
+          this.avaliacoes = []
+          this.aplicarFiltrosAvaliacoes()
+          return
+        }
+        
+        if (!todasAvaliacoes || todasAvaliacoes.length === 0) {
+          console.log('📭 [AVALIAÇÕES CPM] Nenhuma avaliação encontrada para este tenant')
+          console.log('🔍 [AVALIAÇÕES CPM] Vamos usar TODAS as avaliações temporariamente para debug...')
+          
+          // TEMPORÁRIO: usar todas as avaliações para debug
+          if (todasSemFiltro && todasSemFiltro.length > 0) {
+            this.avaliacoes = await this.enriquecerAvaliacoesComUsuarios(todasSemFiltro)
+            console.log('🔄 [AVALIAÇÕES CPM] Usando TODAS as avaliações (sem filtro de tenant)')
+          } else {
+            this.avaliacoes = []
+          }
+          
+          this.aplicarFiltrosAvaliacoes()
+          return
+        }
+        
+        // TERCEIRO: Tentar JOIN com usuários
+        console.log('🔍 [AVALIAÇÕES CPM] TESTE 3: JOIN com usuários')
+        const { data: avaliacoesComUsuario, error: erroJoin } = await supabase
+          .from('material_feedbacks')
+          .select(`
+            *,
+            usuario_rdm:usuarios_rdm(nome_usuario, unidade_setor, email, telefone)
+          `)
+          .eq('tenant_id', this.currentTenantId)
+          .order('criado_em', { ascending: false })
+        
+        if (erroJoin) {
+          console.error('⚠️ [AVALIAÇÕES CPM] Erro no JOIN, usando dados básicos:', erroJoin)
+          this.avaliacoes = await this.enriquecerAvaliacoesComUsuarios(todasAvaliacoes)
+        } else {
+          console.log('✅ [AVALIAÇÕES CPM] JOIN executado com sucesso:', avaliacoesComUsuario?.length || 0)
+          this.avaliacoes = avaliacoesComUsuario || []
+        }
+        
+        this.aplicarFiltrosAvaliacoes()
+        console.log('🎯 [AVALIAÇÕES CPM] === FIM DEBUG - RESULTADO FINAL ===')
+        console.log('🎯 [AVALIAÇÕES CPM] Avaliações carregadas:', this.avaliacoes.length)
+        
+      } catch (error) {
+        console.error('❌ [AVALIAÇÕES CPM] Erro geral ao carregar avaliações:', error)
+        this.avaliacoes = []
+        this.aplicarFiltrosAvaliacoes()
+      }
+    },
+    
+    // Método auxiliar para enriquecer avaliações com dados de usuários
+    async enriquecerAvaliacoesComUsuarios(avaliacoes) {
+      try {
+        const avaliacoesEnriquecidas = []
+        
+        for (const avaliacao of avaliacoes) {
+          if (avaliacao.usuario_rdm_id) {
+            const { data: usuario, error } = await supabase
+              .from('usuarios_rdm')
+              .select('nome_usuario, unidade_setor, email, telefone')
+              .eq('id', avaliacao.usuario_rdm_id)
+              .eq('tenant_id', this.currentTenantId)
+              .single()
+            
+            avaliacoesEnriquecidas.push({
+              ...avaliacao,
+              usuario_rdm: usuario || null
+            })
+          } else {
+            avaliacoesEnriquecidas.push({
+              ...avaliacao,
+              usuario_rdm: null
+            })
+          }
+        }
+        
+        return avaliacoesEnriquecidas
+      } catch (error) {
+        console.error('❌ [AVALIAÇÕES CPM] Erro ao enriquecer com usuários:', error)
+        return avaliacoes.map(avaliacao => ({
+          ...avaliacao,
+          usuario_rdm: null
+        }))
+      }
+    },
+    
+    aplicarFiltrosAvaliacoes() {
+      let filtradas = [...this.avaliacoes]
+      
+      if (this.filtroAvaliacoes.busca) {
+        const busca = this.filtroAvaliacoes.busca.toLowerCase()
+        filtradas = filtradas.filter(avaliacao => 
+          avaliacao.material_nome?.toLowerCase().includes(busca) ||
+          avaliacao.material_codigo?.toLowerCase().includes(busca) ||
+          avaliacao.usuario_rdm?.nome_usuario?.toLowerCase().includes(busca) ||
+          avaliacao.usuario_rdm?.unidade_setor?.toLowerCase().includes(busca) ||
+          avaliacao.comentario?.toLowerCase().includes(busca)
+        )
+      }
+      
+      if (this.filtroAvaliacoes.rating) {
+        filtradas = filtradas.filter(avaliacao => 
+          avaliacao.rating == this.filtroAvaliacoes.rating
+        )
+      }
+      
+      if (this.filtroAvaliacoes.usuario) {
+        filtradas = filtradas.filter(avaliacao => 
+          avaliacao.usuario_rdm?.nome_usuario?.toLowerCase().includes(this.filtroAvaliacoes.usuario.toLowerCase())
+        )
+      }
+      
+      this.avaliacoesFiltradas = filtradas
     },
     
     aplicarFiltrosReclamacoes() {
@@ -6015,147 +6171,6 @@ O usuário pode fazer login imediatamente no sistema RDM.`,
      }
    },
 
-   // ============================================
-   // MÉTODOS PARA SISTEMA DE LEMBRETES
-   // ============================================
-
-   async ativarSistemaLembretes() {
-     try {
-       console.log('🚀 Ativando sistema de lembretes...')
-       
-       // Importar funções do emailService dinamicamente
-       const { iniciarSistemaLembretes } = await import('@/services/emailService')
-       
-       // Iniciar sistema
-       iniciarSistemaLembretes()
-       
-       this.sistemaLembretes.ativo = true
-       this.sistemaLembretes.ultimaVerificacao = new Date()
-       
-       this.adicionarLogLembrete('info', 'Sistema de lembretes ativado com sucesso')
-       
-       // Carregar dados iniciais
-       await this.carregarEstatisticasLembretes()
-       await this.carregarRdmsPendentes()
-       
-       this.$toast.success('🤖 Sistema de lembretes ativado!')
-       
-     } catch (error) {
-       console.error('❌ Erro ao ativar sistema:', error)
-       this.adicionarLogLembrete('error', `Erro ao ativar sistema: ${error.message}`)
-       this.$toast.error('❌ Erro ao ativar sistema de lembretes')
-     }
-   },
-
-   async processarLembretesManual() {
-     if (this.carregandoLembretes) return
-     
-     try {
-       this.carregandoLembretes = true
-       console.log('📧 Processando lembretes manualmente...')
-       
-       this.adicionarLogLembrete('info', 'Iniciando processamento manual de lembretes')
-       
-       // Importar função do emailService
-       const { processarLembretesPendentes } = await import('@/services/emailService')
-       
-       // Processar lembretes
-       const resultado = await processarLembretesPendentes()
-       
-       if (resultado.success) {
-         this.adicionarLogLembrete('success', 
-           `Processamento concluído: ${resultado.sucessos || 0} enviados, ${resultado.erros || 0} erros`
-         )
-         this.$toast.success(`📧 ${resultado.message}`)
-       } else {
-         this.adicionarLogLembrete('error', `Erro no processamento: ${resultado.message}`)
-         this.$toast.error(`❌ ${resultado.message}`)
-       }
-       
-       // Atualizar dados
-       await this.carregarEstatisticasLembretes()
-       await this.carregarRdmsPendentes()
-       
-     } catch (error) {
-       console.error('❌ Erro no processamento manual:', error)
-       this.adicionarLogLembrete('error', `Erro no processamento: ${error.message}`)
-       this.$toast.error('❌ Erro ao processar lembretes')
-       
-     } finally {
-       this.carregandoLembretes = false
-     }
-   },
-
-   async carregarEstatisticasLembretes() {
-     try {
-       console.log('📊 Carregando estatísticas de lembretes...')
-       
-       const { data, error } = await supabase
-         .from('v_estatisticas_lembretes')
-         .select('*')
-         .order('data', { ascending: false })
-         .limit(1)
-         .single()
-       
-       if (error && error.code !== 'PGRST116') {
-         console.error('❌ Erro ao carregar estatísticas:', error)
-         return
-       }
-       
-       if (data) {
-         this.estatisticasLembretes = {
-           total_enviados: data.total_lembretes_enviados || 0,
-           lembretes_15_dias: data.lembretes_15_dias || 0,
-           lembretes_25_dias: data.lembretes_25_dias || 0,
-           lembretes_30_dias_urgente: data.lembretes_30_dias_urgente || 0,
-           com_erro: data.lembretes_com_erro || 0
-         }
-       }
-       
-       console.log('✅ Estatísticas carregadas:', this.estatisticasLembretes)
-       
-     } catch (error) {
-       console.error('❌ Erro ao carregar estatísticas:', error)
-     }
-   },
-
-   async carregarRdmsPendentes() {
-     try {
-       console.log('📋 Carregando RDMs pendentes de feedback...')
-       
-       const { data, error } = await supabase
-         .from('v_rdms_pendentes_feedback')
-         .select('*')
-         .order('dias_desde_aprovacao', { ascending: false })
-       
-       if (error) {
-         console.error('❌ Erro ao carregar RDMs pendentes:', error)
-         return
-       }
-       
-       this.rdmsPendentes = data || []
-       console.log(`✅ ${this.rdmsPendentes.length} RDMs pendentes carregadas`)
-       
-     } catch (error) {
-       console.error('❌ Erro ao carregar RDMs pendentes:', error)
-     }
-   },
-
-   adicionarLogLembrete(level, message) {
-     const novoLog = {
-       id: Date.now(),
-       timestamp: new Date(),
-       level: level,
-       message: message
-     }
-     
-     this.logLembretes.unshift(novoLog)
-     
-     // Manter apenas os últimos 50 logs
-     if (this.logLembretes.length > 50) {
-       this.logLembretes = this.logLembretes.slice(0, 50)
-     }
-   },
 
    formatarData(data) {
      if (!data) return ''
@@ -6852,6 +6867,22 @@ th {
 .empty-state p {
   margin: 0;
   font-size: 14px;
+}
+
+/* Botão de debug temporário */
+.btn-debug-avaliacoes {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s;
+}
+
+.btn-debug-avaliacoes:hover {
+  background: #ff5252;
 }
 
 /* Modais */
@@ -8624,6 +8655,185 @@ th {
 .status-em-analise {
   background: #17a2b8;
   color: white;
+}
+
+/* === ESTILOS PARA SUB-ABAS === */
+.sub-tabs {
+  display: flex;
+  gap: 5px;
+  margin: 20px 0;
+  background: #f8f9fa;
+  padding: 5px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.sub-tab-btn {
+  flex: 1;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #495057;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.sub-tab-btn:hover {
+  background: rgba(0, 123, 255, 0.1);
+  color: #007bff;
+}
+
+.sub-tab-btn.active {
+  background: #007bff;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+/* === ESTILOS PARA AVALIAÇÕES === */
+.filtros-avaliacoes {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  flex-wrap: wrap;
+}
+
+.avaliacoes-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.avaliacao-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #e9ecef;
+  transition: transform 0.2s;
+  border-left: 4px solid #ffd700;
+}
+
+.avaliacao-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.avaliacao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.avaliacao-header h4 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.rating-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rating-display .star {
+  font-size: 18px;
+  color: #ddd;
+  transition: color 0.2s;
+}
+
+.rating-display .star.active {
+  color: #ffd700;
+  text-shadow: 0 0 2px rgba(255, 215, 0, 0.5);
+}
+
+.rating-text {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+  margin-left: 5px;
+}
+
+.avaliacao-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.avaliacao-info p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.avaliacao-detalhes {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.comentario-texto {
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #28a745;
+}
+
+.comentario-texto h5 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.comentario-texto p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #495057;
+}
+
+.sem-comentario {
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #6c757d;
+  font-style: italic;
+  color: #6c757d;
+}
+
+.sem-comentario p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 768px) {
+  .reclamacao-content,
+  .avaliacao-content {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .sub-tabs {
+    flex-direction: column;
+  }
+  
+  .filtros-reclamacoes,
+  .filtros-avaliacoes {
+    flex-direction: column;
+    gap: 10px;
+  }
 }
 
 /* === ESTILOS PARA SISTEMA DE LEMBRETES === */
