@@ -50,7 +50,7 @@
         :class="{ active: activeTab === 'reclamacoes' }" 
         @click="activeTab = 'reclamacoes'"
       >
-        Reclamações de Usuários
+        Avaliações de Usuários
       </div>
     
     </div>
@@ -1679,79 +1679,21 @@
       </div>
     </div>
 
-    <!-- Aba Reclamações de Usuários -->
-    <div v-if="activeTab === 'reclamacoes'" class="reclamacoes-section">
+    <!-- Aba Avaliações de Usuários -->
+    <div v-if="activeTab === 'reclamacoes'" class="avaliacoes-section">
       <div class="section-header">
-        <h2>📝 Reclamações e Avaliações de Usuários</h2>
-        <p>Gestão de reclamações, avaliações e sugestões sobre materiais</p>
+        <h2>⭐ Avaliações de Usuários</h2>
+        <p>Visualização das avaliações e feedbacks dos usuários sobre materiais</p>
       </div>
       
-      <!-- Sub-abas: Reclamações e Avaliações -->
-      <div class="sub-tabs">
-        <button 
-          @click="subTabReclamacoes = 'reclamacoes'" 
-          :class="{ 'active': subTabReclamacoes === 'reclamacoes' }"
-          class="sub-tab-btn"
-        >
-          📝 Reclamações ({{ reclamacoesFiltradas.length }})
-        </button>
-        <button 
-          @click="subTabReclamacoes = 'avaliacoes'" 
-          :class="{ 'active': subTabReclamacoes === 'avaliacoes' }"
-          class="sub-tab-btn"
-        >
-          ⭐ Avaliações ({{ avaliacoesFiltradas.length }})
-        </button>
-      </div>
-      
-      <div v-if="subTabReclamacoes === 'reclamacoes'" class="section-actions">
-        <button @click="abrirModalNovaReclamacao" class="btn-primary">
-          ➕ Nova Reclamação
-        </button>
-      </div>
-      
-      <div v-if="subTabReclamacoes === 'avaliacoes'" class="section-actions">
-        <button @click="carregarAvaliacoes" class="btn-info">
-          🔄 Recarregar Avaliações
-        </button>
-        <small style="margin-left: 10px; color: #666;">
+      <div class="section-actions">
+        <small style="color: #666;">
           📊 Total: {{ avaliacoes.length }} | Filtradas: {{ avaliacoesFiltradas.length }}
         </small>
       </div>
 
-      <!-- Filtros para Reclamações -->
-      <div v-if="subTabReclamacoes === 'reclamacoes'" class="filtros-reclamacoes">
-        <div class="filtro-group">
-          <label>🔍 Buscar:</label>
-          <input 
-            v-model="filtroReclamacoes.busca" 
-            type="text" 
-            placeholder="Reclamante, material, unidade..."
-            @input="aplicarFiltrosReclamacoes"
-          >
-        </div>
-        <div class="filtro-group">
-          <label>📊 Status:</label>
-          <select v-model="filtroReclamacoes.status" @change="aplicarFiltrosReclamacoes">
-            <option value="">Todos</option>
-            <option value="ABERTA">Em Aberto</option>
-            <option value="EM_ANALISE">Em Análise</option>
-            <option value="RESOLVIDA">Resolvida</option>
-            <option value="REJEITADA">Rejeitada</option>
-          </select>
-        </div>
-        <div class="filtro-group">
-          <label>📅 Data:</label>
-          <input 
-            v-model="filtroReclamacoes.data" 
-            type="date" 
-            @change="aplicarFiltrosReclamacoes"
-          >
-        </div>
-      </div>
-      
       <!-- Filtros para Avaliações -->
-      <div v-if="subTabReclamacoes === 'avaliacoes'" class="filtros-avaliacoes">
+      <div class="filtros-avaliacoes">
         <div class="filtro-group">
           <label>🔍 Buscar:</label>
           <input 
@@ -1781,78 +1723,10 @@
             @input="aplicarFiltrosAvaliacoes"
           >
         </div>
-        <div class="filtro-group">
-          <button @click="carregarAvaliacoes" class="btn-debug-avaliacoes">
-            🔄 Recarregar Avaliações (Debug)
-          </button>
-        </div>
       </div>
 
-      <!-- Lista de Reclamações -->
-      <div v-if="subTabReclamacoes === 'reclamacoes' && reclamacoesFiltradas.length > 0" class="reclamacoes-lista">
-        <div 
-          v-for="reclamacao in reclamacoesFiltradas" 
-          :key="reclamacao.id" 
-          class="reclamacao-card"
-        >
-          <div class="reclamacao-header">
-            <h4>{{ reclamacao.nome_reclamante }}</h4>
-            <span class="status-badge" :class="getStatusReclamacaoClass(reclamacao.status)">
-              {{ formatarStatusReclamacao(reclamacao.status) }}
-            </span>
-          </div>
-          
-          <div class="reclamacao-content">
-            <div class="reclamacao-info">
-              <p><strong>Unidade/Setor:</strong> {{ reclamacao.unidade_setor }}</p>
-              <p><strong>Material:</strong> {{ reclamacao.nome_material }} ({{ reclamacao.codigo_material }})</p>
-              <p><strong>Marca/Modelo:</strong> {{ reclamacao.marca_modelo }}</p>
-              <p><strong>Data:</strong> {{ formatDate(reclamacao.data_reclamacao) }}</p>
-              <p><strong>Contato:</strong> {{ reclamacao.email }} | {{ reclamacao.telefone }}</p>
-            </div>
-            
-            <div class="reclamacao-detalhes">
-              <div class="reclamacao-texto">
-                <h5>📝 Reclamação:</h5>
-                <p>{{ reclamacao.registro_reclamacao }}</p>
-              </div>
-              
-              <div v-if="reclamacao.sugestoes" class="sugestoes-texto">
-                <h5>💡 Sugestões:</h5>
-                <p>{{ reclamacao.sugestoes }}</p>
-              </div>
-              
-              <div v-if="reclamacao.providencias_cpm" class="providencias-texto">
-                <h5>⚙️ Providências CPM:</h5>
-                <p>{{ reclamacao.providencias_cpm }}</p>
-                <p><small><strong>Atualizado em:</strong> {{ formatDate(reclamacao.data_atualizacao) }}</small></p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="reclamacao-actions">
-            <button @click="responderReclamacao(reclamacao)" class="btn-primary btn-small">
-              📝 Responder
-            </button>
-            <button @click="editarReclamacao(reclamacao)" class="btn-secondary btn-small">
-              ✏️ Editar
-            </button>
-            <button @click="removerReclamacao(reclamacao)" class="btn-danger btn-small">
-              🗑️ Remover
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Estado vazio para Reclamações -->
-      <div v-if="subTabReclamacoes === 'reclamacoes' && reclamacoesFiltradas.length === 0" class="empty-state">
-        <div class="empty-icon">📝</div>
-        <h3>Nenhuma reclamação encontrada</h3>
-        <p>Quando houver reclamações, elas aparecerão aqui.</p>
-      </div>
-      
       <!-- Lista de Avaliações -->
-      <div v-if="subTabReclamacoes === 'avaliacoes' && avaliacoesFiltradas.length > 0" class="avaliacoes-lista">
+      <div v-if="avaliacoesFiltradas.length > 0" class="avaliacoes-lista">
         <div 
           v-for="avaliacao in avaliacoesFiltradas" 
           :key="avaliacao.id" 
@@ -1889,155 +1763,13 @@
       </div>
       
       <!-- Estado vazio para Avaliações -->
-      <div v-if="subTabReclamacoes === 'avaliacoes' && avaliacoesFiltradas.length === 0" class="empty-state">
+      <div v-if="avaliacoesFiltradas.length === 0" class="empty-state">
         <div class="empty-icon">⭐</div>
         <h3>Nenhuma avaliação encontrada</h3>
         <p>Quando houver avaliações de materiais, elas aparecerão aqui.</p>
       </div>
 
-      <!-- Modal Nova/Editar Reclamação -->
-      <div v-if="modalNovaReclamacao" class="modal-overlay" @click="fecharModalNovaReclamacao">
-        <div class="modal-content large" @click.stop>
-          <div class="modal-header">
-            <h3>{{ reclamacaoAtual.id ? '✏️ Editar Reclamação' : '📝 Nova Reclamação' }}</h3>
-            <button @click="fecharModalNovaReclamacao" class="btn-close">&times;</button>
-          </div>
-          
-          <div class="modal-body">
-            <form @submit.prevent="salvarReclamacao">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="nome_reclamante">Nome do Reclamante*</label>
-                  <input 
-                    id="nome_reclamante" 
-                    v-model="reclamacaoAtual.nome_reclamante" 
-                    type="text" 
-                    placeholder="Nome completo"
-                    required
-                  >
-                </div>
-                <div class="form-group">
-                  <label for="unidade_setor_rec">Unidade/Setor*</label>
-                  <input 
-                    id="unidade_setor_rec" 
-                    v-model="reclamacaoAtual.unidade_setor" 
-                    type="text" 
-                    placeholder="Ex: Departamento de Enfermagem"
-                    required
-                  >
-                </div>
-              </div>
-              
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="telefone_rec">Telefone*</label>
-                  <input 
-                    id="telefone_rec" 
-                    v-model="reclamacaoAtual.telefone" 
-                    type="tel" 
-                    placeholder="(00) 00000-0000"
-                    required
-                  >
-                </div>
-                <div class="form-group">
-                  <label for="email_rec">Email*</label>
-                  <input 
-                    id="email_rec" 
-                    v-model="reclamacaoAtual.email" 
-                    type="email" 
-                    placeholder="email@exemplo.com"
-                    required
-                  >
-                </div>
-              </div>
-              
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="nome_material_rec">Nome do Material*</label>
-                  <input 
-                    id="nome_material_rec" 
-                    v-model="reclamacaoAtual.nome_material" 
-                    type="text" 
-                    placeholder="Nome do produto/material"
-                    required
-                  >
-                </div>
-                <div class="form-group">
-                  <label for="codigo_material_rec">Código do Material*</label>
-                  <input 
-                    id="codigo_material_rec" 
-                    v-model="reclamacaoAtual.codigo_material" 
-                    type="text" 
-                    placeholder="Código identificador"
-                    required
-                  >
-                </div>
-              </div>
-              
-              <div class="form-group">
-                <label for="marca_modelo_rec">Marca e Modelo*</label>
-                <input 
-                  id="marca_modelo_rec" 
-                  v-model="reclamacaoAtual.marca_modelo" 
-                  type="text" 
-                  placeholder="Ex: Marca XYZ - Modelo ABC123"
-                  required
-                >
-              </div>
-              
-              <div class="form-group">
-                <label for="registro_reclamacao">Registro da Reclamação*</label>
-                <textarea 
-                  id="registro_reclamacao" 
-                  v-model="reclamacaoAtual.registro_reclamacao" 
-                  rows="4" 
-                  placeholder="Descreva detalhadamente a reclamação..."
-                  required
-                ></textarea>
-              </div>
-              
-              <div class="form-group">
-                <label for="sugestoes">Sugestões</label>
-                <textarea 
-                  id="sugestoes" 
-                  v-model="reclamacaoAtual.sugestoes" 
-                  rows="3" 
-                  placeholder="Sugestões de melhoria ou alternativas..."
-                ></textarea>
-              </div>
-              
-              <div class="form-group">
-                <label for="status_reclamacao">Status</label>
-                <select id="status_reclamacao" v-model="reclamacaoAtual.status">
-                  <option value="ABERTA">Em Aberto</option>
-                  <option value="EM_ANALISE">Em Análise</option>
-                  <option value="RESOLVIDA">Resolvida</option>
-                  <option value="REJEITADA">Rejeitada</option>
-                </select>
-              </div>
-              
-              <div v-if="reclamacaoAtual.status !== 'ABERTA'" class="form-group">
-                <label for="providencias_cpm">Providências e Decisão da CPM</label>
-                <textarea 
-                  id="providencias_cpm" 
-                  v-model="reclamacaoAtual.providencias_cpm" 
-                  rows="4" 
-                  placeholder="Descreva as providências tomadas e a decisão da CPM..."
-                ></textarea>
-              </div>
-              
-              <div class="modal-actions">
-                <button type="button" @click="fecharModalNovaReclamacao" class="btn-secondary">
-                  Cancelar
-                </button>
-                <button type="submit" class="btn-primary">
-                  {{ reclamacaoAtual.id ? 'Atualizar' : 'Cadastrar' }} Reclamação
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
+
     </div>
 
   </div>
@@ -2180,30 +1912,7 @@ export default {
        produtosDisponiveis: [],
        loadingProdutos: false,
        
-       // Dados para Reclamações
-       reclamacoes: [],
-       reclamacoesFiltradas: [],
-       modalNovaReclamacao: false,
-       reclamacaoAtual: {
-         id: null,
-         nome_reclamante: '',
-         telefone: '',
-         email: '',
-         unidade_setor: '',
-         nome_material: '',
-         codigo_material: '',
-         marca_modelo: '',
-         registro_reclamacao: '',
-         sugestoes: '',
-         status: 'ABERTA',
-         providencias_cpm: '',
-         data_reclamacao: new Date().toISOString().split('T')[0]
-       },
-       filtroReclamacoes: {
-         busca: '',
-         status: '',
-         data: ''
-       },
+
        
        // Dados para Avaliações dos Usuários RDM
        avaliacoes: [],
@@ -2215,7 +1924,7 @@ export default {
        },
        
        // Controle de abas internas na seção de reclamações
-       subTabReclamacoes: 'reclamacoes', // 'reclamacoes' ou 'avaliacoes'
+ 
        
     }
   },
@@ -2251,20 +1960,10 @@ export default {
           }
         })
       } else if (novaAba === 'reclamacoes') {
-        // Carregar dados quando acessar a aba de reclamações/avaliações
+        // Carregar dados quando acessar a aba de avaliações
         this.$nextTick(() => {
-          this.carregarReclamacoes()
           this.carregarAvaliacoes()
         })
-      }
-    },
-    
-    // Observar mudanças na sub-aba de reclamações
-    subTabReclamacoes(novaSubAba) {
-      if (novaSubAba === 'avaliacoes') {
-        this.carregarAvaliacoes()
-      } else if (novaSubAba === 'reclamacoes') {
-        this.carregarReclamacoes()
       }
     }
   },
@@ -2398,9 +2097,8 @@ export default {
         // Carregar editais
         await this.carregarEditais()
         
-        // Carregar usuários, reclamações e avaliações
+        // Carregar usuários e avaliações
         await this.carregarUsuarios()
-        await this.carregarReclamacoes()
         await this.carregarAvaliacoes()
         
         // Contar por status - também filtrando por tenant_id
@@ -5442,23 +5140,7 @@ Verifique:
       }
     },
     
-    // === MÉTODOS PARA RECLAMAÇÕES ===
-    async carregarReclamacoes() {
-      try {
-        const { data, error } = await supabase
-          .from('reclamacoes_usuarios')
-          .select('*')
-          .eq('tenant_id', this.currentTenantId)
-          .order('data_reclamacao', { ascending: false })
-        
-        if (error) throw error
-        
-        this.reclamacoes = data || []
-        this.aplicarFiltrosReclamacoes()
-      } catch (error) {
-        console.error('Erro ao carregar reclamações:', error)
-      }
-    },
+
     
     // === MÉTODOS PARA AVALIAÇÕES ===
     async carregarAvaliacoes() {
@@ -5607,159 +5289,7 @@ Verifique:
       this.avaliacoesFiltradas = filtradas
     },
     
-    aplicarFiltrosReclamacoes() {
-      let filtradas = [...this.reclamacoes]
-      
-      if (this.filtroReclamacoes.busca) {
-        const busca = this.filtroReclamacoes.busca.toLowerCase()
-        filtradas = filtradas.filter(reclamacao => 
-          reclamacao.nome_reclamante?.toLowerCase().includes(busca) ||
-          reclamacao.nome_material?.toLowerCase().includes(busca) ||
-          reclamacao.unidade_setor?.toLowerCase().includes(busca) ||
-          reclamacao.registro_reclamacao?.toLowerCase().includes(busca)
-        )
-      }
-      
-      if (this.filtroReclamacoes.status) {
-        filtradas = filtradas.filter(reclamacao => 
-          reclamacao.status === this.filtroReclamacoes.status
-        )
-      }
-      
-      if (this.filtroReclamacoes.data) {
-        filtradas = filtradas.filter(reclamacao => 
-          reclamacao.data_reclamacao === this.filtroReclamacoes.data
-        )
-      }
-      
-      this.reclamacoesFiltradas = filtradas
-    },
-    
-    abrirModalNovaReclamacao() {
-      this.reclamacaoAtual = {
-        id: null,
-        nome_reclamante: '',
-        telefone: '',
-        email: '',
-        unidade_setor: '',
-        nome_material: '',
-        codigo_material: '',
-        marca_modelo: '',
-        registro_reclamacao: '',
-        sugestoes: '',
-        status: 'ABERTA',
-        providencias_cpm: '',
-        data_reclamacao: new Date().toISOString().split('T')[0]
-      }
-      this.modalNovaReclamacao = true
-    },
-    
-    fecharModalNovaReclamacao() {
-      this.modalNovaReclamacao = false
-      this.reclamacaoAtual = {
-        id: null,
-        nome_reclamante: '',
-        telefone: '',
-        email: '',
-        unidade_setor: '',
-        nome_material: '',
-        codigo_material: '',
-        marca_modelo: '',
-        registro_reclamacao: '',
-        sugestoes: '',
-        status: 'ABERTA',
-        providencias_cpm: '',
-        data_reclamacao: new Date().toISOString().split('T')[0]
-      }
-    },
-    
-    async salvarReclamacao() {
-      try {
-        const reclamacaoData = {
-          ...this.reclamacaoAtual,
-          tenant_id: this.currentTenantId,
-          data_atualizacao: new Date().toISOString()
-        }
-        
-        if (this.reclamacaoAtual.id) {
-          // Atualizar
-          const { error } = await supabase
-            .from('reclamacoes_usuarios')
-            .update(reclamacaoData)
-            .eq('id', this.reclamacaoAtual.id)
-            .eq('tenant_id', this.currentTenantId)
-          
-          if (error) throw error
-        } else {
-          // Criar
-          reclamacaoData.criado_em = new Date().toISOString()
-          const { error } = await supabase
-            .from('reclamacoes_usuarios')
-            .insert([reclamacaoData])
-          
-          if (error) throw error
-        }
-        
-        this.fecharModalNovaReclamacao()
-        await this.carregarReclamacoes()
-        
-      } catch (error) {
-        console.error('Erro ao salvar reclamação:', error)
-        alert('Erro ao salvar reclamação. Tente novamente.')
-      }
-    },
-    
-    editarReclamacao(reclamacao) {
-      this.reclamacaoAtual = { ...reclamacao }
-      this.modalNovaReclamacao = true
-    },
-    
-    responderReclamacao(reclamacao) {
-      this.reclamacaoAtual = { ...reclamacao }
-      this.reclamacaoAtual.status = 'EM_ANALISE'
-      this.modalNovaReclamacao = true
-    },
-    
-    async removerReclamacao(reclamacao) {
-      if (!confirm(`Tem certeza que deseja remover a reclamação de "${reclamacao.nome_reclamante}"?`)) {
-        return
-      }
-      
-      try {
-        const { error } = await supabase
-          .from('reclamacoes_usuarios')
-          .delete()
-          .eq('id', reclamacao.id)
-          .eq('tenant_id', this.currentTenantId)
-        
-        if (error) throw error
-        
-        await this.carregarReclamacoes()
-      } catch (error) {
-        console.error('Erro ao remover reclamação:', error)
-        alert('Erro ao remover reclamação. Tente novamente.')
-      }
-    },
-    
-    getStatusReclamacaoClass(status) {
-      const classes = {
-        'ABERTA': 'status-pendente',
-        'EM_ANALISE': 'status-em-analise',
-        'RESOLVIDA': 'status-aprovado',
-        'REJEITADA': 'status-reprovado'
-      }
-      return classes[status] || 'status-pendente'
-    },
-    
-    formatarStatusReclamacao(status) {
-      const statusMap = {
-        'ABERTA': 'Em Aberto',
-        'EM_ANALISE': 'Em Análise',
-        'RESOLVIDA': 'Resolvida',
-        'REJEITADA': 'Rejeitada'
-      }
-      return statusMap[status] || status
-    },
+
     
     // ============================================
     // SISTEMA DE CONVITES AUTOMÁTICOS
@@ -6869,21 +6399,7 @@ th {
   font-size: 14px;
 }
 
-/* Botão de debug temporário */
-.btn-debug-avaliacoes {
-  background: #ff6b6b;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.3s;
-}
 
-.btn-debug-avaliacoes:hover {
-  background: #ff5252;
-}
 
 /* Modais */
 .modal-overlay {
@@ -8543,154 +8059,7 @@ th {
   background: linear-gradient(135deg, #e0a800, #d39e00);
 }
 
-/* === ESTILOS PARA RECLAMAÇÕES === */
-.reclamacoes-section {
-  padding: 20px;
-}
 
-.filtros-reclamacoes {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-  flex-wrap: wrap;
-}
-
-.reclamacoes-lista {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.reclamacao-card {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  border: 1px solid #e9ecef;
-  transition: transform 0.2s;
-}
-
-.reclamacao-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.reclamacao-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.reclamacao-header h4 {
-  margin: 0;
-  color: #2c3e50;
-  font-size: 16px;
-}
-
-.reclamacao-content {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 20px;
-  margin-bottom: 15px;
-}
-
-.reclamacao-info p {
-  margin: 8px 0;
-  font-size: 14px;
-  color: #495057;
-}
-
-.reclamacao-detalhes {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.reclamacao-texto,
-.sugestoes-texto,
-.providencias-texto {
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  border-left: 4px solid #007bff;
-}
-
-.sugestoes-texto {
-  border-left-color: #28a745;
-}
-
-.providencias-texto {
-  border-left-color: #ffc107;
-}
-
-.reclamacao-texto h5,
-.sugestoes-texto h5,
-.providencias-texto h5 {
-  margin: 0 0 8px 0;
-  color: #2c3e50;
-  font-size: 14px;
-}
-
-.reclamacao-texto p,
-.sugestoes-texto p,
-.providencias-texto p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.reclamacao-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.status-em-analise {
-  background: #17a2b8;
-  color: white;
-}
-
-/* === ESTILOS PARA SUB-ABAS === */
-.sub-tabs {
-  display: flex;
-  gap: 5px;
-  margin: 20px 0;
-  background: #f8f9fa;
-  padding: 5px;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
-.sub-tab-btn {
-  flex: 1;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  color: #495057;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.sub-tab-btn:hover {
-  background: rgba(0, 123, 255, 0.1);
-  color: #007bff;
-}
-
-.sub-tab-btn.active {
-  background: #007bff;
-  color: white;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
-}
 
 /* === ESTILOS PARA AVALIAÇÕES === */
 .filtros-avaliacoes {
@@ -8819,17 +8188,11 @@ th {
 
 /* === RESPONSIVIDADE === */
 @media (max-width: 768px) {
-  .reclamacao-content,
   .avaliacao-content {
     grid-template-columns: 1fr;
     gap: 15px;
   }
   
-  .sub-tabs {
-    flex-direction: column;
-  }
-  
-  .filtros-reclamacoes,
   .filtros-avaliacoes {
     flex-direction: column;
     gap: 10px;
@@ -9116,8 +8479,7 @@ th {
     grid-template-columns: 1fr;
   }
   
-  .filtros-usuarios,
-  .filtros-reclamacoes {
+  .filtros-usuarios {
     flex-direction: column;
   }
   
@@ -9126,12 +8488,7 @@ th {
     gap: 8px;
   }
   
-  .reclamacao-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .usuario-actions,
-  .reclamacao-actions {
+  .usuario-actions {
     flex-direction: column;
     align-items: stretch;
   }
