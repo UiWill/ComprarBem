@@ -1,17 +1,14 @@
 const GEMINI_API_KEY = 'AIzaSyAf-Oe56q4Rao0OodEOtnEjtI_FpOmDg6I';
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
-const PROXY_URL = IS_DEVELOPMENT 
-  ? 'https://cors-anywhere.herokuapp.com/'
-  : 'https://seu-worker.seu-nome.workers.dev/';
+
 // Usando o modelo correto que está disponível na v1beta
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export const geminiService = {
   async chat(message) {
     try {
-      const apiUrl = IS_DEVELOPMENT 
-        ? `${PROXY_URL}${GEMINI_API_URL}?key=${GEMINI_API_KEY}`
-        : PROXY_URL;
+      // Fazendo chamada direta para a API do Gemini
+      const apiUrl = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
 
       console.log('Enviando requisição para:', apiUrl);
 
