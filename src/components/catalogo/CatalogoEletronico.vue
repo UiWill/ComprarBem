@@ -80,6 +80,7 @@
             <p><strong>Modelo:</strong> {{ produtoSelecionado.modelo }}</p>
             <p><strong>Fabricante:</strong> {{ produtoSelecionado.fabricante }}</p>
             <p><strong>CNPJ:</strong> {{ produtoSelecionado.cnpj }}</p>
+            <p><strong>Código Material:</strong> {{ produtoSelecionado.codigo_material }}</p>
             <p v-if="produtoSelecionado.descricao"><strong>Descrição:</strong> {{ produtoSelecionado.descricao }}</p>
             
             <!-- Seção de Avaliações RDM -->
@@ -107,14 +108,68 @@
                 </div>
                 <div v-else class="avaliacoes-list">
                   <div v-for="(avaliacao, index) in avaliacoes" :key="index" class="avaliacao-item">
-                    <div class="avaliacao-stars">
-                      <span v-for="n in 5" :key="n" class="star" :class="{ filled: avaliacao.avaliacao >= n }">★</span>
+                    <div class="avaliacao-header">
+                      <span class="avaliacao-tipo" :class="avaliacao.tipo.toLowerCase()">
+                        {{ avaliacao.tipo }}
+                      </span>
+                      <div class="avaliacao-stars">
+                        <span v-for="n in 5" :key="n" class="star" :class="{ filled: avaliacao.avaliacao >= n }">★</span>
+                      </div>
                     </div>
-                    <div class="avaliacao-comentario">
+                    <div class="avaliacao-comentario" v-if="avaliacao.comentario">
                       {{ avaliacao.comentario }}
                     </div>
-                    <div class="avaliacao-data">
-                      {{ obterDataAvaliacao(avaliacao) }}
+                    <div class="avaliacao-footer">
+                      <span class="avaliador">{{ avaliacao.avaliador }}</span>
+                      <span class="avaliacao-data">{{ formatarData(avaliacao.data) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Seção de Reclamações e Sugestões com toggle -->
+            <div class="reclamacoes-section mt-4">
+              <div class="section-header" @click="toggleReclamacoes">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h5 class="mb-0">Reclamações e Sugestões</h5>
+                  <div class="d-flex align-items-center">
+                    <span v-if="reclamacoes.length > 0" class="badge badge-info me-2">{{ reclamacoes.length }} registros</span>
+                    <span class="toggle-icon">{{ showReclamacoes ? '▲' : '▼' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="showReclamacoes" class="reclamacoes-content">
+                <div v-if="reclamacoes.length === 0" class="text-center text-muted py-3">
+                  Nenhuma reclamação registrada
+                </div>
+                <div v-else class="reclamacoes-list">
+                  <div v-for="reclamacao in reclamacoesSorted" :key="reclamacao.id" class="reclamacao-item">
+                    <div class="reclamacao-header">
+                      <div class="d-flex align-items-center">
+                        <span class="badge" :class="getStatusBadgeClass(reclamacao.status)">{{ reclamacao.status }}</span>
+                        <span class="reclamante-nome">{{ reclamacao.nome_reclamante }}</span>
+                        <span class="reclamante-setor">{{ reclamacao.unidade_setor }}</span>
+                      </div>
+                      <span class="reclamacao-data">{{ formatDate(reclamacao.data_reclamacao) }}</span>
+                    </div>
+                    
+                    <div class="reclamacao-content">
+                      <div class="problema-box">
+                        <h6 class="box-title">Problema Reportado:</h6>
+                        <p class="box-text">{{ reclamacao.registro_reclamacao }}</p>
+                      </div>
+                      
+                      <div v-if="reclamacao.sugestoes" class="sugestao-box">
+                        <h6 class="box-title">Sugestões de Melhoria:</h6>
+                        <p class="box-text">{{ reclamacao.sugestoes }}</p>
+                      </div>
+
+                      <div v-if="reclamacao.providencias_cpm" class="providencias-box">
+                        <h6 class="box-title">Providências Tomadas:</h6>
+                        <p class="box-text">{{ reclamacao.providencias_cpm }}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -138,6 +193,7 @@
 
 <script>
 import { supabase } from '@/services/supabase'
+import { ref, onMounted, computed } from 'vue'
 
 export default {
   name: 'CatalogoEletronico',
@@ -151,6 +207,7 @@ export default {
       categoriaAtual: 'Todos os grupos',
       showCategoriaDropdown: false,
       showAvaliacoes: false,
+      showReclamacoes: false,
       produtoSelecionado: null,
       documentos: [],
       avaliacoes: [],
@@ -158,7 +215,8 @@ export default {
       carregandoCategorias: true,
       categoriaSelecionada: null,
       currentTenantId: null,
-      loading: false
+      loading: false,
+      reclamacoes: ref([])
     }
   },
   created() {
@@ -363,41 +421,92 @@ export default {
         
         this.documentos = docs || []
 
-        // Buscar avaliações RDM do produto
-        const { data: avaliacoes, error: avaliacoesError } = await supabase
-          .from('rdm_feedbacks')
-          .select('*')
-          .eq('produto_id', id)
-          .eq('tenant_id', this.currentTenantId) // Filtrar avaliações por tenant_id
-        
-        if (avaliacoesError) {
-          console.error('Erro ao carregar avaliações:', avaliacoesError)
-          this.avaliacoes = []
-          this.avaliacaoMedia = 0
-        } else {
-          this.avaliacoes = avaliacoes || []
+        // Buscar avaliações RDM do produto (todas as tabelas)
+        const [rdmResponse, feedbacksResponse, rdmFeedbacksResponse] = await Promise.all([
+          // Buscar avaliações técnicas (RDM)
+          supabase
+            .from('rdm_avaliacoes')
+            .select('*')
+            .eq('produto_id', id),
           
-          // Log para depuração - ver quais campos estão disponíveis
-          if (this.avaliacoes.length > 0) {
-            console.log('Campos disponíveis na avaliação:', Object.keys(this.avaliacoes[0]));
-            console.log('Exemplo de avaliação:', this.avaliacoes[0]);
-          }
-          
-          // Calcular média de avaliações se existirem
-          if (this.avaliacoes.length > 0) {
-            const somaAvaliacoes = this.avaliacoes.reduce((soma, item) => soma + item.avaliacao, 0)
-            this.avaliacaoMedia = parseFloat((somaAvaliacoes / this.avaliacoes.length).toFixed(1))
-          } else {
-            this.avaliacaoMedia = 0
-          }
+          // Buscar feedbacks dos usuários
+          supabase
+            .from('material_feedbacks')
+            .select('*')
+            .eq('produto_id', id),
+
+          // Buscar feedbacks do órgão (RDM)
+          supabase
+            .from('rdm_feedbacks')
+            .select('*')
+            .eq('rdm_id', id)
+        ]);
+
+        // Tratar erros se houver
+        if (rdmResponse.error) {
+          console.error('Erro ao carregar avaliações RDM:', rdmResponse.error);
         }
+        if (feedbacksResponse.error) {
+          console.error('Erro ao carregar feedbacks:', feedbacksResponse.error);
+        }
+        if (rdmFeedbacksResponse.error) {
+          console.error('Erro ao carregar feedbacks RDM:', rdmFeedbacksResponse.error);
+        }
+
+        // Combinar as avaliações das três tabelas
+        const avaliacoesRDM = rdmResponse.data || [];
+        const feedbacksUsuarios = feedbacksResponse.data || [];
+        const rdmFeedbacks = rdmFeedbacksResponse.data || [];
+
+        // Formatar as avaliações para um formato uniforme
+        this.avaliacoes = [
+          ...avaliacoesRDM.map(av => ({
+            id: av.id,
+            avaliacao: av.rating || 0,
+            comentario: av.comentario,
+            data: av.criado_em,
+            tipo: 'RDM',
+            avaliador: 'Avaliação Técnica'
+          })),
+          ...feedbacksUsuarios.map(fb => ({
+            id: fb.id,
+            avaliacao: fb.rating || 0,
+            comentario: fb.comentario,
+            data: fb.criado_em,
+            tipo: 'Feedback',
+            avaliador: 'Feedback de Usuário'
+          })),
+          ...rdmFeedbacks.map(rf => ({
+            id: rf.id,
+            avaliacao: rf.rating || 0,
+            comentario: rf.comentario,
+            data: rf.criado_em,
+            tipo: 'RDM',
+            avaliador: 'Avaliação do Órgão'
+          }))
+        ];
+
+        // Ordenar por data mais recente
+        this.avaliacoes.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        // Calcular média considerando todas as avaliações
+        if (this.avaliacoes.length > 0) {
+          const somaAvaliacoes = this.avaliacoes.reduce((soma, item) => soma + item.avaliacao, 0);
+          this.avaliacaoMedia = parseFloat((somaAvaliacoes / this.avaliacoes.length).toFixed(1));
+        } else {
+          this.avaliacaoMedia = 0;
+        }
+
+        // Carregar reclamações
+        await this.carregarReclamacoes()
+
       } catch (error) {
-        console.error('Erro ao carregar detalhes do produto:', error)
+        console.error('Erro ao carregar detalhes do produto:', error);
         this.$swal({
           icon: 'error',
           title: 'Erro ao carregar detalhes',
           text: 'Não foi possível carregar os detalhes do produto. Tente novamente.'
-        })
+        });
       }
     },
     fecharModal() {
@@ -428,6 +537,9 @@ export default {
     toggleAvaliacoes() {
       this.showAvaliacoes = !this.showAvaliacoes;
     },
+    toggleReclamacoes() {
+      this.showReclamacoes = !this.showReclamacoes;
+    },
     formatarData(dataString) {
       if (!dataString) {
         // Se não houver data, verificar se há outro campo de data disponível
@@ -447,10 +559,81 @@ export default {
         return 'Data inválida';
       }
     },
-    obterDataAvaliacao(avaliacao) {
-      // Tentar obter a data de diferentes campos possíveis
-      const dataField = avaliacao.created_at || avaliacao.criado_em || avaliacao.data || null;
-      return this.formatarData(dataField);
+    async carregarReclamacoes() {
+      try {
+        if (!this.produtoSelecionado?.codigo_material) {
+          console.log('Código do material não encontrado no produto');
+          return;
+        }
+
+        console.log('Buscando reclamações para o código de material:', this.produtoSelecionado.codigo_material);
+
+        const { data, error } = await supabase
+          .from('reclamacoes_usuarios')
+          .select('*')
+          .eq('codigo_material', this.produtoSelecionado.codigo_material)
+          .order('data_reclamacao', { ascending: false });
+
+        if (error) {
+          console.error('Erro ao carregar reclamações:', error);
+          throw error;
+        }
+
+        console.log(`Reclamações encontradas: ${data?.length || 0}`, data);
+        
+        this.reclamacoes = data || [];
+      } catch (error) {
+        console.error('Erro ao carregar reclamações:', error);
+        this.reclamacoes = [];
+      }
+    },
+    formatDate(date) {
+      if (!date) return ''
+      return new Date(date).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+    getStatusBadgeClass(status) {
+      const classes = {
+        'ABERTA': 'badge-warning',
+        'EM_ANALISE': 'badge-info',
+        'RESOLVIDA': 'badge-success',
+        'REJEITADA': 'badge-danger'
+      }
+      return classes[status] || 'badge-secondary'
+    },
+    getTipoAvaliacao(avaliacao) {
+      if (avaliacao.tipo === 'RDM') return 'RDM'
+      if (avaliacao.tipo === 'FEEDBACK') return 'Feedback'
+      return 'Avaliação'
+    },
+    getDocumentName(url) {
+      if (!url) return ''
+      const parts = url.split('/')
+      return parts[parts.length - 1]
+    }
+  },
+  computed: {
+    avaliacoesSorted() {
+      return [...this.avaliacoes].sort((a, b) => {
+        const dateA = new Date(a.data)
+        const dateB = new Date(b.data)
+        return dateB - dateA
+      })
+    },
+    reclamacoesSorted() {
+      return [...this.reclamacoes].sort((a, b) => {
+        return new Date(b.data_reclamacao) - new Date(a.data_reclamacao)
+      })
+    },
+    averageRating() {
+      if (!this.avaliacoes.length) return 0
+      const sum = this.avaliacoes.reduce((acc, curr) => acc + (curr.avaliacao || 0), 0)
+      return (sum / this.avaliacoes.length).toFixed(1)
     }
   }
 }
@@ -812,18 +995,41 @@ h2 {
   border-left: 3px solid #2c3e50;
 }
 
-.avaliacao-stars {
-  margin-bottom: 8px;
+.avaliacao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
-.avaliacao-comentario {
-  color: #666;
-  margin-bottom: 8px;
-}
-
-.avaliacao-data {
-  color: #999;
+.avaliacao-tipo {
+  padding: 4px 8px;
+  border-radius: 4px;
   font-size: 12px;
+  font-weight: bold;
+}
+
+.avaliacao-tipo.rdm {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.avaliacao-tipo.feedback {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.avaliacao-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.avaliador {
+  font-weight: 500;
 }
 
 .documentos {
@@ -859,5 +1065,142 @@ h2 {
 .documentos a:hover {
   background-color: #3498db;
   color: white;
+}
+
+.reclamacoes-section {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.section-header {
+  cursor: pointer;
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.section-header:hover {
+  background-color: #e9ecef;
+}
+
+.section-header h5 {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.toggle-icon {
+  font-size: 12px;
+  color: #6c757d;
+  transition: transform 0.2s;
+}
+
+.reclamacoes-content {
+  padding: 20px;
+  border: 1px solid #e9ecef;
+  border-top: none;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.reclamacao-item {
+  background-color: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  transition: transform 0.2s;
+}
+
+.reclamacao-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.reclamacao-item:last-child {
+  margin-bottom: 0;
+}
+
+.reclamacao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.reclamante-nome {
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 10px;
+}
+
+.reclamante-setor {
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.reclamacao-data {
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.reclamacao-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.problema-box,
+.sugestao-box,
+.providencias-box {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 12px 15px;
+}
+
+.box-title {
+  color: #495057;
+  font-size: 0.9em;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.box-text {
+  color: #2c3e50;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.providencias-box {
+  border-left: 3px solid #28a745;
+  background-color: #f8fff9;
+}
+
+.badge {
+  padding: 5px 10px;
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.badge-warning { 
+  background-color: #fff3cd; 
+  color: #856404; 
+}
+
+.badge-info { 
+  background-color: #cce5ff; 
+  color: #004085; 
+}
+
+.badge-success { 
+  background-color: #d4edda; 
+  color: #155724; 
+}
+
+.badge-danger { 
+  background-color: #f8d7da; 
+  color: #721c24; 
 }
 </style> 

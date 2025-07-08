@@ -1,2 +1,0 @@
-"use strict";(self["webpackChunkcomprar_bem"]=self["webpackChunkcomprar_bem"]||[]).push([[591],{1591:e=>{e.exports=function(){throw new Error("ws does not work in the browser. Browser clients must use the native WebSocket object")}}}]);
-//# sourceMappingURL=591.1422f99d.js.map

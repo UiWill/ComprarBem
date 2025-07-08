@@ -9,7 +9,6 @@ import Feedback from '../views/Feedback.vue'
 import DCB from '../views/DCB.vue'
 import CCL from '../views/CCL.vue'
 import Classificacao from '../views/Classificacao.vue'
-import EditaisPublicos from '../views/EditaisPublicos.vue'
 import LoginRDM from '../views/LoginRDM.vue'
 import DashboardRDM from '../views/DashboardRDM.vue'
 
@@ -24,13 +23,6 @@ const routes = [
     component: Home,
     meta: { requiresAuth: false }
   },
-  {
-    path: '/editais-publicos',
-    name: 'EditaisPublicos',
-    component: EditaisPublicos,
-    meta: { requiresAuth: false }
-  },
-
   {
     path: '/dashboard',
     name: 'Dashboard',

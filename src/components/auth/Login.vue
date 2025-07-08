@@ -124,20 +124,6 @@
       
       <p class="error-message" v-if="errorMsg">{{ errorMsg }}</p>
       
-      <!-- Link para Editais Públicos -->
-      <div class="public-access">
-        <hr style="margin: 20px 0;">
-        <p style="text-align: center; color: #666; margin-bottom: 15px;">
-          <strong>Área Pública</strong>
-        </p>
-        <router-link to="/editais-publicos" class="btn-public">
-          📋 Ver Editais de Pré-Qualificação
-        </router-link>
-        <p style="font-size: 12px; color: #888; text-align: center; margin-top: 10px;">
-          Empresas podem consultar e se inscrever nos editais públicos
-        </p>
-      </div>
-      
       <!-- Link para Sistema RDM -->
       <div class="rdm-access">
         <hr style="margin: 20px 0;">

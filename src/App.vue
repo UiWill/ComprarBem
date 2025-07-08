@@ -1,8 +1,20 @@
 <template>
   <div id="app">
     <router-view />
+    <AIChat />
   </div>
 </template>
+
+<script>
+import AIChat from '@/components/common/AIChat.vue';
+
+export default {
+  name: 'App',
+  components: {
+    AIChat
+  }
+};
+</script>
 
 <style>
 html, body {

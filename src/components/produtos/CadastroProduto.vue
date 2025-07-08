@@ -101,8 +101,16 @@
             maxlength="18"
             @input="formatarCNPJ"
             placeholder="00.000.000/0000-00"
+            :class="{ 'input-error': cnpjInvalido, 'input-success': cnpjValidado && !cnpjInvalido }"
           >
-          <small v-if="cnpjInvalido" class="error-text">CNPJ inválido. Formato: 00.000.000/0000-00</small>
+          <div v-if="cnpjMensagem" :class="['mensagem', { 'error-text': cnpjInvalido, 'success-text': !cnpjInvalido }]">
+            {{ cnpjMensagem }}
+          </div>
+          <div v-if="dadosEmpresa" class="dados-empresa">
+            <p><strong>Razão Social:</strong> {{ dadosEmpresa.razaoSocial }}</p>
+            <p v-if="dadosEmpresa.nomeFantasia"><strong>Nome Fantasia:</strong> {{ dadosEmpresa.nomeFantasia }}</p>
+            <p><strong>Situação:</strong> {{ dadosEmpresa.situacao }}</p>
+          </div>
         </div>
         
         <div class="form-group">
@@ -236,6 +244,7 @@
 <script>
 import { supabase } from '@/services/supabase'
 import { getTenantId } from '@/services/supabase'
+import { validarCNPJ } from '@/services/cnpjService'
 import { ref, reactive, onMounted } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -255,19 +264,21 @@ export default {
         origem: '',
         registro_anvisa: '',
         cbpf: '',
+        codigo_material: '',
         norma_abnt: '',
         norma_regulamentadora: '',
-        codigo_material: '',
-        descricao: '',
-        status: 'pendente'
+        descricao: ''
       },
       cnpjFormatado: '',
       cnpjInvalido: false,
+      cnpjMensagem: '',
+      cnpjValidado: false,
+      dadosEmpresa: null,
+      loading: false,
       grupos: [],
       classes: [],
       selectedFiles: [],
       arquivosInvalidos: [],
-      loading: false,
       currentTenantId: null
     }
   },
@@ -457,49 +468,48 @@ export default {
         ]
       }
     },
-    formatarCNPJ(event) {
-      // Remover todos os caracteres que não são dígitos
-      let valor = event.target.value.replace(/\D/g, '');
-      
-      // Limitar a 14 dígitos (CNPJ sem formatação)
-      valor = valor.substring(0, 14);
-      
-      // Aplicar máscara no formato XX.XXX.XXX/XXXX-XX
-      if (valor.length > 0) {
-        valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
-        valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-        valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2');
-        valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
+    async formatarCNPJ(event) {
+      let valor = event.target.value.replace(/\D/g, '')
+      if (valor.length <= 14) {
+        valor = valor.replace(/^(\d{2})(\d)/, '$1.$2')
+        valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2')
+        valor = valor.replace(/(\d{4})(\d)/, '$1-$2')
+        this.cnpjFormatado = valor
+        this.produto.cnpj = valor
+        
+        // Limpa validações anteriores se o CNPJ for alterado
+        if (this.cnpjValidado) {
+          this.cnpjValidado = false
+          this.cnpjInvalido = false
+          this.cnpjMensagem = ''
+          this.dadosEmpresa = null
+        }
+        
+        // Valida CNPJ quando completar 14 dígitos
+        if (valor.replace(/\D/g, '').length === 14) {
+          await this.validarCNPJOnline()
+        }
       }
-      
-      this.cnpjFormatado = valor;
-      
-      // Atualizar o valor no objeto produto (apenas os dígitos)
-      this.produto.cnpj = this.cnpjFormatado.replace(/\D/g, '');
-      
-      // Validar CNPJ
-      this.validarCNPJ();
     },
     
-    validarCNPJ() {
-      const cnpj = this.produto.cnpj;
-      
-      // CNPJ precisa ter 14 dígitos
-      if (cnpj.length !== 14) {
-        this.cnpjInvalido = true;
-        return false;
+    async validarCNPJOnline() {
+      try {
+        const resultado = await validarCNPJ(this.cnpjFormatado)
+        this.cnpjValidado = true
+        this.cnpjInvalido = !resultado.valido
+        this.cnpjMensagem = resultado.mensagem
+        
+        if (resultado.valido) {
+          this.dadosEmpresa = resultado.dados
+        } else {
+          this.dadosEmpresa = null
+        }
+      } catch (error) {
+        console.error('Erro ao validar CNPJ:', error)
+        this.cnpjInvalido = true
+        this.cnpjMensagem = 'Erro ao validar CNPJ. Tente novamente mais tarde.'
       }
-      
-      // Verificar se todos os dígitos são iguais (CNPJ inválido)
-      if (/^(\d)\1+$/.test(cnpj)) {
-        this.cnpjInvalido = true;
-        return false;
-      }
-      
-      // Para um MVP, consideramos válido se tiver 14 dígitos e não forem todos iguais
-      // Em uma versão de produção, seria importante implementar o algoritmo completo de validação
-      this.cnpjInvalido = false;
-      return true;
     },
     
     onFileSelect(event) {
@@ -877,5 +887,30 @@ textarea {
 
 .arquivo-invalido {
   color: #e74c3c;
+}
+
+.input-error {
+  border-color: #dc3545;
+}
+
+.input-success {
+  border-color: #28a745;
+}
+
+.mensagem {
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.dados-empresa {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.dados-empresa p {
+  margin: 0.25rem 0;
 }
 </style> 

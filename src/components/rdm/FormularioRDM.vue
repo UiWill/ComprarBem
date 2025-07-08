@@ -7,7 +7,7 @@
         <label for="produto">Produto*</label>
         <select 
           id="produto" 
-          v-model="feedback.produto_id" 
+          v-model="feedback.rdm_id" 
           required
         >
           <option value="">Selecione o produto...</option>
@@ -16,7 +16,7 @@
             :key="produto.id" 
             :value="produto.id"
           >
-            {{ produto.nome }} - {{ produto.marca }} - {{ produto.modelo }}
+            {{ produto.nome }} - {{ produto.codigo || 'Sem código' }}
           </option>
         </select>
       </div>
@@ -28,8 +28,8 @@
             v-for="n in 5" 
             :key="n" 
             class="estrela" 
-            :class="{ ativa: feedback.avaliacao >= n }"
-            @click="feedback.avaliacao = n"
+            :class="{ ativa: feedback.rating >= n }"
+            @click="feedback.rating = n"
           >
             ★
           </div>
@@ -37,23 +37,12 @@
       </div>
       
       <div class="form-group">
-        <label for="comentario">Justificativa da Avaliação*</label>
+        <label for="comentario">Comentário</label>
         <textarea 
           id="comentario" 
           v-model="feedback.comentario" 
           rows="4" 
           placeholder="Ex: Equipamento apresentou falha após 3 meses de uso..."
-          required
-        ></textarea>
-      </div>
-      
-      <div class="form-group">
-        <label for="sugestoes">Sugestões</label>
-        <textarea 
-          id="sugestoes" 
-          v-model="feedback.sugestoes" 
-          rows="3" 
-          placeholder="Ex: Recomendo melhorar a qualidade do material utilizado, adicionar garantia estendida..."
         ></textarea>
       </div>
       
@@ -75,15 +64,17 @@ export default {
   data() {
     return {
       feedback: {
-        produto_id: '',
-        avaliacao: 0,
+        rdm_id: '',
+        rating: 0,
         comentario: '',
-        sugestoes: ''
+        material_nome: '',
+        material_codigo: '',
       },
       produtos: [],
       loading: false,
       currentUser: null,
-      currentTenantId: null
+      currentTenantId: null,
+      error: null
     }
   },
   created() {
@@ -93,163 +84,167 @@ export default {
   methods: {
     async obterUsuarioAtual() {
       try {
-        // Obter dados da sessão atual
-        const { data: authData } = await supabase.auth.getSession()
-        const user = authData?.session?.user
+        const { data: { session }, error } = await supabase.auth.getSession()
         
-        if (user) {
-          this.currentUser = user
+        if (error) throw error
+        
+        if (session?.user) {
+          this.currentUser = session.user
           
-          // Tentar obter tenant_id dos metadados
-          if (user.user_metadata?.tenant_id) {
-            this.currentTenantId = user.user_metadata.tenant_id
-          } else {
-            // Gerar um UUID para o tenant se não existir
-            this.currentTenantId = uuidv4()
+          // Buscar tenant_id dos metadados ou da tabela de usuários
+          const { data: userData, error: userError } = await supabase
+            .from('usuarios')
+            .select('tenant_id')
+            .eq('email', session.user.email)
+            .single()
+            
+          if (userError && userError.code !== 'PGRST116') { // Ignora erro de não encontrado
+            throw userError
           }
+          
+          this.currentTenantId = userData?.tenant_id || session.user.user_metadata?.tenant_id || uuidv4()
         } else {
-          // Se não houver usuário logado, gerar UUIDs temporários
-          this.currentTenantId = uuidv4()
+          throw new Error('Usuário não está autenticado')
         }
       } catch (error) {
         console.error('Erro ao obter dados do usuário:', error)
-        // Em caso de erro, gerar UUIDs temporários
-        this.currentTenantId = uuidv4()
+        this.$swal({
+          icon: 'error',
+          title: 'Erro de Autenticação',
+          text: 'Por favor, faça login novamente para enviar um feedback.'
+        })
       }
     },
     async carregarProdutos() {
       try {
-        // Garantir que temos o tenant_id antes de carregar os produtos
-        await this.obterUsuarioAtual();
-        
         if (!this.currentTenantId) {
-          console.error('Não foi possível identificar o tenant_id');
-          this.produtos = [];
-          return;
+          await this.obterUsuarioAtual()
         }
         
-        console.log('Carregando produtos para o tenant:', this.currentTenantId);
+        if (!this.currentTenantId) {
+          throw new Error('Não foi possível identificar o tenant_id')
+        }
         
         const { data, error } = await supabase
           .from('produtos')
           .select('*')
           .eq('status', 'aprovado')
-          .eq('tenant_id', this.currentTenantId) // Filtrar por tenant_id
-          .order('nome');
-        
-        if (error) throw error;
-        console.log('Produtos carregados:', data?.length || 0);
-        this.produtos = data || [];
-      } catch (error) {
-        console.error('Erro ao carregar produtos:', error);
-        alert('Erro ao carregar produtos. Por favor, tente novamente.');
-      }
-    },
-    async enviarFeedback() {
-      if (this.feedback.avaliacao === 0) {
-        alert('Por favor, selecione uma avaliação de 1 a 5 estrelas.')
-        return
-      }
-      
-      try {
-        this.loading = true
-        
-        // Garantir que temos IDs válidos
-        if (!this.currentTenantId) {
-          this.currentTenantId = uuidv4()
-        }
-        
-        // Buscar o ID do usuário na tabela 'usuarios'
-        let usuarioId;
-        
-        if (this.currentUser?.email) {
-          console.log('Buscando ID do usuário na tabela usuarios pelo email:', this.currentUser.email);
-          const { data: usuarioData, error: usuarioError } = await supabase
-            .from('usuarios')
-            .select('id')
-            .eq('email', this.currentUser.email)
-            .maybeSingle();
-            
-          if (usuarioError) {
-            console.error('Erro ao buscar usuário:', usuarioError);
-          }
-          
-          if (usuarioData?.id) {
-            usuarioId = usuarioData.id;
-            console.log('ID do usuário encontrado na tabela usuarios:', usuarioId);
-          } else {
-            console.warn('Usuário não encontrado na tabela usuarios, gerando ID temporário');
-            usuarioId = uuidv4();
-            
-            // Tentar criar um usuário na tabela para futuras referências
-            try {
-              const { error: insertError } = await supabase
-                .from('usuarios')
-                .insert({
-                  id: usuarioId,
-                  email: this.currentUser.email,
-                  nome: this.currentUser.email.split('@')[0],
-                  tenant_id: this.currentTenantId,
-                  tipo: 'cliente',
-                  ativo: true
-                });
-                
-              if (insertError) {
-                console.error('Erro ao criar usuário na tabela:', insertError);
-              }
-            } catch (e) {
-              console.error('Exceção ao criar usuário:', e);
-            }
-          }
-        } else {
-          console.warn('Usuário não está autenticado, gerando ID temporário');
-          usuarioId = uuidv4();
-        }
-        
-        console.log('Enviando feedback com:', {
-          produto_id: this.feedback.produto_id,
-          usuario_id: usuarioId,
-          tenant_id: this.currentTenantId
-        })
-        
-        const { error } = await supabase
-          .from('rdm_feedbacks')
-          .insert({
-            produto_id: this.feedback.produto_id,
-            usuario_id: usuarioId, // ID da tabela usuarios
-            tenant_id: this.currentTenantId,
-            avaliacao: this.feedback.avaliacao,
-            comentario: this.feedback.comentario,
-            sugestoes: this.feedback.sugestoes
-          })
+          .eq('tenant_id', this.currentTenantId)
+          .order('nome')
         
         if (error) throw error
         
+        this.produtos = data || []
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error)
+        this.$swal({
+          icon: 'error',
+          title: 'Erro ao carregar produtos',
+          text: 'Não foi possível carregar a lista de produtos. Por favor, recarregue a página.'
+        })
+      }
+    },
+    async enviarFeedback() {
+      if (this.feedback.rating === 0) {
+        this.$swal({
+          icon: 'warning',
+          title: 'Avaliação necessária',
+          text: 'Por favor, selecione uma avaliação de 1 a 5 estrelas.'
+        })
+        return
+      }
+      
+      if (!this.feedback.rdm_id) {
+        this.$swal({
+          icon: 'warning',
+          title: 'Produto necessário',
+          text: 'Por favor, selecione um produto para avaliar.'
+        })
+        return
+      }
+
+      try {
+        this.loading = true
+        this.error = null
+
+        if (!this.currentUser?.email) {
+          throw new Error('Usuário não está autenticado')
+        }
+
+        // Buscar ou criar usuário
+        const { data: usuario, error: userError } = await supabase
+          .from('usuarios')
+          .select('id, tenant_id')
+          .eq('email', this.currentUser.email)
+          .single()
+
+        if (userError && userError.code !== 'PGRST116') {
+          throw userError
+        }
+
+        // Obter informações do produto selecionado
+        const produtoSelecionado = this.produtos.find(p => p.id === this.feedback.rdm_id)
+        if (!produtoSelecionado) {
+          throw new Error('Produto não encontrado')
+        }
+
+        // Preparar dados do feedback
+        const feedbackData = {
+          id: uuidv4(),
+          tenant_id: this.currentTenantId,
+          rdm_id: this.feedback.rdm_id,
+          usuario_rdm_id: usuario.id,
+          rating: this.feedback.rating,
+          comentario: this.feedback.comentario || null,
+          material_nome: produtoSelecionado.nome,
+          material_codigo: produtoSelecionado.codigo || 'N/A',
+          criado_em: new Date().toISOString()
+        }
+
+        // Enviar feedback
+        const { error: feedbackError } = await supabase
+          .from('rdm_feedbacks')
+          .insert(feedbackData)
+
+        if (feedbackError) throw feedbackError
+
         this.$swal({
           icon: 'success',
           title: 'Feedback enviado!',
           text: 'Seu feedback foi enviado com sucesso.'
         })
-        
+
         this.limparFormulario()
       } catch (error) {
         console.error('Erro ao enviar feedback:', error)
+        
+        let mensagemErro = 'Por favor, tente novamente.'
+        if (error.message === 'Usuário não está autenticado') {
+          mensagemErro = 'Por favor, faça login para enviar um feedback.'
+        } else if (error.code === '23505') {
+          mensagemErro = 'Você já enviou um feedback para este produto.'
+        }
+
         this.$swal({
           icon: 'error',
           title: 'Erro ao enviar feedback',
-          text: 'Por favor, tente novamente.'
+          text: mensagemErro
         })
+
+        this.error = error
       } finally {
         this.loading = false
       }
     },
     limparFormulario() {
       this.feedback = {
-        produto_id: '',
-        avaliacao: 0,
+        rdm_id: '',
+        rating: 0,
         comentario: '',
-        sugestoes: ''
+        material_nome: '',
+        material_codigo: ''
       }
+      this.error = null
     }
   }
 }
@@ -317,5 +312,12 @@ textarea {
 
 .btn-primary:disabled {
   background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.error-text {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
 }
 </style> 

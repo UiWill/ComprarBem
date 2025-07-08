@@ -371,8 +371,6 @@
           </div>
         </div>
 
-
-
         <!-- Tab: Perfil -->
         <div v-if="activeTab === 'perfil'" class="tab-content">
           <div class="page-header">
@@ -529,23 +527,29 @@ export default {
     async carregarDadosUsuario() {
       try {
         const dadosLocal = localStorage.getItem('usuarioRDM')
-        if (dadosLocal) {
-          this.usuarioAtual = JSON.parse(dadosLocal)
-          console.log('✅ Dados do usuário carregados:', this.usuarioAtual.nome_usuario)
-          console.log('📦 Materiais do usuário:', this.usuarioAtual.materiais?.length || 0)
-          
-
-          
-        } else {
+        if (!dadosLocal) {
           throw new Error('Dados do usuário não encontrados')
         }
+
+        this.usuarioAtual = JSON.parse(dadosLocal)
+        
+        if (!this.usuarioAtual.id || !this.usuarioAtual.tenant_id) {
+          throw new Error('Dados do usuário incompletos')
+        }
+
+        console.log('✅ Dados do usuário carregados:', {
+          nome: this.usuarioAtual.nome_usuario,
+          id: this.usuarioAtual.id,
+          tenant_id: this.usuarioAtual.tenant_id,
+          materiais: this.usuarioAtual.materiais?.length || 0
+        })
+
       } catch (error) {
         console.error('❌ Erro ao carregar dados do usuário:', error)
+        alert('Erro ao carregar dados do usuário. Por favor, faça login novamente.')
         this.$router.push('/rdm')
       }
     },
-
-
 
     inicializarReclamacao() {
       this.novaReclamacao.nome_reclamante = this.usuarioAtual.nome_usuario || ''
@@ -555,41 +559,29 @@ export default {
       this.novaReclamacao.comentario = ''
     },
 
-
-
     async carregarHistoricoFeedbacks() {
       this.carregandoHistorico = true
       try {
-        console.log('🔍 [HISTÓRICO] Carregando feedbacks anteriores')
-        
-        // Carregar feedbacks do banco de dados
-        try {
-          const { data: feedbacks, error } = await supabase
-            .from('material_feedbacks')
-            .select('*')
-            .eq('usuario_rdm_id', this.usuarioAtual.id)
-            .order('criado_em', { ascending: false })
-          
-          if (error) {
-            console.error('❌ [HISTÓRICO] Erro ao carregar feedbacks:', error)
-            // Se der erro, inicializar com array vazio
-            this.historicoFeedbacks = []
-          } else {
-            this.historicoFeedbacks = feedbacks || []
-            console.log('✅ [HISTÓRICO] Feedbacks carregados do banco:', this.historicoFeedbacks.length)
-          }
-        } catch (erro) {
-          console.error('❌ [HISTÓRICO] Exceção ao carregar feedbacks:', erro)
-          this.historicoFeedbacks = []
+        if (!this.usuarioAtual.id || !this.usuarioAtual.tenant_id) {
+          throw new Error('Dados do usuário incompletos')
         }
+
+        const { data: feedbacks, error } = await supabase
+          .from('material_feedbacks')
+          .select('*')
+          .eq('usuario_rdm_id', this.usuarioAtual.id)
+          .eq('tenant_id', this.usuarioAtual.tenant_id)
+          .order('criado_em', { ascending: false })
         
+        if (error) throw error
+        
+        this.historicoFeedbacks = feedbacks || []
         this.aplicarFiltros()
         
-        console.log('✅ [HISTÓRICO] Feedbacks carregados:', this.historicoFeedbacks.length)
-        
       } catch (error) {
-        console.error('❌ [HISTÓRICO] Erro ao carregar histórico:', error)
+        console.error('❌ [HISTÓRICO] Erro:', error)
         this.historicoFeedbacks = []
+        alert('Erro ao carregar histórico: ' + error.message)
       } finally {
         this.carregandoHistorico = false
       }
@@ -671,9 +663,6 @@ export default {
       return hoje.toLocaleDateString('pt-BR')
     },
 
-
-
-    // Métodos para Avaliação
     async enviarReclamacao() {
       if (this.enviandoReclamacao) return
       
@@ -681,110 +670,81 @@ export default {
       try {
         console.log('📤 [RECLAMAÇÃO] Enviando reclamação...')
         
-        // Obter o tenant_id correto (auth.uid())
-        const { data: { user } } = await supabase.auth.getUser()
-        const tenantId = user?.id
-        
-        if (!tenantId) {
-          alert('❌ Erro: usuário não autenticado')
-          return
+        // Verificar dados necessários
+        if (!this.usuarioAtual.id || !this.usuarioAtual.tenant_id) {
+          throw new Error('Dados do usuário incompletos')
+        }
+
+        if (!this.materialSelecionadoReclamacao) {
+          throw new Error('Nenhum material selecionado')
         }
         
-        const avaliacaoData = {
-          tenant_id: tenantId,
-          usuario_rdm_id: this.usuarioAtual.id,
-          nome_reclamante: this.novaReclamacao.nome_reclamante,
-          telefone: this.novaReclamacao.telefone,
-          email: this.novaReclamacao.email,
-          unidade_setor: this.novaReclamacao.unidade_setor,
-          nome_material: this.novaReclamacao.nome_material,
-          codigo_material: this.novaReclamacao.codigo_material,
-          marca_modelo: this.novaReclamacao.marca_modelo,
-          rating: this.novaReclamacao.rating,
-          comentario: this.novaReclamacao.comentario,
-          registro_reclamacao: this.novaReclamacao.registro_reclamacao,
-          sugestoes: this.novaReclamacao.sugestoes,
-          status: 'ABERTA',
-          data_reclamacao: new Date().toISOString().split('T')[0] // Apenas a data (DATE field)
-        }
-        
-        console.log('💾 [AVALIAÇÃO] Dados preparados:', avaliacaoData)
-        
-        // Salvar avaliação na tabela material_feedbacks
-        console.log('💾 [AVALIAÇÃO] Salvando avaliação no banco...')
-        
+        // Preparar dados do feedback garantindo todos os campos necessários
         const feedbackData = {
-          tenant_id: avaliacaoData.tenant_id,
-          usuario_rdm_id: avaliacaoData.usuario_rdm_id,
-          produto_id: this.materialSelecionadoReclamacao?.produto_id || null,
-          material_nome: avaliacaoData.nome_material,
-          material_codigo: avaliacaoData.codigo_material,
-          rating: avaliacaoData.rating,
-          comentario: avaliacaoData.comentario
+          id: crypto.randomUUID(), // Gerar UUID único
+          tenant_id: this.usuarioAtual.tenant_id,
+          usuario_rdm_id: this.usuarioAtual.id,
+          produto_id: this.materialSelecionadoReclamacao.produto_id,
+          material_nome: this.novaReclamacao.nome_material,
+          material_codigo: this.novaReclamacao.codigo_material,
+          rating: this.novaReclamacao.rating,
+          comentario: this.novaReclamacao.comentario || '',
+          criado_em: new Date().toISOString()
         }
+
+        console.log('💾 [AVALIAÇÃO] Dados preparados:', feedbackData)
         
+        // Tentar inserir o feedback
         const { error: feedbackError } = await supabase
           .from('material_feedbacks')
           .insert([feedbackData])
         
         if (feedbackError) {
           console.error('❌ [AVALIAÇÃO] Erro ao salvar feedback:', feedbackError)
-          alert('❌ Erro ao enviar avaliação: ' + feedbackError.message)
-          return
+          throw new Error(feedbackError.message)
         }
         
         console.log('✅ [AVALIAÇÃO] Feedback salvo com sucesso!')
         
-        // Se há problemas descritos, salvar também como reclamação
-        const temProblemas = avaliacaoData.registro_reclamacao && avaliacaoData.registro_reclamacao.trim().length > 0
-        
-        if (temProblemas) {
-          console.log('💾 [RECLAMAÇÃO] Salvando reclamação no banco...')
-          
-          // Dados específicos para reclamações (sem campos que não existem na tabela)
+        // Se houver reclamação, salvar na tabela de reclamações
+        if (this.novaReclamacao.registro_reclamacao?.trim()) {
           const reclamacaoData = {
-            tenant_id: avaliacaoData.tenant_id,
-            nome_reclamante: avaliacaoData.nome_reclamante,
-            telefone: avaliacaoData.telefone,
-            email: avaliacaoData.email,
-            unidade_setor: avaliacaoData.unidade_setor,
-            nome_material: avaliacaoData.nome_material,
-            codigo_material: avaliacaoData.codigo_material,
-            marca_modelo: avaliacaoData.marca_modelo,
-            registro_reclamacao: avaliacaoData.registro_reclamacao,
-            sugestoes: avaliacaoData.sugestoes,
-            status: avaliacaoData.status,
-            data_reclamacao: avaliacaoData.data_reclamacao
+            id: crypto.randomUUID(),
+            tenant_id: this.usuarioAtual.tenant_id,
+            usuario_rdm_id: this.usuarioAtual.id,
+            nome_reclamante: this.novaReclamacao.nome_reclamante,
+            telefone: this.novaReclamacao.telefone,
+            email: this.novaReclamacao.email,
+            unidade_setor: this.novaReclamacao.unidade_setor,
+            nome_material: this.novaReclamacao.nome_material,
+            codigo_material: this.novaReclamacao.codigo_material,
+            marca_modelo: this.novaReclamacao.marca_modelo,
+            registro_reclamacao: this.novaReclamacao.registro_reclamacao,
+            sugestoes: this.novaReclamacao.sugestoes || '',
+            status: 'ABERTA',
+            data_reclamacao: new Date().toISOString()
           }
           
-          const { error } = await supabase
+          const { error: reclamacaoError } = await supabase
             .from('reclamacoes_usuarios')
             .insert([reclamacaoData])
           
-          if (error) {
-            console.error('❌ [RECLAMAÇÃO] Erro ao salvar reclamação:', error)
-            alert('❌ Erro ao enviar reclamação: ' + error.message)
-            return
+          if (reclamacaoError) {
+            console.error('❌ [RECLAMAÇÃO] Erro ao salvar reclamação:', reclamacaoError)
+            throw new Error(reclamacaoError.message)
           }
-          
-          console.log('✅ [RECLAMAÇÃO] Salva no banco com sucesso!')
         }
         
-        // Recarregar histórico para mostrar nova avaliação
+        // Recarregar histórico
         await this.carregarHistoricoFeedbacks()
         
-        const mensagem = temProblemas 
-          ? '🎉 Avaliação e reclamação enviadas com sucesso!\n📝 Protocolo: RCL' + Date.now().toString().slice(-6) + '\n\nA CPM analisará sua reclamação e entrará em contato pelos dados informados.'
-          : '🎉 Avaliação enviada com sucesso!\n⭐ Avaliação: ' + avaliacaoData.rating + ' estrelas'
-        
-        alert(mensagem)
+        // Mostrar mensagem de sucesso
+        alert('✅ Avaliação enviada com sucesso!')
         this.limparAvaliacao()
         
-        console.log('✅ [AVALIAÇÃO] Processada com sucesso')
-        
       } catch (error) {
-        console.error('❌ [RECLAMAÇÃO] Erro ao enviar reclamação:', error)
-        alert('❌ Erro ao enviar reclamação: ' + error.message)
+        console.error('❌ [RECLAMAÇÃO] Erro ao enviar:', error)
+        alert('Erro ao enviar: ' + error.message)
       } finally {
         this.enviandoReclamacao = false
       }
@@ -852,12 +812,9 @@ export default {
     async logout() {
       if (confirm('Tem certeza que deseja sair?')) {
         localStorage.removeItem('usuarioRDM')
-        await supabase.auth.signOut()
         this.$router.push('/rdm')
       }
-    },
-
-
+    }
   }
 }
 </script>
@@ -1162,7 +1119,7 @@ export default {
 
 .btn-secondary:hover {
   background: #e9ecef;
-  border-color: #dee2e6;
+  border-color: #adb5bd;
 }
 
 /* Filters */

@@ -409,11 +409,7 @@
             <div class="stat-value">{{ editaisFinalizados.length }}</div>
             <small>Processos concluídos</small>
           </div>
-          <div class="stat-card participantes-total">
-            <h4>👥 Participantes</h4>
-            <div class="stat-value">{{ totalParticipantes }}</div>
-            <small>Empresas interessadas</small>
-          </div>
+
         </div>
 
         <!-- Barra de Ações -->
@@ -438,7 +434,7 @@
             <div class="filtro-group">
               <select v-model="filtroEditais.status" @change="aplicarFiltrosEditais">
                 <option value="">Todos os Status</option>
-                <option value="RASCUNHO">📝 Rascunho</option>
+                <option value="RASCUNHO">📝 Em Elaboração</option>
                 <option value="PUBLICADO">📋 Publicado</option>
                 <option value="CANCELADO">❌ Cancelado</option>
               </select>
@@ -467,21 +463,20 @@
               <div class="edital-numero">{{ edital.numero }}</div>
               <div class="edital-status">
                 <span v-if="edital.status === 'PUBLICADO'" class="badge status-publicado">📋 Publicado</span>
-                <span v-else-if="edital.status === 'RASCUNHO'" class="badge status-rascunho">✏️ Rascunho</span>
+                <span v-else-if="edital.status === 'RASCUNHO'" class="badge status-rascunho">✏️ Em Elaboração</span>
                 <span v-else-if="edital.status === 'CANCELADO'" class="badge status-cancelado">❌ Cancelado</span>
               </div>
             </div>
             
-            <div class="edital-content">
+                          <div class="edital-content">
               <h4>{{ edital.descricao }}</h4>
               <div class="edital-info">
-                <p><strong>📅 Publicação:</strong> {{ formatDate(edital.data_publicacao) }}</p>
-                <p v-if="edital.data_limite_impugnacao">
-                  <strong>⏰ Prazo Impugnação:</strong> {{ formatDate(edital.data_limite_impugnacao) }}
-                </p>
-                <p v-if="edital.participantes_count">
-                  <strong>👥 Participantes:</strong> {{ edital.participantes_count }} empresas
-                </p>
+                <template v-if="edital.status === 'PUBLICADO'">
+                  <p><strong>📅 Publicação:</strong> {{ formatDate(edital.data_publicacao) }}</p>
+                  <p v-if="edital.data_limite_impugnacao">
+                    <strong>⏰ Prazo Impugnação:</strong> {{ formatDate(edital.data_limite_impugnacao) }}
+                  </p>
+                </template>
               </div>
             </div>
 
@@ -496,13 +491,7 @@
               >
                 ✏️ Editar
               </button>
-              <button 
-                v-if="edital.status === 'PUBLICADO'" 
-                @click="gerenciarParticipantes(edital)" 
-                class="btn-info btn-small"
-              >
-                👥 Participantes
-              </button>
+
               <div class="dropdown">
                 <button class="btn-secondary btn-small dropdown-toggle">⋮</button>
                 <div class="dropdown-menu">
@@ -555,7 +544,7 @@
                 <div class="form-group">
                   <label for="status">Status*</label>
                   <select id="status" v-model="editalAtual.status" required>
-                    <option value="RASCUNHO">✏️ Rascunho</option>
+                    <option value="RASCUNHO">✏️ Em Elaboração</option>
                     <option value="PUBLICADO">📋 Publicado</option>
                   </select>
                 </div>
@@ -649,10 +638,12 @@
                       {{ editalSelecionado.status }}
                     </span>
                   </div>
-                  <div><strong>Data Publicação:</strong> {{ formatDate(editalSelecionado.data_publicacao) }}</div>
-                  <div v-if="editalSelecionado.data_limite_impugnacao">
-                    <strong>Prazo Impugnação:</strong> {{ formatDate(editalSelecionado.data_limite_impugnacao) }}
-                  </div>
+                  <template v-if="editalSelecionado.status === 'PUBLICADO'">
+                    <div><strong>Data Publicação:</strong> {{ formatDate(editalSelecionado.data_publicacao) }}</div>
+                    <div v-if="editalSelecionado.data_limite_impugnacao">
+                      <strong>Prazo Impugnação:</strong> {{ formatDate(editalSelecionado.data_limite_impugnacao) }}
+                    </div>
+                  </template>
                 </div>
               </div>
 
@@ -665,8 +656,7 @@
                 <h4>📊 Estatísticas</h4>
                 <div class="stats-grid">
                   <div class="mini-stat">
-                    <span class="mini-stat-value">{{ editalSelecionado.participantes_count || 0 }}</span>
-                    <span class="mini-stat-label">Participantes</span>
+                    
                   </div>
                   <div class="mini-stat">
                     <span class="mini-stat-value">{{ editalSelecionado.produtos_submetidos || 0 }}</span>
