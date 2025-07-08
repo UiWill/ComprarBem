@@ -41,13 +41,19 @@
         <div 
           v-for="(message, index) in messages" 
           :key="index"
-          :class="['ai-chat__message', `ai-chat__message--${message.type}`]"
+          :class="['ai-chat__message', `ai-chat__message--${message.type}`, { 'ai-chat__message--status': message.isStatus }]"
         >
           <div class="ai-chat__message-avatar" v-if="message.type === 'assistant'">
             <i class="fas fa-robot"></i>
             <i class="fas fa-bolt ai-chat__bolt-small"></i>
           </div>
-          <div class="ai-chat__message-content">{{ message.text }}</div>
+          <div class="ai-chat__message-content">
+            <span v-if="message.isStatus" class="ai-chat__status-text">
+              <i class="fas fa-spinner fa-spin"></i>
+              {{ message.text }}
+            </span>
+            <span v-else>{{ message.text }}</span>
+          </div>
         </div>
         <div v-if="isLoading" class="ai-chat__message ai-chat__message--assistant">
           <div class="ai-chat__message-avatar">
@@ -121,17 +127,50 @@ export default {
       this.currentMessage = '';
       this.isLoading = true;
 
+      // Adicionar mensagem de status para tentativas
+      const statusMessage = {
+        type: 'assistant',
+        text: 'Processando sua solicitação...',
+        isStatus: true
+      };
+      this.messages.push(statusMessage);
+
       try {
         const response = await geminiService.chat(userMessage);
+        
+        // Remover mensagem de status
+        const statusIndex = this.messages.findIndex(msg => msg.isStatus);
+        if (statusIndex !== -1) {
+          this.messages.splice(statusIndex, 1);
+        }
+        
         this.messages.push({
           type: 'assistant',
           text: response
         });
       } catch (error) {
         console.error('Erro no chat:', error);
+        
+        // Remover mensagem de status
+        const statusIndex = this.messages.findIndex(msg => msg.isStatus);
+        if (statusIndex !== -1) {
+          this.messages.splice(statusIndex, 1);
+        }
+        
+        // Mensagem de erro mais específica baseada no tipo de erro
+        let errorMessage = 'Desculpe, estou enfrentando algumas dificuldades técnicas no momento.';
+        
+        if (error.message.includes('sobrecarregado') || error.message.includes('overloaded')) {
+          errorMessage = 'O serviço está temporariamente sobrecarregado devido ao alto volume de usuários. Já tentei várias vezes automaticamente. Por favor, aguarde alguns minutos e tente novamente.';
+        } else if (error.message.includes('conexão') || error.message.includes('network')) {
+          errorMessage = 'Problema de conexão detectado. Verifique sua internet e tente novamente.';
+        } else if (error.message.includes('indisponível') || error.message.includes('unavailable')) {
+          errorMessage = 'O serviço está temporariamente indisponível. Nossa equipe já está trabalhando nisso. Tente novamente em alguns minutos.';
+        }
+        
         this.messages.push({
           type: 'assistant',
-          text: 'Desculpe, estou enfrentando algumas dificuldades técnicas no momento. Nossa equipe já está trabalhando nisso. Por favor, tente novamente em alguns instantes ou, se preferir, entre em contato com o suporte através do menu principal.'
+          text: errorMessage + '\n\n💡 **Dica**: Se o problema persistir, você pode tentar reformular sua pergunta ou contactar o suporte através do menu principal.'
         });
       } finally {
         this.isLoading = false;
@@ -520,5 +559,24 @@ export default {
 
 .ai-chat__messages::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 198, 255, 0.5);
+}
+
+/* Estilo para mensagem de status */
+.ai-chat__message--status {
+  opacity: 0.8;
+  border: 2px dashed rgba(0, 198, 255, 0.3);
+  background: linear-gradient(135deg, #f0f8ff, #e6f3ff) !important;
+}
+
+.ai-chat__status-text {
+  color: #0072ff;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-chat__status-text i {
+  color: #00c6ff;
 }
 </style> 
