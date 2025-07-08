@@ -1,6 +1,6 @@
 const GEMINI_API_KEY = 'AIzaSyAf-Oe56q4Rao0OodEOtnEjtI_FpOmDg6I';
 
-// Lista de modelos em ordem de prioridade (do melhor para o mais básico)
+// Lista de modelos em ordem de prioridade (apenas modelos que existem na v1beta)
 const GEMINI_MODELS = [
   {
     name: 'gemini-1.5-flash',
@@ -13,17 +13,17 @@ const GEMINI_MODELS = [
     description: 'Gemini 1.5 Pro (Mais Avançado)'
   },
   {
-    name: 'gemini-pro',
-    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
-    description: 'Gemini Pro (Versão Estável)'
+    name: 'gemini-1.0-pro',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent',
+    description: 'Gemini 1.0 Pro (Versão Estável)'
   }
 ];
 
 // Configurações de retry por modelo
 const RETRY_CONFIG = {
-  maxRetries: 3, // Reduzido para permitir mais modelos
+  maxRetries: 3,
   baseDelay: 1000,
-  maxDelay: 15000, // Reduzido para ser mais rápido
+  maxDelay: 15000,
   backoffFactor: 2
 };
 
@@ -39,7 +39,7 @@ const calculateDelay = (attempt) => {
 // Função para verificar se o erro é temporário e deve ser retentado
 const isRetryableError = (error, response) => {
   // Erros de rede
-  if (error.message && error.message.includes('Failed to fetch')) {
+  if (error && error.message && error.message.includes('Failed to fetch')) {
     return true;
   }
   
@@ -63,11 +63,22 @@ const shouldTryNextModel = (error, response) => {
   // Se é um erro permanente, tentar próximo modelo
   if (response) {
     const status = response.status;
-    // 400 (Bad Request), 401 (Unauthorized), 403 (Forbidden), 404 (Not Found)
+    // 400 (Bad Request), 401 (Unauthorized), 403 (Forbidden), 404 (Not Found), 500 (Internal Server Error)
     return status === 400 || status === 401 || status === 403 || status === 404 || status === 500;
   }
   
   return true;
+};
+
+// Função para fazer parse seguro do JSON
+const safeJsonParse = (text) => {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.error('Erro ao fazer parse do JSON:', e);
+    console.error('Texto que causou erro:', text);
+    return null;
+  }
 };
 
 // Função para tentar um modelo específico
@@ -112,24 +123,31 @@ const tryModel = async (model, message, attempt = 0) => {
       }
       
       // Erro permanente ou esgotaram tentativas
-      let errorData;
-      try {
-        errorData = JSON.parse(responseText);
-      } catch (e) {
-        errorData = { error: { message: `Erro HTTP ${response.status}: ${response.statusText}` } };
+      let errorData = safeJsonParse(responseText);
+      if (!errorData) {
+        errorData = { 
+          error: { 
+            message: `Erro HTTP ${response.status}: ${response.statusText || 'Erro desconhecido'}` 
+          } 
+        };
       }
       
       console.error(`Erro no modelo ${model.name}:`, errorData);
-      throw new Error(`Modelo ${model.name} falhou: ${errorData.error?.message || response.statusText}`);
+      
+      // Mensagem de erro mais específica
+      let errorMessage = `Modelo ${model.name} falhou`;
+      if (errorData.error && errorData.error.message) {
+        errorMessage += `: ${errorData.error.message}`;
+      } else {
+        errorMessage += `: ${response.status} ${response.statusText || 'Erro desconhecido'}`;
+      }
+      
+      throw new Error(errorMessage);
     }
 
     // Parse da resposta bem-sucedida
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      console.error(`Erro de parse no modelo ${model.name}:`, e);
-      
+    const data = safeJsonParse(responseText);
+    if (!data) {
       if (attempt < RETRY_CONFIG.maxRetries) {
         const delay = calculateDelay(attempt);
         console.log(`Erro de parse no modelo ${model.name}. Aguardando ${delay}ms...`);
@@ -213,14 +231,18 @@ export const geminiService = {
     console.error('Último erro:', lastError);
     
     // Retornar erro baseado no último erro encontrado
-    if (lastError?.message?.includes('Failed to fetch')) {
+    if (lastError && lastError.message && lastError.message.includes('Failed to fetch')) {
       throw new Error('Não foi possível conectar aos serviços de IA. Verifique sua conexão com a internet.');
     }
     
-    if (lastError?.message?.includes('sobrecarregado') || lastError?.message?.includes('503')) {
+    if (lastError && lastError.message && (lastError.message.includes('503') || lastError.message.includes('sobrecarregado'))) {
       throw new Error('Todos os serviços de IA estão temporariamente sobrecarregados. Tente novamente em alguns minutos.');
     }
     
-    throw new Error('Todos os serviços de IA estão temporariamente indisponíveis. Nossa equipe já está trabalhando nisso.');
+    if (lastError && lastError.message && lastError.message.includes('429')) {
+      throw new Error('Limite de requisições atingido. Aguarde alguns minutos antes de tentar novamente.');
+    }
+    
+    throw new Error('Todos os serviços de IA estão temporariamente indisponíveis. Tente novamente mais tarde.');
   }
 }; 

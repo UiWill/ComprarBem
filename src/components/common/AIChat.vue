@@ -159,7 +159,16 @@ export default {
         } else if (message.includes('🔄 Tentando próximo modelo')) {
           const modelMatch = message.match(/🔄 Tentando próximo modelo: (.+)/);
           if (modelMatch) {
-            updateStatus(`Tentando modelo alternativo: ${modelMatch[1]}...`);
+            let modelName = modelMatch[1];
+            // Simplificar nome do modelo para exibição
+            if (modelName.includes('gemini-1.0-pro')) {
+              modelName = 'Gemini 1.0 Pro';
+            } else if (modelName.includes('gemini-1.5-pro')) {
+              modelName = 'Gemini 1.5 Pro';
+            } else if (modelName.includes('gemini-1.5-flash')) {
+              modelName = 'Gemini 1.5 Flash';
+            }
+            updateStatus(`Tentando modelo alternativo: ${modelName}...`);
           }
         }
         
