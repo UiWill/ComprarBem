@@ -134,9 +134,44 @@ export default {
         isStatus: true
       };
       this.messages.push(statusMessage);
+      
+      // Função para atualizar status
+      const updateStatus = (newText) => {
+        const statusIndex = this.messages.findIndex(msg => msg.isStatus);
+        if (statusIndex !== -1) {
+          this.messages[statusIndex].text = newText;
+        }
+      };
+
+      // Interceptar logs do console para atualizar status
+      const originalLog = console.log;
+      console.log = (...args) => {
+        const message = args.join(' ');
+        
+        // Atualizar status baseado nos logs do geminiService
+        if (message.includes('🚀 Tentando modelo')) {
+          const modelMatch = message.match(/🚀 Tentando modelo \d+\/\d+: (.+)/);
+          if (modelMatch) {
+            updateStatus(`Tentando modelo ${modelMatch[1]}...`);
+          }
+        } else if (message.includes('Erro temporário')) {
+          updateStatus('Erro temporário detectado, tentando novamente...');
+        } else if (message.includes('🔄 Tentando próximo modelo')) {
+          const modelMatch = message.match(/🔄 Tentando próximo modelo: (.+)/);
+          if (modelMatch) {
+            updateStatus(`Tentando modelo alternativo: ${modelMatch[1]}...`);
+          }
+        }
+        
+        // Chamar o log original
+        originalLog.apply(console, args);
+      };
 
       try {
         const response = await geminiService.chat(userMessage);
+        
+        // Restaurar console.log original
+        console.log = originalLog;
         
         // Remover mensagem de status
         const statusIndex = this.messages.findIndex(msg => msg.isStatus);
@@ -150,6 +185,9 @@ export default {
         });
       } catch (error) {
         console.error('Erro no chat:', error);
+        
+        // Restaurar console.log original
+        console.log = originalLog;
         
         // Remover mensagem de status
         const statusIndex = this.messages.findIndex(msg => msg.isStatus);

@@ -1,14 +1,29 @@
 const GEMINI_API_KEY = 'AIzaSyAf-Oe56q4Rao0OodEOtnEjtI_FpOmDg6I';
-const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
-// Usando o modelo correto que está disponível na v1beta
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+// Lista de modelos em ordem de prioridade (do melhor para o mais básico)
+const GEMINI_MODELS = [
+  {
+    name: 'gemini-1.5-flash',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+    description: 'Gemini 1.5 Flash (Rápido e Eficiente)'
+  },
+  {
+    name: 'gemini-1.5-pro',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
+    description: 'Gemini 1.5 Pro (Mais Avançado)'
+  },
+  {
+    name: 'gemini-pro',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
+    description: 'Gemini Pro (Versão Estável)'
+  }
+];
 
-// Configurações de retry
+// Configurações de retry por modelo
 const RETRY_CONFIG = {
-  maxRetries: 5,
-  baseDelay: 1000, // 1 segundo
-  maxDelay: 30000, // 30 segundos
+  maxRetries: 3, // Reduzido para permitir mais modelos
+  baseDelay: 1000,
+  maxDelay: 15000, // Reduzido para ser mais rápido
   backoffFactor: 2
 };
 
@@ -38,138 +53,174 @@ const isRetryableError = (error, response) => {
   return false;
 };
 
+// Função para verificar se deve tentar outro modelo
+const shouldTryNextModel = (error, response) => {
+  // Se é um erro temporário, continuar tentando o mesmo modelo
+  if (isRetryableError(error, response)) {
+    return false;
+  }
+  
+  // Se é um erro permanente, tentar próximo modelo
+  if (response) {
+    const status = response.status;
+    // 400 (Bad Request), 401 (Unauthorized), 403 (Forbidden), 404 (Not Found)
+    return status === 400 || status === 401 || status === 403 || status === 404 || status === 500;
+  }
+  
+  return true;
+};
+
+// Função para tentar um modelo específico
+const tryModel = async (model, message, attempt = 0) => {
+  try {
+    const apiUrl = `${model.url}?key=${GEMINI_API_KEY}`;
+
+    console.log(`Tentando modelo ${model.name} (tentativa ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1})`);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `Você é o QualiBot 2.0, um assistente especializado em licitações e compras públicas, com foco em ajudar os usuários de forma rápida e eficiente. Responda a seguinte pergunta de forma clara e objetiva, usando sua expertise em licitações: ${message}`
+          }]
+        }]
+      })
+    });
+
+    console.log(`Resposta do modelo ${model.name}:`, {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+
+    const responseText = await response.text();
+    
+    // Se a resposta não for OK, verificar tipo de erro
+    if (!response.ok) {
+      const isTemporaryError = isRetryableError(null, response);
+      
+      if (isTemporaryError && attempt < RETRY_CONFIG.maxRetries) {
+        const delay = calculateDelay(attempt);
+        console.log(`Erro temporário (${response.status}) no modelo ${model.name}. Aguardando ${delay}ms...`);
+        await sleep(delay);
+        return tryModel(model, message, attempt + 1);
+      }
+      
+      // Erro permanente ou esgotaram tentativas
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (e) {
+        errorData = { error: { message: `Erro HTTP ${response.status}: ${response.statusText}` } };
+      }
+      
+      console.error(`Erro no modelo ${model.name}:`, errorData);
+      throw new Error(`Modelo ${model.name} falhou: ${errorData.error?.message || response.statusText}`);
+    }
+
+    // Parse da resposta bem-sucedida
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error(`Erro de parse no modelo ${model.name}:`, e);
+      
+      if (attempt < RETRY_CONFIG.maxRetries) {
+        const delay = calculateDelay(attempt);
+        console.log(`Erro de parse no modelo ${model.name}. Aguardando ${delay}ms...`);
+        await sleep(delay);
+        return tryModel(model, message, attempt + 1);
+      }
+      
+      throw new Error(`Modelo ${model.name} retornou resposta inválida`);
+    }
+
+    // Verificar se a resposta tem o formato esperado
+    if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+      console.error(`Formato inválido no modelo ${model.name}:`, data);
+      
+      if (attempt < RETRY_CONFIG.maxRetries) {
+        const delay = calculateDelay(attempt);
+        console.log(`Formato inválido no modelo ${model.name}. Aguardando ${delay}ms...`);
+        await sleep(delay);
+        return tryModel(model, message, attempt + 1);
+      }
+      
+      throw new Error(`Modelo ${model.name} retornou formato inválido`);
+    }
+
+    // Sucesso!
+    console.log(`✅ Sucesso com modelo ${model.name}!`);
+    return {
+      text: data.candidates[0].content.parts[0].text,
+      modelUsed: model.name
+    };
+
+  } catch (error) {
+    console.error(`Erro na tentativa ${attempt + 1} do modelo ${model.name}:`, error);
+
+    // Se é um erro de rede ou temporário e ainda há tentativas restantes
+    if (isRetryableError(error, null) && attempt < RETRY_CONFIG.maxRetries) {
+      const delay = calculateDelay(attempt);
+      console.log(`Erro de rede no modelo ${model.name}. Aguardando ${delay}ms...`);
+      await sleep(delay);
+      return tryModel(model, message, attempt + 1);
+    }
+
+    // Re-throw o erro para ser tratado no nível superior
+    throw error;
+  }
+};
+
 export const geminiService = {
   async chat(message) {
     let lastError = null;
+    let modelsAttempted = [];
     
-    for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+    // Tentar cada modelo em ordem de prioridade
+    for (let i = 0; i < GEMINI_MODELS.length; i++) {
+      const model = GEMINI_MODELS[i];
+      modelsAttempted.push(model.name);
+      
       try {
-        const apiUrl = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
-
-        console.log(`Tentativa ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1} - Enviando requisição para:`, apiUrl);
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `Você é o QualiBot 2.0, um assistente especializado em licitações e compras públicas, com foco em ajudar os usuários de forma rápida e eficiente. Responda a seguinte pergunta de forma clara e objetiva, usando sua expertise em licitações: ${message}`
-              }]
-            }]
-          })
-        });
-
-        // Log da resposta para debug
-        console.log(`Resposta da API (tentativa ${attempt + 1}):`, {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok
-        });
-
-        const responseText = await response.text();
+        console.log(`🚀 Tentando modelo ${i + 1}/${GEMINI_MODELS.length}: ${model.name}`);
+        const result = await tryModel(model, message);
         
-        // Se a resposta não for OK, verificar se é um erro temporário
-        if (!response.ok) {
-          const isTemporaryError = isRetryableError(null, response);
-          
-          if (isTemporaryError && attempt < RETRY_CONFIG.maxRetries) {
-            const delay = calculateDelay(attempt);
-            console.log(`Erro temporário (${response.status}). Aguardando ${delay}ms antes da próxima tentativa...`);
-            await sleep(delay);
-            continue;
-          }
-          
-          // Se não é temporário ou esgotaram as tentativas, processar o erro
-          let errorData;
-          try {
-            errorData = JSON.parse(responseText);
-          } catch (e) {
-            errorData = { error: { message: `Erro HTTP ${response.status}: ${response.statusText}` } };
-          }
-          
-          console.error('Erro da API após todas as tentativas:', errorData);
-          
-          // Mensagens de erro mais específicas
-          if (response.status === 503) {
-            throw new Error('O serviço está temporariamente sobrecarregado. Tente novamente em alguns minutos.');
-          } else if (response.status === 429) {
-            throw new Error('Muitas requisições. Aguarde alguns minutos antes de tentar novamente.');
-          } else if (response.status === 500) {
-            throw new Error('Erro interno do servidor. Tente novamente mais tarde.');
-          } else {
-            throw new Error(errorData.error?.message || 'Erro na comunicação com o servidor');
-          }
-        }
-
-        // Parse da resposta bem-sucedida
-        let data;
-        try {
-          data = JSON.parse(responseText);
-        } catch (e) {
-          console.error('Erro ao fazer parse da resposta:', e);
-          console.error('Resposta que causou erro:', responseText);
-          
-          if (attempt < RETRY_CONFIG.maxRetries) {
-            const delay = calculateDelay(attempt);
-            console.log(`Erro de parse. Aguardando ${delay}ms antes da próxima tentativa...`);
-            await sleep(delay);
-            continue;
-          }
-          
-          throw new Error('Resposta inválida do servidor');
-        }
-
-        // Verificar se a resposta tem o formato esperado
-        if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-          console.error('Resposta sem o formato esperado:', data);
-          
-          if (attempt < RETRY_CONFIG.maxRetries) {
-            const delay = calculateDelay(attempt);
-            console.log(`Formato de resposta inválido. Aguardando ${delay}ms antes da próxima tentativa...`);
-            await sleep(delay);
-            continue;
-          }
-          
-          throw new Error('Resposta inválida do servidor');
-        }
-
-        // Sucesso! Retornar a resposta
-        console.log('Resposta bem-sucedida recebida');
-        return data.candidates[0].content.parts[0].text;
-
+        // Adicionar informação sobre qual modelo foi usado (apenas no console)
+        console.log(`✅ Resposta obtida com sucesso usando: ${result.modelUsed}`);
+        
+        return result.text;
+        
       } catch (error) {
         lastError = error;
-        console.error(`Erro na tentativa ${attempt + 1}:`, error);
-
-        // Se é um erro de rede ou temporário e ainda há tentativas restantes
-        if (isRetryableError(error, null) && attempt < RETRY_CONFIG.maxRetries) {
-          const delay = calculateDelay(attempt);
-          console.log(`Erro de rede. Aguardando ${delay}ms antes da próxima tentativa...`);
-          await sleep(delay);
+        console.error(`❌ Modelo ${model.name} falhou:`, error.message);
+        
+        // Se não é o último modelo, tentar o próximo
+        if (i < GEMINI_MODELS.length - 1) {
+          console.log(`🔄 Tentando próximo modelo: ${GEMINI_MODELS[i + 1].name}`);
           continue;
         }
-
-        // Se não há mais tentativas ou é um erro não temporário, parar
-        if (attempt >= RETRY_CONFIG.maxRetries) {
-          break;
-        }
-
-        // Re-throw erros não temporários imediatamente
-        throw error;
       }
     }
 
-    // Se chegou aqui, esgotaram todas as tentativas
-    console.error('Todas as tentativas falharam. Último erro:', lastError);
+    // Se chegou aqui, todos os modelos falharam
+    console.error('❌ Todos os modelos falharam. Modelos tentados:', modelsAttempted);
+    console.error('Último erro:', lastError);
     
+    // Retornar erro baseado no último erro encontrado
     if (lastError?.message?.includes('Failed to fetch')) {
-      throw new Error('Não foi possível conectar ao servidor. Verifique sua conexão com a internet.');
+      throw new Error('Não foi possível conectar aos serviços de IA. Verifique sua conexão com a internet.');
     }
     
-    throw new Error('O serviço está temporariamente indisponível. Tente novamente mais tarde.');
+    if (lastError?.message?.includes('sobrecarregado') || lastError?.message?.includes('503')) {
+      throw new Error('Todos os serviços de IA estão temporariamente sobrecarregados. Tente novamente em alguns minutos.');
+    }
+    
+    throw new Error('Todos os serviços de IA estão temporariamente indisponíveis. Nossa equipe já está trabalhando nisso.');
   }
 }; 
