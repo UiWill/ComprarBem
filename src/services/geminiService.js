@@ -1,7 +1,12 @@
 const GEMINI_API_KEY = 'AIzaSyAf-Oe56q4Rao0OodEOtnEjtI_FpOmDg6I';
 
-// Lista de modelos em ordem de prioridade (apenas modelos que existem na v1beta)
+// Lista de modelos em ordem de prioridade (do mais novo e rápido para o mais antigo)
 const GEMINI_MODELS = [
+  {
+    name: 'gemini-2.0-flash-exp',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+    description: 'Gemini 2.0 Flash (Mais Novo e Rápido - Experimental)'
+  },
   {
     name: 'gemini-1.5-flash',
     url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
@@ -19,12 +24,12 @@ const GEMINI_MODELS = [
   }
 ];
 
-// Configurações de retry por modelo
+// Configurações de retry por modelo (mais agressivo para o 2.0 Flash)
 const RETRY_CONFIG = {
-  maxRetries: 3,
-  baseDelay: 1000,
-  maxDelay: 15000,
-  backoffFactor: 2
+  maxRetries: 3, // Reduzido para ser mais rápido
+  baseDelay: 800, // Delay inicial menor
+  maxDelay: 12000, // Delay máximo menor
+  backoffFactor: 1.8 // Fator de crescimento menor
 };
 
 // Função para aguardar um tempo específico

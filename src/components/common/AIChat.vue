@@ -161,12 +161,14 @@ export default {
           if (modelMatch) {
             let modelName = modelMatch[1];
             // Simplificar nome do modelo para exibição
-            if (modelName.includes('gemini-1.0-pro')) {
-              modelName = 'Gemini 1.0 Pro';
-            } else if (modelName.includes('gemini-1.5-pro')) {
-              modelName = 'Gemini 1.5 Pro';
+            if (modelName.includes('gemini-2.0-flash-exp')) {
+              modelName = 'Gemini 2.0 Flash (Experimental)';
             } else if (modelName.includes('gemini-1.5-flash')) {
               modelName = 'Gemini 1.5 Flash';
+            } else if (modelName.includes('gemini-1.5-pro')) {
+              modelName = 'Gemini 1.5 Pro';
+            } else if (modelName.includes('gemini-1.0-pro')) {
+              modelName = 'Gemini 1.0 Pro';
             }
             updateStatus(`Tentando modelo alternativo: ${modelName}...`);
           }
