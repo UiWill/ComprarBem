@@ -11,6 +11,7 @@ import CCL from '../views/CCL.vue'
 import Classificacao from '../views/Classificacao.vue'
 import LoginRDM from '../views/LoginRDM.vue'
 import DashboardRDM from '../views/DashboardRDM.vue'
+import PesquisaTecnica from '../views/PesquisaTecnica.vue'
 
 import { supabase } from '../services/supabase'
 
@@ -96,6 +97,12 @@ const routes = [
     name: 'DashboardRDM',
     component: DashboardRDM,
     meta: { requiresAuth: false } // Autenticação personalizada dentro do componente
+  },
+  {
+    path: '/pesquisa-tecnica',
+    name: 'PesquisaTecnica',
+    component: PesquisaTecnica,
+    meta: { requiresAuth: true }
   }
 ]
 

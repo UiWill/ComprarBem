@@ -335,56 +335,234 @@
         <p v-else-if="produtosComDiligencia.length === 0">Nenhum requerimento com diligência encontrado.</p>
         <p v-else-if="temFiltrosDiligenciaAplicados">Nenhuma diligência encontrada com os filtros aplicados.</p>
       </div>
-      
-      <div class="impugnacoes-section">
-        <h3>Impugnações ao Edital</h3>
-        <table v-if="impugnacoes.length > 0">
-          <thead>
-            <tr>
-              <th>Impugnante</th>
-              <th>Produto</th>
-              <th>Data da Impugnação</th>
-              <th>Prazo Final</th>
-              <th>Status</th>
-              <th>Documentação</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="impugnacao in impugnacoes" :key="impugnacao.id">
-              <td>{{ impugnacao.impugnante }}</td>
-              <td>{{ impugnacao.produto_nome }}</td>
-              <td>{{ formatDate(impugnacao.data_impugnacao) }}</td>
-              <td>{{ formatDate(impugnacao.prazo_final) }}</td>
-              <td>
-                <span class="status-badge" :class="getImpugnacaoStatusClass(impugnacao.status)">
-                  {{ impugnacao.status }}
-                </span>
-              </td>
-              <td>
-                <button @click="analisarImpugnacao(impugnacao.id)" class="btn-small">Visualizar</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-else>Não há impugnações apresentadas.</p>
-      </div>
     </div>
     
     <!-- Aba Pesquisa de Mercado -->
     <div v-if="activeTab === 'pesquisa'" class="pesquisa-mercado">
-      <div class="info-card">
-        <h3>Pesquisa de Mercado</h3>
-        <p>Este módulo permitirá registrar as pesquisas realizadas para conhecer e/ou avaliar as especificações técnicas e funcionalidades de produtos novos ou já existentes no mercado fornecedor, bem como os seus preços estimados, para fins de instrução dos processos destinados à padronização de marcas e modelos.</p>
-        <p>Funcionalidades que serão implementadas:</p>
-        <ul>
-          <li>Registro de especificações técnicas de produtos e cotações de fornecedores</li>
-          <li>Comparativo técnico de produtos, seus preços e condições gerais</li>
-          <li>Análise de variação de preços</li>
-          <li>Geração de relatórios para instrução de processos de compras</li>
-          <li>Integração com bancos de preços públicos</li>
-        </ul>
+      <div class="pesquisa-mercado-container">
+
+
+        <!-- Abas das Funcionalidades -->
+        <div class="sub-tabs">
+          <div 
+            class="sub-tab" 
+            :class="{ active: activeSubTab === 'pesquisa-tecnica' }" 
+            @click="activeSubTab = 'pesquisa-tecnica'"
+          >
+            🤖 PesquisaBot
+          </div>
+          <div 
+            class="sub-tab" 
+            :class="{ active: activeSubTab === 'cotacoes' }" 
+            @click="activeSubTab = 'cotacoes'"
+          >
+            💰 Cotações
+          </div>
+          <div 
+            class="sub-tab" 
+            :class="{ active: activeSubTab === 'comparativo' }" 
+            @click="activeSubTab = 'comparativo'"
+          >
+            📊 Comparativo
+          </div>
+          <div 
+            class="sub-tab" 
+            :class="{ active: activeSubTab === 'analise-precos' }" 
+            @click="activeSubTab = 'analise-precos'"
+          >
+            📈 Análise de Preços
+          </div>
+          <div 
+            class="sub-tab" 
+            :class="{ active: activeSubTab === 'relatorios' }" 
+            @click="activeSubTab = 'relatorios'"
+          >
+            📋 Relatórios
+          </div>
+          <div 
+            class="sub-tab" 
+            :class="{ active: activeSubTab === 'bancos-precos' }" 
+            @click="activeSubTab = 'bancos-precos'"
+          >
+            🏦 Bancos de Preços
+          </div>
+        </div>
+
+        <!-- Conteúdo das Sub-abas -->
+        
+        <!-- PesquisaBot -->
+        <div v-if="activeSubTab === 'pesquisa-tecnica'" class="sub-content">
+          <div class="pesquisa-bot-section">
+            <div class="section-intro">
+              <h4>🤖 PesquisaBot - Assistente de Pesquisa Técnica</h4>
+              <p>Ferramenta especializada para buscar informações técnicas sobre produtos e marcas, incluindo manuais, laudos, normas, certificações e informações regulatórias.</p>
+            </div>
+            <PesquisaBot />
+          </div>
+        </div>
+
+        <!-- Cotações -->
+        <div v-if="activeSubTab === 'cotacoes'" class="sub-content">
+          <div class="cotacoes-section">
+            <div class="section-intro">
+              <h4>💰 Registro de Cotações de Fornecedores</h4>
+              <p>Registre e gerencie cotações de fornecedores para produtos específicos, incluindo preços, condições de pagamento e prazos de entrega.</p>
+            </div>
+            
+            <div class="cotacoes-actions">
+              <button @click="$swal({ title: '💰 Nova Cotação', text: 'Funcionalidade em desenvolvimento', icon: 'info' })" class="btn-primary">
+                ➕ Nova Cotação
+              </button>
+              <button @click="$swal({ title: '📥 Importar Cotações', text: 'Funcionalidade em desenvolvimento - Importação de planilhas Excel/CSV', icon: 'info' })" class="btn-secondary">
+                📥 Importar Cotações
+              </button>
+            </div>
+
+            <div class="cotacoes-grid">
+              <div v-if="cotacoes.length === 0" class="empty-state">
+                <div class="empty-icon">💰</div>
+                <h3>Nenhuma cotação registrada</h3>
+                <p>Comece registrando cotações de fornecedores para análise de preços.</p>
+              </div>
+              
+              <div v-else>
+                <div v-for="cotacao in cotacoes" :key="cotacao.id" class="cotacao-card">
+                  <div class="cotacao-header">
+                    <h5>{{ cotacao.produto }}</h5>
+                    <span class="cotacao-data">{{ formatDate(cotacao.data) }}</span>
+                  </div>
+                  <div class="cotacao-content">
+                    <p><strong>Fornecedor:</strong> {{ cotacao.fornecedor }}</p>
+                    <p><strong>Preço:</strong> {{ formatCurrency(cotacao.preco) }}</p>
+                    <p><strong>Prazo:</strong> {{ cotacao.prazo }}</p>
+                  </div>
+                  <div class="cotacao-actions">
+                    <button @click="$swal({ title: '✏️ Editar Cotação', text: 'Funcionalidade em desenvolvimento', icon: 'info' })" class="btn-small">Editar</button>
+                    <button @click="$swal({ title: '🗑️ Remover Cotação', text: 'Funcionalidade em desenvolvimento', icon: 'info' })" class="btn-small btn-danger">Remover</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparativo Técnico -->
+        <div v-if="activeSubTab === 'comparativo'" class="sub-content">
+          <div class="comparativo-section">
+            <div class="section-intro">
+              <h4>📊 Comparativo Técnico de Produtos</h4>
+              <p>Compare especificações técnicas, preços e condições gerais de produtos similares de diferentes fornecedores.</p>
+            </div>
+            
+            <div class="comparativo-actions">
+              <button @click="$swal({ title: '📊 Novo Comparativo', text: 'Funcionalidade em desenvolvimento - Comparativo técnico detalhado', icon: 'info' })" class="btn-primary">
+                ➕ Novo Comparativo
+              </button>
+              <button @click="$swal({ title: '📊 Gerar Relatório', text: 'Funcionalidade em desenvolvimento - Geração de relatório comparativo', icon: 'info' })" class="btn-secondary">
+                📊 Gerar Relatório
+              </button>
+            </div>
+
         <div class="em-desenvolvimento">
-          <span>Em desenvolvimento</span>
+              <span>🚧 Em desenvolvimento</span>
+              <p>Funcionalidade em construção - Comparativo técnico detalhado de produtos</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Análise de Preços -->
+        <div v-if="activeSubTab === 'analise-precos'" class="sub-content">
+          <div class="analise-precos-section">
+            <div class="section-intro">
+              <h4>📈 Análise de Variação de Preços</h4>
+              <p>Analise a variação de preços ao longo do tempo e identifique tendências de mercado.</p>
+            </div>
+            
+            <div class="analise-actions">
+              <button @click="$swal({ title: '📈 Gerar Análise', text: 'Funcionalidade em desenvolvimento - Análise estatística de preços', icon: 'info' })" class="btn-primary">
+                📈 Gerar Análise
+              </button>
+              <button @click="$swal({ title: '📤 Exportar Dados', text: 'Funcionalidade em desenvolvimento - Exportação de dados', icon: 'info' })" class="btn-secondary">
+                📤 Exportar Dados
+              </button>
+            </div>
+
+            <div class="em-desenvolvimento">
+              <span>🚧 Em desenvolvimento</span>
+              <p>Funcionalidade em construção - Análise estatística de variação de preços</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Relatórios -->
+        <div v-if="activeSubTab === 'relatorios'" class="sub-content">
+          <div class="relatorios-section">
+            <div class="section-intro">
+              <h4>📋 Geração de Relatórios</h4>
+              <p>Gere relatórios consolidados para instrução de processos de compras e padronização.</p>
+            </div>
+            
+            <div class="relatorios-grid">
+              <div class="relatorio-card">
+                <div class="relatorio-icon">📊</div>
+                <h5>Relatório de Pesquisa de Mercado</h5>
+                <p>Relatório completo com análise técnica e de preços</p>
+                <button @click="$swal({ title: '📊 Relatório de Mercado', text: 'Funcionalidade em desenvolvimento - Relatório completo de pesquisa', icon: 'info' })" class="btn-primary">Gerar</button>
+              </div>
+              
+              <div class="relatorio-card">
+                <div class="relatorio-icon">💰</div>
+                <h5>Relatório de Cotações</h5>
+                <p>Comparativo de preços e condições de fornecedores</p>
+                <button @click="$swal({ title: '💰 Relatório de Cotações', text: 'Funcionalidade em desenvolvimento - Comparativo de preços', icon: 'info' })" class="btn-primary">Gerar</button>
+              </div>
+              
+              <div class="relatorio-card">
+                <div class="relatorio-icon">📈</div>
+                <h5>Relatório de Análise de Preços</h5>
+                <p>Análise estatística de variação de preços</p>
+                <button @click="$swal({ title: '📈 Relatório de Análise', text: 'Funcionalidade em desenvolvimento - Análise estatística', icon: 'info' })" class="btn-primary">Gerar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bancos de Preços -->
+        <div v-if="activeSubTab === 'bancos-precos'" class="sub-content">
+          <div class="bancos-precos-section">
+            <div class="section-intro">
+              <h4>🏦 Integração com Bancos de Preços Públicos</h4>
+              <p>Consulte e integre dados de bancos de preços públicos para referência de mercado.</p>
+            </div>
+            
+            <div class="bancos-grid">
+              <div class="banco-card">
+                <div class="banco-icon">🏛️</div>
+                <h5>Banco de Preços do Governo Federal</h5>
+                <p>Consulta ao banco de preços oficial do governo</p>
+                <button @click="$swal({ title: '🏛️ Banco Federal', text: 'Funcionalidade em desenvolvimento - Consulta ao banco de preços oficial', icon: 'info' })" class="btn-primary">Consultar</button>
+              </div>
+              
+              <div class="banco-card">
+                <div class="banco-icon">🏥</div>
+                <h5>Banco de Preços em Saúde</h5>
+                <p>Preços de medicamentos e materiais médicos</p>
+                <button @click="$swal({ title: '🏥 Banco de Saúde', text: 'Funcionalidade em desenvolvimento - Preços de medicamentos e materiais', icon: 'info' })" class="btn-primary">Consultar</button>
+              </div>
+              
+              <div class="banco-card">
+                <div class="banco-icon">🏢</div>
+                <h5>Outros Bancos Estaduais</h5>
+                <p>Consulta a bancos de preços estaduais</p>
+                <button @click="$swal({ title: '🏢 Bancos Estaduais', text: 'Funcionalidade em desenvolvimento - Consulta a bancos estaduais', icon: 'info' })" class="btn-primary">Consultar</button>
+              </div>
+            </div>
+
+            <div class="em-desenvolvimento">
+              <span>🚧 Em desenvolvimento</span>
+              <p>Funcionalidade em construção - Integração automática com APIs de bancos de preços</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -519,99 +697,150 @@
         </div>
       </div>
 
-      <!-- Modal Novo Edital -->
+      <!-- Modal Novo Edital - Seleção de Minuta -->
       <div v-if="modalNovoEdital" class="modal-overlay" @click="fecharModalNovoEdital">
         <div class="modal-content large" @click.stop>
           <div class="modal-header">
-            <h3>{{ modoEdicaoEdital ? '✏️ Editar Edital' : '➕ Novo Edital de Pré-Qualificação' }}</h3>
+            <h3>📋 Selecionar Minuta Padrão</h3>
             <button @click="fecharModalNovoEdital" class="btn-close">&times;</button>
           </div>
           
           <div class="modal-body">
-            <form @submit.prevent="salvarEdital">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="numero">Número do Edital*</label>
-                  <input 
-                    id="numero" 
-                    v-model="editalAtual.numero" 
-                    type="text" 
-                    placeholder="Ex: 001/2024"
-                    required
-                  >
-                  <small>Formato sugerido: 001/2024, 002/2024...</small>
-                </div>
-                <div class="form-group">
-                  <label for="status">Status*</label>
-                  <select id="status" v-model="editalAtual.status" required>
-                    <option value="RASCUNHO">✏️ Em Elaboração</option>
-                    <option value="PUBLICADO">📋 Publicado</option>
-                  </select>
-                </div>
+            <div class="minuta-selecao">
+              <div class="section-intro">
+                <h4>Escolha uma minuta padrão para criar o edital:</h4>
+                <p>Selecione uma das minutas padrão disponíveis. Após a seleção, o edital será criado em elaboração.</p>
               </div>
 
-              <div class="form-group">
-                <label for="descricao">Descrição/Objeto*</label>
-                <textarea 
-                  id="descricao" 
-                  v-model="editalAtual.descricao" 
-                  rows="3"
-                  placeholder="Ex: Pré-qualificação técnica de medicamentos básicos para unidades de saúde"
-                  required
-                ></textarea>
+              <!-- Botão para adicionar nova minuta -->
+              <div class="minutas-actions">
+                <button @click="abrirModalAddMinuta" class="btn-secondary">
+                  ➕ Adicionar Nova Minuta Padrão
+                </button>
               </div>
 
-              <div class="form-group">
-                <label for="conteudo">Conteúdo Detalhado</label>
-                <textarea 
-                  id="conteudo" 
-                  v-model="editalAtual.conteudo" 
-                  rows="6"
-                  placeholder="Detalhes técnicos, especificações, critérios de avaliação..."
-                ></textarea>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="data_publicacao">Data de Publicação</label>
-                  <input 
-                    id="data_publicacao" 
-                    v-model="editalAtual.data_publicacao" 
-                    type="datetime-local"
-                  >
-                </div>
-                <div class="form-group">
-                  <label for="data_limite_impugnacao">Prazo para Impugnações</label>
-                  <input 
-                    id="data_limite_impugnacao" 
-                    v-model="editalAtual.data_limite_impugnacao" 
-                    type="datetime-local"
-                    :min="editalAtual.data_publicacao"
-                    @change="validarDataLimite"
-                  >
-                  <small v-if="editalAtual.data_publicacao" class="form-text text-muted">
-                    ⚠️ Deve ser posterior à data de publicação ({{ formatDate(editalAtual.data_publicacao) }})
-                  </small>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="arquivo">Upload do Edital (PDF)</label>
-                <input 
-                  id="arquivo" 
-                  type="file" 
-                  accept=".pdf"
-                  @change="handleFileUpload"
+              <!-- Lista de Minutas Disponíveis -->
+              <div class="minutas-grid">
+                <div 
+                  v-for="minuta in minutasDisponiveis" 
+                  :key="minuta.id"
+                  class="minuta-card"
+                  :class="{ 'selected': minutaSelecionada === minuta.id }"
+                  @click="selecionarMinuta(minuta)"
                 >
-                <small>Arquivo PDF com o edital completo (máximo 10MB)</small>
+                  <div class="minuta-header">
+                    <div class="minuta-icon">
+                      <span v-if="minuta.eh_padrao_sistema">🏛️</span>
+                      <span v-else>📄</span>
+                    </div>
+                    <div class="minuta-info">
+                      <h5>{{ minuta.nome }}</h5>
+                      <p class="minuta-categoria">{{ minuta.categoria || 'Geral' }}</p>
+                    </div>
+                  </div>
+                  
+                  <div class="minuta-description">
+                    <p>{{ minuta.descricao || 'Sem descrição' }}</p>
+                  </div>
+                  
+                  <div class="minuta-meta">
+                    <small>
+                      <span v-if="minuta.eh_padrao_sistema" class="badge badge-system">Sistema</span>
+                      <span v-else class="badge badge-custom">Personalizada</span>
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Estado vazio -->
+              <div v-if="minutasDisponiveis.length === 0" class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>Nenhuma minuta padrão disponível</h3>
+                <p>Adicione uma minuta padrão para começar a criar editais.</p>
+                <button @click="abrirModalAddMinuta" class="btn-primary">
+                  ➕ Adicionar Primeira Minuta
+                </button>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" @click="fecharModalNovoEdital" class="btn-secondary">
+                Cancelar
+              </button>
+              <button 
+                @click="processarCriacaoEdital" 
+                class="btn-primary" 
+                :disabled="!minutaSelecionada || criandoEdital"
+              >
+                {{ criandoEdital ? 'Criando...' : 'Criar Edital com Minuta Selecionada' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Adicionar Nova Minuta Padrão -->
+      <div v-if="modalAddMinuta" class="modal-overlay" @click="fecharModalAddMinuta">
+        <div class="modal-content medium" @click.stop>
+          <div class="modal-header">
+            <h3>➕ Adicionar Nova Minuta Padrão</h3>
+            <button @click="fecharModalAddMinuta" class="btn-close">&times;</button>
+          </div>
+          
+          <div class="modal-body">
+            <form @submit.prevent="salvarNovaMinuta">
+              <div class="form-group">
+                <label for="minuta-nome">Nome da Minuta*</label>
+                <input 
+                  id="minuta-nome" 
+                  v-model="novaMinuta.nome" 
+                  type="text" 
+                  placeholder="Ex: Minuta para Material de Escritório"
+                  required
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="minuta-categoria">Categoria</label>
+                <select id="minuta-categoria" v-model="novaMinuta.categoria">
+                  <option value="geral">Geral</option>
+                  <option value="medicamentos">Medicamentos</option>
+                  <option value="material_escritorio">Material de Escritório</option>
+                  <option value="material_medico">Material Médico</option>
+                  <option value="equipamentos">Equipamentos</option>
+                  <option value="servicos">Serviços</option>
+                  <option value="outros">Outros</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="minuta-descricao">Descrição</label>
+                <textarea 
+                  id="minuta-descricao" 
+                  v-model="novaMinuta.descricao" 
+                  rows="3"
+                  placeholder="Descrição opcional da minuta..."
+                ></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="minuta-arquivo">Arquivo da Minuta (Word)*</label>
+                <input 
+                  id="minuta-arquivo" 
+                  type="file" 
+                  accept=".docx,.doc"
+                  @change="handleMinutaUpload"
+                  required
+                >
+                <small>Arquivo Word (.docx ou .doc) com a minuta padrão (máximo 10MB)</small>
               </div>
 
               <div class="form-actions">
-                <button type="button" @click="fecharModalNovoEdital" class="btn-secondary">
+                <button type="button" @click="fecharModalAddMinuta" class="btn-secondary">
                   Cancelar
                 </button>
-                <button type="submit" class="btn-primary" :disabled="salvandoEdital">
-                  {{ salvandoEdital ? 'Salvando...' : (modoEdicaoEdital ? 'Atualizar' : 'Criar Edital') }}
+                <button type="submit" class="btn-primary" :disabled="salvandoMinuta">
+                  {{ salvandoMinuta ? 'Salvando...' : 'Salvar Minuta' }}
                 </button>
               </div>
             </form>
@@ -647,6 +876,66 @@
                 </div>
               </div>
 
+              <!-- Seção de Minuta (apenas para editais em elaboração) -->
+              <div v-if="editalSelecionado.status === 'RASCUNHO'" class="info-section">
+                <h4>📄 Minuta Padrão</h4>
+                <div class="minuta-workflow">
+                  <div class="workflow-step" :class="{ active: true }">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                      <h5>Baixar Minuta</h5>
+                      <p>Baixe a minuta padrão selecionada</p>
+                      <button @click="baixarMinutaPadrao(editalSelecionado)" class="btn-primary btn-small">
+                        📥 Baixar Minuta Padrão
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="workflow-step" :class="{ active: editalSelecionado.minuta_preenchida_url }">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                      <h5>Enviar Minuta Preenchida</h5>
+                      <p>Após preencher, envie a minuta</p>
+                      <div v-if="!editalSelecionado.minuta_preenchida_url">
+                        <input 
+                          type="file" 
+                          accept=".docx,.doc" 
+                          @change="handleMinutaPreenchidaUpload"
+                          ref="minutaPreenchidaInput"
+                          style="display: none"
+                        >
+                        <button @click="$refs.minutaPreenchidaInput.click()" class="btn-primary btn-small">
+                          📤 Enviar Minuta Preenchida
+                        </button>
+                      </div>
+                      <div v-else>
+                        <p class="success-text">✅ Minuta preenchida enviada</p>
+                        <button @click="visualizarMinutaPreenchida(editalSelecionado)" class="btn-secondary btn-small">
+                          👁️ Visualizar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="workflow-step" :class="{ active: editalSelecionado.pdf_convertido_url }">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                      <h5>Converter para PDF</h5>
+                      <p>Finalizar e publicar edital</p>
+                      <div v-if="editalSelecionado.minuta_preenchida_url && !editalSelecionado.pdf_convertido_url">
+                        <!-- CORREÇÃO: Usar processarConversaoPDF para evitar problema de z-index -->
+                        <button @click="processarConversaoPDF(editalSelecionado)" class="btn-primary btn-small">
+                          📋 Converter para PDF e Publicar
+                        </button>
+                      </div>
+                      <div v-else-if="editalSelecionado.pdf_convertido_url">
+                        <p class="success-text">✅ PDF gerado e publicado</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div v-if="editalSelecionado.conteudo" class="info-section">
                 <h4>📄 Conteúdo</h4>
                 <div class="conteudo-texto">{{ editalSelecionado.conteudo }}</div>
@@ -672,25 +961,18 @@
 
             <div class="modal-actions">
               <button 
-                v-if="editalSelecionado.url_documento" 
-                @click="abrirDocumento(editalSelecionado.url_documento)"
+                v-if="editalSelecionado.url_documento || editalSelecionado.pdf_convertido_url" 
+                @click="abrirDocumento(editalSelecionado.url_documento || editalSelecionado.pdf_convertido_url)"
                 class="btn-primary"
               >
                 📄 Abrir PDF
               </button>
               <button 
-                v-if="editalSelecionado.url_documento" 
+                v-if="editalSelecionado.url_documento || editalSelecionado.pdf_convertido_url" 
                 @click="baixarDocumento(editalSelecionado)"
                 class="btn-secondary"
               >
                 📥 Baixar PDF
-              </button>
-              <button 
-                v-if="editalSelecionado.status === 'RASCUNHO'" 
-                @click="editarEditalSelecionado"
-                class="btn-secondary"
-              >
-                ✏️ Editar
               </button>
               <button @click="fecharModalVisualizarEdital" class="btn-secondary">
                 Fechar
@@ -698,6 +980,40 @@
             </div>
           </div>
         </div>
+      </div>
+      
+      <!-- Seção de Impugnações -->
+      <div class="impugnacoes-section">
+        <h3>Impugnações ao Edital</h3>
+        <table v-if="impugnacoes.length > 0">
+          <thead>
+            <tr>
+              <th>Impugnante</th>
+              <th>Produto</th>
+              <th>Data da Impugnação</th>
+              <th>Prazo Final</th>
+              <th>Status</th>
+              <th>Documentação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="impugnacao in impugnacoes" :key="impugnacao.id">
+              <td>{{ impugnacao.impugnante }}</td>
+              <td>{{ impugnacao.produto_nome }}</td>
+              <td>{{ formatDate(impugnacao.data_impugnacao) }}</td>
+              <td>{{ formatDate(impugnacao.prazo_final) }}</td>
+              <td>
+                <span class="status-badge" :class="getImpugnacaoStatusClass(impugnacao.status)">
+                  {{ impugnacao.status }}
+                </span>
+              </td>
+              <td>
+                <button @click="analisarImpugnacao(impugnacao.id)" class="btn-small">Visualizar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else>Não há impugnações apresentadas.</p>
       </div>
     </div>
     
@@ -1768,12 +2084,18 @@
 <script>
 import { supabase } from '@/services/supabase'
 import emailjs from '@emailjs/browser'
+import PesquisaBot from '@/components/common/PesquisaBot.vue'
 
 export default {
   name: 'DashboardCPM',
+  components: {
+    PesquisaBot
+  },
   data() {
     return {
       activeTab: 'dashboard',
+      activeSubTab: 'pesquisa-tecnica',
+      cotacoes: [],
       produtos: [],
       produtosComDiligencia: [],
       pendentes: 0,
@@ -1790,6 +2112,18 @@ export default {
       modalNovoParticipante: false,
       modoEdicaoEdital: false,
       salvandoEdital: false,
+      // Sistema de Minutas Padrão
+      modalAddMinuta: false,
+      minutasDisponiveis: [],
+      minutaSelecionada: null,
+      criandoEdital: false,
+      novaMinuta: {
+        nome: '',
+        categoria: 'geral',
+        descricao: '',
+        arquivo: null
+      },
+      salvandoMinuta: false,
       editalAtual: {
         id: null,
         numero: '',
@@ -2086,6 +2420,9 @@ export default {
         
         // Carregar editais
         await this.carregarEditais()
+        
+        // Carregar minutas padrão
+        await this.carregarMinutasDisponiveis()
         
         // Carregar usuários e avaliações
         await this.carregarUsuarios()
@@ -3484,34 +3821,1017 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
         this.editaisFiltrados = editaisFiltrados
       },
 
-      abrirModalNovoEdital() {
-        this.modoEdicaoEdital = false
-        this.editalAtual = {
-          id: null,
-          numero: '',
-          descricao: '',
-          conteudo: '',
-          status: 'RASCUNHO',
-          data_publicacao: '',
-          data_limite_impugnacao: '',
-          url_documento: ''
-        }
+      async abrirModalNovoEdital() {
+        // Carregar minutas disponíveis
+        await this.carregarMinutasDisponiveis()
+        
+        // Resetar seleção
+        this.minutaSelecionada = null
         this.modalNovoEdital = true
       },
 
       fecharModalNovoEdital() {
         this.modalNovoEdital = false
-        this.modoEdicaoEdital = false
-        this.editalAtual = {
-          id: null,
-          numero: '',
+        this.minutaSelecionada = null
+      },
+
+      // Método para limpar estado sem fechar o modal
+      limparEstadoModal() {
+        this.minutaSelecionada = null
+        this.criandoEdital = false
+      },
+
+      // Métodos para Sistema de Minutas Padrão
+      async processarCriacaoEdital() {
+        // CORREÇÃO: Armazenar temporariamente para uso após fechar o modal
+        // Isso evita problema de z-index entre modal e SweetAlert
+        const minutaTemp = this.minutaSelecionada
+        
+        if (!minutaTemp) {
+          this.$swal.fire('Atenção', 'Selecione uma minuta padrão para continuar', 'warning')
+          return
+        }
+
+        // Chamar método principal com a minuta armazenada
+        await this.criarEditalComMinuta(minutaTemp)
+      },
+
+      async carregarMinutasDisponiveis() {
+        try {
+          // Verificar e configurar minuta padrão do sistema
+          await this.verificarMinutaPadraoSistema()
+
+          const { data, error } = await supabase
+            .from('minutas_padrao')
+            .select('*')
+            .eq('ativa', true)
+            .order('eh_padrao_sistema', { ascending: false })
+            .order('nome', { ascending: true })
+
+          if (error) throw error
+
+          this.minutasDisponiveis = data || []
+        } catch (error) {
+          console.error('Erro ao carregar minutas:', error)
+          this.$swal.fire('Erro', 'Erro ao carregar minutas padrão: ' + error.message, 'error')
+        }
+      },
+
+      async verificarMinutaPadraoSistema() {
+        try {
+          // Verificar se já existe minuta padrão do sistema
+          const { data: minutaExistente } = await supabase
+            .from('minutas_padrao')
+            .select('id, arquivo_url')
+            .eq('eh_padrao_sistema', true)
+            .single()
+
+          if (minutaExistente) {
+            // Verificar se o arquivo existe no storage
+            const { data: storageData } = await supabase.storage
+              .from('minutas-padrao')
+              .list('sistema/')
+
+            const arquivoExiste = storageData?.some(file => 
+              file.name === 'MINUTA_PADRAO.docx'
+            )
+
+            if (!arquivoExiste) {
+              // Arquivo não existe, tentar fazer upload
+              await this.criarMinutaPadraoSistema()
+            }
+          } else {
+            // Minuta padrão não existe, criar
+            await this.criarMinutaPadraoSistema()
+          }
+        } catch (error) {
+          console.warn('Aviso: Não foi possível verificar minuta padrão do sistema:', error)
+        }
+      },
+
+      async criarMinutaPadraoSistema() {
+        try {
+          // Verificar se existe o arquivo MINUTA PADRAO.docx no projeto
+          const response = await fetch('/MINUTA_PADRAO.docx')
+          
+          if (!response.ok) {
+            console.warn('Arquivo MINUTA_PADRAO.docx não encontrado localmente')
+            return
+          }
+
+          const blob = await response.blob()
+          const fileName = 'MINUTA_PADRAO.docx'
+          const filePath = `sistema/${fileName}`
+
+          // Fazer upload para o storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('minutas-padrao')
+            .upload(filePath, blob, {
+              cacheControl: '3600',
+              upsert: true
+            })
+
+          if (uploadError) throw uploadError
+
+          // Obter URL pública
+          const { data: publicData } = supabase.storage
+            .from('minutas-padrao')
+            .getPublicUrl(filePath)
+
+          // Inserir ou atualizar no banco
+          const { error: upsertError } = await supabase
+            .from('minutas_padrao')
+            .upsert({
+              nome: 'Minuta Padrão do Sistema',
+              descricao: 'Minuta padrão oficial do sistema para criação de editais',
+              arquivo_nome: fileName,
+              arquivo_url: publicData.publicUrl,
+              categoria: 'SISTEMA',
+              eh_padrao_sistema: true,
+              ativa: true,
+              criado_em: new Date().toISOString(),
+              atualizado_em: new Date().toISOString()
+            })
+
+          if (upsertError) throw upsertError
+
+          console.log('Minuta padrão do sistema configurada com sucesso')
+        } catch (error) {
+          console.error('Erro ao criar minuta padrão do sistema:', error)
+        }
+      },
+
+      selecionarMinuta(minuta) {
+        this.minutaSelecionada = minuta.id
+      },
+
+      async criarEditalComMinuta(minutaId = null) {
+        try {
+          this.criandoEdital = true
+
+          const minutaParaUsar = minutaId || this.minutaSelecionada
+          
+          if (!minutaParaUsar) {
+            this.$swal.fire('Atenção', 'Selecione uma minuta padrão para continuar', 'warning')
+            return
+          }
+
+          if (!this.currentTenantId) {
+            throw new Error('Tenant ID não disponível')
+          }
+
+          // CORREÇÃO: Fechar o modal de seleção de minuta antes de abrir o SweetAlert
+          // Isso evita problema de sobreposição de z-index
+          this.fecharModalNovoEdital()
+
+          // Aguardar um pouco para que o modal seja fechado completamente
+          await new Promise(resolve => setTimeout(resolve, 100))
+
+          // Solicitar número do edital
+          const { value: numeroEdital } = await this.$swal.fire({
+            title: 'Número do Edital',
+            html: `
+              <label for="numero-edital"><strong>Número do Edital:</strong></label>
+              <input 
+                id="numero-edital" 
+                class="swal2-input" 
+                placeholder="Ex: 001/2024"
+                value="${await this.gerarProximoNumeroEdital()}"
+              >
+              <small style="color: #666; font-size: 12px;">
+                Formato sugerido: 001/2024, 002/2024...
+              </small>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Criar Edital',
+            cancelButtonText: 'Cancelar',
+            customClass: {
+              popup: 'swal2-popup-edital'
+            },
+            preConfirm: () => {
+              const numero = document.getElementById('numero-edital').value
+              if (!numero || numero.trim() === '') {
+                this.$swal.showValidationMessage('Número do edital é obrigatório')
+                return false
+              }
+              return numero.trim()
+            }
+          })
+
+          if (!numeroEdital) {
+            // Se cancelou, reabrir o modal de seleção de minuta
+            this.modalNovoEdital = true
+            return
+          }
+
+          // Verificar se o número já existe
+          const { data: editalExistente } = await supabase
+            .from('editais')
+            .select('id')
+            .eq('tenant_id', this.currentTenantId)
+            .eq('numero', numeroEdital)
+            .single()
+
+          if (editalExistente) {
+            this.$swal.fire('Erro', `Já existe um edital com o número "${numeroEdital}". Por favor, escolha outro número.`, 'error')
+            // Reabrir o modal de seleção de minuta
+            this.modalNovoEdital = true
+            return
+          }
+
+          // Criar edital com status RASCUNHO
+          const editalData = {
+            tenant_id: this.currentTenantId,
+            numero: numeroEdital,
+            descricao: 'Edital em elaboração',
+            status: 'RASCUNHO',
+            minuta_usada_id: minutaParaUsar,
+            criado_em: new Date().toISOString()
+          }
+
+          const { data, error } = await supabase
+            .from('editais')
+            .insert(editalData)
+            .select()
+            .single()
+
+          if (error) throw error
+
+          // Registrar uso da minuta
+          await supabase
+            .from('minuta_uso_historico')
+            .insert({
+              minuta_id: minutaParaUsar,
+              edital_id: data.id,
+              usuario_id: this.currentTenantId,
+              observacoes: 'Edital criado com minuta padrão'
+            })
+
+          await this.carregarEditais()
+
+          this.$swal.fire({
+            icon: 'success',
+            title: 'Edital Criado!',
+            text: `Edital ${numeroEdital} criado com sucesso em elaboração.`,
+            timer: 2000
+          })
+
+        } catch (error) {
+          console.error('Erro ao criar edital:', error)
+          this.$swal.fire('Erro', 'Erro ao criar edital: ' + error.message, 'error')
+        } finally {
+          this.criandoEdital = false
+        }
+      },
+
+      async gerarProximoNumeroEdital() {
+        try {
+          const anoAtual = new Date().getFullYear()
+          
+          // Buscar último número do ano atual
+          const { data, error } = await supabase
+            .from('editais')
+            .select('numero')
+            .eq('tenant_id', this.currentTenantId)
+            .like('numero', `%/${anoAtual}`)
+            .order('numero', { ascending: false })
+            .limit(1)
+
+          if (error) throw error
+
+          let proximoNumero = 1
+          if (data && data.length > 0) {
+            const ultimoNumero = data[0].numero
+            const numero = parseInt(ultimoNumero.split('/')[0])
+            proximoNumero = numero + 1
+          }
+
+          return String(proximoNumero).padStart(3, '0') + '/' + anoAtual
+        } catch (error) {
+          console.error('Erro ao gerar número:', error)
+          return '001/' + new Date().getFullYear()
+        }
+      },
+
+      // Modal para adicionar nova minuta
+      abrirModalAddMinuta() {
+        this.novaMinuta = {
+          nome: '',
+          categoria: 'geral',
           descricao: '',
-          conteudo: '',
-          status: 'RASCUNHO',
-          data_publicacao: '',
-          data_limite_impugnacao: '',
-          url_documento: '',
-          nome_arquivo: ''
+          arquivo: null
+        }
+        this.modalAddMinuta = true
+      },
+
+      fecharModalAddMinuta() {
+        this.modalAddMinuta = false
+        this.novaMinuta = {
+          nome: '',
+          categoria: 'geral',
+          descricao: '',
+          arquivo: null
+        }
+      },
+
+      handleMinutaUpload(event) {
+        const file = event.target.files[0]
+        if (file) {
+          // Validar tipo de arquivo
+          const allowedTypes = ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
+          if (!allowedTypes.includes(file.type)) {
+            this.$swal.fire('Erro', 'Por favor, selecione um arquivo Word (.docx ou .doc)', 'error')
+            event.target.value = ''
+            return
+          }
+
+          // Validar tamanho (10MB)
+          if (file.size > 10 * 1024 * 1024) {
+            this.$swal.fire('Erro', 'O arquivo deve ter no máximo 10MB', 'error')
+            event.target.value = ''
+            return
+          }
+
+          this.novaMinuta.arquivo = file
+        }
+      },
+
+      async salvarNovaMinuta() {
+        try {
+          this.salvandoMinuta = true
+
+          if (!this.novaMinuta.arquivo) {
+            this.$swal.fire('Atenção', 'Selecione um arquivo Word para a minuta', 'warning')
+            return
+          }
+
+          // Upload do arquivo
+          const fileName = `minutas/${Date.now()}-${this.novaMinuta.arquivo.name}`
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documentos')
+            .upload(fileName, this.novaMinuta.arquivo)
+
+          if (uploadError) throw uploadError
+
+          // Obter URL pública
+          const { data: urlData } = supabase.storage
+            .from('documentos')
+            .getPublicUrl(fileName)
+
+          // Salvar na base de dados
+          const { data, error } = await supabase
+            .from('minutas_padrao')
+            .insert({
+              nome: this.novaMinuta.nome,
+              categoria: this.novaMinuta.categoria,
+              descricao: this.novaMinuta.descricao,
+              arquivo_nome: this.novaMinuta.arquivo.name,
+              arquivo_url: urlData.publicUrl,
+              tipo_arquivo: this.novaMinuta.arquivo.name.split('.').pop(),
+              criado_por: this.currentTenantId,
+              eh_padrao_sistema: false
+            })
+
+          if (error) throw error
+
+          await this.carregarMinutasDisponiveis()
+          this.fecharModalAddMinuta()
+
+          this.$swal.fire({
+            icon: 'success',
+            title: 'Minuta Adicionada!',
+            text: `Minuta "${this.novaMinuta.nome}" adicionada com sucesso.`,
+            timer: 2000
+          })
+
+        } catch (error) {
+          console.error('Erro ao salvar minuta:', error)
+          this.$swal.fire('Erro', 'Erro ao salvar minuta: ' + error.message, 'error')
+        } finally {
+          this.salvandoMinuta = false
+        }
+      },
+
+      // Métodos para workflow de minutas
+      async baixarMinutaPadrao(edital) {
+        try {
+          // Buscar a minuta padrão usada
+          const { data: minuta, error } = await supabase
+            .from('minutas_padrao')
+            .select('*')
+            .eq('id', edital.minuta_usada_id)
+            .single()
+
+          if (error) throw error
+
+          if (minuta.arquivo_url) {
+            // Baixar arquivo da URL
+            const response = await fetch(minuta.arquivo_url)
+            const blob = await response.blob()
+            
+            // Criar link de download
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = minuta.arquivo_nome || 'minuta_padrao.docx'
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+          } else {
+            // Fallback para arquivo local
+            const link = document.createElement('a')
+            link.href = '/DOCUMENTOS ESCRITOS/MINUTA PADRAO.docx'
+            link.download = 'MINUTA PADRAO.docx'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+          }
+
+        } catch (error) {
+          console.error('Erro ao baixar minuta:', error)
+          this.$swal.fire('Erro', 'Erro ao baixar minuta padrão', 'error')
+        }
+      },
+
+      async handleMinutaPreenchidaUpload(event) {
+        try {
+          const file = event.target.files[0]
+          if (!file) return
+
+          // Validar tipo de arquivo
+          const allowedTypes = ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
+          if (!allowedTypes.includes(file.type)) {
+            this.$swal.fire('Erro', 'Por favor, selecione um arquivo Word (.docx ou .doc)', 'error')
+            return
+          }
+
+          // Validar tamanho (15MB)
+          if (file.size > 15 * 1024 * 1024) {
+            this.$swal.fire('Erro', 'O arquivo deve ter no máximo 15MB', 'error')
+            return
+          }
+
+          // Upload do arquivo
+          const fileName = `editais/preenchidas/${Date.now()}-${file.name}`
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documentos')
+            .upload(fileName, file)
+
+          if (uploadError) throw uploadError
+
+          // Obter URL pública
+          const { data: urlData } = supabase.storage
+            .from('documentos')
+            .getPublicUrl(fileName)
+
+          // Atualizar edital
+          const { error: updateError } = await supabase
+            .from('editais')
+            .update({
+              minuta_preenchida_url: urlData.publicUrl,
+              minuta_preenchida_nome: file.name
+            })
+            .eq('id', this.editalSelecionado.id)
+
+          if (updateError) throw updateError
+
+          // Atualizar dados locais
+          this.editalSelecionado.minuta_preenchida_url = urlData.publicUrl
+          this.editalSelecionado.minuta_preenchida_nome = file.name
+
+          await this.carregarEditais()
+
+          this.$swal.fire({
+            icon: 'success',
+            title: 'Minuta Enviada!',
+            text: 'Minuta preenchida enviada com sucesso.',
+            timer: 2000
+          })
+
+        } catch (error) {
+          console.error('Erro ao enviar minuta:', error)
+          this.$swal.fire('Erro', 'Erro ao enviar minuta preenchida: ' + error.message, 'error')
+        }
+      },
+
+      visualizarMinutaPreenchida(edital) {
+        if (edital.minuta_preenchida_url) {
+          window.open(edital.minuta_preenchida_url, '_blank')
+        }
+      },
+
+      // Método para processar conversão para PDF (evita problema de z-index)
+      async processarConversaoPDF(edital) {
+        // CORREÇÃO: Armazenar dados do edital para uso após fechar o modal
+        // Isso evita problema de z-index entre modal e SweetAlert
+        const editalTemp = { ...edital }
+        
+        // Chamar método principal com dados armazenados
+        await this.converterParaPDF(editalTemp)
+      },
+
+      // 🆕 NOVA FUNCIONALIDADE: Gerar PDF real do edital (substitui cópia do Word)
+      // 
+      // FUNÇÃO: Converte edital de Word para PDF oficial usando jsPDF
+      // ENTRADA: edital (objeto com dados do edital)
+      // SAÍDA: { url, nome, caminho } do PDF gerado
+      // 
+      // PROCESSO:
+      // 1. Busca dados da minuta padrão usada
+      // 2. Cria PDF com layout oficial usando jsPDF  
+      // 3. Faz upload do PDF para Supabase Storage
+      // 4. Retorna URL pública do PDF convertido
+      //
+      async gerarPDFEdital(edital) {
+        try {
+          console.log('📄 Gerando PDF do edital:', edital.numero)
+          
+          // Importar jsPDF dinamicamente
+          const jsPDF = (await import('jspdf')).jsPDF || (await import('jspdf')).default
+          
+          // Buscar dados da minuta padrão usada
+          const { data: minuta } = await supabase
+            .from('minutas_padrao')
+            .select('*')
+            .eq('id', edital.minuta_usada_id)
+            .single()
+
+          // Criar novo PDF
+          const doc = new jsPDF('portrait', 'mm', 'a4')
+          
+          // Configurações
+          const pageWidth = doc.internal.pageSize.getWidth()
+          const pageHeight = doc.internal.pageSize.getHeight()
+          const margin = 20
+          let currentY = margin
+
+          // ========================================
+          // CABEÇALHO OFICIAL
+          // ========================================
+          
+          // Logo/Brasão (simulado)
+          doc.setFontSize(16)
+          doc.setFont('helvetica', 'bold')
+          doc.text('REPÚBLICA FEDERATIVA DO BRASIL', pageWidth/2, currentY, { align: 'center' })
+          currentY += 8
+          
+          doc.setFontSize(14)
+          doc.text('MINISTÉRIO DA SAÚDE', pageWidth/2, currentY, { align: 'center' })
+          currentY += 6
+          
+          doc.setFontSize(12)
+          doc.setFont('helvetica', 'normal')
+          doc.text('Comissão de Padronização de Materiais - CPM', pageWidth/2, currentY, { align: 'center' })
+          currentY += 15
+
+          // Linha separadora
+          doc.setDrawColor(0, 0, 0)
+          doc.setLineWidth(0.5)
+          doc.line(margin, currentY, pageWidth - margin, currentY)
+          currentY += 15
+
+          // ========================================
+          // TÍTULO DO EDITAL
+          // ========================================
+          
+          doc.setFontSize(18)
+          doc.setFont('helvetica', 'bold')
+          const titulo = `EDITAL DE PREGÃO ELETRÔNICO Nº ${edital.numero}`
+          doc.text(titulo, pageWidth/2, currentY, { align: 'center' })
+          currentY += 15
+          
+          doc.setFontSize(14)
+          doc.setFont('helvetica', 'normal')
+          doc.text(edital.descricao || 'Edital de Pré-qualificação de Materiais', pageWidth/2, currentY, { align: 'center' })
+          currentY += 25
+
+          // ========================================
+          // INFORMAÇÕES DO EDITAL
+          // ========================================
+          
+          doc.setFontSize(12)
+          doc.setFont('helvetica', 'bold')
+          doc.text('DADOS DO PROCEDIMENTO', margin, currentY)
+          currentY += 10
+          
+          // Box com dados do edital
+          doc.setDrawColor(200, 200, 200)
+          doc.setFillColor(250, 250, 250)
+          doc.rect(margin, currentY, pageWidth - 2*margin, 35, 'FD')
+          
+          currentY += 10
+          doc.setFontSize(11)
+          doc.setFont('helvetica', 'normal')
+          
+          doc.text(`Número do Edital: ${edital.numero}`, margin + 5, currentY)
+          currentY += 6
+          doc.text(`Status: ${edital.status}`, margin + 5, currentY)
+          currentY += 6
+          doc.text(`Data de Publicação: ${this.formatDate(edital.data_publicacao || new Date())}`, margin + 5, currentY)
+          currentY += 6
+          doc.text(`Prazo para Impugnações: ${this.formatDate(edital.data_limite_impugnacao || new Date())}`, margin + 5, currentY)
+          
+          currentY += 25
+
+          // ========================================
+          // OBJETO DO EDITAL
+          // ========================================
+          
+          doc.setFontSize(12)
+          doc.setFont('helvetica', 'bold')
+          doc.text('OBJETO', margin, currentY)
+          currentY += 10
+          
+          doc.setFontSize(11)
+          doc.setFont('helvetica', 'normal')
+          const objeto = `Processo de pré-qualificação de materiais para aquisição futura, conforme especificações técnicas definidas pela Comissão de Padronização de Materiais - CPM.`
+          const splitObjeto = doc.splitTextToSize(objeto, pageWidth - 2*margin)
+          doc.text(splitObjeto, margin, currentY)
+          currentY += splitObjeto.length * 6 + 15
+
+          // ========================================
+          // MINUTA PADRÃO UTILIZADA
+          // ========================================
+          
+          if (minuta) {
+            doc.setFontSize(12)
+            doc.setFont('helvetica', 'bold')
+            doc.text('MINUTA PADRÃO UTILIZADA', margin, currentY)
+            currentY += 10
+            
+            doc.setFontSize(11)
+            doc.setFont('helvetica', 'normal')
+            doc.text(`Nome: ${minuta.nome}`, margin, currentY)
+            currentY += 6
+            doc.text(`Categoria: ${minuta.categoria || 'Geral'}`, margin, currentY)
+            currentY += 6
+            if (minuta.descricao) {
+              const splitDesc = doc.splitTextToSize(`Descrição: ${minuta.descricao}`, pageWidth - 2*margin)
+              doc.text(splitDesc, margin, currentY)
+              currentY += splitDesc.length * 6
+            }
+            currentY += 15
+          }
+          
+          // ========================================
+          // CONDIÇÕES GERAIS
+          // ========================================
+          
+          doc.setFontSize(12)
+          doc.setFont('helvetica', 'bold')
+          doc.text('CONDIÇÕES GERAIS', margin, currentY)
+          currentY += 10
+          
+          doc.setFontSize(11)
+          doc.setFont('helvetica', 'normal')
+          
+          const condicoes = [
+            '1. Este edital visa a pré-qualificação de materiais conforme normas vigentes.',
+            '2. Os fornecedores interessados deverão apresentar documentação completa.',
+            '3. A avaliação será realizada pela Comissão de Padronização de Materiais.',
+            '4. Os materiais aprovados receberão Declaração de Conformidade de Bem (DCB).',
+            '5. O processo poderá ser impugnado no prazo estabelecido.',
+            '6. Maiores informações no Sistema ComprarBem.'
+          ]
+          
+          condicoes.forEach(condicao => {
+            const splitCondicao = doc.splitTextToSize(condicao, pageWidth - 2*margin - 5)
+            doc.text(splitCondicao, margin, currentY)
+            currentY += splitCondicao.length * 6 + 3
+          })
+
+          // ========================================
+          // RODAPÉ E ASSINATURA
+          // ========================================
+          
+          // Garantir espaço para assinatura
+          currentY = Math.max(currentY + 30, pageHeight - 120)
+          
+          // Data e local
+          const hoje = new Date()
+          doc.text(`Brasília, ${hoje.getDate().toString().padStart(2, '0')} de ${hoje.toLocaleDateString('pt-BR', { month: 'long' })} de ${hoje.getFullYear()}`, margin, currentY)
+          currentY += 20
+          
+          // Linha para assinatura
+          doc.setDrawColor(0, 0, 0)
+          doc.setLineWidth(0.5)
+          doc.line(margin, currentY, pageWidth/2 - 10, currentY)
+          currentY += 8
+          
+          doc.setFontSize(10)
+          doc.text('Presidente da Comissão de Padronização de Materiais', margin, currentY)
+          currentY += 4
+          doc.text('CPM - Ministério da Saúde', margin, currentY)
+
+          // Rodapé
+          doc.setFontSize(8)
+          doc.setTextColor(100, 100, 100)
+          const rodapeTexto = `Este documento foi gerado eletronicamente pelo Sistema ComprarBem em ${hoje.toLocaleString('pt-BR')}`
+          doc.text(rodapeTexto, pageWidth/2, pageHeight - 10, { align: 'center' })
+
+          // ========================================
+          // SALVAR PDF E FAZER UPLOAD
+          // ========================================
+          
+          const nomeArquivo = `Edital_${edital.numero.replace('/', '_')}_${hoje.getFullYear()}.pdf`
+          const pdfBlob = doc.output('blob')
+          
+          console.log('📤 Fazendo upload do PDF para Supabase...')
+          
+          // Upload para Supabase Storage
+          const caminhoArquivo = `editais-pdf/${this.currentTenantId}/${nomeArquivo}`
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documentos')
+            .upload(caminhoArquivo, pdfBlob, {
+              cacheControl: '3600',
+              upsert: true,
+              contentType: 'application/pdf'
+            })
+
+          if (uploadError) throw uploadError
+
+          // Obter URL pública
+          const { data: urlData } = supabase.storage
+            .from('documentos')
+            .getPublicUrl(caminhoArquivo)
+
+          console.log('✅ PDF gerado e enviado com sucesso:', urlData.publicUrl)
+
+          return {
+            url: urlData.publicUrl,
+            nome: nomeArquivo,
+            caminho: caminhoArquivo
+          }
+          
+        } catch (error) {
+          console.error('❌ Erro ao gerar PDF do edital:', error)
+          
+          // Fechar loading se estiver aberto
+          if (this.$swal && this.$swal.close) {
+            this.$swal.close()
+          }
+          
+          // Tratar diferentes tipos de erro
+          let mensagemErro = 'Não foi possível gerar o PDF do edital.'
+          
+          if (error.message.includes('storage')) {
+            mensagemErro = 'Erro no armazenamento do arquivo. Verifique as permissões.'
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            mensagemErro = 'Erro de conexão. Verifique sua internet e tente novamente.'
+          } else if (error.message.includes('jsPDF')) {
+            mensagemErro = 'Erro na geração do PDF. Tente novamente.'
+          }
+          
+          throw new Error(mensagemErro + ' Detalhes: ' + error.message)
+        }
+      },
+
+      // 🆕 NOVA FUNCIONALIDADE: Converter arquivo Word da minuta preenchida para PDF
+      // 
+      // FUNÇÃO: Converte arquivo Word carregado pelo usuário para PDF com formatação preservada
+      // ENTRADA: edital (objeto com dados do edital incluindo minuta_preenchida_url)
+      // SAÍDA: { url, nome, caminho } do PDF convertido
+      // 
+      // PROCESSO AVANÇADO:
+      // 1. Baixa o arquivo Word do Storage
+      // 2. Extrai HTML e texto usando mammoth.js
+      // 3. Processa estrutura (títulos, campos, tabelas)
+      // 4. Identifica elementos (títulos, formulários, parágrafos)
+      // 5. Aplica formatação específica para cada tipo
+      // 6. Cria PDF preservando a estrutura original
+      // 7. Faz upload do PDF para Supabase Storage
+      // 8. Retorna URL pública do PDF convertido
+      //
+
+
+
+
+
+      async converterWordParaPDF(edital) {
+        try {
+          console.log('📄 Convertendo minuta Word para PDF (MODO VISUAL):', edital.minuta_preenchida_url)
+          
+          // 🎯 USAR NOVO SERVIÇO DEDICADO DE CONVERSÃO
+          const { convertWordToPdf } = await import('@/services/wordToPdfService')
+          
+          const fileName = edital.minuta_preenchida_nome?.replace(/\.(docx?|doc)$/i, '') || 'Minuta'
+          
+          console.log('🔄 Iniciando conversão visual...')
+          const result = await convertWordToPdf(edital.minuta_preenchida_url, fileName)
+          
+                    console.log('✅ Conversão concluída:', result.fileName)
+          
+          // ========================================
+          // UPLOAD DO PDF CONVERTIDO PARA SUPABASE
+          // ========================================
+          
+          console.log('📤 Fazendo upload do PDF convertido para Supabase...')
+          
+          const caminhoArquivo = `editais-pdf/${this.currentTenantId}/${result.fileName}`
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documentos')
+            .upload(caminhoArquivo, result.blob, {
+              cacheControl: '3600',
+              upsert: true,
+              contentType: 'application/pdf'
+            })
+
+          if (uploadError) throw uploadError
+
+          // Obter URL pública
+          const { data: urlData } = supabase.storage
+            .from('documentos')
+            .getPublicUrl(caminhoArquivo)
+
+          console.log('🎉 PDF CONVERTIDO COM SUCESSO (MODO VISUAL)!')
+          console.log('📄 URL:', urlData.publicUrl)
+
+          return {
+            url: urlData.publicUrl,
+            nome: result.fileName,
+            caminho: caminhoArquivo
+          }
+          
+        } catch (error) {
+          console.error('❌ Erro ao converter Word para PDF:', error)
+          throw error
+        }
+      },
+
+      async converterParaPDF(edital) {
+        try {
+          // CORREÇÃO: Fechar modal de visualização antes de abrir SweetAlert
+          // Isso evita problema de sobreposição de z-index (mesmo problema que tivemos com seleção de minuta)
+          this.fecharModalVisualizarEdital()
+
+          // Aguardar um pouco para que o modal seja fechado completamente
+          await new Promise(resolve => setTimeout(resolve, 100))
+
+          // Verificar se existe minuta preenchida para personalizar mensagem
+          const temMinutaPreenchida = edital.minuta_preenchida_url && edital.minuta_preenchida_url.trim() !== ''
+          
+          // Confirmação antes de converter
+          const result = await this.$swal.fire({
+            title: 'Confirmar Conversão',
+            html: `
+              <div style="text-align: left;">
+                <p><strong>Atenção:</strong> Esta ação irá:</p>
+                <ul>
+                  ${temMinutaPreenchida 
+                    ? `<li>Converter sua minuta Word preenchida para PDF</li>
+                       <li>Arquivo: ${edital.minuta_preenchida_nome || 'Minuta preenchida'}</li>`
+                    : `<li>Gerar PDF oficial com base nos dados do edital</li>`
+                  }
+                  <li>Marcar o edital como PUBLICADO</li>
+                  <li>Tornar o edital disponível para consulta</li>
+                </ul>
+                <p><strong>${temMinutaPreenchida 
+                  ? 'Tem certeza que a minuta preenchida está pronta para publicação?'
+                  : 'Tem certeza que o edital está pronto para publicação?'
+                }</strong></p>
+              </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, Converter e Publicar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            customClass: {
+              popup: 'swal2-popup-converter-pdf'
+            }
+          })
+
+          if (!result.isConfirmed) {
+            // Se cancelou, reabrir o modal de visualização do edital
+            this.modalVisualizarEdital = true
+            return
+          }
+
+          // CONVERSÃO REAL: Determinar tipo de conversão baseado na minuta
+          console.log('🔄 Iniciando conversão real para PDF...')
+          
+          // Mostrar loading da conversão
+          this.$swal.fire({
+            title: 'Convertendo para PDF...',
+            text: temMinutaPreenchida 
+              ? 'Aguarde enquanto convertemos sua minuta Word para PDF'
+              : 'Aguarde enquanto geramos o PDF do edital',
+            allowOutsideClick: false,
+            didOpen: () => {
+              this.$swal.showLoading()
+            }
+          })
+
+          // Escolher método de conversão baseado na existência de minuta preenchida
+          let pdfData
+          if (temMinutaPreenchida) {
+            console.log('📄 Convertendo minuta Word carregada pelo usuário...')
+            pdfData = await this.converterWordParaPDF(edital)
+          } else {
+            console.log('📄 Gerando PDF com dados do edital...')
+            pdfData = await this.gerarPDFEdital(edital)
+          }
+          
+          const agora = new Date()
+          const dataPublicacao = agora.toISOString()
+          const dataLimiteImpugnacao = new Date(agora.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString() // 30 dias
+
+          // Atualizar edital com URL real do PDF
+          const { error } = await supabase
+            .from('editais')
+            .update({
+              status: 'PUBLICADO',
+              data_publicacao: dataPublicacao,
+              data_limite_impugnacao: dataLimiteImpugnacao,
+              pdf_convertido_url: pdfData.url, // URL real do PDF convertido
+              pdf_convertido_nome: pdfData.nome // Nome real do PDF
+            })
+            .eq('id', edital.id)
+
+          if (error) throw error
+
+          this.$swal.close()
+
+          // Atualizar dados locais
+          this.editalSelecionado.status = 'PUBLICADO'
+          this.editalSelecionado.data_publicacao = dataPublicacao
+          this.editalSelecionado.data_limite_impugnacao = dataLimiteImpugnacao
+          this.editalSelecionado.pdf_convertido_url = pdfData.url
+          this.editalSelecionado.pdf_convertido_nome = pdfData.nome
+
+          await this.carregarEditais()
+
+          this.$swal.fire({
+            icon: 'success',
+            title: 'Edital Publicado!',
+            html: `
+              <div style="text-align: left; padding: 10px;">
+                <p><strong>📋 Edital:</strong> ${edital.numero}</p>
+                <p><strong>📄 PDF:</strong> ${pdfData.nome}</p>
+                <p><strong>📅 Publicado em:</strong> ${this.formatDate(dataPublicacao)}</p>
+                <hr style="margin: 15px 0;">
+                <p style="color: #28a745; font-weight: bold;">
+                  ${temMinutaPreenchida 
+                    ? '✅ Minuta Word convertida para PDF oficial<br>📝 Conteúdo baseado na minuta preenchida enviada'
+                    : '✅ PDF oficial gerado automaticamente<br>📄 Conteúdo baseado nos dados do edital'
+                  }<br>
+                  📥 Use o botão "Abrir PDF" para visualizar
+                </p>
+              </div>
+            `,
+            showConfirmButton: true,
+            confirmButtonText: '📥 Abrir PDF Agora',
+            showCancelButton: true,
+            cancelButtonText: 'Fechar',
+            confirmButtonColor: '#28a745'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Abrir PDF imediatamente
+              window.open(pdfData.url, '_blank')
+            }
+          })
+
+        } catch (error) {
+          console.error('❌ Erro ao converter para PDF:', error)
+          
+          // Fechar qualquer loading ativo
+          if (this.$swal && this.$swal.close) {
+            this.$swal.close()
+          }
+          
+          // Mostrar erro específico e informativo
+          this.$swal.fire({
+            icon: 'error',
+            title: 'Erro na Conversão para PDF',
+            html: `
+              <div style="text-align: left;">
+                <p><strong>Não foi possível converter o edital para PDF.</strong></p>
+                <p><strong>Erro:</strong> ${error.message}</p>
+                <hr>
+                <p><strong>O que fazer:</strong></p>
+                <ul>
+                  <li>Verifique sua conexão com a internet</li>
+                  <li>Tente novamente em alguns minutos</li>
+                  <li>Se o problema persistir, contate o suporte</li>
+                </ul>
+                <p style="color: #666; font-size: 12px; margin-top: 15px;">
+                  💡 <strong>Dica:</strong> O edital continuará como "RASCUNHO" até a conversão ser bem-sucedida.
+                </p>
+              </div>
+            `,
+            confirmButtonText: 'Entendi',
+            confirmButtonColor: '#dc3545'
+          })
+          
+          // Reabrir modal de visualização do edital se necessário
+          setTimeout(() => {
+            this.modalVisualizarEdital = true
+          }, 500)
         }
       },
 
@@ -4243,9 +5563,32 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
       },
 
       abrirDocumento(url) {
+        console.log('📄 Abrindo documento:', url)
+        
         if (url && url !== 'uploads/documento-exemplo.pdf') {
-          // Abrir documento real
-          window.open(url, '_blank')
+          // CORREÇÃO: Verificar se é um PDF real (não Word mascarado)
+          if (url.includes('editais-pdf/') || url.includes('.pdf')) {
+            // É um PDF real convertido
+            window.open(url, '_blank')
+          } else {
+            // Ainda é arquivo Word - mostrar aviso
+            this.$swal.fire({
+              icon: 'warning',
+              title: 'Documento ainda não convertido',
+              html: `
+                <p>Este edital ainda contém a minuta Word original.</p>
+                <p><strong>Para obter o PDF oficial:</strong></p>
+                <ol style="text-align: left; margin: 15px 0;">
+                  <li>Clique em "Converter para PDF e Publicar"</li>
+                  <li>Confirme a conversão</li>
+                  <li>O sistema gerará o PDF oficial automaticamente</li>
+                </ol>
+                <p style="color: #28a745;">Após a conversão, o botão "Abrir PDF" mostrará o documento oficial.</p>
+              `,
+              confirmButtonText: 'Entendi',
+              confirmButtonColor: '#3085d6'
+            })
+          }
         } else {
           this.$swal.fire('Aviso', 'Documento não disponível', 'warning')
         }
@@ -5705,6 +7048,13 @@ O usuário pode fazer login imediatamente no sistema RDM.`,
      })
    },
 
+   // Método para formatação de moeda
+   formatCurrency(value) {
+     return new Intl.NumberFormat('pt-BR', {
+       style: 'currency',
+       currency: 'BRL'
+     }).format(value)
+   }
 
  }
 </script>
@@ -5905,6 +7255,226 @@ th {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* ===========================
+   ESTILOS SISTEMA DE MINUTAS
+   =========================== */
+
+.minuta-selecao {
+  margin-top: 20px;
+}
+
+.section-intro {
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.section-intro h4 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 18px;
+}
+
+.section-intro p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.minutas-actions {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.minutas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.minuta-card {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.minuta-card:hover {
+  border-color: #3498db;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+  transform: translateY(-2px);
+}
+
+.minuta-card.selected {
+  border-color: #3498db;
+  background: #f8f9fa;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+}
+
+.minuta-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: #3498db;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.minuta-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.minuta-icon {
+  font-size: 24px;
+  margin-right: 15px;
+}
+
+.minuta-info h5 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.minuta-categoria {
+  margin: 0;
+  color: #6c757d;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.minuta-description {
+  margin-bottom: 15px;
+}
+
+.minuta-description p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.minuta-meta {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-system {
+  background: #e7f3ff;
+  color: #0066cc;
+}
+
+.badge-custom {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.empty-state h3 {
+  margin: 0 0 10px 0;
+  color: #495057;
+}
+
+.empty-state p {
+  margin: 0 0 20px 0;
+  color: #6c757d;
+}
+
+/* Estilos para Workflow de Minutas */
+.minuta-workflow {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.workflow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  background: #f8f9fa;
+  transition: all 0.3s ease;
+}
+
+.workflow-step.active {
+  border-color: #3498db;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.1);
+}
+
+.step-number {
+  background: #6c757d;
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.workflow-step.active .step-number {
+  background: #3498db;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-content h5 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.step-content p {
+  margin: 0 0 15px 0;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.success-text {
+  color: #28a745;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
 }
 
 .link-documento {
@@ -6402,7 +7972,12 @@ th {
     display: flex;
     align-items: center;
     justify-content: center;
-  z-index: 1000;
+  z-index: 9998;
+}
+
+/* Modal de seleção de minuta padrão - z-index menor que SweetAlert */
+.modal-overlay .modal-content {
+  z-index: 9999;
 }
 
 .modal-content {
@@ -7091,7 +8666,7 @@ th {
   justify-content: center;
   padding: 60px 20px;
   color: #6c757d;
-}
+  }
 
 .loading-spinner {
   width: 40px;
@@ -7669,6 +9244,32 @@ th {
 /* Modal de participantes com z-index adequado */
 .modal-participantes-overlay {
   z-index: 999999 !important;
+}
+
+/* CORREÇÃO: SweetAlert customizado para número do edital */
+/* Garantir que o SweetAlert apareça sempre por cima do modal de seleção de minuta */
+.swal2-popup-edital {
+  z-index: 99999 !important;
+}
+
+/* CORREÇÃO: SweetAlert customizado para conversão de PDF */
+/* Garantir que o SweetAlert apareça sempre por cima do modal de visualização do edital */
+.swal2-popup-converter-pdf {
+  z-index: 99999 !important;
+}
+
+/* Garantir que o container do SweetAlert tenha z-index alto */
+.swal2-container {
+  z-index: 99999 !important;
+}
+
+/* CSS global para SweetAlert2 sempre aparecer por cima de qualquer modal */
+::v-deep .swal2-container {
+  z-index: 99999 !important;
+}
+
+::v-deep .swal2-popup {
+  z-index: 100000 !important;
 }
 
 /* === ESTILOS PARA USUÁRIOS === */
@@ -8511,4 +10112,353 @@ th {
     padding: 8px;
   }
 }
+
+/* === ESTILOS PARA PESQUISA DE MERCADO === */
+.pesquisa-mercado-container {
+  background: white;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.section-header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.section-header h3 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.section-header p {
+  color: #6c757d;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.sub-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.sub-tab {
+  padding: 12px 20px;
+  cursor: pointer;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+  border-radius: 8px 8px 0 0;
+  color: #6c757d;
+}
+
+.sub-tab:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.sub-tab.active {
+  border-bottom: 3px solid #667eea;
+  color: #667eea;
+  background-color: #f8f9ff;
+}
+
+.sub-content {
+  min-height: 400px;
+  padding: 20px 0;
+}
+
+.section-intro {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e9ecff 100%);
+  border-radius: 10px;
+  border-left: 4px solid #667eea;
+}
+
+.section-intro h4 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+.section-intro p {
+  color: #6c757d;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.pesquisa-bot-section {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+/* Cotações */
+.cotacoes-actions {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.cotacoes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.cotacao-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.cotacao-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.cotacao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.cotacao-header h5 {
+  color: #2c3e50;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.cotacao-data {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.cotacao-content p {
+  margin: 8px 0;
+  color: #495057;
+}
+
+.cotacao-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+  border: 1px solid #dc3545;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+/* Comparativo */
+.comparativo-actions {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+/* Análise de Preços */
+.analise-actions {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+/* Relatórios */
+.relatorios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.relatorio-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  padding: 25px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.relatorio-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.relatorio-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.relatorio-card h5 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.relatorio-card p {
+  color: #6c757d;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Bancos de Preços */
+.bancos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.banco-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  padding: 25px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.banco-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.banco-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.banco-card h5 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.banco-card p {
+  color: #6c757d;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Estado vazio */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border: 2px dashed #dee2e6;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  color: #6c757d;
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+.empty-state p {
+  color: #6c757d;
+  margin-bottom: 20px;
+}
+
+/* Em desenvolvimento */
+.em-desenvolvimento {
+  text-align: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.em-desenvolvimento span {
+  display: block;
+  font-size: 18px;
+  font-weight: bold;
+  color: #2d3436;
+  margin-bottom: 10px;
+}
+
+.em-desenvolvimento p {
+  color: #2d3436;
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* Responsividade para Pesquisa de Mercado */
+@media (max-width: 768px) {
+  .sub-tabs {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .sub-tab {
+    text-align: center;
+    border-radius: 8px;
+    border-bottom: none;
+    border-left: 3px solid transparent;
+  }
+  
+  .sub-tab.active {
+    border-bottom: none;
+    border-left: 3px solid #667eea;
+  }
+  
+  .cotacoes-actions,
+  .comparativo-actions,
+  .analise-actions {
+    flex-direction: column;
+  }
+  
+  .cotacoes-grid,
+  .relatorios-grid,
+  .bancos-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .cotacao-actions {
+    flex-direction: column;
+  }
+  
+  .section-intro {
+    padding: 15px;
+  }
+  
+  .section-intro h4 {
+    font-size: 18px;
+  }
+}
 </style> 
+

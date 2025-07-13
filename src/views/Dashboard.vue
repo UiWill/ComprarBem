@@ -19,6 +19,7 @@
           <span>Classificação</span>
           <span class="nav-subtitle">de Bens</span>
         </router-link>
+
         <router-link to="/dcb">DCB</router-link>
         <router-link to="/feedback">RDM</router-link>
       </nav>
