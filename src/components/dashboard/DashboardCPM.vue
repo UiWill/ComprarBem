@@ -669,6 +669,7 @@
               >
                 ✏️ Editar
               </button>
+              
 
               <div class="dropdown">
                 <button class="btn-secondary btn-small dropdown-toggle">⋮</button>
@@ -2075,7 +2076,97 @@
         <p>Quando houver avaliações de materiais, elas aparecerão aqui.</p>
       </div>
 
+    </div>
 
+    <!-- Modal Editar Edital -->
+    <div v-if="modalEditarEdital" class="modal-overlay" @click="fecharModalEditarEdital">
+      <div class="modal-content medium" @click.stop>
+        <div class="modal-header">
+          <h3>✏️ Editar Edital</h3>
+          <button @click="fecharModalEditarEdital" class="btn-close">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+          <form @submit.prevent="salvarEdicaoEdital">
+            <div class="form-group">
+              <label for="numeroEdital">Número do Edital *</label>
+              <input 
+                id="numeroEdital"
+                v-model="editalEditando.numero" 
+                type="text" 
+                required
+                placeholder="Ex: 001/2024"
+                :disabled="editalEditando.status !== 'RASCUNHO'"
+              >
+              <small v-if="editalEditando.status !== 'RASCUNHO'" class="help-text">
+                O número não pode ser alterado após a publicação
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="descricaoEdital">Descrição/Nome do Edital *</label>
+              <input 
+                id="descricaoEdital"
+                v-model="editalEditando.descricao" 
+                type="text" 
+                required
+                placeholder="Ex: Pré-qualificação de Equipamentos Médicos"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="conteudoEdital">Conteúdo Adicional</label>
+              <textarea 
+                id="conteudoEdital"
+                v-model="editalEditando.conteudo" 
+                rows="4"
+                placeholder="Informações adicionais sobre o edital..."
+              ></textarea>
+            </div>
+
+            <div v-if="editalEditando.status === 'PUBLICADO'" class="form-row">
+              <div class="form-group">
+                <label for="dataPublicacao">Data de Publicação</label>
+                <input 
+                  id="dataPublicacao"
+                  v-model="editalEditando.data_publicacao" 
+                  type="datetime-local"
+                  :disabled="true"
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="dataLimiteImpugnacao">Prazo para Impugnações</label>
+                <input 
+                  id="dataLimiteImpugnacao"
+                  v-model="editalEditando.data_limite_impugnacao" 
+                  type="datetime-local"
+                  :disabled="true"
+                >
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Status Atual</label>
+              <div class="status-display">
+                <span :class="'badge status-' + editalEditando.status.toLowerCase()">
+                  {{ getStatusText(editalEditando.status) }}
+                </span>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" @click="fecharModalEditarEdital" class="btn-secondary">
+            Cancelar
+          </button>
+          <button type="button" @click="salvarEdicaoEdital" class="btn-primary" :disabled="salvandoEdicaoEdital">
+            <span v-if="salvandoEdicaoEdital" class="spinner"></span>
+            {{ salvandoEdicaoEdital ? 'Salvando...' : 'Salvar Alterações' }}
+          </button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -2108,10 +2199,21 @@ export default {
       loadingEditais: false,
       modalNovoEdital: false,
       modalVisualizarEdital: false,
+      modalEditarEdital: false,
       modalParticipantes: false,
       modalNovoParticipante: false,
       modoEdicaoEdital: false,
       salvandoEdital: false,
+      salvandoEdicaoEdital: false,
+      editalEditando: {
+        id: null,
+        numero: '',
+        descricao: '',
+        conteudo: '',
+        status: 'RASCUNHO',
+        data_publicacao: '',
+        data_limite_impugnacao: ''
+      },
       // Sistema de Minutas Padrão
       modalAddMinuta: false,
       minutasDisponiveis: [],
@@ -2466,29 +2568,8 @@ export default {
       
       return count || 0
     },
-    formatDate(dateString) {
-      if (!dateString) return '-'
-      const date = new Date(dateString)
-      return date.toLocaleDateString('pt-BR')
-    },
-    formatarStatus(status) {
-      if (status === 'pendente') return 'em avaliação'
-      return status
-    },
-    getStatusClass(status) {
-      switch (status) {
-        case 'aprovado': return 'status-aprovado'
-        case 'pendente': return 'status-pendente'
-        case 'reprovado': return 'status-reprovado'
-        default: return ''
-      }
-    },
     verProduto(id) {
       this.$router.push(`/analise/${id}`)
-    },
-    async visualizarEdital(id) {
-      // Implemente a lógica para visualizar o edital com base no ID
-      console.log(`Visualizando edital com ID: ${id}`)
     },
     getImpugnacaoStatusClass(status) {
       switch (status) {
@@ -2958,23 +3039,33 @@ export default {
           'aprovado': 'Aprovado',
           'reprovado': 'Reprovado',
           'diligencia': 'Diligência',
-          'em_analise': 'Em Análise'
+          'em_analise': 'Em Análise',
+          'INTERESSADO': 'Interessado',
+          'DOCUMENTACAO_ENVIADA': 'Documentação Enviada',
+          'EM_AVALIACAO': 'Em Avaliação',
+          'APROVADO': 'Aprovado',
+          'REPROVADO': 'Reprovado',
+          'DESISTENTE': 'Desistente'
         }
         return statusMap[status] || status
       },
       
       getStatusClass(status) {
-        switch(status) {
-          case 'aprovado': return 'status-aprovado'
-          case 'pendente': return 'status-pendente' 
-          case 'reprovado': return 'status-reprovado'
-          case 'diligencia': return 'status-diligencia'
-          case 'em_analise': return 'status-em_analise'
-          default: return `status-${status}`
+        const classMap = {
+          'aprovado': 'status-aprovado',
+          'pendente': 'status-pendente',
+          'reprovado': 'status-reprovado',
+          'diligencia': 'status-diligencia',
+          'em_analise': 'status-em_analise',
+          'INTERESSADO': 'status-interessado',
+          'DOCUMENTACAO_ENVIADA': 'status-documentacao',
+          'EM_AVALIACAO': 'status-avaliacao',
+          'APROVADO': 'status-aprovado',
+          'REPROVADO': 'status-reprovado',
+          'DESISTENTE': 'status-desistente'
         }
+        return classMap[status] || `status-${status}`
       },
-
-
       
       formatDate(dateString) {
         if (!dateString) return 'Não informado'
@@ -4994,24 +5085,111 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
       },
 
       editarEdital(edital) {
-        this.modoEdicaoEdital = true
-        this.editalAtual = {
+        this.editalEditando = {
           id: edital.id,
           numero: edital.numero,
           descricao: edital.descricao,
           conteudo: edital.conteudo || '',
           status: edital.status,
           data_publicacao: edital.data_publicacao ? new Date(edital.data_publicacao).toISOString().slice(0, 16) : '',
-          data_limite_impugnacao: edital.data_limite_impugnacao ? new Date(edital.data_limite_impugnacao).toISOString().slice(0, 16) : '',
-          url_documento: edital.url_documento || '',
-          nome_arquivo: edital.nome_arquivo || ''
+          data_limite_impugnacao: edital.data_limite_impugnacao ? new Date(edital.data_limite_impugnacao).toISOString().slice(0, 16) : ''
         }
-        this.modalNovoEdital = true
+        
+        this.modalEditarEdital = true
       },
 
       editarEditalSelecionado() {
         this.fecharModalVisualizarEdital()
         this.editarEdital(this.editalSelecionado)
+      },
+
+      fecharModalEditarEdital() {
+        this.modalEditarEdital = false
+        this.editalEditando = {
+          id: null,
+          numero: '',
+          descricao: '',
+          conteudo: '',
+          status: 'RASCUNHO',
+          data_publicacao: '',
+          data_limite_impugnacao: ''
+        }
+      },
+
+      async salvarEdicaoEdital() {
+        if (!this.editalEditando.numero || !this.editalEditando.descricao) {
+          this.$swal.fire('Erro', 'Número e descrição são obrigatórios', 'error')
+          return
+        }
+
+        this.salvandoEdicaoEdital = true
+
+        try {
+          // Verificar se o número já existe em outro edital (apenas se mudou o número)
+          const { data: editalExistente } = await supabase
+            .from('editais')
+            .select('id')
+            .eq('numero', this.editalEditando.numero)
+            .eq('tenant_id', this.currentTenantId)
+            .neq('id', this.editalEditando.id)
+            .single()
+
+          if (editalExistente) {
+            this.$swal.fire('Erro', `Já existe outro edital com o número "${this.editalEditando.numero}". Por favor, escolha outro número.`, 'error')
+            return
+          }
+
+          // Atualizar edital
+          const { error } = await supabase
+            .from('editais')
+            .update({
+              numero: this.editalEditando.numero,
+              descricao: this.editalEditando.descricao,
+              conteudo: this.editalEditando.conteudo,
+              data_publicacao: this.editalEditando.data_publicacao || null,
+              data_limite_impugnacao: this.editalEditando.data_limite_impugnacao || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', this.editalEditando.id)
+            .eq('tenant_id', this.currentTenantId)
+
+          if (error) throw error
+
+          this.$swal.fire({
+            icon: 'success',
+            title: 'Edital Atualizado!',
+            text: `Edital "${this.editalEditando.numero}" atualizado com sucesso.`,
+            timer: 2000,
+            showConfirmButton: false
+          })
+
+          // Recarregar lista de editais
+          await this.carregarEditais()
+          
+          // Fechar modal
+          this.fecharModalEditarEdital()
+
+        } catch (error) {
+          console.error('Erro ao salvar edital:', error)
+          this.$swal.fire('Erro', 'Não foi possível salvar as alterações. Tente novamente.', 'error')
+        } finally {
+          this.salvandoEdicaoEdital = false
+        }
+      },
+
+      getStatusText(status) {
+        const statusTexts = {
+          'RASCUNHO': 'Em Elaboração',
+          'PUBLICADO': 'Publicado',
+          'CANCELADO': 'Cancelado',
+          'INTERESSADO': 'Interessado',
+          'DOCUMENTACAO_ENVIADA': 'Documentação Enviada',
+          'EM_AVALIACAO': 'Em Avaliação',
+          'APROVADO': 'Aprovado',
+          'REPROVADO': 'Reprovado',
+          'DESISTENTE': 'Desistente'
+        }
+        return statusTexts[status] || status
       },
 
       async duplicarEdital(edital) {
@@ -5535,17 +5713,6 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
         return colors[status] || '#6c757d'
       },
 
-      getStatusText(status) {
-        const texts = {
-          'INTERESSADO': 'Interessado',
-          'DOCUMENTACAO_ENVIADA': 'Documentação Enviada',
-          'EM_AVALIACAO': 'Em Avaliação',
-          'APROVADO': 'Aprovado',
-          'REPROVADO': 'Reprovado',
-          'DESISTENTE': 'Desistente'
-        }
-        return texts[status] || status
-      },
 
       formatarCNPJSimples(cnpj) {
         if (!cnpj) return ''
@@ -5801,29 +5968,6 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
         return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
       },
 
-      formatarStatus(status) {
-        const statusMap = {
-          'INTERESSADO': 'Interessado',
-          'DOCUMENTACAO_ENVIADA': 'Documentação Enviada',
-          'EM_AVALIACAO': 'Em Avaliação',
-          'APROVADO': 'Aprovado',
-          'REPROVADO': 'Reprovado',
-          'DESISTENTE': 'Desistente'
-        }
-        return statusMap[status] || status
-      },
-
-      getStatusClass(status) {
-        const classMap = {
-          'INTERESSADO': 'status-interessado',
-          'DOCUMENTACAO_ENVIADA': 'status-documentacao',
-          'EM_AVALIACAO': 'status-avaliacao',
-          'APROVADO': 'status-aprovado',
-          'REPROVADO': 'status-reprovado',
-          'DESISTENTE': 'status-desistente'
-        }
-        return classMap[status] || 'status-default'
-      },
 
       abrirModalNovoParticipante() {
         this.participanteAtual = {
@@ -7972,12 +8116,12 @@ th {
     display: flex;
     align-items: center;
     justify-content: center;
-  z-index: 9998;
+  z-index: 999999;
 }
 
 /* Modal de seleção de minuta padrão - z-index menor que SweetAlert */
 .modal-overlay .modal-content {
-  z-index: 9999;
+  z-index: 999999;
 }
 
 .modal-content {
@@ -8730,6 +8874,16 @@ th {
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
+.modal-content.medium {
+  width: 80%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
 .modal-content.extra-large {
   width: 95%;
   max-width: 1200px;
@@ -9170,6 +9324,60 @@ th {
 
 .form-group input:valid {
   border-color: #28a745;
+}
+
+/* Estilos específicos do modal de edição */
+.status-display {
+  padding: 8px 0;
+}
+
+.status-display .badge {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-display .status-rascunho {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-display .status-publicado {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-display .status-cancelado {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.help-text {
+  color: #6c757d;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.form-group input:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Modal de participantes - CSS específico */

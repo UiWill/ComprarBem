@@ -12,6 +12,7 @@
         >
       </div>
       
+      
       <div class="filters">
         <div class="categoria-filter">
           <label><strong>Grupo:</strong></label>
@@ -48,16 +49,19 @@
       </div>
     </div>
     
-    <div class="produtos-grid" v-if="produtosFiltrados.length > 0">
+    <div class="produtos-grid" v-if="produtosFiltradosOrdenados.length > 0">
       <div 
         class="produto-card" 
-        v-for="produto in produtosFiltrados" 
+        v-for="produto in produtosFiltradosOrdenados" 
         :key="produto.id"
         @click="verDetalhesProduto(produto.id)"
       >
         <div class="produto-info">
           <h3>{{ produto.nome }}</h3>
           <p><strong>Marca:</strong> {{ produto.marca }}</p>
+          <div class="status-marca">
+            <span class="status-badge" :class="getStatusMarcaClass(produto)">{{ getStatusMarca(produto) }}</span>
+          </div>
           <p><strong>Modelo:</strong> {{ produto.modelo }}</p>
           <p><strong>Fabricante:</strong> {{ produto.fabricante }}</p>
         </div>
@@ -67,6 +71,7 @@
     <div class="empty-state" v-else>
       <p>Nenhum produto encontrado.</p>
     </div>
+    
     
     <div class="produto-modal" v-if="produtoSelecionado" @click.self="fecharModal">
       <div class="modal-content">
@@ -128,47 +133,115 @@
               </div>
             </div>
             
-            <!-- Seção de Reclamações e Sugestões com toggle -->
-            <div class="reclamacoes-section mt-4">
-              <div class="section-header" @click="toggleReclamacoes">
-                <div class="d-flex justify-content-between align-items-center">
-                  <h5 class="mb-0">Reclamações e Sugestões</h5>
-                  <div class="d-flex align-items-center">
-                    <span v-if="reclamacoes.length > 0" class="badge badge-info me-2">{{ reclamacoes.length }} registros</span>
-                    <span class="toggle-icon">{{ showReclamacoes ? '▲' : '▼' }}</span>
+            <!-- Abas para Avaliações e Reclamações -->
+            <div class="tabs-container mt-4">
+              <div class="tabs-header">
+                <button 
+                  class="tab-button" 
+                  :class="{ active: activeTab === 'avaliacoes' }"
+                  @click="setActiveTab('avaliacoes')">
+                  <span>Avaliações de Usuários</span>
+                  <div class="tab-info">
+                    <span v-if="avaliacoes.length > 0" class="tab-badge">{{ avaliacoes.length }}</span>
+                    <span class="toggle-icon">{{ (activeTab === 'avaliacoes' && showAvaliacoesContent) ? '▲' : '▼' }}</span>
+                  </div>
+                </button>
+                <button 
+                  class="tab-button" 
+                  :class="{ active: activeTab === 'reclamacoes' }"
+                  @click="setActiveTab('reclamacoes')">
+                  <span>Reclamações de Usuários</span>
+                  <div class="tab-info">
+                    <span v-if="reclamacoes.length > 0" class="tab-badge">{{ reclamacoes.length }}</span>
+                    <span class="toggle-icon">{{ (activeTab === 'reclamacoes' && showReclamacoesContent) ? '▲' : '▼' }}</span>
+                  </div>
+                </button>
+              </div>
+              
+              <div class="tabs-content">
+                <!-- Aba de Avaliações -->
+                <div v-if="activeTab === 'avaliacoes'" class="tab-panel">
+                  <div class="tab-header-toggle" @click="toggleAvaliacoesContent">
+                    <h5>Lista de Avaliações</h5>
+                    <span class="toggle-icon">{{ showAvaliacoesContent ? '▲' : '▼' }}</span>
+                  </div>
+                  
+                  <div v-if="showAvaliacoesContent" class="tab-content-collapsible">
+                    <div v-if="avaliacoes.length === 0" class="no-avaliacoes">
+                      Este produto ainda não possui avaliações de desempenho.
+                    </div>
+                    <div v-else class="avaliacoes-list">
+                      <div v-for="(avaliacao, index) in avaliacoes" :key="index" class="avaliacao-item">
+                        <div class="avaliacao-header">
+                          <span class="avaliacao-tipo" :class="avaliacao.tipo.toLowerCase()">
+                            {{ avaliacao.tipo }}
+                          </span>
+                          <div class="avaliacao-stars">
+                            <span v-for="n in 5" :key="n" class="star" :class="{ filled: avaliacao.avaliacao >= n }">★</span>
+                          </div>
+                        </div>
+                        <div class="avaliacao-comentario" v-if="avaliacao.comentario">
+                          {{ avaliacao.comentario }}
+                        </div>
+                        <div class="avaliacao-footer">
+                          <span class="avaliador">{{ avaliacao.avaliador }}</span>
+                          <span class="avaliacao-data">{{ formatarData(avaliacao.data) }}</span>
+                        </div>
+                        <!-- Campo para manifestação da CPM -->
+                        <div v-if="avaliacao.ciencia_cpm || avaliacao.manifestacao_cpm" class="cpm-response">
+                          <div class="cpm-header">
+                            <h6>Manifestação da CPM</h6>
+                          </div>
+                          <div v-if="avaliacao.ciencia_cpm" class="cpm-ciencia">
+                            <strong>Ciência:</strong> {{ formatarData(avaliacao.ciencia_cpm) }}
+                          </div>
+                          <div v-if="avaliacao.manifestacao_cpm" class="cpm-manifestacao">
+                            <strong>Manifestação:</strong> {{ avaliacao.manifestacao_cpm }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div v-if="showReclamacoes" class="reclamacoes-content">
-                <div v-if="reclamacoes.length === 0" class="text-center text-muted py-3">
-                  Nenhuma reclamação registrada
-                </div>
-                <div v-else class="reclamacoes-list">
-                  <div v-for="reclamacao in reclamacoesSorted" :key="reclamacao.id" class="reclamacao-item">
-                    <div class="reclamacao-header">
-                      <div class="d-flex align-items-center">
-                        <span class="badge" :class="getStatusBadgeClass(reclamacao.status)">{{ reclamacao.status }}</span>
-                        <span class="reclamante-nome">{{ reclamacao.nome_reclamante }}</span>
-                        <span class="reclamante-setor">{{ reclamacao.unidade_setor }}</span>
-                      </div>
-                      <span class="reclamacao-data">{{ formatDate(reclamacao.data_reclamacao) }}</span>
+                
+                <!-- Aba de Reclamações -->
+                <div v-if="activeTab === 'reclamacoes'" class="tab-panel">
+                  <div class="tab-header-toggle" @click="toggleReclamacoesContent">
+                    <h5>Lista de Reclamações</h5>
+                    <span class="toggle-icon">{{ showReclamacoesContent ? '▲' : '▼' }}</span>
+                  </div>
+                  
+                  <div v-if="showReclamacoesContent" class="tab-content-collapsible">
+                    <div v-if="reclamacoes.length === 0" class="text-center text-muted py-3">
+                      Nenhuma reclamação registrada
                     </div>
-                    
-                    <div class="reclamacao-content">
-                      <div class="problema-box">
-                        <h6 class="box-title">Problema Reportado:</h6>
-                        <p class="box-text">{{ reclamacao.registro_reclamacao }}</p>
-                      </div>
-                      
-                      <div v-if="reclamacao.sugestoes" class="sugestao-box">
-                        <h6 class="box-title">Sugestões de Melhoria:</h6>
-                        <p class="box-text">{{ reclamacao.sugestoes }}</p>
-                      </div>
+                    <div v-else class="reclamacoes-list">
+                      <div v-for="reclamacao in reclamacoesSorted" :key="reclamacao.id" class="reclamacao-item">
+                        <div class="reclamacao-header">
+                          <div class="d-flex align-items-center">
+                            <span class="badge" :class="getStatusBadgeClass(reclamacao.status)">{{ reclamacao.status }}</span>
+                            <span class="reclamante-nome">{{ reclamacao.nome_reclamante }}</span>
+                            <span class="reclamante-setor">{{ reclamacao.unidade_setor }}</span>
+                          </div>
+                          <span class="reclamacao-data">{{ formatDate(reclamacao.data_reclamacao) }}</span>
+                        </div>
+                        
+                        <div class="reclamacao-content">
+                          <div class="problema-box">
+                            <h6 class="box-title">Problema Reportado:</h6>
+                            <p class="box-text">{{ reclamacao.registro_reclamacao }}</p>
+                          </div>
+                          
+                          <div v-if="reclamacao.sugestoes" class="sugestao-box">
+                            <h6 class="box-title">Sugestões de Melhoria:</h6>
+                            <p class="box-text">{{ reclamacao.sugestoes }}</p>
+                          </div>
 
-                      <div v-if="reclamacao.providencias_cpm" class="providencias-box">
-                        <h6 class="box-title">Providências Tomadas:</h6>
-                        <p class="box-text">{{ reclamacao.providencias_cpm }}</p>
+                          <div v-if="reclamacao.providencias_cpm" class="providencias-box">
+                            <h6 class="box-title">Providências Tomadas:</h6>
+                            <p class="box-text">{{ reclamacao.providencias_cpm }}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -176,15 +249,192 @@
               </div>
             </div>
             
-            <div v-if="documentos.length > 0" class="documentos">
-              <h4>Documentos</h4>
-              <ul>
-                <li v-for="doc in documentos" :key="doc.id">
-                  <a :href="doc.arquivo_url" target="_blank">{{ doc.nome }}</a>
-                </li>
-              </ul>
+            <!-- Seção de Documentos e Padronização -->
+            <div class="documentos-section">
+              <h4>Documentos e Padronização</h4>
+              
+              <!-- Informações de Padronização/Despadronização -->
+              <div class="padronizacao-info">
+                <div class="info-row">
+                  <div class="info-item">
+                    <span class="info-label">Padronização:</span>
+                    <span class="info-value">
+                      {{ produtoSelecionado.edital_prequalificacao || 'Edital de Pré-Qualificação de Bens nº ______/____' }}
+                    </span>
+                    <button 
+                      v-if="!produtoSelecionado.edital_prequalificacao" 
+                      @click="abrirModalVincularEdital"
+                      class="btn-action btn-vincular">
+                      🔗 Vincular Edital
+                    </button>
+                  </div>
+                </div>
+                
+                <div v-if="produtoSelecionado.processo_cancelamento" class="info-row">
+                  <div class="info-item">
+                    <span class="info-label">Despadronização:</span>
+                    <span class="info-value">
+                      {{ produtoSelecionado.processo_cancelamento || 'Processo de cancelamento da DCB nº _______/____' }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="info-row">
+                  <div class="info-item">
+                    <span class="info-label">Status Atual:</span>
+                    <span class="status-badge" :class="getStatusMarcaClass(produtoSelecionado)">
+                      {{ getStatusMarca(produtoSelecionado) }}
+                    </span>
+                    <button 
+                      v-if="getStatusMarca(produtoSelecionado) === 'Em Vigor' && !produtoSelecionado.processo_cancelamento" 
+                      @click="abrirModalDespadronizar"
+                      class="btn-action btn-despadronizar">
+                      ❌ Despadronizar
+                    </button>
+                  </div>
+                </div>
+                
+                <div v-if="produtoSelecionado.validade_dcb" class="info-row">
+                  <div class="info-item">
+                    <span class="info-label">Validade DCB:</span>
+                    <span class="info-value">
+                      {{ formatarData(produtoSelecionado.validade_dcb) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Lista de Documentos Anexos -->
+              <div v-if="documentos.length > 0" class="documentos-anexos">
+                <h5>Documentos Anexos</h5>
+                <ul>
+                  <li v-for="doc in documentos" :key="doc.id">
+                    <a :href="doc.arquivo_url" target="_blank">{{ doc.nome }}</a>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal Vincular Edital -->
+    <div class="modal-overlay" v-if="modalVincularEdital" @click="fecharModalVincularEdital">
+      <div class="modal-content vincular-edital-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Vincular Edital de Pré-Qualificação</h3>
+          <button class="btn-close" @click="fecharModalVincularEdital">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="produto-info-display">
+            <h4>Produto:</h4>
+            <p><strong>{{ produtoSelecionado?.nome }}</strong> - {{ produtoSelecionado?.marca }} {{ produtoSelecionado?.modelo }}</p>
+          </div>
+          
+          <form @submit.prevent="vincularEdital">
+            <div class="form-group">
+              <label for="editalSelect">Selecionar Edital Existente *</label>
+              <select id="editalSelect" v-model="editalSelecionado" required>
+                <option value="">Selecione um edital...</option>
+                <option v-for="edital in editaisDisponiveis" :key="edital.id" :value="edital">
+                  {{ edital.numero }} - {{ edital.descricao }}
+                </option>
+              </select>
+            </div>
+            
+            <div v-if="editalSelecionado" class="edital-preview">
+              <h5>Detalhes do Edital Selecionado:</h5>
+              <p><strong>Número:</strong> {{ editalSelecionado.numero }}</p>
+              <p><strong>Descrição:</strong> {{ editalSelecionado.descricao }}</p>
+              <p v-if="editalSelecionado.data_publicacao"><strong>Data de Publicação:</strong> {{ formatarData(editalSelecionado.data_publicacao) }}</p>
+              <p><strong>Status:</strong> {{ editalSelecionado.status }}</p>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" @click="fecharModalVincularEdital" class="btn btn-secondary">
+            Cancelar
+          </button>
+          <button type="button" @click="vincularEdital" class="btn btn-primary" :disabled="!editalSelecionado || salvandoVinculacao">
+            <span v-if="salvandoVinculacao" class="spinner"></span>
+            {{ salvandoVinculacao ? 'Vinculando...' : 'Vincular Edital' }}
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal Despadronizar Produto -->
+    <div class="modal-overlay" v-if="modalDespadronizar" @click="fecharModalDespadronizar">
+      <div class="modal-content despadronizar-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Despadronizar Produto</h3>
+          <button class="btn-close" @click="fecharModalDespadronizar">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="produto-info-display">
+            <h4>Produto:</h4>
+            <p><strong>{{ produtoSelecionado?.nome }}</strong> - {{ produtoSelecionado?.marca }} {{ produtoSelecionado?.modelo }}</p>
+          </div>
+          
+          <div class="warning-message">
+            <p><strong>⚠️ Atenção:</strong> Esta ação irá remover este produto da lista de itens padronizados.</p>
+          </div>
+          
+          <form @submit.prevent="despadronizarProduto">
+            <div class="form-group">
+              <label for="numeroProcesso">Número do Processo de Cancelamento *</label>
+              <input 
+                id="numeroProcesso" 
+                v-model="despadronizacao.numero_processo" 
+                type="text" 
+                required 
+                placeholder="Ex: 2024/001"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label for="motivoDespadronizacao">Motivo da Despadronização *</label>
+              <textarea 
+                id="motivoDespadronizacao" 
+                v-model="despadronizacao.motivo" 
+                rows="4"
+                required
+                placeholder="Descreva detalhadamente o motivo da despadronização..."
+              ></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="documentoDespadronizacao">Documento Comprobatório *</label>
+              <input 
+                type="file" 
+                id="documentoDespadronizacao"
+                @change="handleFileUpload"
+                accept=".pdf,.doc,.docx"
+                required
+              >
+              <small class="file-info">Formatos aceitos: PDF, DOC, DOCX (máx. 10MB)</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="dataDespadronizacao">Data de Vigência da Despadronização *</label>
+              <input 
+                id="dataDespadronizacao" 
+                v-model="despadronizacao.data_vigencia" 
+                type="date"
+                required
+              >
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" @click="fecharModalDespadronizar" class="btn btn-secondary">
+            Cancelar
+          </button>
+          <button type="button" @click="despadronizarProduto" class="btn btn-danger" :disabled="!formularioDespadronizacaoValido || salvandoDespadronizacao">
+            <span v-if="salvandoDespadronizacao" class="spinner"></span>
+            {{ salvandoDespadronizacao ? 'Processando...' : 'Confirmar Despadronização' }}
+          </button>
         </div>
       </div>
     </div>
@@ -208,6 +458,9 @@ export default {
       showCategoriaDropdown: false,
       showAvaliacoes: false,
       showReclamacoes: false,
+      activeTab: 'avaliacoes',
+      showAvaliacoesContent: false,
+      showReclamacoesContent: false,
       produtoSelecionado: null,
       documentos: [],
       avaliacoes: [],
@@ -216,7 +469,20 @@ export default {
       categoriaSelecionada: null,
       currentTenantId: null,
       loading: false,
-      reclamacoes: ref([])
+      reclamacoes: ref([]),
+      // Modais para vincular edital e despadronizar
+      modalVincularEdital: false,
+      modalDespadronizar: false,
+      editaisDisponiveis: [],
+      editalSelecionado: null,
+      salvandoVinculacao: false,
+      salvandoDespadronizacao: false,
+      despadronizacao: {
+        numero_processo: '',
+        motivo: '',
+        data_vigencia: '',
+        arquivo: null
+      }
     }
   },
   created() {
@@ -421,14 +687,8 @@ export default {
         
         this.documentos = docs || []
 
-        // Buscar avaliações RDM do produto (todas as tabelas)
-        const [rdmResponse, feedbacksResponse, rdmFeedbacksResponse] = await Promise.all([
-          // Buscar avaliações técnicas (RDM)
-          supabase
-            .from('rdm_avaliacoes')
-            .select('*')
-            .eq('produto_id', id),
-          
+        // Buscar avaliações RDM do produto (tabelas existentes)
+        const [feedbacksResponse, rdmFeedbacksResponse] = await Promise.all([
           // Buscar feedbacks dos usuários
           supabase
             .from('material_feedbacks')
@@ -439,13 +699,10 @@ export default {
           supabase
             .from('rdm_feedbacks')
             .select('*')
-            .eq('rdm_id', id)
+            .eq('produto_id', id) // Assumindo que rdm_feedbacks também tem produto_id
         ]);
 
         // Tratar erros se houver
-        if (rdmResponse.error) {
-          console.error('Erro ao carregar avaliações RDM:', rdmResponse.error);
-        }
         if (feedbacksResponse.error) {
           console.error('Erro ao carregar feedbacks:', feedbacksResponse.error);
         }
@@ -453,26 +710,17 @@ export default {
           console.error('Erro ao carregar feedbacks RDM:', rdmFeedbacksResponse.error);
         }
 
-        // Combinar as avaliações das três tabelas
-        const avaliacoesRDM = rdmResponse.data || [];
+        // Combinar as avaliações das duas tabelas existentes
         const feedbacksUsuarios = feedbacksResponse.data || [];
         const rdmFeedbacks = rdmFeedbacksResponse.data || [];
 
         // Formatar as avaliações para um formato uniforme
         this.avaliacoes = [
-          ...avaliacoesRDM.map(av => ({
-            id: av.id,
-            avaliacao: av.rating || 0,
-            comentario: av.comentario,
-            data: av.criado_em,
-            tipo: 'RDM',
-            avaliador: 'Avaliação Técnica'
-          })),
           ...feedbacksUsuarios.map(fb => ({
             id: fb.id,
             avaliacao: fb.rating || 0,
             comentario: fb.comentario,
-            data: fb.criado_em,
+            data: fb.data_feedback || fb.criado_em,
             tipo: 'Feedback',
             avaliador: 'Feedback de Usuário'
           })),
@@ -480,9 +728,9 @@ export default {
             id: rf.id,
             avaliacao: rf.rating || 0,
             comentario: rf.comentario,
-            data: rf.criado_em,
+            data: rf.data_feedback || rf.criado_em,
             tipo: 'RDM',
-            avaliador: 'Avaliação do Órgão'
+            avaliador: 'Avaliação RDM'
           }))
         ];
 
@@ -539,6 +787,23 @@ export default {
     },
     toggleReclamacoes() {
       this.showReclamacoes = !this.showReclamacoes;
+    },
+    setActiveTab(tab) {
+      this.activeTab = tab;
+      // Abrir automaticamente o conteúdo quando seleciona a aba
+      if (tab === 'avaliacoes') {
+        this.showAvaliacoesContent = true;
+        this.showReclamacoesContent = false;
+      } else if (tab === 'reclamacoes') {
+        this.showReclamacoesContent = true;
+        this.showAvaliacoesContent = false;
+      }
+    },
+    toggleAvaliacoesContent() {
+      this.showAvaliacoesContent = !this.showAvaliacoesContent;
+    },
+    toggleReclamacoesContent() {
+      this.showReclamacoesContent = !this.showReclamacoesContent;
     },
     formatarData(dataString) {
       if (!dataString) {
@@ -615,6 +880,239 @@ export default {
       if (!url) return ''
       const parts = url.split('/')
       return parts[parts.length - 1]
+    },
+    
+    getStatusMarca(produto) {
+      if (!produto.validade_dcb) return 'Despadronizado'
+      
+      const hoje = new Date()
+      const validade = new Date(produto.validade_dcb)
+      
+      if (validade < hoje) {
+        return 'Vencido'
+      } else {
+        return 'Em Vigor'
+      }
+    },
+    
+    getStatusMarcaClass(produto) {
+      const status = this.getStatusMarca(produto)
+      switch(status) {
+        case 'Em Vigor':
+          return 'status-em-vigor'
+        case 'Vencido':
+          return 'status-vencido'
+        case 'Despadronizado':
+          return 'status-despadronizado'
+        default:
+          return 'status-despadronizado'
+      }
+    },
+    
+    
+    // Métodos para vincular edital
+    async abrirModalVincularEdital() {
+      this.modalVincularEdital = true
+      await this.carregarEditaisDisponiveis()
+    },
+    
+    fecharModalVincularEdital() {
+      this.modalVincularEdital = false
+      this.editalSelecionado = null
+      this.editaisDisponiveis = []
+    },
+    
+    async carregarEditaisDisponiveis() {
+      try {
+        console.log('Carregando editais para tenant:', this.currentTenantId)
+        
+        const { data, error } = await supabase
+          .from('editais')
+          .select('*')
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status', 'PUBLICADO')
+          .order('data_publicacao', { ascending: false })
+        
+        if (error) {
+          console.error('Erro detalhado ao carregar editais:', error)
+          throw error
+        }
+        
+        console.log('Editais encontrados:', data)
+        this.editaisDisponiveis = data || []
+        
+        if (this.editaisDisponiveis.length === 0) {
+          this.$swal({
+            icon: 'info',
+            title: 'Nenhum edital encontrado',
+            text: 'Não há editais publicados disponíveis para vinculação. Verifique se existem editais com status "PUBLICADO" para este órgão.'
+          })
+        }
+      } catch (error) {
+        console.error('Erro ao carregar editais:', error)
+        this.$swal({
+          icon: 'error',
+          title: 'Erro',
+          text: `Não foi possível carregar os editais disponíveis: ${error.message}`
+        })
+      }
+    },
+    
+    async vincularEdital() {
+      if (!this.editalSelecionado) return
+      
+      this.salvandoVinculacao = true
+      
+      try {
+        const editalInfo = `Edital de Pré-Qualificação de Bens nº ${this.editalSelecionado.numero}`
+        
+        const { error } = await supabase
+          .from('produtos')
+          .update({
+            edital_prequalificacao: editalInfo,
+            edital_id: this.editalSelecionado.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', this.produtoSelecionado.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        if (error) throw error
+        
+        // Atualizar o produto selecionado
+        this.produtoSelecionado.edital_prequalificacao = editalInfo
+        this.produtoSelecionado.edital_id = this.editalSelecionado.id
+        
+        this.$swal({
+          icon: 'success',
+          title: 'Sucesso!',
+          text: 'Edital vinculado com sucesso!',
+          timer: 2000,
+          showConfirmButton: false
+        })
+        
+        this.fecharModalVincularEdital()
+        
+      } catch (error) {
+        console.error('Erro ao vincular edital:', error)
+        this.$swal({
+          icon: 'error',
+          title: 'Erro',
+          text: 'Não foi possível vincular o edital. Tente novamente.'
+        })
+      } finally {
+        this.salvandoVinculacao = false
+      }
+    },
+    
+    // Métodos para despadronizar
+    abrirModalDespadronizar() {
+      this.modalDespadronizar = true
+      this.despadronizacao = {
+        numero_processo: '',
+        motivo: '',
+        data_vigencia: '',
+        arquivo: null
+      }
+    },
+    
+    fecharModalDespadronizar() {
+      this.modalDespadronizar = false
+      this.despadronizacao = {
+        numero_processo: '',
+        motivo: '',
+        data_vigencia: '',
+        arquivo: null
+      }
+    },
+    
+    handleFileUpload(event) {
+      const file = event.target.files[0]
+      if (file) {
+        // Validar tamanho do arquivo (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          this.$swal({
+            icon: 'error',
+            title: 'Arquivo muito grande',
+            text: 'O arquivo deve ter no máximo 10MB.'
+          })
+          event.target.value = ''
+          return
+        }
+        
+        this.despadronizacao.arquivo = file
+      }
+    },
+    
+    async despadronizarProduto() {
+      if (!this.formularioDespadronizacaoValido) return
+      
+      this.salvandoDespadronizacao = true
+      
+      try {
+        // 1. Upload do documento se houver
+        let documentoUrl = null
+        if (this.despadronizacao.arquivo) {
+          const fileName = `despadronizacao_${this.produtoSelecionado.id}_${Date.now()}_${this.despadronizacao.arquivo.name}`
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documentos')
+            .upload(fileName, this.despadronizacao.arquivo)
+          
+          if (uploadError) throw uploadError
+          
+          // Obter URL público do arquivo
+          const { data: { publicUrl } } = supabase.storage
+            .from('documentos')
+            .getPublicUrl(fileName)
+          
+          documentoUrl = publicUrl
+        }
+        
+        // 2. Atualizar o produto
+        const processoInfo = `Processo de cancelamento da DCB nº ${this.despadronizacao.numero_processo}`
+        
+        const { error } = await supabase
+          .from('produtos')
+          .update({
+            processo_cancelamento: processoInfo,
+            motivo_despadronizacao: this.despadronizacao.motivo,
+            data_despadronizacao: this.despadronizacao.data_vigencia,
+            documento_despadronizacao: documentoUrl,
+            status: 'despadronizado',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', this.produtoSelecionado.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        if (error) throw error
+        
+        // 3. Atualizar o produto selecionado
+        this.produtoSelecionado.processo_cancelamento = processoInfo
+        this.produtoSelecionado.motivo_despadronizacao = this.despadronizacao.motivo
+        this.produtoSelecionado.data_despadronizacao = this.despadronizacao.data_vigencia
+        this.produtoSelecionado.documento_despadronizacao = documentoUrl
+        this.produtoSelecionado.status = 'despadronizado'
+        
+        this.$swal({
+          icon: 'success',
+          title: 'Produto Despadronizado',
+          text: 'O produto foi despadronizado com sucesso!',
+          timer: 3000,
+          showConfirmButton: false
+        })
+        
+        this.fecharModalDespadronizar()
+        
+      } catch (error) {
+        console.error('Erro ao despadronizar produto:', error)
+        this.$swal({
+          icon: 'error',
+          title: 'Erro',
+          text: 'Não foi possível despadronizar o produto. Tente novamente.'
+        })
+      } finally {
+        this.salvandoDespadronizacao = false
+      }
     }
   },
   computed: {
@@ -634,6 +1132,17 @@ export default {
       if (!this.avaliacoes.length) return 0
       const sum = this.avaliacoes.reduce((acc, curr) => acc + (curr.avaliacao || 0), 0)
       return (sum / this.avaliacoes.length).toFixed(1)
+    },
+    produtosFiltradosOrdenados() {
+      return [...this.produtosFiltrados].sort((a, b) => {
+        return a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
+      })
+    },
+    formularioDespadronizacaoValido() {
+      return this.despadronizacao.numero_processo && 
+             this.despadronizacao.motivo && 
+             this.despadronizacao.data_vigencia && 
+             this.despadronizacao.arquivo
     }
   }
 }
@@ -1032,27 +1541,74 @@ h2 {
   font-weight: 500;
 }
 
-.documentos {
+/* Seção de Documentos e Padronização */
+.documentos-section {
   margin-top: 20px;
   border-top: 1px solid #eee;
   padding-top: 20px;
 }
 
-.documentos h4 {
-  margin-bottom: 10px;
+.documentos-section h4 {
+  margin-bottom: 15px;
   color: #2c3e50;
+  font-weight: 600;
 }
 
-.documentos ul {
+.padronizacao-info {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-left: 4px solid #2c3e50;
+}
+
+.info-row {
+  margin-bottom: 12px;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: 120px;
+}
+
+.info-value {
+  color: #2c3e50;
+  flex: 1;
+}
+
+.documentos-anexos {
+  margin-top: 15px;
+}
+
+.documentos-anexos h5 {
+  margin-bottom: 10px;
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.documentos-anexos ul {
   list-style: none;
   padding: 0;
 }
 
-.documentos li {
+.documentos-anexos li {
   margin-bottom: 8px;
 }
 
-.documentos a {
+.documentos-anexos a {
   color: #3498db;
   text-decoration: none;
   padding: 5px 10px;
@@ -1062,7 +1618,7 @@ h2 {
   transition: all 0.3s;
 }
 
-.documentos a:hover {
+.documentos-anexos a:hover {
   background-color: #3498db;
   color: white;
 }
@@ -1202,5 +1758,404 @@ h2 {
 .badge-danger { 
   background-color: #f8d7da; 
   color: #721c24; 
+}
+
+/* Estilos para Status das Marcas */
+.status-marca {
+  margin: 8px 0;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-em-vigor {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-vencido {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-despadronizado {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+/* Estilos para Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #2c3e50;
+  box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.1);
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Botões de Ação */
+.btn-action {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  margin-left: 10px;
+}
+
+.btn-vincular {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-vincular:hover {
+  background-color: #138496;
+  transform: translateY(-1px);
+}
+
+.btn-despadronizar {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-despadronizar:hover {
+  background-color: #c82333;
+  transform: translateY(-1px);
+}
+
+/* Modais específicos */
+.vincular-edital-modal,
+.despadronizar-modal {
+  max-width: 600px;
+  width: 95%;
+}
+
+.edital-preview {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.edital-preview h5 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.edital-preview p {
+  margin: 5px 0;
+  color: #495057;
+  font-size: 13px;
+}
+
+.warning-message {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 20px;
+}
+
+.warning-message p {
+  margin: 0;
+  color: #856404;
+}
+
+.file-info {
+  display: block;
+  margin-top: 5px;
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+/* Produto info display nos modais */
+.produto-info-display {
+  background-color: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 20px;
+}
+
+.produto-info-display h4 {
+  margin: 0 0 5px 0;
+  color: #1976d2;
+  font-size: 14px;
+}
+
+.produto-info-display p {
+  margin: 0;
+  color: #1565c0;
+  font-weight: 500;
+}
+
+/* Estilos para Abas */
+.tabs-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.tabs-header {
+  display: flex;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 15px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 500;
+  color: #6c757d;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tab-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-button:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.tab-button.active {
+  background-color: white;
+  color: #2c3e50;
+  border-bottom: 3px solid #2c3e50;
+}
+
+.tab-badge {
+  background-color: #007bff;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.tab-panel {
+  padding: 0;
+}
+
+.tab-header-toggle {
+  cursor: pointer;
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.3s ease;
+}
+
+.tab-header-toggle:hover {
+  background-color: #e9ecef;
+}
+
+.tab-header-toggle h5 {
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.tab-content-collapsible {
+  padding: 20px;
+  background-color: white;
+}
+
+/* Estilos para Manifestação da CPM */
+.cpm-response {
+  margin-top: 15px;
+  padding: 12px;
+  background-color: #f0f8ff;
+  border-left: 4px solid #007bff;
+  border-radius: 4px;
+}
+
+.cmp-header h6 {
+  margin: 0 0 8px 0;
+  color: #007bff;
+  font-weight: 600;
+}
+
+.cpm-ciencia, .cpm-manifestacao {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #495057;
+}
+
+.cpm-ciencia:last-child, .cpm-manifestacao:last-child {
+  margin-bottom: 0;
+}
+
+/* Estilos para Modal de Reclamação */
+.form-reclamacao-modal {
+  max-width: 700px;
+  width: 95%;
+  max-height: 90vh;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.readonly-field {
+  background-color: #f8f9fa !important;
+  cursor: not-allowed;
+  color: #6c757d;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+  
+  .form-row .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .tabs-header {
+    flex-direction: column;
+  }
+  
+  .tab-button {
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .tab-button.active {
+    border-bottom: 1px solid #e9ecef;
+    border-left: 3px solid #2c3e50;
+  }
 }
 </style> 

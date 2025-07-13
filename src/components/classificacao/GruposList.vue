@@ -19,6 +19,7 @@
       <table>
         <thead>
           <tr>
+            <th>Código do Grupo</th>
             <th>Nome</th>
             <th>Descrição</th>
             <th>Data de Criação</th>
@@ -27,6 +28,7 @@
         </thead>
         <tbody>
           <tr v-for="grupo in grupos" :key="grupo.id">
+            <td>{{ grupo.codigo || grupo.id.slice(0, 8) }}</td>
             <td>{{ grupo.nome }}</td>
             <td>{{ grupo.descricao || '-' }}</td>
             <td>{{ formatarData(grupo.created_at) }}</td>
@@ -48,6 +50,16 @@
         </div>
         <div class="modal-body">
           <form @submit.prevent="salvarGrupo">
+            <div class="form-group">
+              <label for="codigo">Código do Grupo</label>
+              <input 
+                id="codigo" 
+                v-model="grupoAtual.codigo" 
+                type="text" 
+                placeholder="Ex: GRP001"
+              >
+              <small>Se não informado, será gerado automaticamente</small>
+            </div>
             <div class="form-group">
               <label for="nome">Nome do Grupo*</label>
               <input 
@@ -92,6 +104,7 @@ export default {
     const modoEdicao = ref(false);
     const grupoAtual = reactive({
       id: null,
+      codigo: '',
       nome: '',
       descricao: ''
     });
@@ -128,6 +141,7 @@ export default {
     const editarGrupo = (grupo) => {
       modoEdicao.value = true;
       grupoAtual.id = grupo.id;
+      grupoAtual.codigo = grupo.codigo || '';
       grupoAtual.nome = grupo.nome;
       grupoAtual.descricao = grupo.descricao || '';
       mostrarFormulario.value = true;
@@ -138,6 +152,7 @@ export default {
       modoEdicao.value = false;
       // Limpar formulário
       grupoAtual.id = null;
+      grupoAtual.codigo = '';
       grupoAtual.nome = '';
       grupoAtual.descricao = '';
     };
@@ -147,22 +162,76 @@ export default {
         salvando.value = true;
         
         if (modoEdicao.value) {
-          // Atualizar grupo existente
-          const { error } = await supabase
+          console.log('Atualizando grupo:', {
+            id: grupoAtual.id,
+            codigo: grupoAtual.codigo,
+            nome: grupoAtual.nome,
+            descricao: grupoAtual.descricao
+          });
+          
+          // Primeiro, verificar se o grupo existe
+          const { data: grupoExistente, error: errorBusca } = await supabase
             .from('grupos')
-            .update({
-              nome: grupoAtual.nome,
-              descricao: grupoAtual.descricao
-            })
-            .eq('id', grupoAtual.id);
+            .select('*')
+            .eq('id', grupoAtual.id)
+            .single();
             
-          if (error) throw error;
+          if (errorBusca) {
+            console.error('Erro ao buscar grupo:', errorBusca);
+            throw new Error(`Grupo não encontrado: ${errorBusca.message}`);
+          }
+          
+          console.log('Grupo encontrado:', grupoExistente);
+          
+          // Atualizar grupo existente
+          const updateData = {
+            nome: grupoAtual.nome.trim()
+          };
+          
+          if (grupoAtual.codigo && grupoAtual.codigo.trim()) {
+            updateData.codigo = grupoAtual.codigo.trim();
+          }
+          
+          if (grupoAtual.descricao && grupoAtual.descricao.trim()) {
+            updateData.descricao = grupoAtual.descricao.trim();
+          }
+          
+          console.log('Dados para atualização:', updateData);
+          
+          const { data, error } = await supabase
+            .from('grupos')
+            .update(updateData)
+            .eq('id', grupoAtual.id)
+            .select();
+            
+          if (error) {
+            console.error('Erro na atualização:', error);
+            throw new Error(`Erro ao atualizar: ${error.message}`);
+          }
+          
+          console.log('Grupo atualizado com sucesso:', data);
           alert('Grupo atualizado com sucesso!');
         } else {
+          // Gerar código automaticamente se não fornecido
+          let codigo = grupoAtual.codigo;
+          if (!codigo) {
+            const { data: ultimoGrupo } = await supabase
+              .from('grupos')
+              .select('codigo')
+              .order('created_at', { ascending: false })
+              .limit(1);
+            
+            const ultimoNumero = ultimoGrupo && ultimoGrupo[0] && ultimoGrupo[0].codigo 
+              ? parseInt(ultimoGrupo[0].codigo.replace(/\D/g, '')) || 0 
+              : 0;
+            codigo = `GRP${String(ultimoNumero + 1).padStart(3, '0')}`;
+          }
+          
           // Criar novo grupo
           const { error } = await supabase
             .from('grupos')
             .insert({
+              codigo: codigo,
               nome: grupoAtual.nome,
               descricao: grupoAtual.descricao
             });

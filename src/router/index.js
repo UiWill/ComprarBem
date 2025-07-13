@@ -103,6 +103,12 @@ const routes = [
     name: 'PesquisaTecnica',
     component: PesquisaTecnica,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/catalogo-publico',
+    name: 'CatalogoPublico',
+    component: () => import('../components/catalogo/CatalogoPublico.vue'),
+    meta: { requiresAuth: false }
   }
 ]
 

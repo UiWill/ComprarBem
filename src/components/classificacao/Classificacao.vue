@@ -1,6 +1,6 @@
 <template>
   <div class="classificacao-container">
-    <h2>Classificação de Produtos</h2>
+    <h2>Classificação de Materiais</h2>
     
     <div class="tabs">
       <button 
@@ -15,11 +15,18 @@
       >
         Classes
       </button>
+      <button 
+        :class="['tab-button', { active: activeTab === 'itens' }]" 
+        @click="activeTab = 'itens'"
+      >
+        Itens de Materiais
+      </button>
     </div>
     
     <div class="tab-content">
       <GruposList v-if="activeTab === 'grupos'" />
       <ClassesList v-if="activeTab === 'classes'" />
+      <ItensList v-if="activeTab === 'itens'" />
     </div>
   </div>
 </template>
@@ -27,13 +34,15 @@
 <script>
 import GruposList from './GruposList.vue'
 import ClassesList from './ClassesList.vue'
+import ItensList from './ItensList.vue'
 import { ref } from 'vue'
 
 export default {
   name: 'Classificacao',
   components: {
     GruposList,
-    ClassesList
+    ClassesList,
+    ItensList
   },
   setup() {
     const activeTab = ref('grupos')

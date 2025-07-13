@@ -37,12 +37,23 @@
       </div>
       
       <div class="form-group">
-        <label for="comentario">Comentário</label>
+        <label for="comentario">Justificativa da avaliação*</label>
         <textarea 
           id="comentario" 
           v-model="feedback.comentario" 
           rows="4" 
           placeholder="Ex: Equipamento apresentou falha após 3 meses de uso..."
+          required
+        ></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label for="sugestoes">Sugestões</label>
+        <textarea 
+          id="sugestoes" 
+          v-model="feedback.sugestoes" 
+          rows="3" 
+          placeholder="Ex: Melhorar a qualidade do material, incluir manual em português..."
         ></textarea>
       </div>
       
@@ -67,6 +78,7 @@ export default {
         rdm_id: '',
         rating: 0,
         comentario: '',
+        sugestoes: '',
         material_nome: '',
         material_codigo: '',
       },
@@ -162,6 +174,15 @@ export default {
         })
         return
       }
+      
+      if (!this.feedback.comentario || this.feedback.comentario.trim() === '') {
+        this.$swal({
+          icon: 'warning',
+          title: 'Justificativa necessária',
+          text: 'Por favor, preencha a justificativa da avaliação.'
+        })
+        return
+      }
 
       try {
         this.loading = true
@@ -196,6 +217,7 @@ export default {
           usuario_rdm_id: usuario.id,
           rating: this.feedback.rating,
           comentario: this.feedback.comentario || null,
+          sugestoes: this.feedback.sugestoes || null,
           material_nome: produtoSelecionado.nome,
           material_codigo: produtoSelecionado.codigo || 'N/A',
           criado_em: new Date().toISOString()
@@ -241,6 +263,7 @@ export default {
         rdm_id: '',
         rating: 0,
         comentario: '',
+        sugestoes: '',
         material_nome: '',
         material_codigo: ''
       }

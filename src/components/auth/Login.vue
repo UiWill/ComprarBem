@@ -138,6 +138,20 @@
         </p>
       </div>
       
+      <!-- Link para Catálogo Público -->
+      <div class="public-access">
+        <hr style="margin: 20px 0;">
+        <p style="text-align: center; color: #666; margin-bottom: 15px;">
+          <strong>📋 Catálogo Público de Produtos</strong>
+        </p>
+        <router-link to="/catalogo-publico" class="btn-public">
+          🔍 Ver Catálogo e Avaliar Produtos
+        </router-link>
+        <p style="font-size: 12px; color: #888; text-align: center; margin-top: 10px;">
+          Acesso público para consultar produtos e registrar avaliações
+        </p>
+      </div>
+      
       <!-- Botão para teste -->
       <div class="test-buttons" v-if="activeTab === 'register'">
         <button @click="testarSupabase" class="btn-test">Testar Conexão Supabase</button>

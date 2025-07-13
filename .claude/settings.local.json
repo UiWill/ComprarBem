@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npm run lint)",
       "Bash(node:*)",
-      "WebFetch(domain:cloudconvert.com)"
+      "WebFetch(domain:cloudconvert.com)",
+      "Bash(npm run serve:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

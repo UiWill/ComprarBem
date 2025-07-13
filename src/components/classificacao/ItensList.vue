@@ -1,42 +1,46 @@
 <template>
-  <div class="classes-list">
+  <div class="itens-list">
     <div class="header">
-      <h3>Gerenciamento de Classes</h3>
+      <h3>Gerenciamento de Itens</h3>
       <button @click="mostrarFormulario = true" class="btn-add">
-        Adicionar Classe
+        Adicionar Item
       </button>
     </div>
 
     <div v-if="loading" class="loading">
-      <p>Carregando classes...</p>
+      <p>Carregando itens...</p>
     </div>
 
-    <div v-else-if="classes.length === 0" class="empty-state">
-      <p>Nenhuma classe cadastrada.</p>
+    <div v-else-if="itens.length === 0" class="empty-state">
+      <p>Nenhum item cadastrado.</p>
     </div>
 
-    <div v-else class="classes-table">
+    <div v-else class="itens-table">
       <table>
         <thead>
           <tr>
-            <th>Código da Classe</th>
+            <th>Código do Item</th>
             <th>Nome</th>
+            <th>Classe</th>
             <th>Grupo</th>
+            <th>Marca/Modelo de Referência</th>
             <th>Descrição</th>
             <th>Data de Criação</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="classe in classes" :key="classe.id">
-            <td>{{ classe.codigo || classe.id.slice(0, 8) }}</td>
-            <td>{{ classe.nome }}</td>
-            <td>{{ getNomeGrupo(classe.grupo_id) }}</td>
-            <td>{{ classe.descricao || '-' }}</td>
-            <td>{{ formatarData(classe.created_at) }}</td>
+          <tr v-for="item in itens" :key="item.id">
+            <td>{{ item.codigo || item.id.slice(0, 8) }}</td>
+            <td>{{ item.nome }}</td>
+            <td>{{ getNomeClasse(item.classe_id) }}</td>
+            <td>{{ getNomeGrupo(item.grupo_id) }}</td>
+            <td>{{ item.marca_modelo_referencia || '-' }}</td>
+            <td>{{ item.descricao || '-' }}</td>
+            <td>{{ formatarData(item.created_at) }}</td>
             <td class="actions">
-              <button @click="editarClasse(classe)" class="btn-edit">Editar</button>
-              <button @click="confirmarExclusao(classe)" class="btn-delete">Excluir</button>
+              <button @click="editarItem(item)" class="btn-edit">Editar</button>
+              <button @click="confirmarExclusao(item)" class="btn-delete">Excluir</button>
             </td>
           </tr>
         </tbody>
@@ -47,16 +51,17 @@
     <div v-if="mostrarFormulario" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>{{ modoEdicao ? 'Editar' : 'Adicionar' }} Classe</h3>
+          <h3>{{ modoEdicao ? 'Editar' : 'Adicionar' }} Item</h3>
           <button @click="fecharFormulario" class="btn-close">&times;</button>
         </div>
         <div class="modal-body">
-          <form @submit.prevent="salvarClasse">
+          <form @submit.prevent="salvarItem">
             <div class="form-group">
               <label for="grupo">Grupo*</label>
               <select 
                 id="grupo" 
-                v-model="classeAtual.grupo_id" 
+                v-model="itemAtual.grupo_id" 
+                @change="carregarClassesPorGrupo"
                 required
               >
                 <option value="">Selecione...</option>
@@ -69,36 +74,70 @@
                 </option>
               </select>
               <div v-if="grupos.length === 0" class="error-text">
-                <p>É necessário cadastrar pelo menos um grupo antes de adicionar classes.</p>
+                <p>É necessário cadastrar pelo menos um grupo antes de adicionar itens.</p>
               </div>
             </div>
+            
             <div class="form-group">
-              <label for="codigo">Código da Classe</label>
+              <label for="classe">Classe*</label>
+              <select 
+                id="classe" 
+                v-model="itemAtual.classe_id" 
+                required
+                :disabled="!itemAtual.grupo_id"
+              >
+                <option value="">Selecione primeiro o grupo...</option>
+                <option 
+                  v-for="classe in classesFiltradas" 
+                  :key="classe.id" 
+                  :value="classe.id"
+                >
+                  {{ classe.nome }}
+                </option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="codigo">Código do Item</label>
               <input 
                 id="codigo" 
-                v-model="classeAtual.codigo" 
+                v-model="itemAtual.codigo" 
                 type="text" 
-                placeholder="Ex: CLS001"
+                placeholder="Ex: ITM001"
               >
               <small>Se não informado, será gerado automaticamente</small>
             </div>
+            
             <div class="form-group">
-              <label for="nome">Nome da Classe*</label>
+              <label for="nome">Nome do Item*</label>
               <input 
                 id="nome" 
-                v-model="classeAtual.nome" 
+                v-model="itemAtual.nome" 
                 type="text" 
                 required
               >
             </div>
+            
+            <div class="form-group">
+              <label for="marca_modelo">Marca/Modelo de Referência</label>
+              <input 
+                id="marca_modelo" 
+                v-model="itemAtual.marca_modelo_referencia" 
+                type="text" 
+                placeholder="Ex: Samsung Galaxy S21, Dell Inspiron 15"
+              >
+            </div>
+            
             <div class="form-group">
               <label for="descricao">Descrição</label>
               <textarea 
                 id="descricao" 
-                v-model="classeAtual.descricao" 
+                v-model="itemAtual.descricao" 
                 rows="3"
+                placeholder="Descrição detalhada do item..."
               ></textarea>
             </div>
+            
             <div class="form-actions">
               <button type="button" @click="fecharFormulario" class="btn-secondary">Cancelar</button>
               <button type="submit" class="btn-primary" :disabled="salvando || grupos.length === 0">
@@ -117,19 +156,23 @@ import { supabase } from '@/services/supabase'
 import { ref, reactive, onMounted } from 'vue'
 
 export default {
-  name: 'ClassesList',
+  name: 'ItensList',
   setup() {
-    const classes = ref([]);
+    const itens = ref([]);
     const grupos = ref([]);
+    const classes = ref([]);
+    const classesFiltradas = ref([]);
     const loading = ref(true);
     const salvando = ref(false);
     const mostrarFormulario = ref(false);
     const modoEdicao = ref(false);
-    const classeAtual = reactive({
+    const itemAtual = reactive({
       id: null,
       grupo_id: '',
+      classe_id: '',
       codigo: '',
       nome: '',
+      marca_modelo_referencia: '',
       descricao: ''
     });
 
@@ -137,7 +180,8 @@ export default {
     onMounted(async () => {
       await Promise.all([
         carregarGrupos(),
-        carregarClasses()
+        carregarClasses(),
+        carregarItens()
       ]);
     });
 
@@ -158,7 +202,6 @@ export default {
 
     const carregarClasses = async () => {
       try {
-        loading.value = true;
         const { data, error } = await supabase
           .from('classes')
           .select('*')
@@ -169,8 +212,33 @@ export default {
       } catch (error) {
         console.error('Erro ao carregar classes:', error);
         alert('Erro ao carregar classes. Por favor, tente novamente.');
+      }
+    };
+
+    const carregarItens = async () => {
+      try {
+        loading.value = true;
+        const { data, error } = await supabase
+          .from('itens_materiais')
+          .select('*')
+          .order('nome');
+
+        if (error) throw error;
+        itens.value = data || [];
+      } catch (error) {
+        console.error('Erro ao carregar itens:', error);
+        alert('Erro ao carregar itens. Por favor, tente novamente.');
       } finally {
         loading.value = false;
+      }
+    };
+
+    const carregarClassesPorGrupo = () => {
+      if (itemAtual.grupo_id) {
+        classesFiltradas.value = classes.value.filter(classe => classe.grupo_id === itemAtual.grupo_id);
+        itemAtual.classe_id = ''; // Resetar classe quando grupo mudar
+      } else {
+        classesFiltradas.value = [];
       }
     };
 
@@ -179,19 +247,29 @@ export default {
       return grupo ? grupo.nome : 'Grupo não encontrado';
     };
 
+    const getNomeClasse = (classeId) => {
+      const classe = classes.value.find(c => c.id === classeId);
+      return classe ? classe.nome : 'Classe não encontrada';
+    };
+
     const formatarData = (dataString) => {
       if (!dataString) return '-';
       const data = new Date(dataString);
       return data.toLocaleDateString('pt-BR');
     };
 
-    const editarClasse = (classe) => {
+    const editarItem = (item) => {
       modoEdicao.value = true;
-      classeAtual.id = classe.id;
-      classeAtual.grupo_id = classe.grupo_id;
-      classeAtual.codigo = classe.codigo || '';
-      classeAtual.nome = classe.nome;
-      classeAtual.descricao = classe.descricao || '';
+      itemAtual.id = item.id;
+      itemAtual.grupo_id = item.grupo_id;
+      itemAtual.classe_id = item.classe_id;
+      itemAtual.codigo = item.codigo || '';
+      itemAtual.nome = item.nome;
+      itemAtual.marca_modelo_referencia = item.marca_modelo_referencia || '';
+      itemAtual.descricao = item.descricao || '';
+      
+      // Carregar classes do grupo
+      carregarClassesPorGrupo();
       mostrarFormulario.value = true;
     };
 
@@ -199,129 +277,127 @@ export default {
       mostrarFormulario.value = false;
       modoEdicao.value = false;
       // Limpar formulário
-      classeAtual.id = null;
-      classeAtual.grupo_id = '';
-      classeAtual.codigo = '';
-      classeAtual.nome = '';
-      classeAtual.descricao = '';
+      itemAtual.id = null;
+      itemAtual.grupo_id = '';
+      itemAtual.classe_id = '';
+      itemAtual.codigo = '';
+      itemAtual.nome = '';
+      itemAtual.marca_modelo_referencia = '';
+      itemAtual.descricao = '';
+      classesFiltradas.value = [];
     };
 
-    const salvarClasse = async () => {
+    const salvarItem = async () => {
       try {
         salvando.value = true;
         
         if (modoEdicao.value) {
-          // Atualizar classe existente
+          // Atualizar item existente
           const { error } = await supabase
-            .from('classes')
+            .from('itens_materiais')
             .update({
-              grupo_id: classeAtual.grupo_id,
-              codigo: classeAtual.codigo,
-              nome: classeAtual.nome,
-              descricao: classeAtual.descricao
+              grupo_id: itemAtual.grupo_id,
+              classe_id: itemAtual.classe_id,
+              codigo: itemAtual.codigo,
+              nome: itemAtual.nome,
+              marca_modelo_referencia: itemAtual.marca_modelo_referencia,
+              descricao: itemAtual.descricao
             })
-            .eq('id', classeAtual.id);
+            .eq('id', itemAtual.id);
             
           if (error) throw error;
-          alert('Classe atualizada com sucesso!');
+          alert('Item atualizado com sucesso!');
         } else {
           // Gerar código automaticamente se não fornecido
-          let codigo = classeAtual.codigo;
+          let codigo = itemAtual.codigo;
           if (!codigo) {
-            const { data: ultimaClasse } = await supabase
-              .from('classes')
+            const { data: ultimoItem } = await supabase
+              .from('itens_materiais')
               .select('codigo')
               .order('created_at', { ascending: false })
               .limit(1);
             
-            const ultimoNumero = ultimaClasse && ultimaClasse[0] && ultimaClasse[0].codigo 
-              ? parseInt(ultimaClasse[0].codigo.replace(/\D/g, '')) || 0 
+            const ultimoNumero = ultimoItem && ultimoItem[0] && ultimoItem[0].codigo 
+              ? parseInt(ultimoItem[0].codigo.replace(/\D/g, '')) || 0 
               : 0;
-            codigo = `CLS${String(ultimoNumero + 1).padStart(3, '0')}`;
+            codigo = `ITM${String(ultimoNumero + 1).padStart(3, '0')}`;
           }
           
-          // Criar nova classe
+          // Criar novo item
           const { error } = await supabase
-            .from('classes')
+            .from('itens_materiais')
             .insert({
-              grupo_id: classeAtual.grupo_id,
+              grupo_id: itemAtual.grupo_id,
+              classe_id: itemAtual.classe_id,
               codigo: codigo,
-              nome: classeAtual.nome,
-              descricao: classeAtual.descricao
+              nome: itemAtual.nome,
+              marca_modelo_referencia: itemAtual.marca_modelo_referencia,
+              descricao: itemAtual.descricao
             });
             
           if (error) throw error;
-          alert('Classe adicionada com sucesso!');
+          alert('Item adicionado com sucesso!');
         }
         
         // Recarregar lista e fechar formulário
-        await carregarClasses();
+        await carregarItens();
         fecharFormulario();
       } catch (error) {
-        console.error('Erro ao salvar classe:', error);
-        alert(`Erro ao ${modoEdicao.value ? 'atualizar' : 'adicionar'} classe: ${error.message}`);
+        console.error('Erro ao salvar item:', error);
+        alert(`Erro ao ${modoEdicao.value ? 'atualizar' : 'adicionar'} item: ${error.message}`);
       } finally {
         salvando.value = false;
       }
     };
 
-    const confirmarExclusao = (classe) => {
-      if (confirm(`Deseja realmente excluir a classe "${classe.nome}"?`)) {
-        excluirClasse(classe.id);
+    const confirmarExclusao = (item) => {
+      if (confirm(`Deseja realmente excluir o item "${item.nome}"?`)) {
+        excluirItem(item.id);
       }
     };
 
-    const excluirClasse = async (id) => {
+    const excluirItem = async (id) => {
       try {
         loading.value = true;
         
-        // Verificar se existem produtos associados a esta classe
-        const { data: produtos, error: produtosError } = await supabase
-          .from('produtos')
-          .select('id')
-          .eq('classe_id', id);
-          
-        if (produtosError) throw produtosError;
-        
-        // Se houver produtos, não permitir a exclusão
-        if (produtos && produtos.length > 0) {
-          alert(`Não é possível excluir esta classe porque existem ${produtos.length} produtos associados a ela.`);
-          return;
-        }
-        
         // Realizar a exclusão
         const { error } = await supabase
-          .from('classes')
+          .from('itens_materiais')
           .delete()
           .eq('id', id);
           
         if (error) throw error;
         
-        alert('Classe excluída com sucesso!');
-        await carregarClasses();
+        alert('Item excluído com sucesso!');
+        await carregarItens();
       } catch (error) {
-        console.error('Erro ao excluir classe:', error);
-        alert(`Erro ao excluir classe: ${error.message}`);
+        console.error('Erro ao excluir item:', error);
+        alert(`Erro ao excluir item: ${error.message}`);
       } finally {
         loading.value = false;
       }
     };
 
     return {
-      classes,
+      itens,
       grupos,
+      classes,
+      classesFiltradas,
       loading,
       salvando,
       mostrarFormulario,
       modoEdicao,
-      classeAtual,
-      carregarClasses,
+      itemAtual,
+      carregarItens,
       carregarGrupos,
+      carregarClasses,
+      carregarClassesPorGrupo,
       getNomeGrupo,
+      getNomeClasse,
       formatarData,
-      editarClasse,
+      editarItem,
       fecharFormulario,
-      salvarClasse,
+      salvarItem,
       confirmarExclusao
     };
   }
@@ -329,7 +405,7 @@ export default {
 </script>
 
 <style scoped>
-.classes-list {
+.itens-list {
   padding: 20px;
 }
 
@@ -356,7 +432,7 @@ export default {
   border-radius: 4px;
 }
 
-.classes-table {
+.itens-table {
   width: 100%;
   overflow-x: auto;
 }
@@ -364,29 +440,35 @@ export default {
 table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 1000px;
 }
 
 th, td {
-  padding: 12px 15px;
+  padding: 12px 8px;
   text-align: left;
   border-bottom: 1px solid #ddd;
+  font-size: 14px;
 }
 
 th {
   background-color: #f2f2f2;
   font-weight: bold;
+  position: sticky;
+  top: 0;
 }
 
 .actions {
   display: flex;
   gap: 8px;
+  min-width: 120px;
 }
 
 .btn-edit, .btn-delete {
-  padding: 6px 12px;
+  padding: 4px 8px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 12px;
 }
 
 .btn-edit {
@@ -422,8 +504,10 @@ th {
 .modal-content {
   background-color: white;
   border-radius: 8px;
-  width: 500px;
-  max-width: 90%;
+  width: 600px;
+  max-width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-header {
@@ -468,6 +552,13 @@ th {
   border-radius: 4px;
 }
 
+.form-group small {
+  display: block;
+  margin-top: 4px;
+  color: #666;
+  font-size: 12px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -497,4 +588,4 @@ th {
   background-color: #95a5a6;
   cursor: not-allowed;
 }
-</style> 
+</style>
