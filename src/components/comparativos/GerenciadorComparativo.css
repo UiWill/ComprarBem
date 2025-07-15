@@ -1,0 +1,740 @@
+/* ===== ESTILOS GERENCIADOR DE COMPARATIVO ===== */
+
+.gerenciador-comparativo {
+  padding: 20px;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* === CABEÇALHO === */
+.comparativo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.header-info h4 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1.4em;
+}
+
+.header-info p {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* === FILTROS === */
+.comparativo-filtros {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filtros-row {
+  display: flex;
+  gap: 15px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+}
+
+.filtro-group label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9em;
+}
+
+/* === FILTRO DE PERÍODO === */
+.filtro-group-periodo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 280px;
+}
+
+.filtro-group-periodo label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9em;
+}
+
+.periodo-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.periodo-separador {
+  color: #7f8c8d;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.periodo-inputs .input-field {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* === LOADING === */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e3f2fd;
+  border-top: 4px solid #2196f3;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* === CONTAINER PRINCIPAL === */
+.comparativos-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* === ESTADO VAZIO === */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #7f8c8d;
+}
+
+.empty-icon {
+  font-size: 4em;
+  margin-bottom: 20px;
+}
+
+.empty-state h3 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 1.3em;
+}
+
+.empty-state p {
+  margin: 0 0 25px 0;
+  font-size: 1em;
+  line-height: 1.5;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* === GRID DE COMPARATIVOS === */
+.comparativos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: 20px;
+}
+
+.comparativo-card {
+  background: white;
+  border: 1px solid #e0e6ed;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.comparativo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.comparativo-card.finalizado {
+  border-left: 4px solid #27ae60;
+  background: #f8fff8;
+}
+
+.comparativo-card.cancelado {
+  border-left: 4px solid #e74c3c;
+  background: #fef9f9;
+}
+
+.comparativo-card.vencido {
+  border-left: 4px solid #f39c12;
+  background: #fffbf3;
+}
+
+/* === CABEÇALHO DO COMPARATIVO === */
+.comparativo-header-card {
+  padding: 20px;
+  border-bottom: 1px solid #f1f3f4;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.comparativo-info h5 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.comparativo-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.categoria {
+  background: #e8f4fd;
+  color: #1565c0;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+.data {
+  font-size: 0.85em;
+  color: #7f8c8d;
+}
+
+.status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status.em_andamento {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status.finalizado {
+  background: #e8f5e8;
+  color: #1b5e20;
+}
+
+.status.cancelado {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.comparativo-stats {
+  text-align: center;
+}
+
+.stat .number {
+  display: block;
+  font-size: 1.5em;
+  font-weight: 700;
+  color: #3498db;
+  line-height: 1;
+}
+
+.stat .label {
+  font-size: 0.8em;
+  color: #7f8c8d;
+  text-transform: uppercase;
+}
+
+/* === CORPO DO COMPARATIVO === */
+.comparativo-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.comparativo-desc p {
+  margin: 0;
+  color: #2c3e50;
+  line-height: 1.5;
+  font-size: 0.9em;
+}
+
+.sem-descricao {
+  color: #7f8c8d !important;
+  font-style: italic;
+}
+
+.comparativo-detalhes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.detalhe {
+  font-size: 0.85em;
+  color: #2c3e50;
+}
+
+.detalhe strong {
+  color: #34495e;
+  font-weight: 600;
+}
+
+/* === AÇÕES DO COMPARATIVO === */
+.comparativo-actions {
+  padding: 15px 20px;
+  background: #f8f9fa;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.8em;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.btn-small:hover {
+  background: #d5dbdb;
+}
+
+.btn-small.btn-success {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-small.btn-success:hover {
+  background: #219a52;
+}
+
+.btn-small.btn-danger {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-small.btn-danger:hover {
+  background: #c0392b;
+}
+
+/* === BOTÕES PRINCIPAIS === */
+.btn-primary, .btn-secondary, .btn-ghost {
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+}
+
+.btn-primary {
+  background: #3498db;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.btn-secondary:hover {
+  background: #d5dbdb;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #7f8c8d;
+  border: 1px solid #bdc3c7;
+}
+
+.btn-ghost:hover {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+/* === CAMPOS DE FORMULÁRIO === */
+.input-field, .select-field, .textarea-field {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.9em;
+  transition: border-color 0.3s ease;
+  background: white;
+}
+
+.input-field:focus, .select-field:focus, .textarea-field:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.textarea-field {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+/* === MODAIS === */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-content.large {
+  max-width: 900px;
+}
+
+.modal-content.extra-large {
+  max-width: 1200px;
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.3em;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #7f8c8d;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* === FORMULÁRIO DE COMPARATIVO === */
+.form-comparativo {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.form-section {
+  border: 1px solid #e0e6ed;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fafbfc;
+}
+
+.form-section legend {
+  padding: 0 10px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1em;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9em;
+}
+
+/* === GERENCIAMENTO DE ITENS === */
+.itens-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.empty-state-small {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7f8c8d;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.itens-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 15px;
+}
+
+.item-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e6ed;
+  border-radius: 8px;
+  padding: 15px;
+  transition: all 0.2s ease;
+}
+
+.item-card:hover {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.item-header h6 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 0.95em;
+  font-weight: 600;
+}
+
+.fornecedor {
+  color: #7f8c8d;
+  font-size: 0.8em;
+}
+
+.item-body {
+  margin: 10px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-preco {
+  font-weight: 600;
+  color: #27ae60;
+  font-size: 1.1em;
+}
+
+.item-pontuacao {
+  text-align: right;
+}
+
+.pontuacao {
+  display: block;
+  color: #3498db;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.ranking {
+  color: #f39c12;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.item-actions {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+.btn-mini {
+  padding: 4px 8px;
+  font-size: 0.75em;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  background: #ecf0f1;
+  color: #2c3e50;
+  transition: all 0.2s ease;
+}
+
+.btn-mini:hover {
+  background: #d5dbdb;
+}
+
+.btn-mini.btn-danger {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-mini.btn-danger:hover {
+  background: #c0392b;
+}
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 768px) {
+  .gerenciador-comparativo {
+    padding: 15px;
+  }
+  
+  .comparativo-header {
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    justify-content: flex-start;
+  }
+  
+  .filtros-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filtro-group, .filtro-group-periodo {
+    min-width: auto;
+  }
+  
+  .comparativos-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .comparativo-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .comparativo-detalhes {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .modal-content.large,
+  .modal-content.extra-large {
+    max-width: none;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .itens-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .comparativo-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .comparativo-header-card {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .comparativo-stats {
+    text-align: left;
+  }
+  
+  .item-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .item-pontuacao {
+    text-align: left;
+  }
+}

@@ -1,0 +1,596 @@
+/* ===== ESTILOS GERENCIADOR DE COTAÇÕES ===== */
+
+.gerenciador-cotacoes {
+  padding: 20px;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* === CABEÇALHO === */
+.cotacoes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.header-info h4 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1.4em;
+}
+
+.header-info p {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* === FILTROS === */
+.cotacoes-filtros {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filtros-row {
+  display: flex;
+  gap: 15px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+}
+
+.filtro-group label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9em;
+}
+
+.filtro-group span {
+  align-self: center;
+  color: #7f8c8d;
+  font-size: 0.9em;
+  margin: 0 5px;
+}
+
+/* === FILTRO DE PERÍODO === */
+.filtro-group-periodo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 280px;
+}
+
+.filtro-group-periodo label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9em;
+}
+
+.periodo-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.periodo-separador {
+  color: #7f8c8d;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.periodo-inputs .input-field {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* === LOADING === */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e3f2fd;
+  border-top: 4px solid #2196f3;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* === CONTAINER PRINCIPAL === */
+.cotacoes-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* === ESTADO VAZIO === */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #7f8c8d;
+}
+
+.empty-icon {
+  font-size: 4em;
+  margin-bottom: 20px;
+}
+
+.empty-state h3 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 1.3em;
+}
+
+.empty-state p {
+  margin: 0 0 25px 0;
+  font-size: 1em;
+  line-height: 1.5;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* === GRID DE COTAÇÕES === */
+.cotacoes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.cotacao-card {
+  background: white;
+  border: 1px solid #e0e6ed;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.cotacao-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.cotacao-card.vencida {
+  border-left: 4px solid #e74c3c;
+  background: #fef9f9;
+}
+
+.cotacao-card.aceita {
+  border-left: 4px solid #27ae60;
+  background: #f8fff8;
+}
+
+/* === CABEÇALHO DA COTAÇÃO === */
+.cotacao-header {
+  padding: 20px;
+  border-bottom: 1px solid #f1f3f4;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.cotacao-info h5 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.cotacao-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.cotacao-meta .data {
+  font-size: 0.85em;
+  color: #7f8c8d;
+}
+
+.cotacao-meta .status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status.ativa {
+  background: #e8f5e8;
+  color: #2e7d2e;
+}
+
+.status.vencida {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.status.aceita {
+  background: #e8f5e8;
+  color: #1b5e20;
+}
+
+.status.cancelada {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.cotacao-preco {
+  text-align: right;
+}
+
+.preco-unitario {
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #27ae60;
+  margin-bottom: 4px;
+}
+
+.preco-total {
+  font-size: 0.85em;
+  color: #7f8c8d;
+}
+
+/* === CORPO DA COTAÇÃO === */
+.cotacao-body {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.fornecedor-info p,
+.condicoes-info p {
+  margin: 0 0 6px 0;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.fornecedor-info strong,
+.condicoes-info strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* === AÇÕES DA COTAÇÃO === */
+.cotacao-actions {
+  padding: 15px 20px;
+  background: #f8f9fa;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.8em;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.btn-small:hover {
+  background: #d5dbdb;
+}
+
+.btn-small.btn-success {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-small.btn-success:hover {
+  background: #219a52;
+}
+
+.btn-small.btn-danger {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-small.btn-danger:hover {
+  background: #c0392b;
+}
+
+/* === BOTÕES PRINCIPAIS === */
+.btn-primary, .btn-secondary, .btn-ghost {
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+}
+
+.btn-primary {
+  background: #3498db;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.btn-secondary:hover {
+  background: #d5dbdb;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #7f8c8d;
+  border: 1px solid #bdc3c7;
+}
+
+.btn-ghost:hover {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+/* === CAMPOS DE FORMULÁRIO === */
+.input-field, .select-field, .textarea-field {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.9em;
+  transition: border-color 0.3s ease;
+  background: white;
+}
+
+.input-field:focus, .select-field:focus, .textarea-field:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.textarea-field {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+/* === MODAIS === */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-content.large {
+  max-width: 900px;
+}
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.3em;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #7f8c8d;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* === FORMULÁRIO DE COTAÇÃO === */
+.form-cotacao {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.form-section {
+  border: 1px solid #e0e6ed;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fafbfc;
+}
+
+.form-section legend {
+  padding: 0 10px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1em;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9em;
+}
+
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 768px) {
+  .gerenciador-cotacoes {
+    padding: 15px;
+  }
+  
+  .cotacoes-header {
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    justify-content: flex-start;
+  }
+  
+  .filtros-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filtro-group {
+    min-width: auto;
+  }
+  
+  .cotacoes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .cotacao-body {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .modal-content.large {
+    max-width: none;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  
+  .cotacao-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .cotacao-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .cotacao-preco {
+    text-align: left;
+  }
+  
+  .cotacao-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+}

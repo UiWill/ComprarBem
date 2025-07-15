@@ -5,7 +5,10 @@
       "Bash(node:*)",
       "WebFetch(domain:cloudconvert.com)",
       "Bash(npm run serve:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run build:*)",
+      "Bash(echo \"-- Remover política RLS problemática e criar uma nova\nDROP POLICY IF EXISTS \"\"Cotações isoladas por tenant\"\" ON cotacoes;\n\n-- Criar política RLS baseada no usuário autenticado\nCREATE POLICY \"\"Cotações por tenant do usuário\"\" ON cotacoes\n  FOR ALL \n  USING (tenant_id = (auth.jwt() ->> ''user_metadata'' ->> ''tenant_id'')::uuid);\n\n-- Alternativa: política mais permissiva para testes\n-- Se a política acima não funcionar, use esta:\n-- CREATE POLICY \"\"Cotações acesso total\"\" ON cotacoes FOR ALL TO authenticated USING (true);\")",
+      "Bash(find:*)"
     ],
     "deny": []
   }

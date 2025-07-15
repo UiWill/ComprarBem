@@ -470,6 +470,8 @@ export default {
       currentTenantId: null,
       loading: false,
       reclamacoes: ref([]),
+      // Lista de produtos despadronizados
+      produtosDespadronizados: [],
       // Modais para vincular edital e despadronizar
       modalVincularEdital: false,
       modalDespadronizar: false,
@@ -593,6 +595,9 @@ export default {
           console.log(`${this.produtos.length} produtos padronizados carregados`)
         }
         
+        // Carregar produtos despadronizados
+        await this.carregarProdutosDespadronizados()
+        
         this.filtrarProdutos()
         
       } catch (error) {
@@ -607,6 +612,31 @@ export default {
         this.loading = false
       }
     },
+    
+    async carregarProdutosDespadronizados() {
+      try {
+        console.log("Carregando produtos despadronizados...")
+        const { data: marcasDespadronizadas, error } = await supabase
+          .from('marcas_despadronizadas')
+          .select('produto_id')
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status_atual', 'ativa') // Apenas despadronizações ativas
+        
+        if (error) {
+          console.error('Erro ao carregar produtos despadronizados:', error)
+          this.produtosDespadronizados = []
+        } else {
+          this.produtosDespadronizados = (marcasDespadronizadas || [])
+            .filter(item => item.produto_id) // Apenas aqueles com produto_id
+            .map(item => item.produto_id)
+          console.log(`${this.produtosDespadronizados.length} produtos despadronizados encontrados`)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar produtos despadronizados:', error)
+        this.produtosDespadronizados = []
+      }
+    },
+    
     async carregarCategoriasDireto() {
       try {
         console.log('Tentando carregar categorias diretamente...')
@@ -883,7 +913,15 @@ export default {
     },
     
     getStatusMarca(produto) {
-      if (!produto.validade_dcb) return 'Despadronizado'
+      // Verificar se produto está despadronizado
+      if (this.produtosDespadronizados.includes(produto.id)) {
+        return 'Despadronizado'
+      }
+      
+      // Se não tem DCB emitido ainda, está aguardando DCB
+      if (!produto.validade_dcb) {
+        return 'Aguardando DCB'
+      }
       
       const hoje = new Date()
       const validade = new Date(produto.validade_dcb)
@@ -904,6 +942,8 @@ export default {
           return 'status-vencido'
         case 'Despadronizado':
           return 'status-despadronizado'
+        case 'Aguardando DCB':
+          return 'status-aguardando-dcb'
         default:
           return 'status-despadronizado'
       }
@@ -1789,6 +1829,12 @@ h2 {
   background-color: #fff3cd;
   color: #856404;
   border: 1px solid #ffeaa7;
+}
+
+.status-aguardando-dcb {
+  background-color: #e2e3e5;
+  color: #495057;
+  border: 1px solid #ced4da;
 }
 
 /* Estilos para Modal */

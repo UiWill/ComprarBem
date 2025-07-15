@@ -704,7 +704,10 @@ export default {
     },
     
     getStatusMarca(produto) {
-      if (!produto.validade_dcb) return 'Despadronizado'
+      // Se não tem DCB emitido ainda, está aguardando DCB
+      if (!produto.validade_dcb) {
+        return 'Aguardando DCB'
+      }
       
       const hoje = new Date()
       const validade = new Date(produto.validade_dcb)
@@ -725,6 +728,8 @@ export default {
           return 'status-vencido'
         case 'Despadronizado':
           return 'status-despadronizado'
+        case 'Aguardando DCB':
+          return 'status-aguardando-dcb'
         default:
           return 'status-despadronizado'
       }
@@ -1143,6 +1148,11 @@ export default {
   background-color: #fff3cd;
   color: #856404;
   border: 1px solid #ffeaa7;
+}
+.status-aguardando-dcb {
+  background-color: #e2e3e5;
+  color: #495057;
+  border: 1px solid #ced4da;
 }
 
 /* Estados de Loading e Empty */

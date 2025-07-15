@@ -403,128 +403,22 @@
 
         <!-- Cotações -->
         <div v-if="activeSubTab === 'cotacoes'" class="sub-content">
-          <div class="cotacoes-section">
-            <div class="section-intro">
-              <h4>💰 Registro de Cotações de Fornecedores</h4>
-              <p>Registre e gerencie cotações de fornecedores para produtos específicos, incluindo preços, condições de pagamento e prazos de entrega.</p>
-            </div>
-            
-            <div class="cotacoes-actions">
-              <button @click="$swal({ title: '💰 Nova Cotação', text: 'Funcionalidade em desenvolvimento', icon: 'info' })" class="btn-primary">
-                ➕ Nova Cotação
-              </button>
-              <button @click="$swal({ title: '📥 Importar Cotações', text: 'Funcionalidade em desenvolvimento - Importação de planilhas Excel/CSV', icon: 'info' })" class="btn-secondary">
-                📥 Importar Cotações
-              </button>
-            </div>
-
-            <div class="cotacoes-grid">
-              <div v-if="cotacoes.length === 0" class="empty-state">
-                <div class="empty-icon">💰</div>
-                <h3>Nenhuma cotação registrada</h3>
-                <p>Comece registrando cotações de fornecedores para análise de preços.</p>
-              </div>
-              
-              <div v-else>
-                <div v-for="cotacao in cotacoes" :key="cotacao.id" class="cotacao-card">
-                  <div class="cotacao-header">
-                    <h5>{{ cotacao.produto }}</h5>
-                    <span class="cotacao-data">{{ formatDate(cotacao.data) }}</span>
-                  </div>
-                  <div class="cotacao-content">
-                    <p><strong>Fornecedor:</strong> {{ cotacao.fornecedor }}</p>
-                    <p><strong>Preço:</strong> {{ formatCurrency(cotacao.preco) }}</p>
-                    <p><strong>Prazo:</strong> {{ cotacao.prazo }}</p>
-                  </div>
-                  <div class="cotacao-actions">
-                    <button @click="$swal({ title: '✏️ Editar Cotação', text: 'Funcionalidade em desenvolvimento', icon: 'info' })" class="btn-small">Editar</button>
-                    <button @click="$swal({ title: '🗑️ Remover Cotação', text: 'Funcionalidade em desenvolvimento', icon: 'info' })" class="btn-small btn-danger">Remover</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <GerenciadorCotacoes />
         </div>
 
         <!-- Comparativo Técnico -->
         <div v-if="activeSubTab === 'comparativo'" class="sub-content">
-          <div class="comparativo-section">
-            <div class="section-intro">
-              <h4>📊 Comparativo Técnico de Produtos</h4>
-              <p>Compare especificações técnicas, preços e condições gerais de produtos similares de diferentes fornecedores.</p>
-            </div>
-            
-            <div class="comparativo-actions">
-              <button @click="$swal({ title: '📊 Novo Comparativo', text: 'Funcionalidade em desenvolvimento - Comparativo técnico detalhado', icon: 'info' })" class="btn-primary">
-                ➕ Novo Comparativo
-              </button>
-              <button @click="$swal({ title: '📊 Gerar Relatório', text: 'Funcionalidade em desenvolvimento - Geração de relatório comparativo', icon: 'info' })" class="btn-secondary">
-                📊 Gerar Relatório
-              </button>
-            </div>
-
-        <div class="em-desenvolvimento">
-              <span>🚧 Em desenvolvimento</span>
-              <p>Funcionalidade em construção - Comparativo técnico detalhado de produtos</p>
-            </div>
-          </div>
+          <GerenciadorComparativo />
         </div>
 
         <!-- Análise de Preços -->
         <div v-if="activeSubTab === 'analise-precos'" class="sub-content">
-          <div class="analise-precos-section">
-            <div class="section-intro">
-              <h4>📈 Análise de Variação de Preços</h4>
-              <p>Analise a variação de preços ao longo do tempo e identifique tendências de mercado.</p>
-            </div>
-            
-            <div class="analise-actions">
-              <button @click="$swal({ title: '📈 Gerar Análise', text: 'Funcionalidade em desenvolvimento - Análise estatística de preços', icon: 'info' })" class="btn-primary">
-                📈 Gerar Análise
-              </button>
-              <button @click="$swal({ title: '📤 Exportar Dados', text: 'Funcionalidade em desenvolvimento - Exportação de dados', icon: 'info' })" class="btn-secondary">
-                📤 Exportar Dados
-              </button>
-            </div>
-
-            <div class="em-desenvolvimento">
-              <span>🚧 Em desenvolvimento</span>
-              <p>Funcionalidade em construção - Análise estatística de variação de preços</p>
-            </div>
-          </div>
+          <GerenciadorAnalisePrecos />
         </div>
 
         <!-- Relatórios -->
         <div v-if="activeSubTab === 'relatorios'" class="sub-content">
-          <div class="relatorios-section">
-            <div class="section-intro">
-              <h4>📋 Geração de Relatórios</h4>
-              <p>Gere relatórios consolidados para instrução de processos de compras e padronização.</p>
-            </div>
-            
-            <div class="relatorios-grid">
-              <div class="relatorio-card">
-                <div class="relatorio-icon">📊</div>
-                <h5>Relatório de Pesquisa de Mercado</h5>
-                <p>Relatório completo com análise técnica e de preços</p>
-                <button @click="$swal({ title: '📊 Relatório de Mercado', text: 'Funcionalidade em desenvolvimento - Relatório completo de pesquisa', icon: 'info' })" class="btn-primary">Gerar</button>
-              </div>
-              
-              <div class="relatorio-card">
-                <div class="relatorio-icon">💰</div>
-                <h5>Relatório de Cotações</h5>
-                <p>Comparativo de preços e condições de fornecedores</p>
-                <button @click="$swal({ title: '💰 Relatório de Cotações', text: 'Funcionalidade em desenvolvimento - Comparativo de preços', icon: 'info' })" class="btn-primary">Gerar</button>
-              </div>
-              
-              <div class="relatorio-card">
-                <div class="relatorio-icon">📈</div>
-                <h5>Relatório de Análise de Preços</h5>
-                <p>Análise estatística de variação de preços</p>
-                <button @click="$swal({ title: '📈 Relatório de Análise', text: 'Funcionalidade em desenvolvimento - Análise estatística', icon: 'info' })" class="btn-primary">Gerar</button>
-              </div>
-            </div>
-          </div>
+          <GerenciadorRelatorios />
         </div>
 
         <!-- Bancos de Preços -->
@@ -1020,23 +914,7 @@
     
     <!-- Aba Marcas Despadronizadas -->
     <div v-if="activeTab === 'despadronizadas'" class="marcas-despadronizadas">
-      <div class="info-card">
-        <h3>Marcas Despadronizadas</h3>
-        <p>Este módulo permitirá gerenciar marcas e modelos que foram despadronizados ou que não atendem mais aos requisitos de padronização.</p>
-        <p>Funcionalidades que serão implementadas:</p>
-        <ul>
-          <li>Registro de marcas e modelos despadronizados</li>
-          <li>Motivos e justificativas para despadronização</li>
-          <li>Histórico de despadronizações</li>
-          <li>Restrições de uso para modelos despadronizados</li>
-          <li>Notificação aos setores sobre despadronizações</li>
-          <li>Relatórios de impacto por despadronização</li>
-          <li>Registro de comunicações aos órgãos de controle</li>
-        </ul>
-        <div class="em-desenvolvimento">
-          <span>Em desenvolvimento</span>
-        </div>
-      </div>
+      <GerenciadorMarcasDespadronizadas />
     </div>
     
     <!-- Aba Emissão de Certificados (DCB) -->
@@ -2176,11 +2054,21 @@
 import { supabase } from '@/services/supabase'
 import emailjs from '@emailjs/browser'
 import PesquisaBot from '@/components/common/PesquisaBot.vue'
+import GerenciadorCotacoes from '@/components/cotacoes/GerenciadorCotacoes.vue'
+import GerenciadorComparativo from '@/components/comparativos/GerenciadorComparativo.vue'
+import GerenciadorAnalisePrecos from '@/components/analise-precos/GerenciadorAnalisePrecos.vue'
+import GerenciadorRelatorios from '@/components/relatorios/GerenciadorRelatorios.vue'
+import GerenciadorMarcasDespadronizadas from '@/components/marcas-despadronizadas/GerenciadorMarcasDespadronizadas.vue'
 
 export default {
   name: 'DashboardCPM',
   components: {
-    PesquisaBot
+    PesquisaBot,
+    GerenciadorCotacoes,
+    GerenciadorComparativo,
+    GerenciadorAnalisePrecos,
+    GerenciadorRelatorios,
+    GerenciadorMarcasDespadronizadas
   },
   data() {
     return {

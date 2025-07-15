@@ -567,8 +567,8 @@ export default {
         
         console.log('Salvando produto com tenant_id:', this.currentTenantId);
         
-        // Verificar novamente a validação do CNPJ
-        if (!this.validarCNPJ()) {
+        // Verificar se o CNPJ foi validado
+        if (!this.cnpjValidado || this.cnpjInvalido) {
           this.$swal({
             icon: 'error',
             title: 'CNPJ Inválido',
@@ -757,7 +757,7 @@ export default {
       }
       
       // Validar CNPJ
-      if (!this.validarCNPJ()) {
+      if (!this.cnpjValidado || this.cnpjInvalido) {
         this.$swal({
           icon: 'error',
           title: 'Erro de validação',
