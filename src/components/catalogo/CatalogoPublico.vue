@@ -372,6 +372,8 @@ export default {
       reclamacoes: [],
       showAvaliacoes: false,
       showAvaliacoesUsuarios: false,
+      // Lista de produtos despadronizados
+      produtosDespadronizados: [],
       // Edital
       editalInfo: null,
       showEdital: false,
@@ -574,6 +576,9 @@ export default {
           this.produtos = produtos || []
         }
         
+        // Carregar produtos despadronizados para mostrar status correto
+        await this.carregarProdutosDespadronizados(tenantId)
+        
         // Carregar categorias
         const { data: categorias, error: errorCategorias } = await supabase
           .from('categorias')
@@ -612,6 +617,30 @@ export default {
         this.filtrarProdutos()
       } finally {
         this.carregandoProdutos = false
+      }
+    },
+    
+    async carregarProdutosDespadronizados(tenantId) {
+      try {
+        console.log("Carregando produtos despadronizados para tenant:", tenantId)
+        const { data: marcasDespadronizadas, error } = await supabase
+          .from('marcas_despadronizadas')
+          .select('produto_id')
+          .eq('tenant_id', tenantId)
+          .eq('status_atual', 'ativa') // Apenas despadronizações ativas
+        
+        if (error) {
+          console.error('Erro ao carregar produtos despadronizados:', error)
+          this.produtosDespadronizados = []
+        } else {
+          this.produtosDespadronizados = (marcasDespadronizadas || [])
+            .filter(item => item.produto_id) // Apenas aqueles com produto_id
+            .map(item => item.produto_id)
+          console.log(`${this.produtosDespadronizados.length} produtos despadronizados encontrados:`, this.produtosDespadronizados)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar produtos despadronizados:', error)
+        this.produtosDespadronizados = []
       }
     },
     
@@ -829,8 +858,8 @@ export default {
     },
     
     getStatusMarca(produto) {
-      // Verificar se produto está despadronizado usando o campo de status do banco
-      if (produto.status === 'despadronizado' || produto.despadronizado === true) {
+      // Verificar se produto está despadronizado (igual ao catálogo interno)
+      if (this.produtosDespadronizados.includes(produto.id)) {
         return 'Despadronizado'
       }
       

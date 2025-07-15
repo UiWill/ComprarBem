@@ -31,5 +31,11 @@ FOR INSERT
 TO public
 WITH CHECK (true);
 
+-- 6. Política para permitir leitura pública de marcas despadronizadas (para mostrar status correto)
+CREATE POLICY "Permitir leitura pública de marcas despadronizadas" ON marcas_despadronizadas
+FOR SELECT
+TO public
+USING (status_atual = 'ativa');
+
 -- Comandos para verificar se as políticas foram criadas corretamente:
--- SELECT * FROM pg_policies WHERE tablename IN ('produtos', 'tenants', 'categorias', 'reclamacoes_usuarios');
+-- SELECT * FROM pg_policies WHERE tablename IN ('produtos', 'tenants', 'categorias', 'reclamacoes_usuarios', 'marcas_despadronizadas');
