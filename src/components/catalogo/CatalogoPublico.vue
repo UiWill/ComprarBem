@@ -397,10 +397,11 @@ export default {
         this.carregandoOrgaos = true
         
         // Buscar todos os tenants que possuem produtos usando uma consulta pública
+        // Incluir produtos aprovados e despadronizados para mostrar status real
         let { data, error } = await supabase
           .from('produtos')
           .select('tenant_id')
-          .eq('status', 'aprovado')
+          .in('status', ['aprovado', 'despadronizado'])
         
         // Se houver erro de autenticação/RLS, tentar buscar direto da tabela tenants
         if (error && (error.message.includes('RLS') || error.message.includes('permission') || error.message.includes('policy'))) {
@@ -529,12 +530,12 @@ export default {
       try {
         this.carregandoProdutos = true
         
-        // Carregar produtos do órgão
+        // Carregar produtos do órgão (incluindo produtos despadronizados para mostrar status real)
         const { data: produtos, error: errorProdutos } = await supabase
           .from('produtos')
           .select('*')
           .eq('tenant_id', tenantId)
-          .eq('status', 'aprovado')
+          .in('status', ['aprovado', 'despadronizado'])
         
         if (errorProdutos) {
           console.error('Erro ao carregar produtos:', errorProdutos)
@@ -828,6 +829,16 @@ export default {
     },
     
     getStatusMarca(produto) {
+      // Verificar se produto está despadronizado usando o campo de status do banco
+      if (produto.status === 'despadronizado' || produto.despadronizado === true) {
+        return 'Despadronizado'
+      }
+      
+      // Verificar se há processo de cancelamento ativo
+      if (produto.processo_cancelamento === true) {
+        return 'Em Processo de Cancelamento'
+      }
+      
       // Se não tem DCB emitido ainda, está aguardando DCB
       if (!produto.validade_dcb) {
         return 'Aguardando DCB'
@@ -854,6 +865,8 @@ export default {
           return 'status-despadronizado'
         case 'Aguardando DCB':
           return 'status-aguardando-dcb'
+        case 'Em Processo de Cancelamento':
+          return 'status-cancelamento'
         default:
           return 'status-despadronizado'
       }
@@ -1277,6 +1290,12 @@ export default {
   background-color: #e2e3e5;
   color: #495057;
   border: 1px solid #ced4da;
+}
+
+.status-cancelamento {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
 }
 
 /* Estados de Loading e Empty */
