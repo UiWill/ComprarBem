@@ -71,18 +71,15 @@ jobs:
       run: |
         echo "📋 Registrando execução..."
         
-        # Registrar execução no banco via API
+        # Registrar execução via Edge Function (mais simples e seguro)
         curl -s -X POST \
-          'https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/emails_enviados' \
+          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/dynamic-responder' \
           -H 'Content-Type: application/json' \
           -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' \
-          -H 'apikey: ${{ secrets.SUPABASE_ANON_KEY }}' \
           -d '{
-            "tipo": "sistema_automatico",
-            "destinatario": "github-actions@sistema.com",
-            "assunto": "Execução automática - '$(date)'",
-            "status": "enviado",
-            "corpo": "Sistema executado via GitHub Actions"
+            "trigger": "log_execution",
+            "execution_type": "github_actions",
+            "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"
           }'
         
         echo "✅ Execução registrada no banco de dados"
@@ -97,11 +94,10 @@ jobs:
         echo "Event: ${{ github.event_name }}"
         echo "Timestamp: $(date)"
         
-        # Verificar se há usuários pendentes
+        # Verificar se há usuários pendentes via Edge Function
         echo "🔍 Verificando usuários pendentes..."
         curl -s -X POST \
-          'https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/rpc/verificar_usuarios_lembretes_avaliacao' \
+          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/dynamic-responder' \
           -H 'Content-Type: application/json' \
           -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' \
-          -H 'apikey: ${{ secrets.SUPABASE_ANON_KEY }}' \
-          -d '{}' | jq '.'
+          -d '{"trigger": "debug_check"}' | jq '.'
