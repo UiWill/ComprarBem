@@ -19,12 +19,14 @@ async function enviarEmailViaEmailJS(emailParams: any) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'Supabase-Edge-Function/1.0'
       },
       body: JSON.stringify({
         service_id: EMAILJS_CONFIG.serviceId,
         template_id: EMAILJS_CONFIG.templateId,
         user_id: EMAILJS_CONFIG.publicKey,
-        template_params: emailParams
+        template_params: emailParams,
+        accessToken: EMAILJS_CONFIG.publicKey
       })
     })
 
