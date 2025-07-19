@@ -16,5 +16,8 @@ Vue.use(Loading)
 new Vue({
   router,
   store,
-  render: h => h(App)
+  render: h => h(App),
+  mounted() {
+    console.log('🚀 Sistema Comprar Bem carregado - Notificações automáticas via GitHub Actions')
+  }
 }).$mount('#app') 

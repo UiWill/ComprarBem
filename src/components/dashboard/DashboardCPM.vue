@@ -52,13 +52,6 @@
       >
         Avaliações de Usuários
       </div>
-      <div 
-        class="tab" 
-        :class="{ active: activeTab === 'tramitacao' }" 
-        @click="activeTab = 'tramitacao'"
-      >
-        Tramitação para CCL
-      </div>
     
     </div>
     

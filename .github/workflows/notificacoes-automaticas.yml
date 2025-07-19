@@ -1,0 +1,107 @@
+name: 🚀 Sistema de Notificações Automáticas
+
+on:
+  schedule:
+    # Executa a cada 30 minutos
+    - cron: '*/30 * * * *'
+  
+  # Permite execução manual
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Modo debug'
+        required: false
+        default: 'false'
+
+jobs:
+  processar-notificacoes:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🔍 Checkout do código
+      uses: actions/checkout@v4
+    
+    - name: 🚀 Processar Notificações Automáticas
+      run: |
+        echo "🚀 Iniciando processamento de notificações automáticas..."
+        echo "⏰ Timestamp: $(date)"
+        
+        # Chamar a Edge Function do Supabase
+        RESPONSE=$(curl -s -X POST \
+          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/dynamic-responder' \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' \
+          -d '{
+            "trigger": "github_actions",
+            "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
+            "debug": "${{ github.event.inputs.debug || 'false' }}"
+          }')
+        
+        echo "📧 Resposta da Edge Function:"
+        echo "$RESPONSE" | jq '.' || echo "$RESPONSE"
+        
+        # Verificar se houve sucesso
+        SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+        if [ "$SUCCESS" = "true" ]; then
+          echo "✅ Notificações processadas com sucesso!"
+          
+          # Extrair estatísticas
+          TOTAL_ENVIADOS=$(echo "$RESPONSE" | jq -r '.resumo.total_enviados // 0')
+          TOTAL_ERROS=$(echo "$RESPONSE" | jq -r '.resumo.total_erros // 0')
+          NOVOS_PRODUTOS=$(echo "$RESPONSE" | jq -r '.resumo.novos_produtos.enviados // 0')
+          LEMBRETES=$(echo "$RESPONSE" | jq -r '.resumo.lembretes.enviados // 0')
+          
+          echo "📊 Estatísticas:"
+          echo "   📧 Total enviados: $TOTAL_ENVIADOS"
+          echo "   ❌ Total erros: $TOTAL_ERROS"
+          echo "   🎉 Novos produtos: $NOVOS_PRODUTOS"
+          echo "   📋 Lembretes: $LEMBRETES"
+          
+          # Salvar estatísticas em arquivo
+          echo "$(date): Enviados=$TOTAL_ENVIADOS, Erros=$TOTAL_ERROS, Produtos=$NOVOS_PRODUTOS, Lembretes=$LEMBRETES" >> notificacoes-log.txt
+          
+        else
+          echo "❌ Erro no processamento de notificações:"
+          echo "$RESPONSE"
+          exit 1
+        fi
+    
+    - name: 📊 Registrar Execução
+      if: always()
+      run: |
+        echo "📋 Registrando execução..."
+        
+        # Registrar execução no banco via API
+        curl -s -X POST \
+          'https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/emails_enviados' \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' \
+          -H 'apikey: ${{ secrets.SUPABASE_ANON_KEY }}' \
+          -d '{
+            "tipo": "sistema_automatico",
+            "destinatario": "github-actions@sistema.com",
+            "assunto": "Execução automática - '$(date)'",
+            "status": "enviado",
+            "corpo": "Sistema executado via GitHub Actions"
+          }'
+        
+        echo "✅ Execução registrada no banco de dados"
+    
+    - name: 🔍 Debug (se habilitado)
+      if: github.event.inputs.debug == 'true'
+      run: |
+        echo "🔍 Informações de debug:"
+        echo "Repository: ${{ github.repository }}"
+        echo "Run ID: ${{ github.run_id }}"
+        echo "Workflow: ${{ github.workflow }}"
+        echo "Event: ${{ github.event_name }}"
+        echo "Timestamp: $(date)"
+        
+        # Verificar se há usuários pendentes
+        echo "🔍 Verificando usuários pendentes..."
+        curl -s -X POST \
+          'https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/rpc/verificar_usuarios_lembretes_avaliacao' \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' \
+          -H 'apikey: ${{ secrets.SUPABASE_ANON_KEY }}' \
+          -d '{}' | jq '.'

@@ -1,0 +1,358 @@
+{
+  "dataAnalise": "2025-07-17T17:49:42.470Z",
+  "tabelasEncontradas": [
+    {
+      "nome": "tenants",
+      "totalRegistros": 8,
+      "colunas": [
+        "id",
+        "nome",
+        "descricao",
+        "criado_em",
+        "ativo",
+        "user_id"
+      ],
+      "exemploRegistro": {
+        "id": "0a9475fd-7d89-4e08-8edc-a7a9e6322bcd",
+        "nome": "TESTE1",
+        "descricao": "Tenant para williamemanoel777@gmail.com",
+        "criado_em": "2025-04-14T12:01:17.048703+00:00",
+        "ativo": true,
+        "user_id": "ce41d712-386d-4d54-a229-8aec663cc432"
+      }
+    },
+    {
+      "nome": "usuarios",
+      "totalRegistros": 6,
+      "colunas": [
+        "id",
+        "tenant_id",
+        "email",
+        "nome",
+        "tipo",
+        "criado_em",
+        "ativo",
+        "tipo_usuario"
+      ],
+      "exemploRegistro": {
+        "id": "328e6e59-6d79-4621-971f-5b383159fa5c",
+        "tenant_id": "97e8f958-e3a6-413e-a75b-202f8e5e84f3",
+        "email": "williamemanoel007@gmail.com",
+        "nome": "GOV BOM DESPACHO",
+        "tipo": "admin",
+        "criado_em": "2025-04-14T17:00:39.860677+00:00",
+        "ativo": true,
+        "tipo_usuario": "cpm"
+      }
+    },
+    {
+      "nome": "usuarios_rdm",
+      "totalRegistros": 1,
+      "colunas": [
+        "id",
+        "tenant_id",
+        "nome_usuario",
+        "unidade_setor",
+        "nome_coordenador",
+        "telefone",
+        "email",
+        "materiais",
+        "criado_em",
+        "atualizado_em",
+        "user_id",
+        "ativo",
+        "convite_enviado",
+        "convite_aceito",
+        "senha_temporaria",
+        "data_convite",
+        "senha"
+      ],
+      "exemploRegistro": {
+        "id": "64be1546-f02f-4da2-8d49-6d7daccbae53",
+        "tenant_id": "dcfe1030-27dd-4964-8e22-08a9c3fab790",
+        "nome_usuario": "William Martins",
+        "unidade_setor": "secretaria da saude",
+        "nome_coordenador": "William Martins",
+        "telefone": "37999495691",
+        "email": "devwilliamemanoel7@gmail.com",
+        "materiais": [
+          {
+            "nome": "Cadeira ortopedica",
+            "marca": "NG +",
+            "codigo": "492834",
+            "categoria": "",
+            "produto_id": "2a1ec1d5-33d2-40af-9e83-dbfdc7abc80a",
+            "periodicidade_rdm": "mensal"
+          },
+          {
+            "nome": "NG+ maca",
+            "marca": "NG+",
+            "codigo": "324e34",
+            "categoria": "",
+            "produto_id": "9860f36e-3a37-4001-baf3-9b558c18d6e9",
+            "periodicidade_rdm": "mensal"
+          }
+        ],
+        "criado_em": "2025-06-30T22:20:01.719+00:00",
+        "atualizado_em": "2025-07-04T02:05:35.430219+00:00",
+        "user_id": "f95ffe32-257b-4f04-accb-03b734e79e9e",
+        "ativo": true,
+        "convite_enviado": true,
+        "convite_aceito": true,
+        "senha_temporaria": "CB20251666",
+        "data_convite": "2025-06-30T22:13:35.27+00:00",
+        "senha": null
+      }
+    },
+    {
+      "nome": "emails_enviados",
+      "totalRegistros": 0,
+      "colunas": [],
+      "exemploRegistro": null
+    },
+    {
+      "nome": "rdm_feedbacks",
+      "totalRegistros": 4,
+      "colunas": [
+        "id",
+        "tenant_id",
+        "rdm_id",
+        "usuario_rdm_id",
+        "material_nome",
+        "material_codigo",
+        "rating",
+        "comentario",
+        "criado_em",
+        "sugestoes"
+      ],
+      "exemploRegistro": {
+        "id": "102f8afd-3ce0-40d4-9398-c1240a9091ae",
+        "tenant_id": "dcfe1030-27dd-4964-8e22-08a9c3fab790",
+        "rdm_id": "2a1ec1d5-33d2-40af-9e83-dbfdc7abc80a",
+        "usuario_rdm_id": "8cad9cdd-bb83-4d29-a943-efa5d954cae2",
+        "material_nome": "Cadeira ortopedica",
+        "material_codigo": "N/A",
+        "rating": 5,
+        "comentario": "teste",
+        "criado_em": "2025-07-04T01:38:07.889+00:00",
+        "sugestoes": null
+      }
+    },
+    {
+      "nome": "material_feedbacks",
+      "totalRegistros": 10,
+      "colunas": [
+        "id",
+        "tenant_id",
+        "usuario_rdm_id",
+        "produto_id",
+        "material_nome",
+        "material_codigo",
+        "rating",
+        "comentario",
+        "data_feedback",
+        "tipo",
+        "criado_em",
+        "atualizado_em"
+      ],
+      "exemploRegistro": {
+        "id": "420f5e67-f301-480b-b4b0-fae69960a144",
+        "tenant_id": "0bbe4dd9-ff22-4d54-a697-2e9e641635f5",
+        "usuario_rdm_id": "64be1546-f02f-4da2-8d49-6d7daccbae53",
+        "produto_id": "2a1ec1d5-33d2-40af-9e83-dbfdc7abc80a",
+        "material_nome": "Cadeira ortopedica",
+        "material_codigo": "492834",
+        "rating": 4,
+        "comentario": "teste",
+        "data_feedback": "2025-06-30T23:11:27.536+00:00",
+        "tipo": "FEEDBACK_MATERIAL",
+        "criado_em": "2025-06-30T23:11:27.416998+00:00",
+        "atualizado_em": "2025-06-30T23:11:27.416998+00:00"
+      }
+    },
+    {
+      "nome": "reclamacoes_usuarios",
+      "totalRegistros": 5,
+      "colunas": [
+        "id",
+        "tenant_id",
+        "nome_reclamante",
+        "telefone",
+        "email",
+        "unidade_setor",
+        "nome_material",
+        "codigo_material",
+        "marca_modelo",
+        "registro_reclamacao",
+        "sugestoes",
+        "status",
+        "providencias_cpm",
+        "data_reclamacao",
+        "criado_em",
+        "data_atualizacao",
+        "usuario_rdm_id"
+      ],
+      "exemploRegistro": {
+        "id": "cf53f65d-1cf8-4ace-b207-e80573ccb184",
+        "tenant_id": "0bbe4dd9-ff22-4d54-a697-2e9e641635f5",
+        "nome_reclamante": "William Martins",
+        "telefone": "37999495691",
+        "email": "devwilliamemanoel7@gmail.com",
+        "unidade_setor": "secretaria da saude",
+        "nome_material": "Cadeira ortopedica",
+        "codigo_material": "492834",
+        "marca_modelo": "teste2",
+        "registro_reclamacao": "teste2",
+        "sugestoes": "teste2",
+        "status": "ABERTA",
+        "providencias_cpm": null,
+        "data_reclamacao": "2025-06-30",
+        "criado_em": "2025-06-30T23:11:43.010917+00:00",
+        "data_atualizacao": "2025-06-30T23:11:43.010917+00:00",
+        "usuario_rdm_id": null
+      }
+    },
+    {
+      "nome": "configuracoes_sistema",
+      "totalRegistros": 0,
+      "colunas": [],
+      "exemploRegistro": null
+    },
+    {
+      "nome": "produtos",
+      "totalRegistros": 5,
+      "colunas": [
+        "id",
+        "tenant_id",
+        "categoria_id",
+        "fornecedor_id",
+        "nome",
+        "marca",
+        "modelo",
+        "fabricante",
+        "cnpj",
+        "descricao",
+        "status",
+        "criado_em",
+        "atualizado_em",
+        "origem",
+        "registro_anvisa",
+        "cbpf",
+        "codigo_material",
+        "classe_id",
+        "grupo_id",
+        "validade_dcb",
+        "numero_dcb",
+        "data_aprovacao",
+        "aprovado_por",
+        "preco_referencia",
+        "unidade_medida",
+        "especificacoes_tecnicas",
+        "observacoes_internas",
+        "email_fornecedor",
+        "norma_abnt",
+        "norma_regulamentadora",
+        "edital_prequalificacao",
+        "edital_id",
+        "processo_cancelamento",
+        "motivo_despadronizacao",
+        "data_despadronizacao",
+        "documento_despadronizacao",
+        "updated_at"
+      ],
+      "exemploRegistro": {
+        "id": "2a1ec1d5-33d2-40af-9e83-dbfdc7abc80a",
+        "tenant_id": "dcfe1030-27dd-4964-8e22-08a9c3fab790",
+        "categoria_id": null,
+        "fornecedor_id": null,
+        "nome": "Cadeira ortopedica",
+        "marca": "NG +",
+        "modelo": "Ordeira",
+        "fabricante": "NG +",
+        "cnpj": "23092313000120",
+        "descricao": "teste para emitir certificado",
+        "status": "aprovado",
+        "criado_em": "2025-06-22T17:19:40.470992+00:00",
+        "atualizado_em": "2025-06-22T17:19:40.470992+00:00",
+        "origem": "NACIONAL",
+        "registro_anvisa": "2342342",
+        "cbpf": "12454",
+        "codigo_material": "492834",
+        "classe_id": "0a464cc6-8932-4a58-bcdd-08cf2d20bd5f",
+        "grupo_id": "00000000-0000-0000-0000-000000000001",
+        "validade_dcb": "2026-06-22",
+        "numero_dcb": "003/2025",
+        "data_aprovacao": null,
+        "aprovado_por": null,
+        "preco_referencia": null,
+        "unidade_medida": "UN",
+        "especificacoes_tecnicas": null,
+        "observacoes_internas": null,
+        "email_fornecedor": "comprarbemteste@gmail.com",
+        "norma_abnt": null,
+        "norma_regulamentadora": null,
+        "edital_prequalificacao": null,
+        "edital_id": null,
+        "processo_cancelamento": null,
+        "motivo_despadronizacao": null,
+        "data_despadronizacao": null,
+        "documento_despadronizacao": null,
+        "updated_at": "2025-07-13T17:09:39.079913+00:00"
+      }
+    },
+    {
+      "nome": "categorias",
+      "totalRegistros": 10,
+      "colunas": [
+        "id",
+        "tenant_id",
+        "nome",
+        "descricao",
+        "criado_em",
+        "ativo"
+      ],
+      "exemploRegistro": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "tenant_id": null,
+        "nome": "Equipamentos Médicos",
+        "descricao": null,
+        "criado_em": "2025-04-14T12:22:01.158908+00:00",
+        "ativo": true
+      }
+    },
+    {
+      "nome": "diligencias",
+      "totalRegistros": 0,
+      "colunas": [],
+      "exemploRegistro": null
+    }
+  ],
+  "tabelasComErro": [
+    {
+      "nome": "usuarios_rdm_produtos",
+      "erro": "relation \"public.usuarios_rdm_produtos\" does not exist"
+    },
+    {
+      "nome": "lembretes_enviados",
+      "erro": "relation \"public.lembretes_enviados\" does not exist"
+    },
+    {
+      "nome": "fornecedores",
+      "erro": "relation \"public.fornecedores\" does not exist"
+    },
+    {
+      "nome": "licitacoes",
+      "erro": "relation \"public.licitacoes\" does not exist"
+    },
+    {
+      "nome": "participantes",
+      "erro": "relation \"public.participantes\" does not exist"
+    }
+  ],
+  "estatisticas": {
+    "totalTabelas": 16,
+    "tabelasExistentes": 11,
+    "tabelasComErro": 5,
+    "registrosTotais": 49
+  }
+}
