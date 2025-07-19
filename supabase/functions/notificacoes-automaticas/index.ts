@@ -3,24 +3,48 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
-// Função para enviar email via Resend (compatível com Edge Functions)
+// Função para enviar email via Resend (real)
 async function enviarEmailViaResend(emailData: any) {
   try {
-    console.log('📧 Enviando email via SMTP simples...')
+    console.log('📧 Enviando email via Resend...')
     
-    // Simular envio de email - substitua por serviço real se necessário
-    console.log(`📧 Email enviado para: ${emailData.destinatario}`)
-    console.log(`📧 Assunto: ${emailData.assunto}`)
-    console.log(`📧 Tipo: ${emailData.tipo}`)
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    if (!resendApiKey) {
+      console.error('❌ RESEND_API_KEY não configurada')
+      return { success: false, error: 'RESEND_API_KEY não configurada' }
+    }
     
-    // Para teste, vamos simular sucesso sempre
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simular delay
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Sistema Comprar Bem <noreply@resend.dev>',
+        to: [emailData.destinatario],
+        subject: emailData.assunto,
+        html: emailData.conteudo || `
+          <h2>${emailData.assunto}</h2>
+          <p>Tipo: ${emailData.tipo}</p>
+          <p>Sistema de Notificações Automáticas - Comprar Bem</p>
+        `
+      })
+    })
     
-    console.log('✅ Email simulado enviado com sucesso!')
-    return { success: true }
+    if (response.ok) {
+      const result = await response.json()
+      console.log(`✅ Email enviado com sucesso para ${emailData.destinatario}`)
+      console.log(`📧 ID: ${result.id}`)
+      return { success: true, id: result.id }
+    } else {
+      const error = await response.text()
+      console.error('❌ Erro ao enviar email:', error)
+      return { success: false, error }
+    }
     
   } catch (error) {
-    console.error('❌ Erro ao enviar email:', error)
+    console.error('❌ Erro na comunicação com Resend:', error)
     return { success: false, error: error.message }
   }
 }
