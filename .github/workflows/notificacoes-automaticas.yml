@@ -28,7 +28,7 @@ jobs:
         
         # Chamar a Edge Function do Supabase
         RESPONSE=$(curl -s -X POST \
-          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/dynamic-responder' \
+          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/notificacoes-automaticas' \
           -H 'Content-Type: application/json' \
           -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' \
           -d '{
@@ -73,7 +73,7 @@ jobs:
         
         # Registrar execução via Edge Function (mais simples e seguro)
         curl -s -X POST \
-          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/dynamic-responder' \
+          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/notificacoes-automaticas' \
           -H 'Content-Type: application/json' \
           -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' \
           -d '{
@@ -97,7 +97,7 @@ jobs:
         # Verificar se há usuários pendentes via Edge Function
         echo "🔍 Verificando usuários pendentes..."
         curl -s -X POST \
-          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/dynamic-responder' \
+          'https://ruagsbbczuwgfflgcaol.supabase.co/functions/v1/notificacoes-automaticas' \
           -H 'Content-Type: application/json' \
           -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' \
           -d '{"trigger": "debug_check"}' | jq '.'
