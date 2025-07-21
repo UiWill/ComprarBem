@@ -142,6 +142,7 @@
             <tr>
               <th>Nome</th>
               <th>Marca</th>
+              <th>Edital</th>
               <th>Status</th>
               <th>Data</th>
               <th>Ações</th>
@@ -151,14 +152,15 @@
             <tr v-for="produto in produtosPaginados" :key="produto.id">
               <td>{{ produto.nome }}</td>
               <td>{{ produto.marca }}</td>
+              <td>{{ formatarEdital(produto) }}</td>
               <td>
-                <span v-if="produto.status === 'aprovado'" style="background-color: #2ecc71; color: white; display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; text-transform: uppercase; font-weight: bold; min-width: 80px; text-align: center;">
+                <span v-if="produto.status === 'aprovado' || produto.status === 'julgado_aprovado' || produto.status === 'homologado'" style="background-color: #2ecc71; color: white; display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; text-transform: uppercase; font-weight: bold; min-width: 80px; text-align: center;">
+                  {{ formatarStatus(produto.status) }}
+                </span>
+                <span v-else-if="produto.status === 'reprovado' || produto.status === 'julgado_reprovado'" style="background-color: #e74c3c; color: white; display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; text-transform: uppercase; font-weight: bold; min-width: 80px; text-align: center;">
                   {{ formatarStatus(produto.status) }}
                 </span>
                 <span v-else-if="produto.status === 'pendente'" style="background-color: #f39c12; color: white; display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; text-transform: uppercase; font-weight: bold; min-width: 80px; text-align: center;">
-                  {{ formatarStatus(produto.status) }}
-                </span>
-                <span v-else-if="produto.status === 'reprovado'" style="background-color: #e74c3c; color: white; display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; text-transform: uppercase; font-weight: bold; min-width: 80px; text-align: center;">
                   {{ formatarStatus(produto.status) }}
                 </span>
                 <span v-else-if="produto.status === 'em_analise'" style="background-color: #3498db; color: white; display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; text-transform: uppercase; font-weight: bold; min-width: 80px; text-align: center;">
@@ -274,6 +276,7 @@
             <tr>
               <th>Nome</th>
               <th>Marca</th>
+              <th>Edital</th>
               <th>Status</th>
               <th>Data</th>
               <th>Ações</th>
@@ -283,6 +286,7 @@
             <tr v-for="produto in diligenciasPaginadas" :key="produto.id">
               <td>{{ produto.nome }}</td>
               <td>{{ produto.marca }}</td>
+              <td>{{ formatarEdital(produto) }}</td>
               <td>
                 <span class="status-badge status-diligencia">
                   Diligência
@@ -596,21 +600,21 @@
       <div v-if="modalNovoEdital" class="modal-overlay" @click="fecharModalNovoEdital">
         <div class="modal-content large" @click.stop>
           <div class="modal-header">
-            <h3>📋 Selecionar Minuta Padrão</h3>
+            <h3>📋 Selecionar Minuta-Padrão</h3>
             <button @click="fecharModalNovoEdital" class="btn-close">&times;</button>
           </div>
           
           <div class="modal-body">
             <div class="minuta-selecao">
               <div class="section-intro">
-                <h4>Escolha uma minuta padrão para criar o edital:</h4>
-                <p>Selecione uma das minutas padrão disponíveis. Após a seleção, o edital será criado em elaboração.</p>
+                <h4>Escolha uma minuta-padrão para criar o edital:</h4>
+                <p>Selecione uma das minutas-padrão disponíveis. Após a seleção, o novo edital ficará com o status "Em Elaboração".</p>
               </div>
 
               <!-- Botão para adicionar nova minuta -->
               <div class="minutas-actions">
                 <button @click="abrirModalAddMinuta" class="btn-secondary">
-                  ➕ Adicionar Nova Minuta Padrão
+                  ➕ Adicionar Nova Minuta-Padrão
                 </button>
               </div>
 
@@ -650,8 +654,8 @@
               <!-- Estado vazio -->
               <div v-if="minutasDisponiveis.length === 0" class="empty-state">
                 <div class="empty-icon">📋</div>
-                <h3>Nenhuma minuta padrão disponível</h3>
-                <p>Adicione uma minuta padrão para começar a criar editais.</p>
+                <h3>Nenhuma minuta-padrão disponível</h3>
+                <p>Adicione uma minuta-padrão para começar a criar editais.</p>
                 <button @click="abrirModalAddMinuta" class="btn-primary">
                   ➕ Adicionar Primeira Minuta
                 </button>
@@ -678,7 +682,7 @@
       <div v-if="modalAddMinuta" class="modal-overlay" @click="fecharModalAddMinuta">
         <div class="modal-content medium" @click.stop>
           <div class="modal-header">
-            <h3>➕ Adicionar Nova Minuta Padrão</h3>
+            <h3>➕ Adicionar Nova Minuta-Padrão</h3>
             <button @click="fecharModalAddMinuta" class="btn-close">&times;</button>
           </div>
           
@@ -701,10 +705,10 @@
                   <option value="geral">Geral</option>
                   <option value="medicamentos">Medicamentos</option>
                   <option value="material_escritorio">Material de Escritório</option>
-                  <option value="material_medico">Material Médico</option>
+                  <option value="material_odontologico">Material Odontológico</option>
+                  <option value="material_medico_hospitalar">Material Médico-Hospitalar</option>
                   <option value="equipamentos">Equipamentos</option>
-                  <option value="servicos">Serviços</option>
-                  <option value="outros">Outros</option>
+                  <option value="outros_materiais">Outros Materiais</option>
                 </select>
               </div>
 
@@ -727,7 +731,7 @@
                   @change="handleMinutaUpload"
                   required
                 >
-                <small>Arquivo Word (.docx ou .doc) com a minuta padrão (máximo 10MB)</small>
+                <small>Arquivo Word (.docx ou .doc) com a minuta-padrão (máximo 10MB)</small>
               </div>
 
               <div class="form-actions">
@@ -773,15 +777,15 @@
 
               <!-- Seção de Minuta (apenas para editais em elaboração) -->
               <div v-if="editalSelecionado.status === 'RASCUNHO'" class="info-section">
-                <h4>📄 Minuta Padrão</h4>
+                <h4>📄 Minuta-Padrão</h4>
                 <div class="minuta-workflow">
                   <div class="workflow-step" :class="{ active: true }">
                     <div class="step-number">1</div>
                     <div class="step-content">
                       <h5>Baixar Minuta</h5>
-                      <p>Baixe a minuta padrão selecionada</p>
+                      <p>Baixe a minuta-padrão selecionada</p>
                       <button @click="baixarMinutaPadrao(editalSelecionado)" class="btn-primary btn-small">
-                        📥 Baixar Minuta Padrão
+                        📥 Baixar Minuta-Padrão
                       </button>
                     </div>
                   </div>
@@ -879,7 +883,12 @@
       
       <!-- Seção de Impugnações -->
       <div class="impugnacoes-section">
-        <h3>Impugnações ao Edital</h3>
+        <div class="section-header">
+          <h3>Impugnações ao Edital</h3>
+          <button @click="abrirModalNovaImpugnacao" class="btn-primary">
+            ➕ Nova Impugnação
+          </button>
+        </div>
         <table v-if="impugnacoes.length > 0">
           <thead>
             <tr>
@@ -888,7 +897,7 @@
               <th>Data da Impugnação</th>
               <th>Prazo Final</th>
               <th>Status</th>
-              <th>Documentação</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -898,23 +907,128 @@
               <td>{{ formatDate(impugnacao.data_impugnacao) }}</td>
               <td>{{ formatDate(impugnacao.prazo_final) }}</td>
               <td>
-                <span class="status-badge" :class="getImpugnacaoStatusClass(impugnacao.status)">
+                <span v-if="impugnacao.status === 'DEFERIDA'" class="status-badge status-aprovado">
+                  DEFERIDA
+                </span>
+                <span v-else-if="impugnacao.status === 'INDEFERIDA'" class="status-badge status-reprovado">
+                  INDEFERIDA
+                </span>
+                <span v-else class="status-badge status-pendente">
                   {{ impugnacao.status }}
                 </span>
               </td>
               <td>
                 <button @click="analisarImpugnacao(impugnacao.id)" class="btn-small">Visualizar</button>
+                <button @click="verDecisaoImpugnacao(impugnacao.id)" class="btn-small btn-info">Ver Decisão</button>
               </td>
             </tr>
           </tbody>
         </table>
         <p v-else>Não há impugnações apresentadas.</p>
       </div>
+
+      <!-- Modal Nova Impugnação -->
+      <div v-if="modalNovaImpugnacao" class="modal-overlay" @click="fecharModalNovaImpugnacao">
+        <div class="modal-content medium" @click.stop>
+          <div class="modal-header">
+            <h3>➕ Nova Impugnação ao Edital</h3>
+            <button @click="fecharModalNovaImpugnacao" class="btn-close">&times;</button>
+          </div>
+          
+          <div class="modal-body">
+            <form @submit.prevent="salvarNovaImpugnacao">
+              <div class="form-group">
+                <label for="editalImpugnacao">Edital *</label>
+                <select id="editalImpugnacao" v-model="novaImpugnacao.edital_id" required :disabled="carregandoEditais">
+                  <option value="">{{ carregandoEditais ? 'Carregando editais...' : 'Selecione um edital...' }}</option>
+                  <option 
+                    v-for="edital in editaisParaImpugnacao" 
+                    :key="edital.id" 
+                    :value="edital.id"
+                    :disabled="!editalDentroDoPrazo(edital)"
+                  >
+                    {{ edital.numero }} - {{ edital.descricao }}
+                    <span v-if="!editalDentroDoPrazo(edital)"> (Prazo vencido)</span>
+                  </option>
+                </select>
+                <small v-if="editalSelecionadoInfo" class="help-text">
+                  Prazo para impugnação: {{ formatDate(editalSelecionadoInfo.data_limite_impugnacao) }}
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label for="impugnante">Nome do Impugnante *</label>
+                <input 
+                  id="impugnante" 
+                  v-model="novaImpugnacao.impugnante" 
+                  type="text" 
+                  placeholder="Ex: João Silva"
+                  required
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="emailImpugnante">Email *</label>
+                <input 
+                  id="emailImpugnante" 
+                  v-model="novaImpugnacao.email" 
+                  type="email" 
+                  placeholder="Ex: joao@empresa.com"
+                  required
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="empresaImpugnante">Empresa</label>
+                <input 
+                  id="empresaImpugnante" 
+                  v-model="novaImpugnacao.empresa" 
+                  type="text" 
+                  placeholder="Ex: Empresa XYZ Ltda"
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="motivoImpugnacao">Motivo da Impugnação *</label>
+                <textarea 
+                  id="motivoImpugnacao" 
+                  v-model="novaImpugnacao.motivo" 
+                  rows="4"
+                  placeholder="Descreva o motivo da impugnação..."
+                  required
+                ></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="documentosImpugnacao">Documentos de Apoio</label>
+                <input 
+                  id="documentosImpugnacao" 
+                  type="file" 
+                  @change="handleDocumentosUpload"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.png"
+                >
+                <small>Arquivos suportados: PDF, DOC, DOCX, JPG, PNG (máximo 5MB cada)</small>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" @click="fecharModalNovaImpugnacao" class="btn-secondary">
+                  Cancelar
+                </button>
+                <button type="submit" class="btn-primary" :disabled="salvandoImpugnacao">
+                  <span v-if="salvandoImpugnacao">Salvando...</span>
+                  <span v-else>Registrar Impugnação</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
     
     <!-- Aba Marcas Despadronizadas -->
     <div v-if="activeTab === 'despadronizadas'" class="marcas-despadronizadas">
-      <GerenciadorMarcasDespadronizadas />
+      <GerenciadorMarcasDespadronizadas ref="gerenciadorMarcas" />
     </div>
     
     <!-- Aba Emissão de Certificados (DCB) -->
@@ -973,7 +1087,7 @@
         <div v-if="activeTabDCB === 'emitir'" class="dcb-content">
           <div class="section-header">
             <h3>📝 Produtos Prontos para Certificação DCB</h3>
-            <p>Produtos aprovados pela CPM que ainda não possuem DCB emitido.</p>
+            <p>Produtos aprovados pela CPM que ainda não possuem DCB emitida.</p>
           </div>
 
           <!-- Filtros para Emissão -->
@@ -1655,16 +1769,6 @@
             <form @submit.prevent="salvarUsuario">
               <div class="form-row">
                 <div class="form-group">
-                  <label for="nome_usuario">Nome do Usuário/Unidade*</label>
-                  <input 
-                    id="nome_usuario" 
-                    v-model="usuarioAtual.nome_usuario" 
-                    type="text" 
-                    placeholder="Ex: Departamento de Compras, João Silva"
-                    required
-                  >
-                </div>
-                <div class="form-group">
                   <label for="unidade_setor">Unidade/Setor*</label>
                   <input 
                     id="unidade_setor" 
@@ -1721,10 +1825,10 @@
                       @change="toggleLoginSystem"
                     >
                     <span class="checkmark">✓</span>
-                    Permitir login no sistema (Dashboard RDM Online)
+                    Permitir login no sistema (Dashboard RDM On-line)
                   </label>
                   <p class="help-text">
-                    Ao marcar esta opção, o usuário receberá um email com senha de acesso e instruções para usar o sistema RDM.
+                    Ao marcar esta opção, o usuário receberá um e-mail da CPM, com senha de acesso, para preencher o formulário RDM.
                   </p>
                 </div>
                 
@@ -1743,7 +1847,7 @@
 
               <!-- Materiais do Usuário -->
               <div class="materiais-section">
-                <h4>📦 Materiais sob Responsabilidade</h4>
+                <h4>📦 Materiais sob Responsabilidade da Unidade</h4>
                 <div class="materiais-lista">
                   <div 
                     v-for="(material, index) in usuarioAtual.materiais" 
@@ -1935,12 +2039,36 @@
             
             <div class="avaliacao-detalhes">
               <div v-if="avaliacao.comentario" class="comentario-texto">
-                <h5>💬 Comentário:</h5>
+                <h5>💬 Avaliação:</h5>
                 <p>{{ avaliacao.comentario }}</p>
               </div>
               
               <div v-if="!avaliacao.comentario" class="sem-comentario">
-                <p><em>Nenhum comentário adicional fornecido.</em></p>
+                <p><em>Nenhuma avaliação adicional fornecida.</em></p>
+              </div>
+              
+              <!-- Comentário/Decisão da CPM -->
+              <div class="cpm-resposta">
+                <h5>📋 Comentário/Decisão da CPM:</h5>
+                <div v-if="avaliacao.resposta_cpm" class="resposta-existente">
+                  <p>{{ avaliacao.resposta_cpm }}</p>
+                  <small class="data-resposta">Respondido em: {{ formatDate(avaliacao.data_resposta_cpm) }}</small>
+                </div>
+                <div v-else class="sem-resposta">
+                  <textarea 
+                    v-model="avaliacao.nova_resposta" 
+                    class="textarea-resposta"
+                    rows="3"
+                    placeholder="Digite o comentário ou decisão da CPM sobre esta avaliação..."
+                  ></textarea>
+                  <button 
+                    @click="salvarRespostaCPM(avaliacao)" 
+                    class="btn-primary btn-small"
+                    :disabled="!avaliacao.nova_resposta || salvandoResposta"
+                  >
+                    {{ salvandoResposta ? 'Salvando...' : 'Salvar Resposta' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2053,6 +2181,7 @@
 <script>
 import { supabase } from '@/services/supabase'
 import emailjs from '@emailjs/browser'
+import EditaisService from '@/services/editaisService'
 import PesquisaBot from '@/components/common/PesquisaBot.vue'
 import GerenciadorCotacoes from '@/components/cotacoes/GerenciadorCotacoes.vue'
 import GerenciadorComparativo from '@/components/comparativos/GerenciadorComparativo.vue'
@@ -2150,6 +2279,19 @@ export default {
         status: ''
       },
       impugnacoes: [],
+      // Sistema de Impugnações
+      modalNovaImpugnacao: false,
+      salvandoImpugnacao: false,
+      editaisParaImpugnacao: [],
+      carregandoEditais: false,
+      novaImpugnacao: {
+        edital_id: '',
+        impugnante: '',
+        email: '',
+        empresa: '',
+        motivo: '',
+        documentos: []
+      },
       certificados: [],
       // DCB Data
       activeTabDCB: 'emitir',
@@ -2231,6 +2373,7 @@ export default {
        // Dados para Avaliações dos Usuários RDM
        avaliacoes: [],
        avaliacoesFiltradas: [],
+       salvandoResposta: false,
        filtroAvaliacoes: {
          busca: '',
          rating: '',
@@ -2273,6 +2416,14 @@ export default {
             this.carregarRdmsPendentes()
           }
         })
+      } else if (novaAba === 'despadronizadas') {
+        // Recarregar dados quando acessar a aba de marcas despadronizadas
+        this.$nextTick(() => {
+          if (this.$refs.gerenciadorMarcas && this.$refs.gerenciadorMarcas.carregarProdutos) {
+            console.log('🔄 Recarregando produtos no gerenciador de marcas...')
+            this.$refs.gerenciadorMarcas.carregarProdutos()
+          }
+        })
       } else if (novaAba === 'reclamacoes') {
         // Carregar dados quando acessar a aba de avaliações
         this.$nextTick(() => {
@@ -2286,6 +2437,12 @@ export default {
       marcasUnicas() {
         const marcas = [...new Set(this.produtosComDiligencia.map(p => p.marca))]
         return marcas.filter(marca => marca).sort()
+      },
+
+      // Edital selecionado para impugnação
+      editalSelecionadoInfo() {
+        if (!this.novaImpugnacao.edital_id) return null
+        return this.editaisParaImpugnacao.find(e => e.id === this.novaImpugnacao.edital_id)
       },
       
       // Verificar se há filtros aplicados nos requerimentos
@@ -2391,10 +2548,10 @@ export default {
         
         const produtos = todosProdutos || []
         
-        // 📋 REQUERIMENTOS RECENTES: pendente, aprovado, reprovado, em_analise
-        // (Excluindo produtos com status 'diligencia')
+        // 📋 REQUERIMENTOS RECENTES: pendente, aprovado, reprovado, em_analise, julgado_aprovado, julgado_reprovado
+        // (Incluindo produtos julgados pela CCL para manter visibilidade)
         this.produtos = produtos.filter(produto => 
-          ['pendente', 'aprovado', 'reprovado', 'em_analise'].includes(produto.status)
+          ['pendente', 'aprovado', 'reprovado', 'em_analise', 'julgado_aprovado', 'julgado_reprovado'].includes(produto.status)
         )
         console.log(`${this.produtos.length} requerimentos recentes carregados (sem diligências)`)
 
@@ -2591,15 +2748,216 @@ export default {
         
         await this.carregarImpugnacoes()
         
-             } catch (error) {
-         console.error('Erro ao salvar decisão:', error)
-         this.$swal({
-           title: 'Erro',
-           text: 'Erro ao salvar decisão da impugnação',
-           icon: 'error'
-         })
-       }
-     },
+      } catch (error) {
+        console.error('Erro ao salvar decisão:', error)
+        this.$swal({
+          title: 'Erro',
+          text: 'Erro ao salvar decisão da impugnação',
+          icon: 'error'
+        })
+      }
+    },
+
+    async verDecisaoImpugnacao(id) {
+      try {
+        // Buscar detalhes da impugnação com a decisão
+        const { data, error } = await supabase
+          .from('impugnacoes')
+          .select(`
+            *,
+            editais (
+              numero,
+              descricao
+            )
+          `)
+          .eq('id', id)
+          .single()
+
+        if (error) throw error
+
+        const impugnacao = data
+        const statusText = impugnacao.status === 'DEFERIDA' ? 'Deferida' : 
+                          impugnacao.status === 'INDEFERIDA' ? 'Indeferida' : 
+                          'Pendente de análise'
+
+        this.$swal({
+          title: 'Decisão da Impugnação',
+          html: `
+            <div style="text-align: left;">
+              <h4>Impugnação de: ${impugnacao.impugnante}</h4>
+              <p><strong>Edital:</strong> ${impugnacao.editais?.numero} - ${impugnacao.editais?.descricao}</p>
+              <p><strong>Data da Impugnação:</strong> ${this.formatDate(impugnacao.data_impugnacao)}</p>
+              <p><strong>Motivo:</strong> ${impugnacao.motivo}</p>
+              <hr>
+              <h4>Decisão:</h4>
+              <p><strong>Status:</strong> <span style="color: ${impugnacao.status === 'DEFERIDA' ? '#27ae60' : impugnacao.status === 'INDEFERIDA' ? '#e74c3c' : '#f39c12'}">${statusText}</span></p>
+              ${impugnacao.justificativa_decisao ? `<p><strong>Justificativa:</strong> ${impugnacao.justificativa_decisao}</p>` : ''}
+              ${impugnacao.data_decisao ? `<p><strong>Data da Decisão:</strong> ${this.formatDate(impugnacao.data_decisao)}</p>` : ''}
+              ${impugnacao.analisado_por ? `<p><strong>Analisado por:</strong> ${impugnacao.analisado_por}</p>` : ''}
+              ${!impugnacao.data_decisao ? '<p><em>Esta impugnação ainda não foi analisada.</em></p>' : ''}
+            </div>
+          `,
+          width: '600px',
+          confirmButtonText: 'Fechar'
+        })
+
+      } catch (error) {
+        console.error('Erro ao carregar decisão:', error)
+        this.$swal({
+          title: 'Erro',
+          text: 'Erro ao carregar decisão da impugnação',
+          icon: 'error'
+        })
+      }
+    },
+
+    // ===========================
+    // MÉTODOS SISTEMA DE IMPUGNAÇÕES
+    // ===========================
+
+    async abrirModalNovaImpugnacao() {
+      this.modalNovaImpugnacao = true
+      this.limparFormularioImpugnacao()
+      await this.carregarEditaisParaImpugnacao()
+    },
+
+    fecharModalNovaImpugnacao() {
+      this.modalNovaImpugnacao = false
+      this.limparFormularioImpugnacao()
+    },
+
+    async carregarEditaisParaImpugnacao() {
+      try {
+        this.carregandoEditais = true
+        
+        const { data, error } = await supabase
+          .from('editais')
+          .select('id, numero, descricao, status, data_publicacao, data_limite_impugnacao')
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status', 'PUBLICADO')
+          .order('data_publicacao', { ascending: false })
+
+        if (error) throw error
+
+        this.editaisParaImpugnacao = data || []
+        
+        if (this.editaisParaImpugnacao.length === 0) {
+          this.$swal({
+            title: 'Nenhum Edital Disponível',
+            text: 'Não há editais publicados disponíveis para impugnação no momento.',
+            icon: 'info'
+          })
+        }
+
+      } catch (error) {
+        console.error('Erro ao carregar editais:', error)
+        this.$swal({
+          title: 'Erro',
+          text: 'Erro ao carregar editais disponíveis.',
+          icon: 'error'
+        })
+      } finally {
+        this.carregandoEditais = false
+      }
+    },
+
+    limparFormularioImpugnacao() {
+      this.novaImpugnacao = {
+        edital_id: '',
+        impugnante: '',
+        email: '',
+        empresa: '',
+        motivo: '',
+        documentos: []
+      }
+    },
+
+    editalDentroDoPrazo(edital) {
+      if (!edital.data_limite_impugnacao) return false
+      const agora = new Date()
+      const prazoLimite = new Date(edital.data_limite_impugnacao)
+      return agora <= prazoLimite
+    },
+
+    handleDocumentosUpload(event) {
+      const files = event.target.files
+      this.novaImpugnacao.documentos = Array.from(files)
+    },
+
+    async salvarNovaImpugnacao() {
+      if (this.salvandoImpugnacao) return
+
+      try {
+        this.salvandoImpugnacao = true
+
+        // Validar se o edital ainda está dentro do prazo
+        const editalSelecionado = this.editaisParaImpugnacao.find(e => e.id === this.novaImpugnacao.edital_id)
+        if (!this.editalDentroDoPrazo(editalSelecionado)) {
+          this.$swal({
+            title: 'Prazo Vencido',
+            text: 'O prazo para impugnação deste edital já expirou.',
+            icon: 'error'
+          })
+          return
+        }
+
+        // Calcular prazo final (geralmente 5 dias úteis a partir da data da impugnação)
+        const dataImpugnacao = new Date()
+        const prazoFinal = new Date(dataImpugnacao)
+        prazoFinal.setDate(prazoFinal.getDate() + 7) // 7 dias para análise
+
+        // Preparar dados da impugnação
+        const dadosImpugnacao = {
+          edital_id: this.novaImpugnacao.edital_id,
+          impugnante: this.novaImpugnacao.impugnante,
+          email: this.novaImpugnacao.email,
+          empresa: this.novaImpugnacao.empresa || null,
+          motivo: this.novaImpugnacao.motivo,
+          data_impugnacao: dataImpugnacao.toISOString(),
+          prazo_final: prazoFinal.toISOString(),
+          status: 'EM ANÁLISE',
+          tenant_id: this.currentTenantId,
+          criado_em: new Date().toISOString()
+        }
+
+        // Salvar no banco de dados
+        const { data, error } = await supabase
+          .from('impugnacoes')
+          .insert(dadosImpugnacao)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        // TODO: Upload de documentos se houver
+        if (this.novaImpugnacao.documentos.length > 0) {
+          // Implementar upload de documentos para o Supabase Storage
+          console.log('Documentos a serem enviados:', this.novaImpugnacao.documentos)
+        }
+
+        // Sucesso
+        this.$swal({
+          title: 'Sucesso!',
+          text: 'Impugnação registrada com sucesso. Você receberá atualizações por email.',
+          icon: 'success',
+          timer: 4000
+        })
+
+        // Recarregar impugnações e fechar modal
+        await this.carregarImpugnacoes()
+        this.fecharModalNovaImpugnacao()
+
+      } catch (error) {
+        console.error('Erro ao salvar impugnação:', error)
+        this.$swal({
+          title: 'Erro',
+          text: error.message || 'Erro ao registrar impugnação. Tente novamente.',
+          icon: 'error'
+        })
+      } finally {
+        this.salvandoImpugnacao = false
+      }
+    },
      
      async solicitarDiligencia(produtoId) {
        try {
@@ -2925,6 +3283,9 @@ export default {
         const statusMap = {
           'pendente': 'Em Avaliação',
           'aprovado': 'Aprovado',
+          'julgado_aprovado': 'Julgado Aprovado', // Status após julgamento CCL favorável
+          'julgado_reprovado': 'Julgado Reprovado', // Status após julgamento CCL desfavorável
+          'homologado': 'Homologado', // Status homologado
           'reprovado': 'Reprovado',
           'diligencia': 'Diligência',
           'em_analise': 'Em Análise',
@@ -2941,6 +3302,9 @@ export default {
       getStatusClass(status) {
         const classMap = {
           'aprovado': 'status-aprovado',
+          'julgado_aprovado': 'status-aprovado', // Produtos julgados pela CCL como aprovados
+          'julgado_reprovado': 'status-reprovado', // Produtos julgados pela CCL como reprovados
+          'homologado': 'status-aprovado', // Produtos homologados também ficam verdes
           'pendente': 'status-pendente',
           'reprovado': 'status-reprovado',
           'diligencia': 'status-diligencia',
@@ -2964,6 +3328,22 @@ export default {
         } catch (error) {
           return 'Data inválida'
         }
+      },
+
+      formatarEdital(produto) {
+        // Primeiro verificar se há edital vinculado pelo Catálogo de Marcas
+        if (produto.edital_prequalificacao) {
+          // Extrair apenas o número do edital (ex: "nº 001/2025")
+          const match = produto.edital_prequalificacao.match(/nº\s*(\d{3}\/\d{4})/i)
+          return match ? `nº ${match[1]}` : produto.edital_prequalificacao
+        }
+        
+        // Senão, verificar os campos do sistema de editais antigo
+        if (produto.numero_edital && produto.ano_edital) {
+          return `nº ${produto.numero_edital}`
+        }
+        
+        return 'Sem edital vinculado'
       },
 
       // ===========================
@@ -3921,8 +4301,8 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
           const { error: upsertError } = await supabase
             .from('minutas_padrao')
             .upsert({
-              nome: 'Minuta Padrão do Sistema',
-              descricao: 'Minuta padrão oficial do sistema para criação de editais',
+              nome: 'Minuta-Padrão do Sistema',
+              descricao: 'Minuta-padrão oficial instituída com o auxílio dos órgãos de assessoramento jurídico e de controle interno',
               arquivo_nome: fileName,
               arquivo_url: publicData.publicUrl,
               categoria: 'SISTEMA',
@@ -6654,6 +7034,54 @@ Verifique:
       this.avaliacoesFiltradas = filtradas
     },
     
+    // Salvar resposta da CPM para uma avaliação
+    async salvarRespostaCPM(avaliacao) {
+      if (!avaliacao.nova_resposta || !avaliacao.nova_resposta.trim()) {
+        this.$swal({
+          title: 'Atenção',
+          text: 'Por favor, digite um comentário ou decisão.',
+          icon: 'warning'
+        })
+        return
+      }
+      
+      this.salvandoResposta = true
+      
+      try {
+        const { error } = await supabase
+          .from('material_feedbacks')
+          .update({
+            resposta_cpm: avaliacao.nova_resposta.trim(),
+            data_resposta_cpm: new Date().toISOString()
+          })
+          .eq('id', avaliacao.id)
+        
+        if (error) throw error
+        
+        // Atualizar localmente
+        avaliacao.resposta_cpm = avaliacao.nova_resposta.trim()
+        avaliacao.data_resposta_cpm = new Date().toISOString()
+        avaliacao.nova_resposta = ''
+        
+        this.$swal({
+          title: 'Sucesso!',
+          text: 'Comentário/Decisão da CPM salvo com sucesso',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        })
+        
+      } catch (error) {
+        console.error('Erro ao salvar resposta da CPM:', error)
+        this.$swal({
+          title: 'Erro',
+          text: 'Erro ao salvar resposta: ' + error.message,
+          icon: 'error'
+        })
+      } finally {
+        this.salvandoResposta = false
+      }
+    },
 
     
     // ============================================
@@ -9873,6 +10301,72 @@ th {
   font-size: 13px;
 }
 
+/* === ESTILOS PARA RESPOSTA DA CPM === */
+.cpm-resposta {
+  padding: 15px;
+  background: #e8f4fd;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+  margin-top: 15px;
+}
+
+.cpm-resposta h5 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.resposta-existente {
+  background: #d4edda;
+  padding: 12px;
+  border-radius: 4px;
+  border-left: 3px solid #28a745;
+}
+
+.resposta-existente p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #155724;
+}
+
+.data-resposta {
+  font-size: 11px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.sem-resposta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.textarea-resposta {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.textarea-resposta:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
 /* === RESPONSIVIDADE === */
 @media (max-width: 768px) {
   .avaliacao-content {
@@ -10557,4 +11051,3 @@ th {
   }
 }
 </style> 
-

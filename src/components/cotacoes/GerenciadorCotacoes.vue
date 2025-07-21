@@ -4,7 +4,7 @@
     <div class="cotacoes-header">
       <div class="header-info">
         <h4>💰 Gerenciamento de Cotações</h4>
-        <p>Registre e gerencie cotações de fornecedores para análise de preços e tomada de decisão.</p>
+        <p>Registre e gerencie cotações de fornecedores para análise técnica e padronização de marcas e modelos. Foco em informações técnicas, qualidade e assistência técnica para seleção rigorosa de produtos.</p>
       </div>
       
       <div class="header-actions">
@@ -78,7 +78,7 @@
       <div v-if="cotacoesFiltradas.length === 0 && !temFiltrosAplicados" class="empty-state">
         <div class="empty-icon">💰</div>
         <h3>Nenhuma cotação registrada</h3>
-        <p>Comece registrando cotações de fornecedores para análise de preços.</p>
+        <p>Comece registrando cotações de fornecedores para análise técnica e padronização de produtos.</p>
         <button @click="abrirModalNovaCotacao" class="btn-primary">
           ➕ Registrar Primeira Cotação
         </button>
@@ -338,8 +338,8 @@
                   <textarea 
                     v-model="cotacaoForm.observacoes" 
                     class="textarea-field"
-                    rows="3"
-                    placeholder="Observações adicionais, garantias, condições especiais..."
+                    rows="4"
+                    placeholder="Informações técnicas, assistência técnica, garantias, condições especiais, qualidade, aspectos estéticos... (Foco em análise técnica para padronização, não apenas preço)"
                   ></textarea>
                 </div>
               </div>

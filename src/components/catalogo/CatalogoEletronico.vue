@@ -583,7 +583,7 @@ export default {
           .from('produtos')
           .select('*')
           .eq('tenant_id', this.currentTenantId)
-          .eq('status', 'aprovado') // Apenas produtos aprovados (pré-qualificados)
+          .in('status', ['aprovado', 'julgado_aprovado', 'homologado']) // Produtos aprovados pela CPM e/ou julgados pela CCL
         
         const { data: produtos, error: errorProdutos } = await query
         

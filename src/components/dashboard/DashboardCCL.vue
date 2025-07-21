@@ -653,12 +653,12 @@ export default {
           return
         }
         
-        // Carregar produtos pendentes
+        // Carregar produtos pendentes e já julgados
         const { data: pendentesData, error: pendentesError } = await supabase
           .from('produtos')
           .select('*')
           .eq('tenant_id', this.currentTenantId)
-          .in('status', ['aprovado', 'reprovado']) // produtos já analisados pela CPM, pendentes de julgamento pela CCL
+          .in('status', ['aprovado', 'reprovado', 'julgado_aprovado', 'julgado_reprovado']) // produtos da CPM e já julgados pela CCL
           .order('criado_em', { ascending: false })
           .limit(10)
         
@@ -676,14 +676,16 @@ export default {
         
         // Contar por status - ajustado para o fluxo correto da CCL
         const statsCounts = await Promise.all([
-          this.contarPorStatus(['aprovado', 'reprovado']), // CPM já analisou, CCL precisa julgar
+          this.contarPorStatus(['aprovado', 'reprovado']), // CPM já analisou, CCL precisa julgar (pendentes)
+          this.contarPorStatus(['julgado_aprovado', 'julgado_reprovado']), // Já julgados pela CCL
           this.contarPorStatus('homologado'), // Processos homologados
           this.contarPorStatus('diligencia') // Em diligência
         ])
         
-        this.pendentes = statsCounts[0] || this.produtosPendentes.length
-        this.aprovados = statsCounts[1]
-        this.diligencias = statsCounts[2]
+        this.pendentes = statsCounts[0] || this.produtosPendentes.filter(p => ['aprovado', 'reprovado'].includes(p.status)).length
+        this.aprovados = statsCounts[1] || this.produtosPendentes.filter(p => ['julgado_aprovado', 'julgado_reprovado'].includes(p.status)).length
+        this.homologados = statsCounts[2]
+        this.diligencias = statsCounts[3]
         
         // Contar recursos em análise
         this.recursosEmAnalise = this.recursos.filter(r => r.status === 'EM ANÁLISE' || r.status === 'AGUARDANDO CPM').length
@@ -745,6 +747,9 @@ export default {
     formatarStatusCPM(status) {
       switch (status) {
         case 'aprovado': return 'Favorável'
+        case 'julgado_aprovado': return 'Julgado Favorável' // Produto aprovado pela CCL
+        case 'julgado_reprovado': return 'Julgado Desfavorável' // Produto reprovado pela CCL
+        case 'homologado': return 'Homologado' // Produto homologado
         case 'reprovado': return 'Desfavorável'
         case 'diligencia': return 'Com Diligência'
         case 'pendente': return 'Em Análise'
@@ -1182,7 +1187,7 @@ export default {
               <li>📄 Edital de Chamamento Público</li>
             </ul>
             <div style="margin-top: 20px;">
-              <button class="swal2-confirm swal2-styled" onclick="window.open('/api/downloads/documentacao-completa.pdf', '_blank')">
+              <button class="swal2-confirm swal2-styled" onclick="window.baixarDocumentacaoProduto('${produto.id}')">
                 📥 Baixar Documentação Completa
               </button>
             </div>
@@ -1196,10 +1201,13 @@ export default {
     getStatusClass(status) {
       switch (status) {
         case 'aprovado': return 'status-aprovado'
+        case 'julgado_aprovado': return 'status-aprovado' // Verde para produtos julgados como aprovados
+        case 'julgado_reprovado': return 'status-reprovado' // Vermelho para produtos julgados como reprovados
+        case 'homologado': return 'status-aprovado' // Verde para produtos homologados
         case 'pendente': return 'status-pendente'
         case 'reprovado': return 'status-reprovado'
         case 'diligencia': return 'status-diligencia'
-        default: return ''
+        default: return 'status-pendente' // Badge cinza padrão para status desconhecidos
       }
     },
     publicarDecisao(id) {
@@ -1809,7 +1817,7 @@ export default {
               <small><strong>Prazo Final:</strong> ${this.formatDate(recurso.prazo_final)}</small>
             </div>
             <div style="margin-top: 15px;">
-              <button class="swal2-confirm swal2-styled" onclick="window.open('/api/downloads/recurso-documentacao.pdf', '_blank')">
+              <button class="swal2-confirm swal2-styled" onclick="window.baixarDocumentacaoRecursoEspecifico('${recurso.id}')">
                 📥 Baixar Documentação Completa
               </button>
             </div>
@@ -2120,52 +2128,193 @@ export default {
     },
     
     // Métodos para Atas de Julgamento
-    criarNovaAta() {
-      this.$swal({
-        title: '📋 Criar Nova Ata de Julgamento',
-        html: `
-          <div style="text-align: left; padding: 15px;">
-            <div style="margin-bottom: 15px;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Período de Referência:</label>
-              <input id="periodoAta" class="swal2-input" type="text" placeholder="Ex: Janeiro 2025" value="">
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Número da Ata:</label>
-              <input id="numeroAta" class="swal2-input" type="text" placeholder="Ex: ATA-CCL-008/2025" value="">
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Descrição:</label>
-              <textarea id="descricaoAta" class="swal2-textarea" placeholder="Descrição da ata de julgamento..." rows="3"></textarea>
-            </div>
-            <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 15px;">
-              <small><strong>Nota:</strong> A ata incluirá automaticamente todos os processos julgados no período especificado.</small>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: '✅ Criar Ata',
-        cancelButtonText: '❌ Cancelar',
-        preConfirm: () => {
-          const periodo = document.getElementById('periodoAta').value
-          const numero = document.getElementById('numeroAta').value
-          const descricao = document.getElementById('descricaoAta').value
-          
-          if (!periodo || !numero) {
-            this.$swal.showValidationMessage('Preencha o período e número da ata')
-            return false
-          }
-          
-          return { periodo, numero, descricao }
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
+    async criarNovaAta() {
+      try {
+        // 1. Buscar produtos julgados pendentes de inclusão em ata
+        const { data: produtosJulgados, error: errorProdutos } = await supabase
+          .from('produtos')
+          .select(`
+            id,
+            nome,
+            marca,
+            modelo,
+            fabricante,
+            categoria_id,
+            status,
+            julgado_em,
+            adequacao_tecnica,
+            observacoes_ccl,
+            base_legal
+          `)
+          .eq('tenant_id', this.currentTenantId)
+          .in('status', ['julgado_aprovado', 'julgado_reprovado'])
+          .not('julgado_em', 'is', null) // Só produtos que foram efetivamente julgados
+          .is('ata_julgamento_id', null) // Só produtos que ainda não estão em uma ata
+
+        if (errorProdutos) throw errorProdutos
+
+        // 2. Verificar se há produtos para incluir na ata
+        if (!produtosJulgados || produtosJulgados.length === 0) {
           this.$swal({
-            title: '✅ Ata Criada',
-            text: 'Nova ata de julgamento criada com sucesso. Você pode agora editá-la e incluir os julgamentos.',
-            icon: 'success'
+            title: '⚠️ Nenhum Produto Disponível',
+            text: 'Não há produtos julgados disponíveis para incluir em uma nova ata. Realize julgamentos primeiro.',
+            icon: 'warning'
           })
+          return
         }
-      })
+
+        // 3. Mostrar prévia dos produtos e formulário de criação da ata
+        const produtosList = produtosJulgados.map(produto => `
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 8px;">${produto.nome}</td>
+            <td style="padding: 8px;">${produto.marca}</td>
+            <td style="padding: 8px;">
+              <span class="status-badge ${produto.status === 'julgado_aprovado' ? 'status-aprovado' : 'status-reprovado'}">
+                ${produto.status === 'julgado_aprovado' ? 'Aprovado' : 'Reprovado'}
+              </span>
+            </td>
+            <td style="padding: 8px;">${this.formatDate(produto.julgado_em)}</td>
+          </tr>
+        `).join('')
+
+        const result = await this.$swal({
+          title: '📋 Criar Nova Ata de Julgamento',
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <!-- Formulário da Ata -->
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 15px 0; color: #495057;">📄 Dados da Ata</h4>
+                <div style="margin-bottom: 15px;">
+                  <label style="display: block; font-weight: bold; margin-bottom: 5px;">Período de Referência:</label>
+                  <input id="periodoAta" class="swal2-input" type="text" placeholder="Ex: Janeiro 2025" value="${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}">
+                </div>
+                <div style="margin-bottom: 15px;">
+                  <label style="display: block; font-weight: bold; margin-bottom: 5px;">Número da Ata:</label>
+                  <input id="numeroAta" class="swal2-input" type="text" placeholder="Ex: ATA-CCL-008/2025" value="ATA-CCL-${String(Math.floor(Math.random() * 900) + 100)}/${new Date().getFullYear()}">
+                </div>
+                <div style="margin-bottom: 15px;">
+                  <label style="display: block; font-weight: bold; margin-bottom: 5px;">Descrição:</label>
+                  <textarea id="descricaoAta" class="swal2-textarea" placeholder="Descrição da ata de julgamento..." rows="3">Ata de julgamento da Comissão de Contratação ou Licitação referente aos processos de pré-qualificação de bens do período.</textarea>
+                </div>
+              </div>
+
+              <!-- Lista de Produtos -->
+              <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px;">
+                <h4 style="margin: 0 0 15px 0; color: #495057;">📦 Produtos a serem incluídos (${produtosJulgados.length})</h4>
+                <div style="max-height: 300px; overflow-y: auto;">
+                  <table style="width: 100%; font-size: 12px;">
+                    <thead>
+                      <tr style="background: #f8f9fa;">
+                        <th style="padding: 8px; text-align: left;">Produto</th>
+                        <th style="padding: 8px; text-align: left;">Marca</th>
+                        <th style="padding: 8px; text-align: left;">Decisão</th>
+                        <th style="padding: 8px; text-align: left;">Data Julgamento</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${produtosList}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style="background: #d1ecf1; padding: 10px; border-radius: 4px; margin-top: 15px;">
+                <small><strong>📝 Próximos passos:</strong> Após criar a ata, ela estará disponível na aba "Atas de Julgamento" para elaboração do conteúdo e publicação oficial.</small>
+              </div>
+            </div>
+          `,
+          width: '900px',
+          showCancelButton: true,
+          confirmButtonText: '✅ Criar Ata com ' + produtosJulgados.length + ' Produtos',
+          cancelButtonText: '❌ Cancelar',
+          confirmButtonColor: '#28a745',
+          preConfirm: () => {
+            const periodo = document.getElementById('periodoAta').value.trim()
+            const numero = document.getElementById('numeroAta').value.trim()
+            const descricao = document.getElementById('descricaoAta').value.trim()
+            
+            if (!periodo || !numero) {
+              this.$swal.showValidationMessage('Preencha o período e número da ata')
+              return false
+            }
+            
+            return { periodo, numero, descricao }
+          }
+        })
+
+        if (!result.isConfirmed) return
+
+        // 4. Criar a ata no banco de dados
+        const ataData = {
+          tenant_id: this.currentTenantId,
+          numero: result.value.numero,
+          periodo: result.value.periodo,
+          descricao: result.value.descricao, // Coluna agora existe!
+          total_processos: produtosJulgados.length,
+          status_ata: 'EM PRAZO', // Status padrão existente na tabela
+          data_inicio_elaboracao: new Date().toISOString(),
+          responsavel_elaboracao: this.usuarioNome || 'CCL',
+          progresso_elaboracao: 0,
+          conteudo_ata: this.gerarConteudoAtaInicial(produtosJulgados, result.value),
+          criado_em: new Date().toISOString(),
+          atualizado_em: new Date().toISOString()
+        }
+
+        const { data: novaAta, error: errorAta } = await supabase
+          .from('atas_julgamento')
+          .insert([ataData])
+          .select()
+
+        if (errorAta) throw errorAta
+
+        // 5. Vincular produtos à ata criada
+        const ataId = novaAta[0].id
+        const { error: errorVinculo } = await supabase
+          .from('produtos')
+          .update({ 
+            ata_julgamento_id: ataId,
+            atualizado_em: new Date().toISOString()
+          })
+          .in('id', produtosJulgados.map(p => p.id))
+
+        if (errorVinculo) throw errorVinculo
+
+        // 6. Recarregar dados da interface
+        await this.carregarAtasJulgamento()
+        await this.carregarAtasEmElaboracao()
+        await this.carregarDados() // Recarregar contadores
+
+        // 7. Mostrar sucesso
+        this.$swal({
+          title: '✅ Ata Criada com Sucesso!',
+          html: `
+            <div style="text-align: center; padding: 20px;">
+              <h4>${result.value.numero}</h4>
+              <p><strong>Período:</strong> ${result.value.periodo}</p>
+              <p><strong>Produtos incluídos:</strong> ${produtosJulgados.length}</p>
+              <hr>
+              <p>A ata está disponível na aba "Atas de Julgamento" para elaboração e publicação.</p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: '📋 Ver Atas de Julgamento',
+          showCancelButton: true,
+          cancelButtonText: '✅ OK'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Ir para a aba de atas
+            this.activeTab = 'atas'
+          }
+        })
+
+      } catch (error) {
+        console.error('Erro ao criar nova ata:', error)
+        this.$swal({
+          title: '❌ Erro ao Criar Ata',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
     },
     editarAta(ata) {
       this.$swal({
@@ -2755,7 +2904,565 @@ export default {
         text: 'Em uma implementação completa, abriria o módulo completo de gestão de DCBs.',
         icon: 'info'
       })
+    },
+    // Função auxiliar para gerar conteúdo inicial da ata
+    gerarConteudoAtaInicial(produtos, dadosAta) {
+      const produtosAprovados = produtos.filter(p => p.status === 'julgado_aprovado')
+      const produtosReprovados = produtos.filter(p => p.status === 'julgado_reprovado')
+      
+      return `
+ATA DE JULGAMENTO DA COMISSÃO DE CONTRATAÇÃO OU LICITAÇÃO (CCL)
+
+Número: ${dadosAta.numero}
+Período: ${dadosAta.periodo}
+Data de Elaboração: ${new Date().toLocaleDateString('pt-BR')}
+
+RESUMO:
+- Total de processos julgados: ${produtos.length}
+- Produtos aprovados: ${produtosAprovados.length}
+- Produtos reprovados: ${produtosReprovados.length}
+
+PRODUTOS APROVADOS:
+${produtosAprovados.map((produto, index) => `
+${index + 1}. ${produto.nome} - ${produto.marca}
+   Adequação Técnica: ${produto.adequacao_tecnica}
+   Base Legal: ${produto.base_legal || 'Lei 14.133/2021'}
+`).join('')}
+
+PRODUTOS REPROVADOS:
+${produtosReprovados.map((produto, index) => `
+${index + 1}. ${produto.nome} - ${produto.marca}
+   Motivo: ${produto.observacoes_ccl || 'Não atendimento aos requisitos técnicos'}
+`).join('')}
+
+[CONTEÚDO A SER COMPLETADO NA ELABORAÇÃO FINAL]
+      `.trim()
+    },
+    
+    // ==================== SISTEMA DE DOWNLOADS ====================
+    async baixarDocumentacaoProduto(produtoId) {
+      try {
+        // Importar jsPDF
+        const { jsPDF } = await import('jspdf')
+        
+        // Buscar produto específico
+        const { data: produto, error } = await supabase
+          .from('produtos')
+          .select('*')
+          .eq('id', produtoId)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
+        
+        if (error) throw error
+        
+        // Buscar documentos vinculados ao produto
+        const { data: documentos, error: errorDocs } = await supabase
+          .from('documentos')
+          .select('*')
+          .eq('produto_id', produtoId)
+          .eq('tenant_id', this.currentTenantId)
+          .order('nome', { ascending: true })
+        
+        if (errorDocs) {
+          console.warn('Erro ao carregar documentos:', errorDocs)
+        }
+        
+        if (!produto) {
+          this.$swal({
+            title: '⚠️ Produto Não Encontrado',
+            text: 'Não foi possível encontrar os dados do produto.',
+            icon: 'warning'
+          })
+          return
+        }
+        
+        // Criar PDF com layout profissional
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        let yPosition = 25
+        
+        // ====================== CABEÇALHO OFICIAL ======================
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.text('COMISSÃO DE CONTRATAÇÃO OU LICITAÇÃO (CCL)', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 8
+        
+        doc.setFontSize(12)
+        doc.setFont(undefined, 'normal')
+        doc.text('Sistema de Pré-Qualificação de Bens - Lei 14.133/2021', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 15
+        
+        // Linha decorativa
+        doc.setLineWidth(0.5)
+        doc.line(30, yPosition, pageWidth - 30, yPosition)
+        yPosition += 20
+        
+        // ====================== TÍTULO DO DOCUMENTO ======================
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.text('DOCUMENTAÇÃO TÉCNICA COMPLETA', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 8
+        
+        doc.setFontSize(12)
+        doc.text('Processo de Pré-Qualificação de Bem', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 20
+        
+        // ====================== DADOS DE IDENTIFICAÇÃO ======================
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('I. IDENTIFICAÇÃO DO BEM', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        const dadosBasicos = [
+          ['Nome do Produto:', produto.nome || 'Não informado'],
+          ['Marca:', produto.marca || 'Não informado'],
+          ['Modelo:', produto.modelo || 'Não informado'],
+          ['Fabricante:', produto.fabricante || 'Não informado'],
+          ['Código do Material:', produto.codigo_material || 'Não informado'],
+          ['Categoria:', this.getCategoriaName(produto.categoria_id) || 'Não informado'],
+          ['CNPJ Fabricante:', produto.cnpj_fabricante || produto.cnpj || 'Não informado']
+        ]
+        
+        dadosBasicos.forEach(([label, valor]) => {
+          doc.setFont(undefined, 'bold')
+          doc.text(label, 35, yPosition)
+          doc.setFont(undefined, 'normal')
+          doc.text(valor, 90, yPosition)
+          yPosition += 8
+        })
+        
+        yPosition += 10
+        
+        // ====================== HISTÓRICO DO PROCESSO ======================
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('II. HISTÓRICO DO PROCESSO', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        const historico = [
+          ['Data de Cadastro:', this.formatDate(produto.criado_em)],
+          ['Status Atual:', this.formatarStatusCPM(produto.status)],
+          ['Última Atualização:', this.formatDate(produto.atualizado_em)]
+        ]
+        
+        if (produto.julgado_em) {
+          historico.push(['Data do Julgamento CCL:', this.formatDate(produto.julgado_em)])
+        }
+        
+        if (produto.adequacao_tecnica) {
+          historico.push(['Adequação Técnica:', produto.adequacao_tecnica])
+        }
+        
+        historico.forEach(([label, valor]) => {
+          doc.setFont(undefined, 'bold')
+          doc.text(label, 35, yPosition)
+          doc.setFont(undefined, 'normal')
+          doc.text(valor, 90, yPosition)
+          yPosition += 8
+        })
+        
+        yPosition += 15
+        
+        // ====================== PARECER TÉCNICO DA CPM ======================
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('III. PARECER TÉCNICO DA CPM', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        if (produto.observacoes_cpm) {
+          const parecerCpm = doc.splitTextToSize(produto.observacoes_cpm, pageWidth - 70)
+          doc.text(parecerCpm, 35, yPosition)
+          yPosition += parecerCpm.length * 6 + 10
+        } else {
+          doc.setFont(undefined, 'italic')
+          doc.text('Parecer da CPM não disponível.', 35, yPosition)
+          yPosition += 15
+        }
+        
+        // Verificar nova página
+        if (yPosition > pageHeight - 80) {
+          doc.addPage()
+          yPosition = 30
+        }
+        
+        // ====================== DECISÃO DA CCL ======================
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('IV. DECISÃO DA COMISSÃO DE CONTRATAÇÃO OU LICITAÇÃO', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        if (produto.observacoes_ccl) {
+          doc.setFont(undefined, 'bold')
+          doc.text('Fundamentação da Decisão:', 35, yPosition)
+          yPosition += 8
+          
+          doc.setFont(undefined, 'normal')
+          const decisaoCcl = doc.splitTextToSize(produto.observacoes_ccl, pageWidth - 70)
+          doc.text(decisaoCcl, 35, yPosition)
+          yPosition += decisaoCcl.length * 6 + 10
+        }
+        
+        if (produto.base_legal) {
+          doc.setFont(undefined, 'bold')
+          doc.text('Base Legal:', 35, yPosition)
+          yPosition += 8
+          
+          doc.setFont(undefined, 'normal')
+          const baseLegal = doc.splitTextToSize(produto.base_legal, pageWidth - 70)
+          doc.text(baseLegal, 35, yPosition)
+          yPosition += baseLegal.length * 6 + 10
+        }
+        
+        if (!produto.observacoes_ccl && !produto.base_legal) {
+          doc.setFont(undefined, 'italic')
+          doc.text('Processo ainda não foi julgado pela CCL.', 35, yPosition)
+          yPosition += 15
+        }
+        
+        // ====================== ESPECIFICAÇÕES TÉCNICAS ======================
+        if (produto.especificacoes_tecnicas) {
+          if (yPosition > pageHeight - 60) {
+            doc.addPage()
+            yPosition = 30
+          }
+          
+          doc.setFontSize(14)
+          doc.setFont(undefined, 'bold')
+          doc.text('V. ESPECIFICAÇÕES TÉCNICAS', 30, yPosition)
+          yPosition += 12
+          
+          doc.setFontSize(11)
+          doc.setFont(undefined, 'normal')
+          const especificacoes = doc.splitTextToSize(produto.especificacoes_tecnicas, pageWidth - 70)
+          doc.text(especificacoes, 35, yPosition)
+          yPosition += especificacoes.length * 6 + 15
+        }
+        
+        // ====================== DOCUMENTOS ANEXOS ======================
+        if (documentos && documentos.length > 0) {
+          if (yPosition > pageHeight - 80) {
+            doc.addPage()
+            yPosition = 30
+          }
+          
+          doc.setFontSize(14)
+          doc.setFont(undefined, 'bold')
+          doc.text(produto.especificacoes_tecnicas ? 'VI. DOCUMENTOS ANEXOS' : 'V. DOCUMENTOS ANEXOS', 30, yPosition)
+          yPosition += 12
+          
+          doc.setFontSize(11)
+          doc.setFont(undefined, 'normal')
+          
+          doc.text('Os seguintes documentos estão vinculados a este produto:', 35, yPosition)
+          yPosition += 10
+          
+          documentos.forEach((documento, index) => {
+            // Verificar se precisa de nova página
+            if (yPosition > pageHeight - 40) {
+              doc.addPage()
+              yPosition = 30
+            }
+            
+            doc.setFont(undefined, 'bold')
+            doc.text(`${index + 1}. ${documento.nome}`, 35, yPosition)
+            yPosition += 6
+            
+            doc.setFont(undefined, 'normal')
+            doc.text(`Tipo: ${documento.tipo || 'Não especificado'}`, 40, yPosition)
+            yPosition += 6
+            
+            if (documento.arquivo_url) {
+              doc.setFontSize(9)
+              doc.setFont(undefined, 'italic')
+              doc.text(`URL: ${documento.arquivo_url}`, 40, yPosition)
+              yPosition += 6
+              doc.setFontSize(11)
+            }
+            
+            yPosition += 3
+          })
+          
+          yPosition += 10
+          
+          // Nota sobre acesso aos documentos
+          doc.setFontSize(10)
+          doc.setFont(undefined, 'italic')
+          const nota = doc.splitTextToSize('Nota: Os documentos listados acima estão disponíveis digitalmente no sistema e podem ser acessados através das URLs fornecidas ou solicitados à administração.', pageWidth - 70)
+          doc.text(nota, 35, yPosition)
+          yPosition += nota.length * 5 + 15
+        }
+        
+        // ====================== RODAPÉ LEGAL ======================
+        const totalPages = doc.internal.getNumberOfPages()
+        
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i)
+          
+          // Linha no rodapé
+          doc.setLineWidth(0.3)
+          doc.line(30, pageHeight - 25, pageWidth - 30, pageHeight - 25)
+          
+          // Textos do rodapé
+          doc.setFontSize(8)
+          doc.setFont(undefined, 'normal')
+          doc.text('Sistema Comprar Bem - Pré-Qualificação de Bens', 30, pageHeight - 18)
+          doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 18, { align: 'center' })
+          doc.text('Lei 14.133/2021', pageWidth - 30, pageHeight - 18, { align: 'right' })
+          
+          doc.text(`Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 30, pageHeight - 12)
+          doc.text('Processo de Pré-Qualificação - CCL', pageWidth - 30, pageHeight - 12, { align: 'right' })
+        }
+        
+        // Salvar PDF
+        const nomeArquivo = `CCL_${produto.nome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+        doc.save(nomeArquivo)
+        
+        this.$swal({
+          title: '✅ Documentação Gerada!',
+          html: `
+            <div style="text-align: center; padding: 15px;">
+              <h4>📋 ${produto.nome}</h4>
+              <p><strong>Arquivo:</strong> ${nomeArquivo}</p>
+              <p>Documentação técnica completa gerada com sucesso!</p>
+              ${documentos && documentos.length > 0 ? 
+                `<p><strong>📎 ${documentos.length} documento(s) anexo(s)</strong> incluído(s) no PDF</p>` : 
+                '<p><em>Nenhum documento anexo vinculado ao produto</em></p>'
+              }
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: '✅ Perfeito!'
+        })
+        
+      } catch (error) {
+        console.error('Erro ao gerar PDF:', error)
+        this.$swal({
+          title: '❌ Erro ao Gerar PDF',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+    
+    async baixarDocumentacaoRecursoEspecifico(recursoId) {
+      try {
+        // Importar jsPDF
+        const { jsPDF } = await import('jspdf')
+        
+        // Buscar recurso específico
+        const recurso = this.recursos?.find(r => r.id === recursoId)
+        
+        if (!recurso) {
+          this.$swal({
+            title: '⚠️ Recurso Não Encontrado',
+            text: 'Não foi possível encontrar os dados do recurso.',
+            icon: 'warning'
+          })
+          return
+        }
+        
+        // Criar PDF profissional
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        let yPosition = 25
+        
+        // ====================== CABEÇALHO OFICIAL ======================
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.text('COMISSÃO DE CONTRATAÇÃO OU LICITAÇÃO (CCL)', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 8
+        
+        doc.setFontSize(12)
+        doc.setFont(undefined, 'normal')
+        doc.text('Recurso Administrativo - Lei 14.133/2021, Art. 165-171', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 15
+        
+        // Linha decorativa
+        doc.setLineWidth(0.5)
+        doc.line(30, yPosition, pageWidth - 30, yPosition)
+        yPosition += 20
+        
+        // ====================== TÍTULO DO DOCUMENTO ======================
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.text('DOCUMENTAÇÃO DE RECURSO ADMINISTRATIVO', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 20
+        
+        // ====================== DADOS DO RECURSO ======================
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('I. IDENTIFICAÇÃO DO RECURSO', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        const dadosRecurso = [
+          ['Protocolo:', recursoId],
+          ['Produto:', recurso.produto_nome || 'Não informado'],
+          ['Recorrente:', recurso.recorrente || 'Não informado'],
+          ['Data do Recurso:', this.formatDate(recurso.data_recurso)],
+          ['Prazo Final:', this.formatDate(recurso.prazo_final)],
+          ['Status Atual:', recurso.status || 'Em Análise'],
+          ['Ata de Referência:', recurso.ata_referencia || 'Não informado']
+        ]
+        
+        dadosRecurso.forEach(([label, valor]) => {
+          doc.setFont(undefined, 'bold')
+          doc.text(label, 35, yPosition)
+          doc.setFont(undefined, 'normal')
+          doc.text(valor, 90, yPosition)
+          yPosition += 8
+        })
+        
+        yPosition += 15
+        
+        // ====================== FUNDAMENTAÇÃO DO RECURSO ======================
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('II. FUNDAMENTAÇÃO DO RECURSO', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        if (recurso.fundamentacao) {
+          const fundamentacao = doc.splitTextToSize(recurso.fundamentacao, pageWidth - 70)
+          doc.text(fundamentacao, 35, yPosition)
+          yPosition += fundamentacao.length * 6 + 15
+        } else {
+          doc.setFont(undefined, 'italic')
+          doc.text('Fundamentação não disponível.', 35, yPosition)
+          yPosition += 15
+        }
+        
+        // ====================== ANÁLISE E DECISÃO DA CCL ======================
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('III. ANÁLISE E DECISÃO DA CCL', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        if (recurso.decisao) {
+          doc.setFont(undefined, 'bold')
+          doc.text('Decisão:', 35, yPosition)
+          yPosition += 8
+          
+          doc.setFont(undefined, 'normal')
+          doc.text(recurso.decisao.toUpperCase(), 35, yPosition)
+          yPosition += 10
+          
+          if (recurso.fundamentacao_decisao) {
+            doc.setFont(undefined, 'bold')
+            doc.text('Fundamentação da Decisão:', 35, yPosition)
+            yPosition += 8
+            
+            doc.setFont(undefined, 'normal')
+            const fundamentacaoDecisao = doc.splitTextToSize(recurso.fundamentacao_decisao, pageWidth - 70)
+            doc.text(fundamentacaoDecisao, 35, yPosition)
+            yPosition += fundamentacaoDecisao.length * 6 + 15
+          }
+        } else {
+          doc.setFont(undefined, 'italic')
+          doc.text('Recurso ainda em análise pela CCL.', 35, yPosition)
+          yPosition += 15
+        }
+        
+        // ====================== BASE LEGAL ======================
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('IV. BASE LEGAL', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        const basesLegais = [
+          '• Lei nº 14.133/2021 - Nova Lei de Licitações e Contratos',
+          '• Art. 165 - Direito de recurso dos interessados',
+          '• Art. 166 - Prazo para interposição de recurso',
+          '• Art. 167 - Processamento dos recursos',
+          '• Art. 168 - Efeito suspensivo dos recursos',
+          '• Art. 169 - Decisão dos recursos',
+          '• Art. 170 - Recursos contra atos da CCL',
+          '• Art. 171 - Irrecorribilidade das decisões'
+        ]
+        
+        basesLegais.forEach(base => {
+          doc.text(base, 35, yPosition)
+          yPosition += 6
+        })
+        
+        // ====================== RODAPÉ LEGAL ======================
+        const totalPages = doc.internal.getNumberOfPages()
+        
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i)
+          
+          // Linha no rodapé
+          doc.setLineWidth(0.3)
+          doc.line(30, pageHeight - 25, pageWidth - 30, pageHeight - 25)
+          
+          // Textos do rodapé
+          doc.setFontSize(8)
+          doc.setFont(undefined, 'normal')
+          doc.text('Sistema Comprar Bem - Recursos Administrativos', 30, pageHeight - 18)
+          doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 18, { align: 'center' })
+          doc.text('Lei 14.133/2021 - Art. 165-171', pageWidth - 30, pageHeight - 18, { align: 'right' })
+          
+          doc.text(`Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 30, pageHeight - 12)
+          doc.text(`Protocolo: ${recursoId}`, pageWidth - 30, pageHeight - 12, { align: 'right' })
+        }
+        
+        // Salvar PDF
+        const nomeArquivo = `CCL_Recurso_${recurso.produto_nome?.replace(/[^a-zA-Z0-9]/g, '_') || 'Recurso'}_${new Date().toISOString().split('T')[0]}.pdf`
+        doc.save(nomeArquivo)
+        
+        this.$swal({
+          title: '✅ Documentação do Recurso Gerada!',
+          html: `
+            <div style="text-align: center; padding: 15px;">
+              <h4>⚖️ ${recurso.produto_nome || 'Recurso Administrativo'}</h4>
+              <p><strong>Recorrente:</strong> ${recurso.recorrente}</p>
+              <p><strong>Arquivo:</strong> ${nomeArquivo}</p>
+              <p>Documentação completa do recurso gerada com sucesso!</p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: '✅ Perfeito!'
+        })
+        
+      } catch (error) {
+        console.error('Erro ao gerar PDF do recurso:', error)
+        this.$swal({
+          title: '❌ Erro ao Gerar PDF',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
     }
+  },
+  
+  mounted() {
+    // Expor as funções no window para que possam ser chamadas pelos onclick dos SweetAlert
+    window.baixarDocumentacaoProduto = (produtoId) => this.baixarDocumentacaoProduto(produtoId)
+    window.baixarDocumentacaoRecursoEspecifico = (recursoId) => this.baixarDocumentacaoRecursoEspecifico(recursoId)
   }
 }
 </script>

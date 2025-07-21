@@ -1,5 +1,5 @@
 <template>
-  <div class="analise-view">
+  <div class="processos-view">
     <header class="app-header">
       <div class="logo">
         <div class="logo-content">
@@ -26,126 +26,100 @@
           <span class="nav-subtitle">Administrativos</span>
         </router-link>
       </nav>
-      <!-- 👤 MENU DE PERFIL COM DROPDOWN -->
       <div class="user-menu">
-        <div class="profile-dropdown" ref="profileDropdown">
-          <button 
-            @click="toggleDropdown" 
-            class="profile-button"
-            :class="{ active: showDropdown }"
-          >
+        <div class="profile-dropdown">
+          <button @click="toggleDropdown" class="profile-btn">
             <div class="profile-avatar">
-              <span class="profile-icon">👤</span>
+              👤
             </div>
             <div class="profile-info">
-              <span class="profile-name">{{ usuarioNome }}</span>
-              <span class="profile-email">{{ usuarioEmail }}</span>
+              <span class="profile-name">{{ nomeUsuario }}</span>
+              <span class="profile-email">{{ emailUsuario }}</span>
             </div>
-            <span class="dropdown-arrow" :class="{ rotated: showDropdown }">▼</span>
+            <span class="dropdown-arrow" :class="{ rotated: dropdownOpen }">▼</span>
           </button>
           
-          <div v-if="showDropdown" class="dropdown-menu">
-            <div class="dropdown-header">
-              <div class="user-avatar-large">👤</div>
-              <div class="user-details">
-                <strong>{{ usuarioNome }}</strong>
-                <small>{{ usuarioEmail }}</small>
-              </div>
-            </div>
-            
+          <div v-if="dropdownOpen" class="dropdown-menu">
+            <a href="#" @click.prevent="abrirConfiguracaoEmail" class="dropdown-item">
+              ⚙️ Configuração
+            </a>
+            <a href="#" @click.prevent="abrirConfiguracaoEmail" class="dropdown-item">
+              📧 Configurar Email
+            </a>
             <hr class="dropdown-divider">
-            
-            <button @click="abrirConfiguracoes" class="dropdown-item">
-              <span class="item-icon">⚙️</span>
-              <span>Configurações</span>
-            </button>
-            
-            <button @click="abrirConfiguracoesEmail" class="dropdown-item">
-              <span class="item-icon">📧</span>
-              <span>Configurar Email</span>
-            </button>
-            
-            <hr class="dropdown-divider">
-            
-            <button @click="logout" class="dropdown-item logout-item">
-              <span class="item-icon">🚪</span>
-              <span>Sair</span>
-            </button>
+            <a href="#" @click.prevent="logout" class="dropdown-item logout">
+              🚪 Sair
+            </a>
           </div>
         </div>
-        
-        <!-- OVERLAY PARA FECHAR DROPDOWN -->
-        <div v-if="showDropdown" class="dropdown-overlay" @click="closeDropdown"></div>
       </div>
     </header>
-    
+
     <main class="main-content">
-      <AnaliseProduto :id="produtoId" />
+      <ProcessosAdministrativosComponent />
     </main>
   </div>
 </template>
 
 <script>
-import AnaliseProduto from '@/components/analise/AnaliseProduto.vue'
-import { supabase } from '@/services/supabase'
+import { supabase } from '../services/supabase'
+import ProcessosAdministrativosComponent from '../components/processos/ProcessosAdministrativosComponent.vue'
 
 export default {
-  name: 'Analise',
+  name: 'ProcessosAdministrativos',
   components: {
-    AnaliseProduto
+    ProcessosAdministrativosComponent
   },
   data() {
     return {
-      showDropdown: false,
-      usuarioNome: 'Usuário',
-      usuarioEmail: ''
+      nomeUsuario: '',
+      emailUsuario: '',
+      dropdownOpen: false
     }
   },
-  computed: {
-    produtoId() {
-      return this.$route.params.id
-    }
+  
+  async mounted() {
+    await this.verificarAutenticacao()
+    document.addEventListener('click', this.fecharDropdownFora)
   },
-  async created() {
-    await this.carregarDadosUsuario()
+  
+  beforeUnmount() {
+    document.removeEventListener('click', this.fecharDropdownFora)
   },
+  
   methods: {
-    async carregarDadosUsuario() {
+    async verificarAutenticacao() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          this.usuarioEmail = user.email
-          this.usuarioNome = user.user_metadata?.nome || user.email.split('@')[0]
+        const { data } = await supabase.auth.getSession()
+        const user = data?.session?.user
+        
+        if (!user) {
+          this.$router.push('/')
+          return
         }
+        
+        this.nomeUsuario = user.user_metadata?.nome || user.email?.split('@')[0] || 'Usuário'
+        this.emailUsuario = user.email || ''
       } catch (error) {
-        console.error('Erro ao carregar dados do usuário:', error)
+        console.error('Erro na verificação de autenticação:', error)
+        this.$router.push('/')
       }
     },
     
     toggleDropdown() {
-      this.showDropdown = !this.showDropdown
+      this.dropdownOpen = !this.dropdownOpen
     },
     
-    closeDropdown() {
-      this.showDropdown = false
+    fecharDropdownFora(event) {
+      const dropdown = this.$el?.querySelector('.profile-dropdown')
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.dropdownOpen = false
+      }
     },
     
-    abrirConfiguracoes() {
-      this.closeDropdown()
-      this.$swal({
-        title: '⚙️ Configurações',
-        text: 'Configure o email no Dashboard principal para salvar as configurações globais.',
-        icon: 'info'
-      })
-    },
-    
-    abrirConfiguracoesEmail() {
-      this.closeDropdown()
-      this.$swal({
-        title: '📧 Configurar Email',
-        text: 'Acesse o Dashboard principal para configurar o email do sistema.',
-        icon: 'info'
-      })
+    abrirConfiguracaoEmail() {
+      alert('Configuração de email em desenvolvimento')
+      this.dropdownOpen = false
     },
     
     async logout() {
@@ -155,14 +129,14 @@ export default {
       } catch (error) {
         console.error('Erro ao fazer logout:', error)
       }
-      this.closeDropdown()
+      this.dropdownOpen = false
     }
   }
 }
 </script>
 
 <style scoped>
-.analise-view {
+.processos-view {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -237,7 +211,6 @@ export default {
   background-color: #34495e;
 }
 
-/* 👤 PERFIL DROPDOWN */
 .user-menu {
   margin-left: auto;
   position: relative;
@@ -247,7 +220,7 @@ export default {
   position: relative;
 }
 
-.profile-button {
+.profile-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
@@ -261,8 +234,7 @@ export default {
   min-width: 200px;
 }
 
-.profile-button:hover,
-.profile-button.active {
+.profile-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
 }
@@ -312,99 +284,46 @@ export default {
   background: white;
   border: 1px solid #ddd;
   border-radius: 8px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  min-width: 280px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 8px 0;
+  min-width: 200px;
   z-index: 1000;
-  margin-top: 5px;
-  color: #333;
-}
-
-.dropdown-header {
-  padding: 15px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f8f9fa;
-  border-radius: 8px 8px 0 0;
-}
-
-.user-avatar-large {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: white;
-}
-
-.user-details {
-  flex: 1;
-}
-
-.user-details strong {
-  display: block;
-  color: #2c3e50;
-  font-size: 14px;
-}
-
-.user-details small {
-  color: #666;
-  font-size: 12px;
-}
-
-.dropdown-divider {
-  border: none;
-  border-top: 1px solid #eee;
-  margin: 8px 0;
 }
 
 .dropdown-item {
-  width: 100%;
-  padding: 12px 15px;
-  border: none;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: block;
+  padding: 8px 16px;
+  text-decoration: none;
   color: #333;
   font-size: 14px;
   transition: background-color 0.2s ease;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
 }
 
 .dropdown-item:hover {
   background-color: #f8f9fa;
 }
 
-.logout-item {
+.dropdown-item.logout {
   color: #dc3545;
 }
 
-.logout-item:hover {
+.dropdown-item.logout:hover {
   background-color: #fff5f5;
 }
 
-.item-icon {
-  font-size: 16px;
-  width: 20px;
-  text-align: center;
-}
-
-.dropdown-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 999;
+.dropdown-divider {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid #eee;
 }
 
 .main-content {
   flex: 1;
   background-color: #f5f7fa;
 }
-</style> 
+</style>

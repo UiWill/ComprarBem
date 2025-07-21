@@ -64,7 +64,7 @@
           <select v-model="filtros.status" @change="aplicarFiltros">
             <option value="">Todos</option>
             <option value="ativa">Ativa</option>
-            <option value="revogada">Revogada</option>
+            <option value="revogada">DCB Cancelada</option>
             <option value="expirada">Expirada</option>
             <option value="suspensa">Suspensa</option>
           </select>
@@ -88,7 +88,6 @@
             <option value="baixo">Baixa</option>
             <option value="medio">Média</option>
             <option value="alto">Alta</option>
-            <option value="critico">Crítica</option>
           </select>
         </div>
       </div>
@@ -226,9 +225,9 @@
               v-if="marca.status_atual === 'ativa'"
               @click="revogarMarca(marca)"
               class="btn-action revoke"
-              title="Revogar"
+              title="DCB Cancelada"
             >
-              ❌ Revogar
+              ❌ DCB Cancelada
             </button>
           </div>
         </div>
@@ -540,7 +539,7 @@ export default {
           .from('produtos')
           .select('id, nome, marca, modelo, codigo_material, categoria_id, status')
           .eq('tenant_id', tenantId)
-          .eq('status', 'aprovado')
+          .in('status', ['aprovado', 'julgado_aprovado', 'homologado'])
           .order('nome', { ascending: true })
         
         if (error) {
@@ -552,8 +551,22 @@ export default {
         console.log('✅ Produtos carregados no marcas-despadronizadas:', this.produtos.length)
         console.log('📋 Primeiros produtos:', this.produtos.slice(0, 3))
         
+        // Log específico para produtos julgados
+        const produtosJulgados = this.produtos.filter(p => ['julgado_aprovado', 'homologado'].includes(p.status))
+        console.log('🏛️ Produtos julgados encontrados:', produtosJulgados.length)
+        if (produtosJulgados.length > 0) {
+          console.log('📋 Produtos julgados:', produtosJulgados.map(p => `${p.nome} (${p.status})`))
+        }
+        
+        // Log detalhado de todos os status
+        const statusCount = {}
+        this.produtos.forEach(p => {
+          statusCount[p.status] = (statusCount[p.status] || 0) + 1
+        })
+        console.log('📊 Status dos produtos:', statusCount)
+        
         if (this.produtos.length === 0) {
-          console.warn('⚠️ Nenhum produto APROVADO encontrado')
+          console.warn('⚠️ Nenhum produto APROVADO ou JULGADO_APROVADO encontrado')
         }
       } catch (error) {
         console.error('💥 Erro ao carregar produtos:', error)
@@ -679,11 +692,11 @@ export default {
     
     async revogarMarca(marca) {
       const confirmacao = await this.$swal({
-        title: 'Revogar Despadronização?',
-        text: `Tem certeza que deseja revogar a despadronização da marca "${marca.marca} ${marca.modelo}"?`,
+        title: 'DCB Cancelada?',
+        text: `Tem certeza que deseja cancelar a DCB da marca "${marca.marca} ${marca.modelo}"?`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Sim, Revogar',
+        confirmButtonText: 'Sim, Cancelar DCB',
         cancelButtonText: 'Cancelar'
       })
       
@@ -708,17 +721,17 @@ export default {
         await this.carregarMarcas()
         
         this.$swal({
-          title: 'Revogada!',
-          text: 'Despadronização revogada com sucesso.',
+          title: 'DCB Cancelada!',
+          text: 'DCB cancelada com sucesso.',
           icon: 'success',
           timer: 2000,
           showConfirmButton: false
         })
       } catch (error) {
-        console.error('Erro ao revogar marca:', error)
+        console.error('Erro ao cancelar DCB:', error)
         this.$swal({
           title: 'Erro',
-          text: 'Erro ao revogar marca: ' + error.message,
+          text: 'Erro ao cancelar DCB: ' + error.message,
           icon: 'error'
         })
       }
@@ -862,7 +875,7 @@ export default {
     getStatusLabel(status) {
       const labels = {
         ativa: 'Ativa',
-        revogada: 'Revogada',
+        revogada: 'DCB Cancelada',
         expirada: 'Expirada',
         suspensa: 'Suspensa'
       }

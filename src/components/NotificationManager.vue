@@ -165,7 +165,7 @@ export default {
     }, 5 * 60 * 1000)
   },
   
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.intervaloEstatisticas) {
       clearInterval(this.intervaloEstatisticas)
     }

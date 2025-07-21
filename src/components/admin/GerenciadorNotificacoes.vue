@@ -281,7 +281,7 @@ export default {
     this.iniciarSistemaAutomatico()
     this.iniciarAtualizacaoAutomatica()
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.intervaloAtualizacao) {
       clearInterval(this.intervaloAtualizacao)
     }

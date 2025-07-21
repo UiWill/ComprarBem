@@ -399,11 +399,11 @@ export default {
         this.carregandoOrgaos = true
         
         // Buscar todos os tenants que possuem produtos usando uma consulta pública
-        // Incluir produtos aprovados e despadronizados para mostrar status real
+        // Incluir produtos aprovados, despadronizados e julgados para mostrar status real
         let { data, error } = await supabase
           .from('produtos')
           .select('tenant_id')
-          .in('status', ['aprovado', 'despadronizado'])
+          .in('status', ['aprovado', 'despadronizado', 'julgado_aprovado', 'julgado_reprovado'])
         
         // Se houver erro de autenticação/RLS, tentar buscar direto da tabela tenants
         if (error && (error.message.includes('RLS') || error.message.includes('permission') || error.message.includes('policy'))) {
@@ -532,12 +532,12 @@ export default {
       try {
         this.carregandoProdutos = true
         
-        // Carregar produtos do órgão (incluindo produtos despadronizados para mostrar status real)
+        // Carregar produtos do órgão (incluindo produtos despadronizados e julgados para mostrar status real)
         const { data: produtos, error: errorProdutos } = await supabase
           .from('produtos')
           .select('*')
           .eq('tenant_id', tenantId)
-          .in('status', ['aprovado', 'despadronizado'])
+          .in('status', ['aprovado', 'despadronizado', 'julgado_aprovado', 'julgado_reprovado'])
         
         if (errorProdutos) {
           console.error('Erro ao carregar produtos:', errorProdutos)

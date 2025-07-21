@@ -21,6 +21,10 @@
         </router-link>
         <router-link to="/dcb">DCB</router-link>
         <router-link to="/feedback">RDM</router-link>
+        <router-link to="/processos-administrativos" class="nav-item">
+          <span>Processos</span>
+          <span class="nav-subtitle">Administrativos</span>
+        </router-link>
       </nav>
       <div class="user-menu">
         <button @click="logout" class="btn-logout">Sair</button>

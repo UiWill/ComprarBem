@@ -22,6 +22,10 @@
 
         <router-link to="/dcb">DCB</router-link>
         <router-link to="/feedback">RDM</router-link>
+        <router-link to="/processos-administrativos" class="nav-item">
+          <span>Processos</span>
+          <span class="nav-subtitle">Administrativos</span>
+        </router-link>
       </nav>
       <!-- 👤 MENU DE PERFIL COM DROPDOWN -->
       <div class="user-menu">

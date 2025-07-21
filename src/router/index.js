@@ -12,6 +12,7 @@ import Classificacao from '../views/Classificacao.vue'
 import LoginRDM from '../views/LoginRDM.vue'
 import DashboardRDM from '../views/DashboardRDM.vue'
 import PesquisaTecnica from '../views/PesquisaTecnica.vue'
+import ProcessosAdministrativos from '../views/ProcessosAdministrativos.vue'
 
 import { supabase } from '../services/supabase'
 
@@ -102,6 +103,12 @@ const routes = [
     path: '/pesquisa-tecnica',
     name: 'PesquisaTecnica',
     component: PesquisaTecnica,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/processos-administrativos',
+    name: 'ProcessosAdministrativos',
+    component: ProcessosAdministrativos,
     meta: { requiresAuth: true }
   },
   {
