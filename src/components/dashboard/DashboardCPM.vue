@@ -918,8 +918,20 @@
                 </span>
               </td>
               <td>
-                <button @click="analisarImpugnacao(impugnacao.id)" class="btn-small">Visualizar</button>
-                <button @click="verDecisaoImpugnacao(impugnacao.id)" class="btn-small btn-info">Ver Decisão</button>
+                <button 
+                  v-if="impugnacao.status === 'EM_ANALISE' || !impugnacao.data_decisao"
+                  @click="analisarImpugnacao(impugnacao.id)" 
+                  class="btn-small"
+                >
+                  Visualizar
+                </button>
+                <button 
+                  v-if="impugnacao.status !== 'EM_ANALISE' && impugnacao.data_decisao"
+                  @click="verDecisaoImpugnacao(impugnacao.id)" 
+                  class="btn-small btn-info"
+                >
+                  Ver Decisão
+                </button>
               </td>
             </tr>
           </tbody>
@@ -2924,12 +2936,12 @@ export default {
         const dadosImpugnacao = {
           edital_id: this.novaImpugnacao.edital_id,
           impugnante: this.novaImpugnacao.impugnante,
-          email: this.novaImpugnacao.email,
-          empresa: this.novaImpugnacao.empresa || null,
+          email_impugnante: this.novaImpugnacao.email,
+          documento_impugnante: this.novaImpugnacao.documento || '00000000000', // CPF/CNPJ padrão se não fornecido
           motivo: this.novaImpugnacao.motivo,
           data_impugnacao: dataImpugnacao.toISOString(),
           prazo_final: prazoFinal.toISOString(),
-          status: 'EM ANÁLISE',
+          status: 'EM_ANALISE',
           tenant_id: this.currentTenantId,
           criado_em: new Date().toISOString()
         }

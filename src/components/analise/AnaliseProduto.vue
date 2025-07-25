@@ -89,6 +89,31 @@
       <div class="analise-form">
         <h3>Parecer Técnico</h3>
         
+        <!-- Seção de Vinculação do Edital -->
+        <div class="edital-section" v-if="produto">
+          <div class="edital-info">
+            <h4>📋 Edital de Pré-Qualificação</h4>
+            <div v-if="produto.edital_prequalificacao" class="edital-vinculado">
+              <div class="edital-badge">
+                <span class="edital-icon">✅</span>
+                <span class="edital-text">{{ produto.edital_prequalificacao }}</span>
+              </div>
+              <button type="button" @click="abrirModalVincularEdital" class="btn-edital-alterar">
+                🔄 Alterar Edital
+              </button>
+            </div>
+            <div v-else class="edital-nao-vinculado">
+              <div class="edital-alerta">
+                <span class="alerta-icon">⚠️</span>
+                <span>Nenhum edital vinculado a este produto</span>
+              </div>
+              <button type="button" @click="abrirModalVincularEdital" class="btn-edital-vincular">
+                🔗 Vincular Edital
+              </button>
+            </div>
+          </div>
+        </div>
+        
         <form @submit.prevent="salvarAnalise">
           <div class="form-group">
             <label for="parecer">Observações / Parecer</label>
@@ -155,6 +180,9 @@
             <span class="analise-data">{{ formatDate(item.criado_em) }}</span>
           </div>
           <div class="analise-conteudo">
+            <div v-if="produto.edital_prequalificacao" class="edital-referencia">
+              <strong>{{ produto.edital_prequalificacao }}</strong>
+            </div>
             <p>{{ item.parecer }}</p>
             <div v-if="item.status === 'reprovado' && item.motivacao" class="motivacao-reprovacao">
               <h4>Motivação da Reprovação:</h4>
@@ -168,6 +196,56 @@
     <div v-else class="not-found">
       <p>Produto não encontrado ou você não tem permissão para visualizá-lo.</p>
       <button class="btn-secondary" @click="voltar">Voltar</button>
+    </div>
+
+    <!-- Modal Vincular Edital -->
+    <div class="modal-overlay" v-if="modalVincularEdital" @click="fecharModalVincularEdital">
+      <div class="modal-content vincular-edital-modal" @click.stop>
+        <div class="modal-header">
+          <h3>🔗 Vincular Edital de Pré-Qualificação</h3>
+          <button class="btn-close" @click="fecharModalVincularEdital">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="produto-info-display">
+            <h4>📦 Produto:</h4>
+            <p><strong>{{ produto?.nome }}</strong> - {{ produto?.marca }} {{ produto?.modelo }}</p>
+          </div>
+          
+          <form @submit.prevent="vincularEdital">
+            <div class="form-group">
+              <label for="editalSelect">📋 Selecionar Edital Existente *</label>
+              <select id="editalSelect" v-model="editalSelecionado" required>
+                <option value="">Selecione um edital...</option>
+                <option v-for="edital in editaisDisponiveis" :key="edital.id" :value="edital">
+                  Edital nº {{ edital.numero }} - {{ edital.objeto }}
+                </option>
+              </select>
+            </div>
+            
+            <div v-if="editalSelecionado" class="edital-preview">
+              <h5>👁️ Pré-visualização:</h5>
+              <div class="preview-content">
+                <p><strong>Número:</strong> {{ editalSelecionado.numero }}</p>
+                <p><strong>Objeto:</strong> {{ editalSelecionado.objeto }}</p>
+                <p><strong>Data de Publicação:</strong> {{ formatDate(editalSelecionado.data_publicacao) }}</p>
+                <div class="preview-resultado">
+                  <strong>Resultado da vinculação:</strong>
+                  <span class="edital-resultado">Edital de Pré-Qualificação de Bens nº {{ editalSelecionado.numero }}</span>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" @click="fecharModalVincularEdital" class="btn btn-secondary">
+            Cancelar
+          </button>
+          <button type="button" @click="vincularEdital" class="btn btn-primary" :disabled="!editalSelecionado || salvandoVinculacao">
+            <span v-if="salvandoVinculacao" class="spinner"></span>
+            {{ salvandoVinculacao ? 'Vinculando...' : 'Vincular Edital' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -194,6 +272,11 @@ export default {
         status: '',
         motivacao: ''
       },
+      // Variáveis para vinculação de edital
+      modalVincularEdital: false,
+      editaisDisponiveis: [],
+      editalSelecionado: null,
+      salvandoVinculacao: false,
       loading: true,
       submitting: false
     }
@@ -397,6 +480,102 @@ export default {
               v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
       });
+    },
+    
+    // Métodos para vincular edital
+    async abrirModalVincularEdital() {
+      this.modalVincularEdital = true
+      await this.carregarEditaisDisponiveis()
+    },
+    
+    fecharModalVincularEdital() {
+      this.modalVincularEdital = false
+      this.editalSelecionado = null
+      this.editaisDisponiveis = []
+    },
+    
+    async carregarEditaisDisponiveis() {
+      try {
+        console.log('Carregando editais para tenant:', this.produto.tenant_id)
+        
+        const { data, error } = await supabase
+          .from('editais')
+          .select('*')
+          .eq('tenant_id', this.produto.tenant_id)
+          .eq('status', 'PUBLICADO')
+          .order('data_publicacao', { ascending: false })
+        
+        if (error) {
+          console.error('Erro detalhado ao carregar editais:', error)
+          throw error
+        }
+        
+        console.log('Editais encontrados:', data)
+        this.editaisDisponiveis = data || []
+        
+        if (this.editaisDisponiveis.length === 0) {
+          this.$swal({
+            icon: 'info',
+            title: 'Nenhum edital encontrado',
+            text: 'Não há editais publicados disponíveis para vinculação. Verifique se existem editais com status "PUBLICADO" para este órgão.'
+          })
+        }
+        
+      } catch (error) {
+        console.error('Erro ao carregar editais disponíveis:', error)
+        this.$swal({
+          icon: 'error',
+          title: 'Erro',
+          text: 'Não foi possível carregar os editais disponíveis. Tente novamente.'
+        })
+        this.editaisDisponiveis = []
+      }
+    },
+    
+    async vincularEdital() {
+      if (!this.editalSelecionado) return
+      
+      this.salvandoVinculacao = true
+      
+      try {
+        const editalInfo = `Edital de Pré-Qualificação de Bens nº ${this.editalSelecionado.numero}`
+        
+        const { error } = await supabase
+          .from('produtos')
+          .update({
+            edital_prequalificacao: editalInfo,
+            edital_id: this.editalSelecionado.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', this.produto.id)
+          .eq('tenant_id', this.produto.tenant_id)
+        
+        if (error) throw error
+        
+        // Atualizar o produto localmente
+        this.produto.edital_prequalificacao = editalInfo
+        this.produto.edital_id = this.editalSelecionado.id
+        
+        this.$swal({
+          icon: 'success',
+          title: 'Sucesso!',
+          text: 'Edital vinculado com sucesso!',
+          timer: 2000,
+          showConfirmButton: false
+        })
+        
+        this.fecharModalVincularEdital()
+        
+      } catch (error) {
+        console.error('Erro ao vincular edital:', error)
+        this.$swal({
+          icon: 'error',
+          title: 'Erro',
+          text: 'Não foi possível vincular o edital. Tente novamente.'
+        })
+      } finally {
+        this.salvandoVinculacao = false
+      }
     },
     
     async solicitarDiligencia(produtoId) {
@@ -1001,5 +1180,296 @@ textarea {
   margin-top: 5px;
   color: #7f8c8d;
   font-size: 12px;
+}
+
+/* Estilos para seção do edital */
+.edital-section {
+  background: #f8f9fa;
+  border: 2px solid #3498db;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.edital-info h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edital-vinculado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.edital-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #d4edda;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #c3e6cb;
+  flex: 1;
+}
+
+.edital-icon {
+  font-size: 18px;
+}
+
+.edital-text {
+  color: #155724;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.btn-edital-alterar {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.btn-edital-alterar:hover {
+  background: #138496;
+}
+
+.edital-nao-vinculado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.edital-alerta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff3cd;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #ffeaa7;
+  flex: 1;
+}
+
+.alerta-icon {
+  font-size: 18px;
+}
+
+.edital-alerta span:last-child {
+  color: #856404;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.btn-edital-vincular {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.btn-edital-vincular:hover {
+  background: #218838;
+}
+
+/* Modal para vinculação de edital */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 20px 0 20px;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  color: #000;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.produto-info-display {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #007bff;
+}
+
+.produto-info-display h4 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.produto-info-display p {
+  margin: 0;
+  color: #6c757d;
+}
+
+.edital-preview {
+  background: #e8f4fd;
+  border: 1px solid #bee5eb;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.edital-preview h5 {
+  margin: 0 0 12px 0;
+  color: #0c5460;
+  font-size: 1rem;
+}
+
+.preview-content p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.preview-resultado {
+  background: #d1ecf1;
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 12px;
+  border-left: 3px solid #17a2b8;
+}
+
+.edital-resultado {
+  color: #0c5460;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 20px 20px;
+  border-top: 1px solid #e9ecef;
+  margin-top: 20px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+}
+
+.btn-primary:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Estilo para exibir o edital nas análises anteriores */
+.edital-referencia {
+  background: #e8f4fd;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  border-left: 4px solid #3498db;
+}
+
+.edital-referencia strong {
+  color: #2980b9;
+  font-size: 14px;
 }
 </style> 

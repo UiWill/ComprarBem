@@ -130,7 +130,7 @@
             <div class="condicoes-info">
               <p v-if="cotacao.prazo_entrega"><strong>Prazo:</strong> {{ cotacao.prazo_entrega }} dias</p>
               <p v-if="cotacao.data_validade"><strong>Válida até:</strong> {{ formatDate(cotacao.data_validade) }}</p>
-              <p v-if="cotacao.condicoes_pagamento"><strong>Pagamento:</strong> {{ cotacao.condicoes_pagamento }}</p>
+              <p v-if="cotacao.condicoes_pagamento"><strong>Assistência Técnica:</strong> {{ cotacao.condicoes_pagamento }}</p>
             </div>
           </div>
 
@@ -322,12 +322,12 @@
               
               <div class="form-row">
                 <div class="form-group full-width">
-                  <label>Condições de Pagamento</label>
+                  <label>Assistência Técnica (Prestador e Endereço)</label>
                   <textarea 
                     v-model="cotacaoForm.condicoes_pagamento" 
                     class="textarea-field"
                     rows="2"
-                    placeholder="Ex: 30 dias após entrega, PIX com 5% desconto..."
+                    placeholder="Ex: Autorizada Brand Tech - Rua das Flores, 123, São Paulo/SP | Especializada MultiServ - Av. Central, 456, Rio de Janeiro/RJ..."
                   ></textarea>
                 </div>
               </div>
@@ -627,7 +627,7 @@ export default {
             ${cotacao.preco_total ? `<p><strong>Preço Total:</strong> ${this.formatCurrency(cotacao.preco_total)}</p>` : ''}
             ${cotacao.prazo_entrega ? `<p><strong>Prazo:</strong> ${cotacao.prazo_entrega} dias</p>` : ''}
             ${cotacao.data_validade ? `<p><strong>Válida até:</strong> ${this.formatDate(cotacao.data_validade)}</p>` : ''}
-            ${cotacao.condicoes_pagamento ? `<p><strong>Pagamento:</strong> ${cotacao.condicoes_pagamento}</p>` : ''}
+            ${cotacao.condicoes_pagamento ? `<p><strong>Assistência Técnica:</strong> ${cotacao.condicoes_pagamento}</p>` : ''}
             ${cotacao.observacoes ? `<p><strong>Observações:</strong> ${cotacao.observacoes}</p>` : ''}
           </div>
         `,
