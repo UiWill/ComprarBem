@@ -26,7 +26,7 @@ export class DocumentosAdministrativosService {
           atualizado_em,
           usuario_id
         `)
-        .eq('tenant_id', tenantId)
+        .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
         .eq('status', 'ativo')
         .order('criado_em', { ascending: false })
 
@@ -252,7 +252,7 @@ export class DocumentosAdministrativosService {
       let query = supabase
         .from('documentos_administrativos')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
         .eq('status', 'ativo')
 
       // Busca por termo nos campos título e descrição
@@ -304,7 +304,7 @@ export class DocumentosAdministrativosService {
       const { data: totalPorCategoria, error: errorCategoria } = await supabase
         .from('documentos_administrativos')
         .select('categoria')
-        .eq('tenant_id', tenantId)
+        .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
         .eq('status', 'ativo')
 
       if (errorCategoria) {
@@ -327,7 +327,7 @@ export class DocumentosAdministrativosService {
       const { data: recentes, error: errorRecentes } = await supabase
         .from('documentos_administrativos')
         .select('id')
-        .eq('tenant_id', tenantId)
+        .or(`tenant_id.eq.${tenantId},tenant_id.is.null`)
         .eq('status', 'ativo')
         .gte('criado_em', seteDiasAtras.toISOString())
 

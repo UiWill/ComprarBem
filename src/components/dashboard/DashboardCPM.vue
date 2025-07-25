@@ -2600,11 +2600,25 @@ export default {
       // Garantir que tenant_id está disponível
       if (!this.currentTenantId) return 0
       
-      const { count, error } = await supabase
+      let query = supabase
         .from('produtos')
         .select('id', { count: 'exact' })
-        .eq('status', status)
         .eq('tenant_id', this.currentTenantId) // Filtrar por tenant_id
+      
+      // Para 'aprovado', incluir também 'julgado_aprovado' e 'homologado'
+      if (status === 'aprovado') {
+        query = query.in('status', ['aprovado', 'julgado_aprovado', 'homologado'])
+      } 
+      // Para 'reprovado', incluir também 'julgado_reprovado'  
+      else if (status === 'reprovado') {
+        query = query.in('status', ['reprovado', 'julgado_reprovado'])
+      }
+      // Para outros status, manter filtro exato
+      else {
+        query = query.eq('status', status)
+      }
+      
+      const { count, error } = await query
       
       if (error) {
         console.error(`Erro ao contar produtos ${status}:`, error)
