@@ -46,13 +46,6 @@
           <p class="stat-description">Processos homologados este mês</p>
         </div>
         
-        <div class="stat-card status-diligencia-card">
-          <div class="stat-icon">📋</div>
-          <h3>Processos com Diligências</h3>
-          <div class="stat-value">{{ diligencias }}</div>
-          <p class="stat-description">Solicitação de documentação</p>
-        </div>
-        
         <div class="stat-card status-recurso-card" :class="{ 'stat-card-alert': prazosVencidos > 0 }">
           <div class="stat-icon">📄</div>
           <h3>Recursos em Análise</h3>
@@ -87,7 +80,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="produto in produtosPendentes" :key="produto.id">
+            <tr v-for="produto in produtosPendentesPaginados" :key="produto.id">
               <td class="produto-info">
                 <strong>{{ produto.nome }}</strong>
                 <br>
@@ -118,6 +111,21 @@
             </tr>
           </tbody>
         </table>
+        
+        <!-- Controles de Paginação para Produtos Pendentes -->
+        <div v-if="produtosPendentes.length > 0" class="pagination-controls">
+          <button @click="paginaAnterior('produtosPendentes')" :disabled="paginacao.produtosPendentes.paginaAtual <= 1" class="pagination-btn">
+            ← Anterior
+          </button>
+          <span class="pagination-info">
+            Página {{ paginacao.produtosPendentes.paginaAtual }} de {{ calcularTotalPaginas('produtosPendentes') || 1 }}
+            ({{ produtosPendentes.length }} itens)
+          </span>
+          <button @click="proximaPagina('produtosPendentes')" :disabled="paginacao.produtosPendentes.paginaAtual >= calcularTotalPaginas('produtosPendentes')" class="pagination-btn">
+            Próxima →
+          </button>
+        </div>
+        
         <div v-else class="empty-state">
           <div class="empty-icon">⚖️</div>
           <h4>Não há processos pendentes de julgamento</h4>
@@ -131,6 +139,9 @@
           <h3>🚨 Alertas Críticos</h3>
           <button @click="marcarTodosComoLidos" class="btn-link">
             Marcar todos como lidos
+          </button>
+          <button @click="limparNotificacoesAntigas" class="btn-link" style="margin-left: 10px; color: #dc3545;">
+            🗑️ Limpar antigas
           </button>
         </div>
         <div class="alertas-grid">
@@ -176,7 +187,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="recurso in recursos" :key="recurso.id">
+            <tr v-for="recurso in recursosAnalisePageinados" :key="recurso.id">
               <td>{{ recurso.recorrente }}</td>
               <td>
                 <strong>{{ recurso.produto_nome }}</strong>
@@ -205,6 +216,21 @@
             </tr>
           </tbody>
         </table>
+        
+        <!-- Controles de Paginação para Recursos em Análise -->
+        <div v-if="recursos.length > 0" class="pagination-controls">
+          <button @click="paginaAnterior('recursosAnalise')" :disabled="paginacao.recursosAnalise.paginaAtual <= 1" class="pagination-btn">
+            ← Anterior
+          </button>
+          <span class="pagination-info">
+            Página {{ paginacao.recursosAnalise.paginaAtual }} de {{ calcularTotalPaginas('recursosAnalise') || 1 }}
+            ({{ recursos.length }} itens)
+          </span>
+          <button @click="proximaPagina('recursosAnalise')" :disabled="paginacao.recursosAnalise.paginaAtual >= calcularTotalPaginas('recursosAnalise')" class="pagination-btn">
+            Próxima →
+          </button>
+        </div>
+        
         <div v-else class="empty-state">
           <div class="empty-icon">📄</div>
           <h4>Não há recursos em análise</h4>
@@ -259,7 +285,7 @@
         <div class="atas-section">
           <h4>📝 Atas em Elaboração</h4>
           <div v-if="atasEmElaboracao.length > 0" class="atas-grid">
-            <div v-for="ata in atasEmElaboracao" :key="ata.id" class="ata-card em-elaboracao">
+            <div v-for="ata in atasElaboracaoPaginadas" :key="ata.id" class="ata-card em-elaboracao">
               <div class="ata-card-header">
                 <h5>{{ ata.numero }}</h5>
                 <span class="ata-status status-elaboracao">Em Elaboração</span>
@@ -279,6 +305,21 @@
               </div>
             </div>
           </div>
+          
+          <!-- Controles de Paginação para Atas em Elaboração -->
+          <div v-if="atasEmElaboracao.length > 0" class="pagination-controls">
+            <button @click="paginaAnterior('atasElaboracao')" :disabled="paginacao.atasElaboracao.paginaAtual <= 1" class="pagination-btn">
+              ← Anterior
+            </button>
+            <span class="pagination-info">
+              Página {{ paginacao.atasElaboracao.paginaAtual }} de {{ calcularTotalPaginas('atasElaboracao') || 1 }} 
+              ({{ atasEmElaboracao.length }} itens)
+            </span>
+            <button @click="proximaPagina('atasElaboracao')" :disabled="paginacao.atasElaboracao.paginaAtual >= calcularTotalPaginas('atasElaboracao')" class="pagination-btn">
+              Próxima →
+            </button>
+          </div>
+          
           <div v-else class="empty-message">
             <p>Não há atas em elaboração no momento.</p>
           </div>
@@ -300,7 +341,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="ata in atasPublicadasRecentes" :key="ata.id">
+                <tr v-for="ata in atasPublicadasPaginadas" :key="ata.id">
                   <td>
                     <strong>{{ ata.numero }}</strong>
                   </td>
@@ -330,6 +371,21 @@
                 </tr>
               </tbody>
             </table>
+            
+            <!-- Controles de Paginação para Atas Publicadas -->
+            <div v-if="atasPublicadasRecentes.length > 0" class="pagination-controls">
+              <button @click="paginaAnterior('atasPublicadas')" :disabled="paginacao.atasPublicadas.paginaAtual <= 1" class="pagination-btn">
+                ← Anterior
+              </button>
+              <span class="pagination-info">
+                Página {{ paginacao.atasPublicadas.paginaAtual }} de {{ calcularTotalPaginas('atasPublicadas') || 1 }}
+                ({{ atasPublicadasRecentes.length }} itens)
+              </span>
+              <button @click="proximaPagina('atasPublicadas')" :disabled="paginacao.atasPublicadas.paginaAtual >= calcularTotalPaginas('atasPublicadas')" class="pagination-btn">
+                Próxima →
+              </button>
+            </div>
+            
             <div v-else class="empty-message">
               <p>Não há atas publicadas recentemente.</p>
             </div>
@@ -411,7 +467,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="processo in processosPendentesHomologacao" :key="processo.id">
+                <tr v-for="processo in processosPendentesPaginados" :key="processo.id">
                   <td><strong>{{ processo.numeroAta }}</strong></td>
                   <td>{{ formatDate(processo.dataJulgamento) }}</td>
                   <td>
@@ -431,19 +487,48 @@
                     </span>
                   </td>
                   <td>
-                    <button @click="homologarProcesso(processo)" class="btn-small btn-success">
-                      ✅ Homologar
-                    </button>
-                    <button @click="indeferirProcesso(processo)" class="btn-small btn-danger">
-                      ❌ Indeferir
-                    </button>
-                    <button @click="visualizarAta(processo)" class="btn-small btn-secondary">
-                      👁️ Ver Ata
-                    </button>
+                    <div class="acoes-linha">
+                      <template v-if="!processo.jaDecidido">
+                        <button @click="homologarProcesso(processo)" class="btn-small btn-success">
+                          ✅ Homologar
+                        </button>
+                        <button @click="indeferirProcesso(processo)" class="btn-small btn-danger">
+                          ❌ Indeferir
+                        </button>
+                        <button @click="visualizarAta(processo)" class="btn-small btn-secondary">
+                          👁️ Ver Ata
+                        </button>
+                      </template>
+                      <template v-else>
+                        <span class="badge-success" v-if="processo.tipoDecisao === 'HOMOLOGADA'">
+                          ✅ Homologado
+                        </span>
+                        <span class="badge-danger" v-else-if="processo.tipoDecisao === 'INDEFERIDA'">
+                          ❌ Indeferido
+                        </span>
+                        <button @click="visualizarAta(processo)" class="btn-small btn-secondary">
+                          👁️ Ver Ata
+                        </button>
+                      </template>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
+            
+            <!-- Controles de Paginação para Processos Pendentes -->
+            <div v-if="processosPendentesHomologacao.length > 0" class="pagination-controls">
+              <button @click="paginaAnterior('processosPendentes')" :disabled="paginacao.processosPendentes.paginaAtual <= 1" class="pagination-btn">
+                ← Anterior
+              </button>
+              <span class="pagination-info">
+                Página {{ paginacao.processosPendentes.paginaAtual }} de {{ calcularTotalPaginas('processosPendentes') || 1 }}
+                ({{ processosPendentesHomologacao.length }} itens)
+              </span>
+              <button @click="proximaPagina('processosPendentes')" :disabled="paginacao.processosPendentes.paginaAtual >= calcularTotalPaginas('processosPendentes')" class="pagination-btn">
+                Próxima →
+              </button>
+            </div>
           </div>
           <div v-else class="empty-message">
             <div class="empty-icon">⚖️</div>
@@ -459,7 +544,7 @@
             <button @click="verTodas" class="btn-link">Ver todas</button>
           </div>
           <div v-if="homologacoesRecentes.length > 0" class="homo-cards-grid">
-            <div v-for="homo in homologacoesRecentes" :key="homo.id" class="homo-card">
+            <div v-for="homo in homologacoesRecentesPaginadas" :key="homo.id" class="homo-card">
               <div class="homo-card-header">
                 <div class="homo-card-status" :class="homo.tipo">
                   <span class="homo-status-icon">{{ homo.tipo === 'homologada' ? '✅' : '❌' }}</span>
@@ -486,6 +571,21 @@
               </div>
             </div>
           </div>
+          
+          <!-- Controles de Paginação para Homologações Recentes -->
+          <div v-if="homologacoesRecentes.length > 0" class="pagination-controls">
+            <button @click="paginaAnterior('homologacoesRecentes')" :disabled="paginacao.homologacoesRecentes.paginaAtual <= 1" class="pagination-btn">
+              ← Anterior
+            </button>
+            <span class="pagination-info">
+              Página {{ paginacao.homologacoesRecentes.paginaAtual }} de {{ calcularTotalPaginas('homologacoesRecentes') || 1 }}
+              ({{ homologacoesRecentes.length }} itens)
+            </span>
+            <button @click="proximaPagina('homologacoesRecentes')" :disabled="paginacao.homologacoesRecentes.paginaAtual >= calcularTotalPaginas('homologacoesRecentes')" class="pagination-btn">
+              Próxima →
+            </button>
+          </div>
+          
           <div v-else class="empty-message">
             <p>Não há homologações recentes.</p>
           </div>
@@ -498,7 +598,7 @@
             <button @click="gerenciarDCBs" class="btn-link">Gerenciar todas</button>
           </div>
           <div v-if="dcbsAtivas.length > 0" class="dcb-grid">
-            <div v-for="dcb in dcbsAtivas" :key="dcb.id" class="dcb-card">
+            <div v-for="dcb in dcbsAtivasPaginadas" :key="dcb.id" class="dcb-card">
               <div class="dcb-header">
                 <span class="dcb-number">DCB {{ dcb.numero }}/{{ dcb.ano }}</span>
                 <span class="dcb-status" :class="getDCBStatusClass(dcb.status)">{{ dcb.status }}</span>
@@ -522,6 +622,21 @@
               </div>
             </div>
           </div>
+          
+          <!-- Controles de Paginação para DCBs Ativas -->
+          <div v-if="dcbsAtivas.length > 0" class="pagination-controls">
+            <button @click="paginaAnterior('dcbsAtivas')" :disabled="paginacao.dcbsAtivas.paginaAtual <= 1" class="pagination-btn">
+              ← Anterior
+            </button>
+            <span class="pagination-info">
+              Página {{ paginacao.dcbsAtivas.paginaAtual }} de {{ calcularTotalPaginas('dcbsAtivas') || 1 }}
+              ({{ dcbsAtivas.length }} itens)
+            </span>
+            <button @click="proximaPagina('dcbsAtivas')" :disabled="paginacao.dcbsAtivas.paginaAtual >= calcularTotalPaginas('dcbsAtivas')" class="pagination-btn">
+              Próxima →
+            </button>
+          </div>
+          
           <div v-else class="empty-message">
             <p>Não há DCBs ativas no momento.</p>
           </div>
@@ -543,7 +658,6 @@ export default {
       atasRecentes: [],
       pendentes: 0,
       aprovados: 0,
-      diligencias: 0,
       recursosEmAnalise: 0,
       categorias: [],
       currentTenantId: null,
@@ -567,7 +681,100 @@ export default {
       dcbsEmitidas: 0,
       processosPendentesHomologacao: [],
       homologacoesRecentes: [],
-      dcbsAtivas: []
+      dcbsAtivas: [],
+      // Paginação
+      paginacao: {
+        atasElaboracao: {
+          paginaAtual: 1,
+          itensPorPagina: 5,
+          total: 0
+        },
+        atasPublicadas: {
+          paginaAtual: 1,
+          itensPorPagina: 5,
+          total: 0
+        },
+        processosPendentes: {
+          paginaAtual: 1,
+          itensPorPagina: 5,
+          total: 0
+        },
+        homologacoesRecentes: {
+          paginaAtual: 1,
+          itensPorPagina: 5,
+          total: 0
+        },
+        dcbsAtivas: {
+          paginaAtual: 1,
+          itensPorPagina: 5,
+          total: 0
+        },
+        recursos: {
+          paginaAtual: 1,
+          itensPorPagina: 5,
+          total: 0
+        },
+        produtosPendentes: {
+          paginaAtual: 1,
+          itensPorPagina: 5,
+          total: 0
+        },
+        recursosAnalise: {
+          paginaAtual: 1,
+          itensPorPagina: 5,
+          total: 0
+        }
+      }
+    }
+  },
+  computed: {
+    // Computadas para paginação
+    atasElaboracaoPaginadas() {
+      const inicio = (this.paginacao.atasElaboracao.paginaAtual - 1) * this.paginacao.atasElaboracao.itensPorPagina
+      const fim = inicio + this.paginacao.atasElaboracao.itensPorPagina
+      return this.atasEmElaboracao.slice(inicio, fim)
+    },
+    
+    atasPublicadasPaginadas() {
+      const inicio = (this.paginacao.atasPublicadas.paginaAtual - 1) * this.paginacao.atasPublicadas.itensPorPagina
+      const fim = inicio + this.paginacao.atasPublicadas.itensPorPagina
+      return this.atasPublicadasRecentes.slice(inicio, fim)
+    },
+    
+    processosPendentesPaginados() {
+      const inicio = (this.paginacao.processosPendentes.paginaAtual - 1) * this.paginacao.processosPendentes.itensPorPagina
+      const fim = inicio + this.paginacao.processosPendentes.itensPorPagina
+      return this.processosPendentesHomologacao.slice(inicio, fim)
+    },
+    
+    homologacoesRecentesPaginadas() {
+      const inicio = (this.paginacao.homologacoesRecentes.paginaAtual - 1) * this.paginacao.homologacoesRecentes.itensPorPagina
+      const fim = inicio + this.paginacao.homologacoesRecentes.itensPorPagina
+      return this.homologacoesRecentes.slice(inicio, fim)
+    },
+    
+    dcbsAtivasPaginadas() {
+      const inicio = (this.paginacao.dcbsAtivas.paginaAtual - 1) * this.paginacao.dcbsAtivas.itensPorPagina
+      const fim = inicio + this.paginacao.dcbsAtivas.itensPorPagina
+      return this.dcbsAtivas.slice(inicio, fim)
+    },
+    
+    recursosPaginados() {
+      const inicio = (this.paginacao.recursos.paginaAtual - 1) * this.paginacao.recursos.itensPorPagina
+      const fim = inicio + this.paginacao.recursos.itensPorPagina
+      return this.recursos.slice(inicio, fim)
+    },
+    
+    produtosPendentesPaginados() {
+      const inicio = (this.paginacao.produtosPendentes.paginaAtual - 1) * this.paginacao.produtosPendentes.itensPorPagina
+      const fim = inicio + this.paginacao.produtosPendentes.itensPorPagina
+      return this.produtosPendentes.slice(inicio, fim)
+    },
+    
+    recursosAnalisePageinados() {
+      const inicio = (this.paginacao.recursosAnalise.paginaAtual - 1) * this.paginacao.recursosAnalise.itensPorPagina
+      const fim = inicio + this.paginacao.recursosAnalise.itensPorPagina
+      return this.recursos.slice(inicio, fim)
     }
   },
   created() {
@@ -581,6 +788,16 @@ export default {
       this.carregarDCBsAtivas()
       this.iniciarMonitoramentoPrazos()
     })
+  },
+  watch: {
+    activeTab(newTab) {
+      // Recarregar dados específicos quando trocar de aba
+      if (newTab === 'homologacoes') {
+        console.log('Entrando na aba homologações - recarregando dados...')
+        this.carregarHomologacoes()
+        this.carregarProcessosPendentesHomologacao()
+      }
+    }
   },
   beforeUnmount() {
     // Limpar interval ao destruir componente
@@ -678,17 +895,19 @@ export default {
         const statsCounts = await Promise.all([
           this.contarPorStatus(['aprovado', 'reprovado']), // CPM já analisou, CCL precisa julgar (pendentes)
           this.contarPorStatus(['julgado_aprovado', 'julgado_reprovado']), // Já julgados pela CCL
-          this.contarPorStatus('homologado'), // Processos homologados
-          this.contarPorStatus('diligencia') // Em diligência
+          this.contarPorStatus('homologado') // Processos homologados
         ])
         
         this.pendentes = statsCounts[0] || this.produtosPendentes.filter(p => ['aprovado', 'reprovado'].includes(p.status)).length
         this.aprovados = statsCounts[1] || this.produtosPendentes.filter(p => ['julgado_aprovado', 'julgado_reprovado'].includes(p.status)).length
         this.homologados = statsCounts[2]
-        this.diligencias = statsCounts[3]
         
         // Contar recursos em análise
         this.recursosEmAnalise = this.recursos.filter(r => r.status === 'EM ANÁLISE' || r.status === 'AGUARDANDO CPM').length
+        
+        // Atualizar paginação
+        this.atualizarTotalPaginacao('produtosPendentes', this.produtosPendentes.length)
+        this.atualizarTotalPaginacao('recursosAnalise', this.recursos.length)
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
       } finally {
@@ -718,8 +937,16 @@ export default {
       
       return count || 0
     },
-    formatDate(dateString) {
-      if (!dateString) return ''
+    formatDate(dateInput) {
+      if (!dateInput) return ''
+      
+      // Se já for um objeto Date
+      if (dateInput instanceof Date) {
+        return dateInput.toLocaleDateString('pt-BR')
+      }
+      
+      // Converter para string se necessário
+      const dateString = String(dateInput)
       
       // Se for uma data no formato ISO
       if (dateString.includes('T')) {
@@ -728,9 +955,17 @@ export default {
       }
       
       // Se for uma data no formato YYYY-MM-DD
-      const parts = dateString.split('-')
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`
+      if (dateString.includes('-')) {
+        const parts = dateString.split('-')
+        if (parts.length === 3) {
+          return `${parts[2]}/${parts[1]}/${parts[0]}`
+        }
+      }
+      
+      // Tentar converter para Date como último recurso
+      const date = new Date(dateString)
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('pt-BR')
       }
       
       return dateString
@@ -1331,10 +1566,10 @@ export default {
             data_recurso,
             prazo_final,
             status,
-            fundamentacao_recurso,
+            fundamentacao,
             decisao,
             fundamentacao_decisao,
-            autoridade_decisao,
+            responsavel_decisao,
             criado_em
           `)
           .eq('tenant_id', this.currentTenantId)
@@ -1350,14 +1585,19 @@ export default {
         // Se há dados no banco, usar eles; senão, manter simulados
         if (recursosData && recursosData.length > 0) {
           this.recursos = recursosData
+          this.atualizarTotalPaginacao('recursosAnalise', recursosData.length)
           console.log('Recursos carregados do banco de dados:', recursosData.length)
         } else {
+          this.recursos = []
+          this.atualizarTotalPaginacao('recursosAnalise', 0)
           console.log('Nenhum recurso encontrado no banco')
         }
         
       } catch (error) {
         console.error('Erro ao carregar recursos:', error)
         // Em caso de erro, manter array vazio
+        this.recursos = []
+        this.atualizarTotalPaginacao('recursosAnalise', 0)
       }
     },
     
@@ -1410,9 +1650,11 @@ export default {
           }))
           // Atualizar contador de atas publicadas
           this.atasPublicadas = atasData.length
+          this.atualizarTotalPaginacao('atasPublicadas', atasData.length)
           console.log('Atas de julgamento carregadas do banco:', atasData.length)
         } else {
           this.atasPublicadas = 0
+          this.atualizarTotalPaginacao('atasPublicadas', 0)
           console.log('Nenhuma ata de julgamento encontrada no banco')
         }
         
@@ -1467,9 +1709,11 @@ export default {
           }))
           // Atualizar contador de atas em andamento
           this.atasEmAndamento = atasData.length
+          this.atualizarTotalPaginacao('atasElaboracao', atasData.length)
           console.log('Atas em elaboração carregadas do banco:', atasData.length)
         } else {
           this.atasEmAndamento = 0
+          this.atualizarTotalPaginacao('atasElaboracao', 0)
           console.log('Nenhuma ata em elaboração encontrada no banco')
         }
         
@@ -1525,8 +1769,12 @@ export default {
           this.homologacoesAprovadas = homologacoesData.filter(h => h.tipo_homologacao === 'HOMOLOGADA').length
           this.homologacoesIndeferidas = homologacoesData.filter(h => h.tipo_homologacao === 'INDEFERIDA').length
           
+          // Atualizar paginação
+          this.atualizarTotalPaginacao('homologacoesRecentes', homologacoesData.length)
+          
           console.log('Homologações carregadas do banco:', homologacoesData.length)
         } else {
+          this.atualizarTotalPaginacao('homologacoesRecentes', 0)
           console.log('Nenhuma homologação encontrada no banco')
         }
         
@@ -1539,7 +1787,23 @@ export default {
       try {
         if (!this.currentTenantId) return
         
-        // Buscar atas de julgamento publicadas que ainda não foram homologadas
+        // Buscar todas as homologações existentes para verificar status
+        const { data: homologacoes, error: errorHomologacoes } = await supabase
+          .from('homologacoes')
+          .select('ata_julgamento_id, tipo_homologacao, data_homologacao')
+          .eq('tenant_id', this.currentTenantId)
+
+        const homologacoesMap = new Map()
+        if (homologacoes) {
+          homologacoes.forEach(h => {
+            homologacoesMap.set(h.ata_julgamento_id, {
+              tipo: h.tipo_homologacao,
+              data: h.data_homologacao
+            })
+          })
+        }
+
+        // Buscar atas de julgamento publicadas
         const { data: atasData, error } = await supabase
           .from('atas_julgamento')
           .select(`
@@ -1551,9 +1815,15 @@ export default {
             observacoes
           `)
           .eq('tenant_id', this.currentTenantId)
-          .neq('status_ata', 'ELABORACAO')
-          .not('id', 'in', `(SELECT ata_julgamento_id FROM homologacoes WHERE tenant_id = '${this.currentTenantId}')`)
+          .in('status_ata', ['EM PRAZO', 'PUBLICADA', 'PUBLICADA_EM_PRAZO', 'PUBLICADA_ENCERRADA'])
           .order('data_publicacao', { ascending: true })
+        
+        console.log('Debug Homologações:')
+        console.log('- Tenant ID:', this.currentTenantId)
+        console.log('- Homologações existentes:', homologacoes?.length || 0)
+        console.log('- Query error:', error)
+        console.log('- Atas encontradas:', atasData?.length || 0)
+        console.log('- Dados das atas:', atasData)
         
         if (error) {
           console.error('Erro ao carregar processos pendentes de homologação:', error)
@@ -1562,23 +1832,41 @@ export default {
         
         // Mapear os dados para o formato usado no template
         if (atasData && atasData.length > 0) {
-          this.processosPendentesHomologacao = atasData.map(ata => ({
-            id: ata.id,
-            numeroAta: ata.numero,
-            dataJulgamento: ata.data_publicacao,
-            totalProdutos: ata.total_processos,
-            decisaoCCL: this.mapearStatusParaDecisao(ata.status_ata),
-            statusRecursos: this.determinarStatusRecursos(ata.status_ata),
-            observacoes: ata.observacoes
-          }))
+          this.processosPendentesHomologacao = atasData.map(ata => {
+            const homologacao = homologacoesMap.get(ata.id)
+            const jaDecidido = homologacao ? true : false
+            
+            return {
+              id: ata.id,
+              numeroAta: ata.numero,
+              dataJulgamento: ata.data_publicacao,
+              totalProdutos: ata.total_processos,
+              decisaoCCL: this.mapearStatusParaDecisao(ata.status_ata),
+              statusRecursos: this.determinarStatusRecursos(ata.status_ata),
+              observacoes: ata.observacoes,
+              jaDecidido: jaDecidido,
+              tipoDecisao: homologacao?.tipo || null,
+              dataDecisao: homologacao?.data || null
+            }
+          })
           
-          this.homologacoesPendentes = atasData.length
-          this.processosPendentes = atasData.length // Mesmo valor que homologações pendentes
-          console.log('Processos pendentes de homologação carregados:', atasData.length)
+          // Separar processos pendentes dos já decididos
+          const processosPendentes = this.processosPendentesHomologacao.filter(p => !p.jaDecidido)
+          const processosDecididos = this.processosPendentesHomologacao.filter(p => p.jaDecidido)
+          
+          this.homologacoesPendentes = processosPendentes.length
+          this.processosPendentes = processosPendentes.length
+          
+          console.log('Processos pendentes de homologação:', processosPendentes.length)
+          console.log('Processos já decididos:', processosDecididos.length)
+          
+          // Atualizar paginação
+          this.atualizarTotalPaginacao('processosPendentes', this.processosPendentesHomologacao.length)
         } else {
           this.homologacoesPendentes = 0
           this.processosPendentes = 0
-          console.log('Nenhum processo pendente de homologação encontrado')
+          this.atualizarTotalPaginacao('processosPendentes', 0)
+          console.log('Nenhum processo encontrado')
         }
         
       } catch (error) {
@@ -1682,11 +1970,15 @@ export default {
           
           this.dcbsEmitidas = count || 0
           
+          // Atualizar paginação
+          this.atualizarTotalPaginacao('dcbsAtivas', dcbsData.length)
+          
           console.log('DCBs ativas carregadas do banco:', dcbsData.length)
           console.log('Total de DCBs emitidas:', this.dcbsEmitidas)
         } else {
           console.log('Nenhuma DCB ativa encontrada no banco')
           this.dcbsEmitidas = 0
+          this.atualizarTotalPaginacao('dcbsAtivas', 0)
         }
         
       } catch (error) {
@@ -1773,113 +2065,362 @@ export default {
         throw error
       }
     },
-    
-    getPrazoRecursoClass(prazoFinal) {
-      if (!prazoFinal) return 'prazo-indefinido'
-      
-      const prazo = new Date(prazoFinal)
-      const hoje = new Date()
-      const diffTime = prazo - hoje
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
-      if (diffDays < 0) return 'prazo-vencido'
-      if (diffDays === 0) return 'prazo-urgente'
-      if (diffDays <= 1) return 'prazo-urgente'
-      return 'prazo-normal'
-    },
-    analisarRecurso(recurso) {
-      this.$swal({
-        title: '📋 Analisar Recurso',
-        html: `
-          <div style="text-align: left; padding: 15px;">
-            <h4>Recurso: ${recurso.produto_nome}</h4>
-            <p><strong>Recorrente:</strong> ${recurso.recorrente}</p>
-            <p><strong>Ata:</strong> ${recurso.ata_referencia}</p>
-            <p><strong>Data:</strong> ${this.formatDate(recurso.data_recurso)}</p>
-            <p><strong>Prazo:</strong> ${this.formatDate(recurso.prazo_final)}</p>
-            <hr>
-            <div style="margin: 15px 0;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Decisão sobre o Recurso:</label>
-              <select id="decisaoRecurso" class="swal2-select" style="width: 100%;">
-                <option value="">Selecione uma decisão</option>
-                <option value="deferido">Deferir Recurso (Reverter decisão CCL)</option>
-                <option value="indeferido">Indeferir Recurso (Manter decisão CCL)</option>
-                <option value="encaminhar_cpm">Encaminhar para CPM</option>
-              </select>
+    async analisarRecurso(recurso) {
+      try {
+        const prazoVencido = new Date(recurso.prazo_final) < new Date()
+        
+        const result = await this.$swal({
+          title: '📋 Analisar Recurso Administrativo',
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0; color: #495057;">📄 Dados do Recurso</h4>
+                <p><strong>Produto/Processo:</strong> ${recurso.produto_nome}</p>
+                <p><strong>Recorrente:</strong> ${recurso.recorrente}</p>
+                <p><strong>Ata Referência:</strong> ${recurso.ata_referencia}</p>
+                <p><strong>Data do Recurso:</strong> ${this.formatDate(recurso.data_recurso)}</p>
+                <p><strong>Prazo para Decisão:</strong> ${this.formatDate(recurso.prazo_final)} 
+                  ${prazoVencido ? '<span style="color: #dc3545; font-weight: bold;">(VENCIDO)</span>' : '<span style="color: #28a745; font-weight: bold;">(EM PRAZO)</span>'}
+                </p>
+                <p><strong>Status Atual:</strong> ${recurso.status}</p>
+              </div>
+              
+              <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                <h5 style="margin: 0 0 10px 0; color: #495057;">📝 Fundamentação do Recorrente</h5>
+                <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; max-height: 150px; overflow-y: auto;">
+                  ${recurso.fundamentacao || 'Fundamentação não disponível'}
+                </div>
+              </div>
+              
+              <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px;">
+                <h5 style="margin: 0 0 20px 0; color: #495057; text-align: center;">⚖️ Decisão da Comissão</h5>
+                
+                <!-- Decisão -->
+                <div style="margin-bottom: 20px;">
+                  <label style="display: block; font-weight: bold; margin-bottom: 8px; color: #333;">Decisão sobre o Recurso:</label>
+                  <select id="decisaoRecurso" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; background: white;">
+                    <option value="">🔽 Selecione uma decisão</option>
+                    <option value="deferido">✅ DEFERIR - Reverter decisão da CCL (procedente)</option>
+                    <option value="indeferido">❌ INDEFERIR - Manter decisão da CCL (improcedente)</option>
+                    <option value="encaminhar_cpm">📋 ENCAMINHAR para CPM - Requerer nova análise técnica</option>
+                  </select>
+                </div>
+                
+                <!-- Fundamentação -->
+                <div style="margin-bottom: 20px;">
+                  <label style="display: block; font-weight: bold; margin-bottom: 8px; color: #333;">Fundamentação Legal e Técnica:</label>
+                  <textarea id="fundamentacaoRecurso" 
+                            style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: Arial, sans-serif; resize: vertical; min-height: 120px;" 
+                            placeholder="Justificativa da decisão com base legal e técnica...
+                            
+Exemplo:
+- Análise da fundamentação apresentada
+- Verificação da tempestividade 
+- Base legal: Lei 14.133/2021, Art. XXX
+- Considerações técnicas específicas"></textarea>
+                </div>
+                
+                <!-- Responsável -->
+                <div style="margin-bottom: 15px;">
+                  <label style="display: block; font-weight: bold; margin-bottom: 8px; color: #333;">Responsável pela Decisão:</label>
+                  <input id="responsavelRecurso" 
+                         style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;" 
+                         type="text" 
+                         placeholder="Nome do responsável pela decisão" 
+                         value="${this.usuarioNome || 'CCL'}">
+                </div>
+              </div>
+              
+              <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 15px;">
+                <small><strong>📚 Base Legal:</strong> Art. 165-171 da Lei 14.133/2021. A decisão será registrada e encaminhada para conhecimento das partes.</small>
+              </div>
             </div>
-            <div style="margin: 15px 0;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Fundamentação:</label>
-              <textarea id="fundamentacaoRecurso" class="swal2-textarea" placeholder="Justificativa da decisão..." style="height: 100px;"></textarea>
-            </div>
-            <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 15px;">
-              <small><strong>Nota:</strong> A decisão será encaminhada para homologação pela autoridade competente.</small>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: '✅ Confirmar Decisão',
-        cancelButtonText: '❌ Cancelar',
-        preConfirm: () => {
-          const decisao = document.getElementById('decisaoRecurso').value
-          const fundamentacao = document.getElementById('fundamentacaoRecurso').value
-          
-          if (!decisao) {
-            this.$swal.showValidationMessage('Selecione uma decisão')
-            return false
-          }
-          if (!fundamentacao.trim()) {
-            this.$swal.showValidationMessage('Informe a fundamentação da decisão')
-            return false
-          }
-          
-          return { decisao, fundamentacao }
-        }
-      }).then(async (result) => {
-        if (result.isConfirmed) {
-          try {
-            // Salvar decisão no banco de dados
-            const { error } = await supabase
-              .from('recursos')
-              .update({
-                decisao: result.value.decisao,
-                fundamentacao_decisao: result.value.fundamentacao,
-                status: result.value.decisao === 'encaminhar_cpm' ? 'AGUARDANDO CPM' : 
-                        result.value.decisao === 'deferido' ? 'DEFERIDO' : 'INDEFERIDO',
-                atualizado_em: new Date().toISOString()
-              })
-              .eq('id', recurso.id)
-              .eq('tenant_id', this.currentTenantId)
+          `,
+          width: '950px',
+          showCancelButton: true,
+          confirmButtonText: '✅ Confirmar Decisão',
+          cancelButtonText: '❌ Cancelar',
+          preConfirm: () => {
+            const decisao = document.getElementById('decisaoRecurso').value
+            const fundamentacao = document.getElementById('fundamentacaoRecurso').value.trim()
+            const responsavel = document.getElementById('responsavelRecurso').value.trim()
             
-            if (error) {
-              console.error('Erro ao salvar decisão:', error)
-              this.$swal({
-                title: '❌ Erro',
-                text: 'Erro ao salvar a decisão. Tente novamente.',
-                icon: 'error'
-              })
-              return
+            if (!decisao) {
+              this.$swal.showValidationMessage('Selecione uma decisão')
+              return false
+            }
+            if (!fundamentacao) {
+              this.$swal.showValidationMessage('Informe a fundamentação da decisão')
+              return false
+            }
+            if (!responsavel) {
+              this.$swal.showValidationMessage('Informe o responsável pela decisão')
+              return false
             }
             
-            this.$swal({
-              title: '✅ Recurso Analisado',
-              text: 'A decisão foi registrada e será incluída na documentação oficial.',
-              icon: 'success'
-            })
-            
-            // Recarregar dados
-            await this.carregarDados()
-            
-          } catch (error) {
-            console.error('Erro ao processar decisão:', error)
-            this.$swal({
-              title: '❌ Erro',
-              text: 'Erro ao processar a decisão. Tente novamente.',
-              icon: 'error'
-            })
+            return { decisao, fundamentacao, responsavel }
           }
+        })
+
+        if (!result.isConfirmed) return
+
+        // Salvar decisão no banco de dados
+        const updateData = {
+          decisao: result.value.decisao,
+          fundamentacao_decisao: result.value.fundamentacao,
+          responsavel_decisao: result.value.responsavel,
+          data_decisao: new Date().toISOString(),
+          status: result.value.decisao === 'encaminhar_cpm' ? 'AGUARDANDO CPM' : 
+                  result.value.decisao === 'deferido' ? 'DEFERIDO' : 'INDEFERIDO',
+          atualizado_em: new Date().toISOString()
         }
-      })
+
+        console.log('Atualizando recurso:', recurso.id, 'com dados:', updateData)
+
+        const { data: updatedData, error } = await supabase
+          .from('recursos')
+          .update(updateData)
+          .eq('id', recurso.id)
+          .select()
+
+        console.log('Resultado da atualização:', { updatedData, error })
+        
+        if (error) {
+          console.warn('Erro ao salvar decisão (tabela pode não existir):', error)
+          this.$swal({
+            title: '⚠️ Erro ao Salvar Decisão',
+            html: `
+              <div style="text-align: left; padding: 15px;">
+                <p>Não foi possível salvar a decisão no banco de dados.</p>
+                <p><strong>Possível causa:</strong> Tabela de recursos não existe.</p>
+                <p><strong>Ação necessária:</strong> Execute o script <code>criar_tabela_recursos.sql</code></p>
+                <hr>
+                <p><strong>Decisão registrada localmente:</strong></p>
+                <p><strong>Recurso:</strong> ${recurso.produto_nome}</p>
+                <p><strong>Decisão:</strong> ${result.value.decisao.toUpperCase()}</p>
+                <p><strong>Responsável:</strong> ${result.value.responsavel}</p>
+              </div>
+            `,
+            icon: 'warning'
+          })
+          return
+        }
+        
+        // Recarregar dados
+        await this.carregarRecursos()
+        await this.carregarDados()
+        
+        // Sucesso
+        const decisaoTexto = result.value.decisao === 'deferido' ? 'DEFERIDO' : 
+                            result.value.decisao === 'indeferido' ? 'INDEFERIDO' : 'ENCAMINHADO PARA CPM'
+        
+        this.$swal({
+          title: '✅ Recurso Analisado com Sucesso!',
+          html: `
+            <div style="text-align: center; padding: 20px;">
+              <h4>📋 Decisão Registrada</h4>
+              <p><strong>Recurso:</strong> ${recurso.produto_nome}</p>
+              <p><strong>Recorrente:</strong> ${recurso.recorrente}</p>
+              <p><strong>Decisão:</strong> <span style="font-weight: bold; color: ${result.value.decisao === 'deferido' ? '#28a745' : result.value.decisao === 'indeferido' ? '#dc3545' : '#ffc107'};">${decisaoTexto}</span></p>
+              <p><strong>Responsável:</strong> ${result.value.responsavel}</p>
+              <p><strong>Data da Decisão:</strong> ${this.formatDate(new Date())}</p>
+              <hr>
+              <p>A decisão foi registrada e constará na documentação oficial do processo.</p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: '📄 Gerar Documento',
+          showCancelButton: true,
+          cancelButtonText: '✅ OK'
+        }).then((docResult) => {
+          if (docResult.isConfirmed) {
+            this.gerarDocumentoRecurso(recurso, result.value)
+          }
+        })
+
+      } catch (error) {
+        console.error('Erro ao analisar recurso:', error)
+        this.$swal({
+          title: '❌ Erro ao Processar Decisão',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
     },
+    
+    async gerarDocumentoRecurso(recurso, decisao) {
+      try {
+        // Importar jsPDF
+        const { jsPDF } = await import('jspdf')
+        
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        let yPosition = 25
+        
+        // Cabeçalho oficial
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.text('COMISSÃO DE CONTRATAÇÃO OU LICITAÇÃO (CCL)', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 8
+        
+        doc.setFontSize(12)
+        doc.setFont(undefined, 'normal')
+        doc.text('Sistema de Pré-Qualificação de Bens - Lei 14.133/2021', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 15
+        
+        // Linha decorativa
+        doc.setLineWidth(0.5)
+        doc.line(30, yPosition, pageWidth - 30, yPosition)
+        yPosition += 20
+        
+        // Título do documento
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.text('DECISÃO DE RECURSO ADMINISTRATIVO', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 20
+        
+        // Dados do recurso
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('I. IDENTIFICAÇÃO DO RECURSO', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        const dadosRecurso = [
+          ['Protocolo:', `REC-${String(recurso.id).substring(0, 8).toUpperCase()}/${new Date().getFullYear()}`],
+          ['Recorrente:', recurso.recorrente],
+          ['Produto/Processo:', recurso.produto_nome],
+          ['Ata de Referência:', recurso.ata_referencia],
+          ['Data do Recurso:', this.formatDate(recurso.data_recurso)],
+          ['Prazo Final:', this.formatDate(recurso.prazo_final)]
+        ]
+        
+        dadosRecurso.forEach(([label, valor]) => {
+          doc.setFont(undefined, 'bold')
+          doc.text(label, 35, yPosition)
+          doc.setFont(undefined, 'normal')
+          doc.text(valor, 90, yPosition)
+          yPosition += 8
+        })
+        
+        yPosition += 10
+        
+        // Fundamentação do recorrente
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('II. FUNDAMENTAÇÃO DO RECORRENTE', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(10)
+        doc.setFont(undefined, 'normal')
+        const fundamentacaoRecorrente = recurso.fundamentacao || 'Fundamentação não disponível'
+        const linhasFundamentacao = doc.splitTextToSize(fundamentacaoRecorrente, pageWidth - 60)
+        doc.text(linhasFundamentacao, 35, yPosition)
+        yPosition += linhasFundamentacao.length * 5 + 15
+        
+        // Decisão da comissão
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('III. DECISÃO DA COMISSÃO', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        const dadosDecisao = [
+          ['Decisão:', decisao.decisao.toUpperCase()],
+          ['Responsável:', decisao.responsavel],
+          ['Data da Decisão:', this.formatDate(new Date())],
+          ['Status:', decisao.decisao === 'deferido' ? 'DEFERIDO (Procedente)' : 
+                      decisao.decisao === 'indeferido' ? 'INDEFERIDO (Improcedente)' : 'ENCAMINHADO PARA CPM']
+        ]
+        
+        dadosDecisao.forEach(([label, valor]) => {
+          doc.setFont(undefined, 'bold')
+          doc.text(label, 35, yPosition)
+          doc.setFont(undefined, 'normal')
+          doc.text(valor, 90, yPosition)
+          yPosition += 8
+        })
+        
+        yPosition += 10
+        
+        // Fundamentação da decisão
+        doc.setFontSize(12)
+        doc.setFont(undefined, 'bold')
+        doc.text('Fundamentação Legal e Técnica:', 35, yPosition)
+        yPosition += 10
+        
+        doc.setFontSize(10)
+        doc.setFont(undefined, 'normal')
+        const linhasFundamentacaoDecisao = doc.splitTextToSize(decisao.fundamentacao, pageWidth - 60)
+        doc.text(linhasFundamentacaoDecisao, 35, yPosition)
+        yPosition += linhasFundamentacaoDecisao.length * 5 + 20
+        
+        // Base legal
+        if (yPosition > pageHeight - 80) {
+          doc.addPage()
+          yPosition = 30
+        }
+        
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('IV. BASE LEGAL', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(10)
+        doc.setFont(undefined, 'normal')
+        
+        const basesLegais = [
+          '• Lei nº 14.133/2021 - Nova Lei de Licitações e Contratos',
+          '• Art. 165 - Direito de recurso dos interessados',
+          '• Art. 166 - Prazo para interposição de recurso (3 dias úteis)',
+          '• Art. 167 - Processamento dos recursos administrativos',
+          '• Art. 169 - Decisão dos recursos pela comissão competente'
+        ]
+        
+        basesLegais.forEach(base => {
+          doc.text(base, 35, yPosition)
+          yPosition += 6
+        })
+        
+        // Assinatura
+        yPosition += 20
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'bold')
+        doc.text(`${decisao.responsavel}`, pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 6
+        doc.setFont(undefined, 'normal')
+        doc.text('Comissão de Contratação ou Licitação (CCL)', pageWidth / 2, yPosition, { align: 'center' })
+        
+        // Rodapé
+        doc.setFontSize(8)
+        doc.text(`Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 30, pageHeight - 15)
+        doc.text(`Sistema Comprar Bem - Recursos Administrativos`, pageWidth - 30, pageHeight - 15, { align: 'right' })
+        
+        // Salvar PDF
+        const nomeArquivo = `Recurso_${String(recurso.id).substring(0, 8)}_${decisao.decisao}_${new Date().toISOString().split('T')[0]}.pdf`
+        doc.save(nomeArquivo)
+        
+        this.$swal({
+          title: '📄 Documento Gerado!',
+          text: `O documento PDF foi gerado com sucesso: ${nomeArquivo}`,
+          icon: 'success'
+        })
+
+      } catch (error) {
+        console.error('Erro ao gerar documento:', error)
+        this.$swal({
+          title: '❌ Erro ao Gerar Documento',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+    
     visualizarDocumentacaoRecurso(recurso) {
       this.$swal({
         title: '📄 Documentação do Recurso',
@@ -1938,7 +2479,7 @@ export default {
             data_recurso: dadosRecurso.data_recurso,
             prazo_final: dadosRecurso.prazo_final,
             status: 'EM ANÁLISE',
-            fundamentacao_recurso: dadosRecurso.fundamentacao_recurso
+            fundamentacao: dadosRecurso.fundamentacao
           }])
           .select()
         
@@ -1956,6 +2497,9 @@ export default {
     
     // Sistema de Notificações e Monitoramento de Prazos
     iniciarMonitoramentoPrazos() {
+      // Limpeza inicial de notificações antigas
+      this.limparNotificacoesAntigas()
+      
       // Verificação inicial
       this.verificarPrazos()
       
@@ -1969,6 +2513,9 @@ export default {
     
     async verificarPrazos() {
       try {
+        // Limpar notificações antigas/irrelevantes antes de criar novas
+        this.limparNotificacoesAntigas()
+        
         await this.verificarPrazosRecursos()
         await this.verificarPrazosJulgamento()
         await this.verificarPrazosHomologacao()
@@ -1978,6 +2525,64 @@ export default {
       } catch (error) {
         console.error('Erro ao verificar prazos:', error)
       }
+    },
+    
+    limparNotificacoesAntigas() {
+      const hoje = new Date()
+      
+      // Remover notificações de processos vencidos há mais de 30 dias
+      this.notificacoes = this.notificacoes.filter(notificacao => {
+        // Se é uma notificação de homologação atrasada
+        if (notificacao.tipo === 'homologacao-atrasada' && notificacao.ata_id) {
+          const processo = this.processosPendentesHomologacao.find(p => p.id === notificacao.ata_id)
+          if (processo) {
+            const dataJulgamento = new Date(processo.dataJulgamento)
+            const diffTime = hoje - dataJulgamento
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+            
+            // Remover se vencido há mais de 30 dias
+            if (diffDays > 30) {
+              return false
+            }
+          }
+        }
+        
+        // Se é uma notificação de julgamento vencido
+        if (notificacao.tipo === 'julgamento-vencido' && notificacao.produto_id) {
+          const produto = this.produtosPendentes.find(p => p.id === notificacao.produto_id)
+          if (produto) {
+            const dataAnalise = new Date(produto.criado_em)
+            const prazoFinal = new Date(dataAnalise)
+            prazoFinal.setDate(dataAnalise.getDate() + 10)
+            
+            const diffTime = prazoFinal - hoje
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            
+            // Remover se vencido há mais de 30 dias
+            if (diffDays < 0 && Math.abs(diffDays) > 30) {
+              return false
+            }
+          }
+        }
+        
+        // Se é uma notificação de recurso vencido
+        if (notificacao.tipo === 'prazo-vencido' && notificacao.recurso_id) {
+          const recurso = this.recursos.find(r => r.id === notificacao.recurso_id)
+          if (recurso) {
+            const prazoFinal = new Date(recurso.prazo_final)
+            const diffTime = prazoFinal - hoje
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            
+            // Remover se vencido há mais de 30 dias
+            if (diffDays < 0 && Math.abs(diffDays) > 30) {
+              return false
+            }
+          }
+        }
+        
+        // Manter todas as outras notificações
+        return true
+      })
     },
     
     async verificarPrazosRecursos() {
@@ -1992,6 +2597,11 @@ export default {
         
         // Recurso vencido
         if (diffDays < 0 && recurso.status === 'EM ANÁLISE') {
+          // Não exibir notificações para recursos vencidos há mais de 30 dias (sem solução possível)
+          if (Math.abs(diffDays) > 30) {
+            return // Pular este recurso
+          }
+          
           this.criarNotificacao({
             tipo: 'prazo-vencido',
             titulo: 'Prazo de Recurso Vencido',
@@ -2028,6 +2638,11 @@ export default {
         
         // Processo vencido
         if (diffDays < 0) {
+          // Não exibir notificações para produtos vencidos há mais de 30 dias (sem solução possível)
+          if (Math.abs(diffDays) > 30) {
+            return // Pular este produto
+          }
+          
           this.criarNotificacao({
             tipo: 'julgamento-vencido',
             titulo: 'Prazo de Julgamento Vencido',
@@ -2059,7 +2674,12 @@ export default {
           const diffTime = hoje - dataJulgamento
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
           
-          // Processo aguardando homologação há mais de 10 dias
+          // Não exibir notificações para processos vencidos há mais de 30 dias (sem solução possível)
+          if (diffDays > 30) {
+            return // Pular este processo
+          }
+          
+          // Processo aguardando homologação há mais de 10 dias (mas menos de 30)
           if (diffDays > 10) {
             this.criarNotificacao({
               tipo: 'homologacao-atrasada',
@@ -2729,13 +3349,13 @@ export default {
         // ====================== DADOS DA ATA ======================
         doc.setFontSize(12)
         doc.setFont(undefined, 'normal')
-        doc.text(`Número: ${ata.numero}`, 30, yPosition)
+        doc.text(`Número: ${ata.numero || 'Não informado'}`, 30, yPosition)
         yPosition += 8
-        doc.text(`Período: ${ata.periodo}`, 30, yPosition)
+        doc.text(`Período: ${ata.periodo || 'Não informado'}`, 30, yPosition)
         yPosition += 8
-        doc.text(`Data de Publicação: ${this.formatDate(ata.dataPublicacao)}`, 30, yPosition)
+        doc.text(`Data de Publicação: ${this.formatDate(ata.dataPublicacao || ata.data_publicacao)}`, 30, yPosition)
         yPosition += 8
-        doc.text(`Status: ${ata.statusRecursal}`, 30, yPosition)
+        doc.text(`Status: ${ata.statusRecursal || ata.status_recursal || ata.status_ata || 'Não informado'}`, 30, yPosition)
         yPosition += 20
         
         // ====================== PRODUTOS JULGADOS ======================
@@ -2771,15 +3391,15 @@ export default {
             
             doc.setFontSize(11)
             doc.setFont(undefined, 'bold')
-            doc.text(`${index + 1}. ${produto.nome}`, 35, yPosition)
+            doc.text(`${index + 1}. ${produto.nome || 'Nome não informado'}`, 35, yPosition)
             yPosition += 6
             
             doc.setFont(undefined, 'normal')
-            doc.text(`Marca: ${produto.marca} | Modelo: ${produto.modelo}`, 40, yPosition)
+            doc.text(`Marca: ${produto.marca || 'Não informada'} | Modelo: ${produto.modelo || 'Não informado'}`, 40, yPosition)
             yPosition += 6
-            doc.text(`Fabricante: ${produto.fabricante}`, 40, yPosition)
+            doc.text(`Fabricante: ${produto.fabricante || 'Não informado'}`, 40, yPosition)
             yPosition += 6
-            doc.text(`Julgado em: ${this.formatDate(produto.julgado_em)}`, 40, yPosition)
+            doc.text(`Julgado em: ${this.formatDate(produto.julgado_em) || 'Data não informada'}`, 40, yPosition)
             yPosition += 6
             
             if (produto.adequacao_tecnica) {
@@ -2813,15 +3433,15 @@ export default {
             
             doc.setFontSize(11)
             doc.setFont(undefined, 'bold')
-            doc.text(`${index + 1}. ${produto.nome}`, 35, yPosition)
+            doc.text(`${index + 1}. ${produto.nome || 'Nome não informado'}`, 35, yPosition)
             yPosition += 6
             
             doc.setFont(undefined, 'normal')
-            doc.text(`Marca: ${produto.marca} | Modelo: ${produto.modelo}`, 40, yPosition)
+            doc.text(`Marca: ${produto.marca || 'Não informada'} | Modelo: ${produto.modelo || 'Não informado'}`, 40, yPosition)
             yPosition += 6
-            doc.text(`Fabricante: ${produto.fabricante}`, 40, yPosition)
+            doc.text(`Fabricante: ${produto.fabricante || 'Não informado'}`, 40, yPosition)
             yPosition += 6
-            doc.text(`Julgado em: ${this.formatDate(produto.julgado_em)}`, 40, yPosition)
+            doc.text(`Julgado em: ${this.formatDate(produto.julgado_em) || 'Data não informada'}`, 40, yPosition)
             yPosition += 6
             
             if (produto.observacoes_ccl) {
@@ -2835,7 +3455,7 @@ export default {
         }
         
         // ====================== CONTEÚDO DA ATA ======================
-        if (ata.conteudoAta) {
+        if (ata.conteudoAta || ata.conteudo_ata) {
           if (yPosition > pageHeight - 80) {
             doc.addPage()
             yPosition = 30
@@ -2848,7 +3468,7 @@ export default {
           
           doc.setFontSize(10)
           doc.setFont(undefined, 'normal')
-          const conteudoLines = doc.splitTextToSize(ata.conteudoAta, pageWidth - 70)
+          const conteudoLines = doc.splitTextToSize(ata.conteudoAta || ata.conteudo_ata, pageWidth - 70)
           doc.text(conteudoLines, 35, yPosition)
         }
         
@@ -2873,14 +3493,14 @@ export default {
         }
         
         // Salvar PDF
-        const nomeArquivo = `ATA_${ata.numero.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+        const nomeArquivo = `ATA_${(ata.numero || 'SemNumero').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
         doc.save(nomeArquivo)
         
         this.$swal({
           title: '✅ PDF Gerado!',
           html: `
             <div style="text-align: center; padding: 15px;">
-              <h4>📋 ${ata.numero}</h4>
+              <h4>📋 ${ata.numero || 'Ata sem número'}</h4>
               <p><strong>Arquivo:</strong> ${nomeArquivo}</p>
               <p>PDF da ata de julgamento gerado com sucesso!</p>
               <p><strong>📊 Conteúdo:</strong></p>
@@ -3012,90 +3632,415 @@ export default {
       }
     },
     
-    novoRecurso(ata) {
-      this.$swal({
-        title: '➕ Protocolar Novo Recurso',
-        html: `
-          <div style="text-align: left; padding: 15px;">
-            <p><strong>Ata:</strong> ${ata.numero}</p>
-            <hr>
-            <div style="margin-bottom: 15px;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Nome do Recorrente:</label>
-              <input id="recorrente" class="swal2-input" type="text" placeholder="Nome da empresa/pessoa">
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Produto/Processo:</label>
-              <input id="produtoNome" class="swal2-input" type="text" placeholder="Nome do produto contestado">
-            </div>
-            <div style="margin-bottom: 15px;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Fundamentação do Recurso:</label>
-              <textarea id="fundamentacao" class="swal2-textarea" rows="4" placeholder="Descreva os motivos e fundamentos legais do recurso..."></textarea>
-            </div>
-            <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;">
-              <small><strong>⚠️ Prazo:</strong> Recursos devem ser protocolados em até 3 dias úteis após a publicação da ata.</small>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: '✅ Protocolar Recurso',
-        cancelButtonText: '❌ Cancelar',
-        preConfirm: () => {
-          const recorrente = document.getElementById('recorrente').value.trim()
-          const produtoNome = document.getElementById('produtoNome').value.trim()
-          const fundamentacao = document.getElementById('fundamentacao').value.trim()
-          
-          if (!recorrente || !produtoNome || !fundamentacao) {
-            this.$swal.showValidationMessage('Preencha todos os campos obrigatórios')
-            return false
-          }
-          
-          return { recorrente, produtoNome, fundamentacao }
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // Simular protocolo de recurso (implementação completa salvaria no banco)
-          this.$swal({
-            title: '✅ Recurso Protocolado!',
-            html: `
-              <div style="text-align: center; padding: 20px;">
-                <h4>📄 Protocolo: REC-${Math.floor(Math.random() * 9000) + 1000}/2025</h4>
-                <p><strong>Recorrente:</strong> ${result.value.recorrente}</p>
-                <p><strong>Produto:</strong> ${result.value.produtoNome}</p>
-                <p><strong>Status:</strong> EM ANÁLISE</p>
-                <hr>
-                <p>O recurso foi protocolado e será analisado pela Comissão.</p>
+    async novoRecurso(ata) {
+      try {
+        const result = await this.$swal({
+          title: '➕ Protocolar Novo Recurso',
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <p><strong>Ata:</strong> ${ata.numero}</p>
+              <hr>
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Nome do Recorrente:</label>
+                <input id="recorrente" class="swal2-input" type="text" placeholder="Nome da empresa/pessoa">
               </div>
-            `,
-            icon: 'success'
-          })
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Documento (CNPJ/CPF) - <em>Opcional</em>:</label>
+                <input id="documento" class="swal2-input" type="text" placeholder="CNPJ ou CPF do recorrente (opcional)">
+              </div>
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Produto/Processo:</label>
+                <input id="produtoNome" class="swal2-input" type="text" placeholder="Nome do produto contestado">
+              </div>
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Fundamentação do Recurso:</label>
+                <textarea id="fundamentacao" class="swal2-textarea" rows="4" placeholder="Descreva os motivos e fundamentos legais do recurso..."></textarea>
+              </div>
+              <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;">
+                <small><strong>⚠️ Prazo:</strong> Recursos devem ser protocolados em até 3 dias úteis após a publicação da ata.</small>
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonText: '✅ Protocolar Recurso',
+          cancelButtonText: '❌ Cancelar',
+          preConfirm: () => {
+            const recorrente = document.getElementById('recorrente').value.trim()
+            const documento = document.getElementById('documento').value.trim()
+            const produtoNome = document.getElementById('produtoNome').value.trim()
+            const fundamentacao = document.getElementById('fundamentacao').value.trim()
+            
+            if (!recorrente || !produtoNome || !fundamentacao) {
+              this.$swal.showValidationMessage('Preencha todos os campos obrigatórios')
+              return false
+            }
+            
+            return { recorrente, documento, produtoNome, fundamentacao }
+          }
+        })
+
+        if (!result.isConfirmed) return
+
+        // Calcular prazo final (3 dias úteis a partir de hoje)
+        const dataRecurso = new Date()
+        const prazoFinal = this.adicionarDiasUteis(dataRecurso, 3)
+
+        // Salvar recurso no banco de dados
+        const recursoData = {
+          tenant_id: this.currentTenantId,
+          ata_referencia: ata.numero,
+          produto_nome: result.value.produtoNome,
+          recorrente: result.value.recorrente,
+          documento_recorrente: result.value.documento,
+          data_recurso: dataRecurso.toISOString(),
+          prazo_final: prazoFinal.toISOString(),
+          fundamentacao: result.value.fundamentacao,
+          status: 'EM ANÁLISE'
         }
-      })
+
+        const { data: novoRecurso, error } = await supabase
+          .from('recursos')
+          .insert([recursoData])
+          .select()
+
+        if (error) {
+          console.error('Erro ao inserir recurso:', error)
+          
+          // Se for erro de tabela não existir, tentar criar automaticamente ou dar instruções
+          if (error.message.includes('relation "recursos" does not exist') || 
+              error.code === '42P01' || 
+              error.message.includes('recursos')) {
+            this.$swal({
+              title: '⚠️ Tabela de Recursos Não Encontrada',
+              html: `
+                <div style="text-align: left; padding: 15px;">
+                  <p>A tabela de recursos ainda não foi criada no banco de dados.</p>
+                  <p><strong>Ação necessária:</strong></p>
+                  <ol>
+                    <li>Execute o script SQL: <code>criar_tabela_recursos.sql</code></li>
+                    <li>Depois tente protocolar o recurso novamente</li>
+                  </ol>
+                  <hr>
+                  <p><strong>Erro técnico:</strong> ${error.message}</p>
+                  <p><strong>Dados do recurso (temporário):</strong></p>
+                  <p><strong>Recorrente:</strong> ${result.value.recorrente}</p>
+                  <p><strong>Produto:</strong> ${result.value.produtoNome}</p>
+                  <p><strong>Status:</strong> Aguardando criação da tabela</p>
+                </div>
+              `,
+              icon: 'warning'
+            })
+          } else {
+            // Outros erros
+            this.$swal({
+              title: '❌ Erro ao Protocolar Recurso',
+              text: `Erro: ${error.message}`,
+              icon: 'error'
+            })
+          }
+          return
+        }
+
+        // Recarregar dados
+        await this.carregarRecursos()
+        await this.carregarDados()
+
+        // Sucesso
+        const protocoloNumero = `REC-${String(novoRecurso[0].id).substring(0, 8).toUpperCase()}/${new Date().getFullYear()}`
+        
+        this.$swal({
+          title: '✅ Recurso Protocolado com Sucesso!',
+          html: `
+            <div style="text-align: center; padding: 20px;">
+              <h4>📄 Protocolo: ${protocoloNumero}</h4>
+              <p><strong>Recorrente:</strong> ${result.value.recorrente}</p>
+              <p><strong>Produto:</strong> ${result.value.produtoNome}</p>
+              <p><strong>Status:</strong> EM ANÁLISE</p>
+              <p><strong>Prazo para Decisão:</strong> ${this.formatDate(prazoFinal)}</p>
+              <hr>
+              <p>O recurso foi protocolado e será analisado pela Comissão dentro do prazo legal.</p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: '📋 Ver Recursos',
+          showCancelButton: true,
+          cancelButtonText: '✅ OK'
+        }).then((showResult) => {
+          if (showResult.isConfirmed) {
+            // Ir para a seção de recursos (que fica na aba principal)
+            this.activeTab = 'dashboard'
+          }
+        })
+
+      } catch (error) {
+        console.error('Erro ao criar recurso:', error)
+        this.$swal({
+          title: '❌ Erro ao Protocolar Recurso',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
     },
     
-    analisarRecursos(ata, recursos) {
-      this.$swal({
-        title: '🔍 Análise de Recursos',
-        html: `
-          <div style="text-align: left; padding: 15px;">
-            <p><strong>Ata:</strong> ${ata.numero}</p>
-            <p><strong>Recursos para análise:</strong> ${recursos.length}</p>
-            <hr>
-            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px;">
-              <h5 style="color: #1976d2; margin: 0 0 10px 0;">⚖️ Processo de Análise</h5>
-              <ol>
-                <li>Verificação da tempestividade do recurso</li>
-                <li>Análise da fundamentação apresentada</li>
-                <li>Avaliação técnica do mérito</li>
-                <li>Decisão: Deferimento ou Indeferimento</li>
-                <li>Publicação da decisão</li>
-              </ol>
+    async analisarRecursos(ata, recursos) {
+      try {
+        // Se não há recursos na variável, buscar do banco
+        let recursosParaAnalise = recursos
+        if (!recursosParaAnalise || recursosParaAnalise.length === 0) {
+          const { data: recursosDB, error } = await supabase
+            .from('recursos')
+            .select('*')
+            .eq('ata_referencia', ata.numero)
+            .eq('tenant_id', this.currentTenantId)
+            .order('data_recurso', { ascending: false })
+          
+          if (!error && recursosDB) {
+            recursosParaAnalise = recursosDB
+          }
+        }
+
+        if (!recursosParaAnalise || recursosParaAnalise.length === 0) {
+          this.$swal({
+            title: '📄 Nenhum Recurso Encontrado',
+            text: `Não há recursos protocolados para a ata ${ata.numero}.`,
+            icon: 'info'
+          })
+          return
+        }
+
+        // Montar interface de análise
+        const recursosHTML = recursosParaAnalise.map(recurso => {
+          const prazoVencido = new Date(recurso.prazo_final) < new Date()
+          const statusColor = recurso.status === 'EM ANÁLISE' ? '#ffc107' : 
+                             recurso.status === 'DEFERIDO' ? '#28a745' : 
+                             recurso.status === 'INDEFERIDO' ? '#dc3545' : '#6c757d'
+          
+          return `
+            <div style="border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #fff;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h6 style="margin: 0; color: #495057;">📄 ${recurso.produto_nome}</h6>
+                <span style="background: ${statusColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                  ${recurso.status}
+                </span>
+              </div>
+              <p style="margin: 5px 0;"><strong>Recorrente:</strong> ${recurso.recorrente}</p>
+              <p style="margin: 5px 0;"><strong>Data do Recurso:</strong> ${this.formatDate(recurso.data_recurso)}</p>
+              <p style="margin: 5px 0;"><strong>Prazo Final:</strong> ${this.formatDate(recurso.prazo_final)} 
+                ${prazoVencido ? '<span style="color: #dc3545; font-weight: bold;">(VENCIDO)</span>' : '<span style="color: #28a745; font-weight: bold;">(EM PRAZO)</span>'}
+              </p>
+              
+              <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                <strong>Fundamentação:</strong><br>
+                <small>${recurso.fundamentacao || 'Não informada'}</small>
+              </div>
+              
+              ${recurso.status === 'EM ANÁLISE' ? `
+                <button onclick="analisarRecursoEspecifico('${recurso.id}')" 
+                        style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px;">
+                  📋 Analisar Este Recurso
+                </button>
+              ` : recurso.decisao ? `
+                <div style="background: #e9ecef; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 14px;">
+                  <strong>Decisão:</strong> ${recurso.decisao.toUpperCase()}<br>
+                  <strong>Responsável:</strong> ${recurso.responsavel_decisao || 'Não informado'}<br>
+                  <strong>Data:</strong> ${this.formatDate(recurso.data_decisao)}
+                </div>
+              ` : ''}
             </div>
-            <p><em>Em uma implementação completa, esta tela permitiria analisar cada recurso individualmente.</em></p>
-          </div>
-        `,
-        confirmButtonText: '✅ Entendi'
-      })
+          `
+        }).join('')
+
+        this.$swal({
+          title: '🔍 Análise de Recursos Administrativos',
+          html: `
+            <div style="text-align: left; padding: 15px; max-height: 600px; overflow-y: auto;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h5 style="margin: 0 0 10px 0; color: #495057;">📋 Informações da Ata</h5>
+                <p><strong>Número:</strong> ${ata.numero}</p>
+                <p><strong>Total de Recursos:</strong> ${recursosParaAnalise.length}</p>
+                <p><strong>Em Análise:</strong> ${recursosParaAnalise.filter(r => r.status === 'EM ANÁLISE').length}</p>
+                <p><strong>Julgados:</strong> ${recursosParaAnalise.filter(r => r.status !== 'EM ANÁLISE').length}</p>
+              </div>
+              
+              <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h6 style="color: #1976d2; margin: 0 0 10px 0;">⚖️ Processo de Análise</h6>
+                <ol style="margin: 0; padding-left: 20px; font-size: 14px;">
+                  <li>Verificação da tempestividade (3 dias úteis)</li>
+                  <li>Análise da fundamentação legal</li>
+                  <li>Avaliação técnica do mérito</li>
+                  <li>Decisão motivada (Deferir/Indeferir/Encaminhar CPM)</li>
+                  <li>Comunicação às partes interessadas</li>
+                </ol>
+              </div>
+              
+              <h6 style="color: #495057; margin-bottom: 15px;">📄 Recursos Protocolados:</h6>
+              ${recursosHTML}
+            </div>
+          `,
+          width: '900px',
+          confirmButtonText: '📊 Gerar Relatório Geral',
+          showCancelButton: true,
+          cancelButtonText: '❌ Fechar',
+          didOpen: () => {
+            // Adicionar funcionalidade aos botões
+            window.analisarRecursoEspecifico = (recursoId) => {
+              this.$swal.close()
+              const recurso = recursosParaAnalise.find(r => r.id === recursoId)
+              if (recurso) {
+                this.analisarRecurso(recurso)
+              }
+            }
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            this.gerarRelatorioRecursos(ata, recursosParaAnalise)
+          }
+        })
+
+      } catch (error) {
+        console.error('Erro ao analisar recursos:', error)
+        this.$swal({
+          title: '❌ Erro ao Carregar Recursos',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
     },
+    
+    async gerarRelatorioRecursos(ata, recursos) {
+      try {
+        // Importar jsPDF
+        const { jsPDF } = await import('jspdf')
+        
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        let yPosition = 25
+        
+        // Cabeçalho oficial
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.text('COMISSÃO DE CONTRATAÇÃO OU LICITAÇÃO (CCL)', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 8
+        
+        doc.setFontSize(12)
+        doc.setFont(undefined, 'normal')
+        doc.text('Sistema de Pré-Qualificação de Bens - Lei 14.133/2021', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 15
+        
+        // Linha decorativa
+        doc.setLineWidth(0.5)
+        doc.line(30, yPosition, pageWidth - 30, yPosition)
+        yPosition += 20
+        
+        // Título do documento
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.text('RELATÓRIO GERAL DE RECURSOS ADMINISTRATIVOS', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 20
+        
+        // Informações da ata
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('I. INFORMAÇÕES DA ATA', 30, yPosition)
+        yPosition += 12
+        
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'normal')
+        
+        const dadosAta = [
+          ['Número da Ata:', ata.numero],
+          ['Total de Recursos:', recursos.length.toString()],
+          ['Em Análise:', recursos.filter(r => r.status === 'EM ANÁLISE').length.toString()],
+          ['Deferidos:', recursos.filter(r => r.status === 'DEFERIDO').length.toString()],
+          ['Indeferidos:', recursos.filter(r => r.status === 'INDEFERIDO').length.toString()],
+          ['Data do Relatório:', this.formatDate(new Date())]
+        ]
+        
+        dadosAta.forEach(([label, valor]) => {
+          doc.setFont(undefined, 'bold')
+          doc.text(label, 35, yPosition)
+          doc.setFont(undefined, 'normal')
+          doc.text(valor, 100, yPosition)
+          yPosition += 8
+        })
+        
+        yPosition += 15
+        
+        // Recursos detalhados
+        doc.setFontSize(14)
+        doc.setFont(undefined, 'bold')
+        doc.text('II. RECURSOS PROTOCOLADOS', 30, yPosition)
+        yPosition += 12
+        
+        recursos.forEach((recurso, index) => {
+          if (yPosition > pageHeight - 60) {
+            doc.addPage()
+            yPosition = 30
+          }
+          
+          doc.setFontSize(12)
+          doc.setFont(undefined, 'bold')
+          doc.text(`${index + 1}. ${recurso.produto_nome}`, 35, yPosition)
+          yPosition += 10
+          
+          doc.setFontSize(10)
+          doc.setFont(undefined, 'normal')
+          
+          const dadosRecurso = [
+            `Recorrente: ${recurso.recorrente}`,
+            `Data do Recurso: ${this.formatDate(recurso.data_recurso)}`,
+            `Prazo Final: ${this.formatDate(recurso.prazo_final)}`,
+            `Status: ${recurso.status}`,
+          ]
+          
+          if (recurso.decisao) {
+            dadosRecurso.push(`Decisão: ${recurso.decisao.toUpperCase()}`)
+            dadosRecurso.push(`Responsável: ${recurso.responsavel_decisao || 'Não informado'}`)
+            dadosRecurso.push(`Data da Decisão: ${this.formatDate(recurso.data_decisao)}`)
+          }
+          
+          dadosRecurso.forEach(linha => {
+            doc.text(linha, 40, yPosition)
+            yPosition += 6
+          })
+          
+          if (recurso.fundamentacao) {
+            doc.text('Fundamentação:', 40, yPosition)
+            yPosition += 6
+            const linhasFundamentacao = doc.splitTextToSize(recurso.fundamentacao, pageWidth - 80)
+            doc.text(linhasFundamentacao, 45, yPosition)
+            yPosition += linhasFundamentacao.length * 5
+          }
+          
+          yPosition += 10
+        })
+        
+        // Rodapé
+        doc.setFontSize(8)
+        doc.text(`Relatório gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 30, pageHeight - 15)
+        doc.text(`Sistema Comprar Bem - Recursos Administrativos`, pageWidth - 30, pageHeight - 15, { align: 'right' })
+        
+        // Salvar PDF
+        const nomeArquivo = `Relatorio_Recursos_${(ata.numero || 'SemNumero').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+        doc.save(nomeArquivo)
+        
+        this.$swal({
+          title: '📄 Relatório Gerado!',
+          text: `O relatório PDF foi gerado com sucesso: ${nomeArquivo}`,
+          icon: 'success'
+        })
+
+      } catch (error) {
+        console.error('Erro ao gerar relatório:', error)
+        this.$swal({
+          title: '❌ Erro ao Gerar Relatório',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+    
     // Métodos para Homologações
     calcularPrazoHomologacao(dataJulgamento) {
       if (!dataJulgamento) return 'Sem prazo'
@@ -3261,13 +4206,51 @@ export default {
           
           return { motivo, fundamentacao }
         }
-      }).then((result) => {
+      }).then(async (result) => {
         if (result.isConfirmed) {
-          this.$swal({
-            title: '📝 Processo Indeferido',
-            text: 'O processo foi indeferido. Os interessados serão notificados automaticamente.',
-            icon: 'warning'
-          })
+          try {
+            // Salvar indeferimento no banco
+            const { error } = await supabase
+              .from('homologacoes')
+              .insert([{
+                tenant_id: this.currentTenantId,
+                ata_julgamento_id: processo.id,
+                numero_ata: processo.numeroAta,
+                total_produtos: processo.totalProdutos,
+                tipo_homologacao: 'INDEFERIDA',
+                motivo_indeferimento: result.value.motivo,
+                fundamentacao: result.value.fundamentacao,
+                data_homologacao: new Date().toISOString(),
+                autoridade_competente: this.usuarioNome || 'Autoridade Competente'
+              }])
+
+            if (error) {
+              console.error('Erro ao salvar indeferimento:', error)
+              this.$swal({
+                title: '❌ Erro ao Salvar',
+                text: 'Não foi possível salvar o indeferimento. Verifique se a tabela homologacoes existe.',
+                icon: 'error'
+              })
+              return
+            }
+
+            // Recarregar dados
+            await this.carregarProcessosPendentesHomologacao()
+            await this.carregarHomologacoes()
+
+            this.$swal({
+              title: '📝 Processo Indeferido',
+              text: 'O processo foi indeferido e removido da lista de pendências. Os interessados serão notificados automaticamente.',
+              icon: 'success'
+            })
+          } catch (error) {
+            console.error('Erro ao indeferir processo:', error)
+            this.$swal({
+              title: '❌ Erro',
+              text: `Erro: ${error.message}`,
+              icon: 'error'
+            })
+          }
         }
       })
     },
@@ -3856,7 +4839,7 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
         }
         
         // Salvar PDF
-        const nomeArquivo = `CCL_${produto.nome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+        const nomeArquivo = `CCL_${(produto.nome || 'Produto').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
         doc.save(nomeArquivo)
         
         this.$swal({
@@ -4084,6 +5067,41 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
           text: `Erro: ${error.message}`,
           icon: 'error'
         })
+      }
+    },
+    
+    // ==================== MÉTODOS DE PAGINAÇÃO ====================
+    
+    mudarPagina(secao, novaPagina) {
+      if (novaPagina >= 1 && novaPagina <= this.calcularTotalPaginas(secao)) {
+        this.paginacao[secao].paginaAtual = novaPagina
+      }
+    },
+    
+    calcularTotalPaginas(secao) {
+      const total = this.paginacao[secao].total
+      const itensPorPagina = this.paginacao[secao].itensPorPagina
+      return total > 0 ? Math.ceil(total / itensPorPagina) : 1
+    },
+    
+    atualizarTotalPaginacao(secao, novoTotal) {
+      this.paginacao[secao].total = novoTotal
+      // Se a página atual é maior que o total de páginas, volta para a primeira
+      if (this.paginacao[secao].paginaAtual > this.calcularTotalPaginas(secao)) {
+        this.paginacao[secao].paginaAtual = 1
+      }
+    },
+    
+    proximaPagina(secao) {
+      const totalPaginas = this.calcularTotalPaginas(secao)
+      if (this.paginacao[secao].paginaAtual < totalPaginas) {
+        this.paginacao[secao].paginaAtual++
+      }
+    },
+    
+    paginaAnterior(secao) {
+      if (this.paginacao[secao].paginaAtual > 1) {
+        this.paginacao[secao].paginaAtual--
       }
     }
   },
@@ -4333,15 +5351,6 @@ th {
 
 .status-reprovado-card {
   border-top: 5px solid #e74c3c;
-}
-
-.status-diligencia-card {
-  border-top: 5px solid #9b59b6;
-}
-
-.status-diligencia {
-  background-color: #9b59b6;
-  color: white;
 }
 
 .status-recurso-card {
@@ -4656,6 +5665,87 @@ th {
   border-radius: 12px;
   font-size: 12px;
   font-weight: bold;
+}
+
+.badge-success {
+  background-color: #28a745;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 2px 0;
+}
+
+.badge-danger {
+  background-color: #dc3545;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 2px 0;
+}
+
+.decisao-tomada {
+  text-align: center;
+  padding: 5px;
+}
+
+/* Estilos de Paginação */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.pagination-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.pagination-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pagination-info {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+  padding: 0 10px;
+}
+
+/* Estilos para as ações nas tabelas */
+.acoes-linha {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  min-width: 280px;
+  padding: 5px;
 }
 
 .status-em-prazo {
