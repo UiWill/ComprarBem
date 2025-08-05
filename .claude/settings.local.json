@@ -16,7 +16,10 @@
       "Bash(git push:*)",
       "WebFetch(domain:manuais.processoeletronico.gov.br)",
       "Bash(tail:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm run lint:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

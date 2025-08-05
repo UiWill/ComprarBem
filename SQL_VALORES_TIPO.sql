@@ -1,0 +1,4 @@
+-- VER VALORES EXISTENTES NA COLUNA TIPO
+SELECT DISTINCT tipo, COUNT(*) as quantidade
+FROM usuarios 
+GROUP BY tipo;

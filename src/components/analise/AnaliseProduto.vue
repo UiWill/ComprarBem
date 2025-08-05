@@ -1037,6 +1037,9 @@ h2, h3 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 5px;
 }
 
 .documento-item {
@@ -1045,31 +1048,54 @@ h2, h3 {
   background: #f9f9f9;
   padding: 10px;
   border-radius: 4px;
+  min-width: 0; /* Permite que o flex item encolha */
+  overflow: hidden;
 }
 
 .doc-icon {
   font-size: 24px;
   margin-right: 10px;
+  flex-shrink: 0; /* Evita que o ícone encolha */
 }
 
 .doc-info {
   flex: 1;
+  min-width: 0; /* Permite que o conteúdo seja truncado */
+  overflow: hidden;
 }
 
 .doc-name {
   margin: 0;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .doc-type {
   margin: 0;
   font-size: 12px;
   color: #7f8c8d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .doc-action {
   color: #3498db;
   text-decoration: none;
+  flex-shrink: 0; /* Evita que o botão encolha */
+  margin-left: 10px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background-color 0.3s;
+}
+
+.doc-action:hover {
+  background-color: #e3f2fd;
 }
 
 .analise-form {
@@ -1471,5 +1497,70 @@ textarea {
 .edital-referencia strong {
   color: #2980b9;
   font-size: 14px;
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 768px) {
+  .documentos-list {
+    grid-template-columns: 1fr;
+    max-height: 300px;
+  }
+  
+  .documento-item {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+  
+  .doc-icon {
+    margin-right: 0;
+    margin-bottom: 5px;
+  }
+  
+  .doc-info {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .doc-action {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .produto-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .produto-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .analise-container {
+    padding: 10px;
+  }
+  
+  .documentos-list {
+    gap: 10px;
+    max-height: 250px;
+  }
+  
+  .produto-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .btn-diligencia, .btn-ver-diligencias {
+    width: 100%;
+    text-align: center;
+  }
 }
 </style> 

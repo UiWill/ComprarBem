@@ -150,6 +150,23 @@
       
       <div class="form-row">
         <div class="form-group">
+          <label for="registro_inmetro">Registro/Certificação INMETRO</label>
+          <input 
+            id="registro_inmetro" 
+            v-model="produto.registro_inmetro" 
+            type="text" 
+            placeholder="Número do registro ou certificação INMETRO"
+          >
+          <small class="info-text">Certificado de conformidade ou registro no INMETRO, quando aplicável</small>
+        </div>
+        
+        <div class="form-group">
+          <!-- Campo vazio para manter layout balanceado -->
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
           <label for="cbpf">CBPF</label>
           <input 
             id="cbpf" 
@@ -263,6 +280,7 @@ export default {
         email_fornecedor: '',
         origem: '',
         registro_anvisa: '',
+        registro_inmetro: '',
         cbpf: '',
         codigo_material: '',
         norma_abnt: '',

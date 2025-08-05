@@ -50,7 +50,10 @@
         :class="{ active: activeTab === 'reclamacoes' }" 
         @click="activeTab = 'reclamacoes'"
       >
-        Avaliações de Usuários
+        Reclame Aqui - Reclamações
+        <span v-if="reclamacoesNaoRespondidas > 0" class="notification-badge">
+          {{ reclamacoesNaoRespondidas }}
+        </span>
       </div>
     
     </div>
@@ -437,8 +440,8 @@
               <div class="banco-card">
                 <div class="banco-icon">🏛️</div>
                 <h5>Banco de Preços do Governo Federal</h5>
-                <p>Consulta ao banco de preços oficial do governo</p>
-                <button @click="$swal({ title: '🏛️ Banco Federal', text: 'Funcionalidade em desenvolvimento - Consulta ao banco de preços oficial', icon: 'info' })" class="btn-primary">Consultar</button>
+                <p>Consulta ao Painel de Preços</p>
+                <a href="https://paineldeprecos.planejamento.gov.br/" target="_blank" rel="noopener noreferrer" class="btn-primary" style="text-decoration: none; display: inline-block; text-align: center;">Consultar</a>
               </div>
               
               <div class="banco-card">
@@ -450,16 +453,12 @@
               
               <div class="banco-card">
                 <div class="banco-icon">🏢</div>
-                <h5>Outros Bancos Estaduais</h5>
-                <p>Consulta a bancos de preços estaduais</p>
-                <button @click="$swal({ title: '🏢 Bancos Estaduais', text: 'Funcionalidade em desenvolvimento - Consulta a bancos estaduais', icon: 'info' })" class="btn-primary">Consultar</button>
+                <h5>Banco de Preços do TCE/MG</h5>
+                <p>Tribunal de Contas do Estado de Minas Gerais</p>
+                <a href="https://bancodepreco.tce.mg.gov.br/#/login/ex" target="_blank" rel="noopener noreferrer" class="btn-primary" style="text-decoration: none; display: inline-block; text-align: center;">Consultar</a>
               </div>
             </div>
 
-            <div class="em-desenvolvimento">
-              <span>🚧 Em desenvolvimento</span>
-              <p>Funcionalidade em construção - Integração automática com APIs de bancos de preços</p>
-            </div>
           </div>
         </div>
       </div>
@@ -504,8 +503,17 @@
                 v-model="filtroEditais.busca" 
                 type="text" 
                 placeholder="🔍 Buscar edital..."
-                @input="aplicarFiltrosEditais"
+                @input="debouncedFiltrarEditais"
+                @keyup.enter="aplicarFiltrosEditais"
               >
+              <button 
+                v-if="filtroEditais.busca || filtroEditais.status" 
+                @click="limparFiltrosEditais" 
+                class="btn-clear-filter"
+                title="Limpar filtros"
+              >
+                ✕
+              </button>
             </div>
             <div class="filtro-group">
               <select v-model="filtroEditais.status" @change="aplicarFiltrosEditais">
@@ -1287,7 +1295,7 @@
         <div v-if="activeTabDCB === 'vencimentos'" class="dcb-content">
           <div class="section-header">
             <h3>⏰ Controle de Vencimentos DCB</h3>
-            <p>Monitoramento de DCBs próximos ao vencimento ou já vencidos.</p>
+            <p>Monitoramento de DCBs prestes a vencer ou já vencidas.</p>
           </div>
 
           <!-- Alertas de Vencimento -->
@@ -1980,106 +1988,167 @@
       </div>
     </div>
 
-    <!-- Aba Avaliações de Usuários -->
-    <div v-if="activeTab === 'reclamacoes'" class="avaliacoes-section">
+    <!-- Aba Reclame Aqui - Reclamações -->
+    <div v-if="activeTab === 'reclamacoes'" class="reclamacoes-section">
       <div class="section-header">
-        <h2>⭐ Avaliações de Usuários</h2>
-        <p>Visualização das avaliações e feedbacks dos usuários sobre materiais</p>
+        <h2>📢 Reclame Aqui - Reclamações</h2>
+        <p>Gerenciamento de reclamações públicas dos usuários</p>
       </div>
       
       <div class="section-actions">
-        <small style="color: #666;">
-          📊 Total: {{ avaliacoes.length }} | Filtradas: {{ avaliacoesFiltradas.length }}
-        </small>
+        <div class="stats-reclamacoes">
+          <span class="stat-item">📊 Total: {{ reclamacoes.length }}</span>
+          <span class="stat-item">🔍 Filtradas: {{ reclamacoesFiltradas.length }}</span>
+          <span class="stat-item pendentes">⏳ Pendentes: {{ reclamacoesPendentes }}</span>
+          <span class="stat-item respondidas">✅ Respondidas: {{ reclamacoesRespondidas }}</span>
+        </div>
       </div>
 
-      <!-- Filtros para Avaliações -->
-      <div class="filtros-avaliacoes">
+      <!-- Filtros para Reclamações -->
+      <div class="filtros-reclamacoes">
         <div class="filtro-group">
           <label>🔍 Buscar:</label>
           <input 
-            v-model="filtroAvaliacoes.busca" 
+            v-model="filtroReclamacoes.busca" 
             type="text" 
-            placeholder="Material, usuário, comentário..."
-            @input="aplicarFiltrosAvaliacoes"
+            placeholder="Título, nome, descrição..."
+            @input="aplicarFiltrosReclamacoes"
           >
         </div>
         <div class="filtro-group">
-          <label>⭐ Avaliação:</label>
-          <select v-model="filtroAvaliacoes.rating" @change="aplicarFiltrosAvaliacoes">
-            <option value="">Todas</option>
-            <option value="5">⭐⭐⭐⭐⭐ (5 estrelas)</option>
-            <option value="4">⭐⭐⭐⭐ (4 estrelas)</option>
-            <option value="3">⭐⭐⭐ (3 estrelas)</option>
-            <option value="2">⭐⭐ (2 estrelas)</option>
-            <option value="1">⭐ (1 estrela)</option>
+          <label>📊 Status:</label>
+          <select v-model="filtroReclamacoes.status" @change="aplicarFiltrosReclamacoes">
+            <option value="">Todos</option>
+            <option value="pendente">⏳ Pendente</option>
+            <option value="em_analise">🔍 Em Análise</option>
+            <option value="respondida">✅ Respondida</option>
+            <option value="resolvida">🎯 Resolvida</option>
           </select>
         </div>
         <div class="filtro-group">
-          <label>👤 Usuário:</label>
-          <input 
-            v-model="filtroAvaliacoes.usuario" 
-            type="text" 
-            placeholder="Nome do usuário..."
-            @input="aplicarFiltrosAvaliacoes"
-          >
+          <label>🏷️ Categoria:</label>
+          <select v-model="filtroReclamacoes.categoria" @change="aplicarFiltrosReclamacoes">
+            <option value="">Todas</option>
+            <option value="Produto">📦 Produto</option>
+            <option value="Atendimento">👥 Atendimento</option>
+            <option value="Sistema">💻 Sistema</option>
+            <option value="Processo">📋 Processo</option>
+            <option value="Outro">❓ Outro</option>
+          </select>
+        </div>
+        <div class="filtro-group">
+          <label>⚡ Prioridade:</label>
+          <select v-model="filtroReclamacoes.prioridade" @change="aplicarFiltrosReclamacoes">
+            <option value="">Todas</option>
+            <option value="baixa">🟢 Baixa</option>
+            <option value="normal">🔵 Normal</option>
+            <option value="alta">🟡 Alta</option>
+            <option value="critica">🔴 Crítica</option>
+          </select>
         </div>
       </div>
 
-      <!-- Lista de Avaliações -->
-      <div v-if="avaliacoesFiltradas.length > 0" class="avaliacoes-lista">
+      <!-- Lista de Reclamações -->
+      <div v-if="reclamacoesFiltradas.length > 0" class="reclamacoes-lista">
         <div 
-          v-for="avaliacao in avaliacoesFiltradas" 
-          :key="avaliacao.id" 
-          class="avaliacao-card"
+          v-for="reclamacao in reclamacoesFiltradas" 
+          :key="reclamacao.id" 
+          class="reclamacao-card"
         >
-          <div class="avaliacao-header">
-            <h4>{{ avaliacao.usuario_rdm?.nome_usuario || 'Usuário não encontrado' }}</h4>
-            <div class="rating-display">
-              <span v-for="i in 5" :key="i" :class="{ active: avaliacao.rating >= i }" class="star">⭐</span>
-              <span class="rating-text">{{ avaliacao.rating }}/5</span>
+          <div class="reclamacao-header">
+            <div class="reclamacao-info">
+              <h4>{{ reclamacao.titulo_reclamacao }}</h4>
+              <div class="reclamacao-meta">
+                <span class="reclamante">👤 {{ reclamacao.nome_reclamante }}</span>
+                <span v-if="reclamacao.setor_reclamante" class="setor">🏢 {{ reclamacao.setor_reclamante }}</span>
+                <span class="data">📅 {{ formatDate(reclamacao.criado_em) }}</span>
+              </div>
+            </div>
+            <div class="reclamacao-badges">
+              <span class="status-badge" :class="getStatusClass(reclamacao.status)">
+                {{ getStatusText(reclamacao.status) }}
+              </span>
+              <span v-if="reclamacao.categoria" class="categoria-badge">
+                {{ reclamacao.categoria }}
+              </span>
+              <span class="prioridade-badge" :class="getPrioridadeClass(reclamacao.prioridade)">
+                {{ getPrioridadeText(reclamacao.prioridade) }}
+              </span>
             </div>
           </div>
           
-          <div class="avaliacao-content">
-            <div class="avaliacao-info">
-              <p><strong>Unidade/Setor:</strong> {{ avaliacao.usuario_rdm?.unidade_setor || 'N/A' }}</p>
-              <p><strong>Material:</strong> {{ avaliacao.material_nome }} ({{ avaliacao.material_codigo }})</p>
-              <p><strong>Data:</strong> {{ formatDate(avaliacao.criado_em) }}</p>
-              <p><strong>Contato:</strong> {{ avaliacao.usuario_rdm?.email || 'N/A' }} | {{ avaliacao.usuario_rdm?.telefone || 'N/A' }}</p>
-            </div>
-            
-            <div class="avaliacao-detalhes">
-              <div v-if="avaliacao.comentario" class="comentario-texto">
-                <h5>💬 Avaliação:</h5>
-                <p>{{ avaliacao.comentario }}</p>
+          <div class="reclamacao-content">
+            <div class="reclamacao-detalhes">
+              <div class="descricao-reclamacao">
+                <h5>📝 Descrição da Reclamação:</h5>
+                <p>{{ reclamacao.descricao_reclamacao }}</p>
               </div>
               
-              <div v-if="!avaliacao.comentario" class="sem-comentario">
-                <p><em>Nenhuma avaliação adicional fornecida.</em></p>
+              <!-- Ações da CPM -->
+              <div class="cpm-acoes">
+                <!-- Alterar Status -->
+                <div class="acao-group">
+                  <label>📊 Alterar Status:</label>
+                  <select 
+                    v-model="reclamacao.novo_status" 
+                    @change="alterarStatusReclamacao(reclamacao)"
+                    :disabled="salvandoStatus"
+                  >
+                    <option :value="reclamacao.status">{{ getStatusText(reclamacao.status) }} (atual)</option>
+                    <option value="pendente">⏳ Pendente</option>
+                    <option value="em_analise">🔍 Em Análise</option>
+                    <option value="respondida">✅ Respondida</option>
+                    <option value="resolvida">🎯 Resolvida</option>
+                  </select>
+                </div>
+                
+                <!-- Alterar Prioridade -->
+                <div class="acao-group">
+                  <label>⚡ Alterar Prioridade:</label>
+                  <select 
+                    v-model="reclamacao.nova_prioridade" 
+                    @change="alterarPrioridadeReclamacao(reclamacao)"
+                    :disabled="salvandoPrioridade"
+                  >
+                    <option :value="reclamacao.prioridade">{{ getPrioridadeText(reclamacao.prioridade) }} (atual)</option>
+                    <option value="baixa">🟢 Baixa</option>
+                    <option value="normal">🔵 Normal</option>
+                    <option value="alta">🟡 Alta</option>
+                    <option value="critica">🔴 Crítica</option>
+                  </select>
+                </div>
               </div>
               
-              <!-- Comentário/Decisão da CPM -->
+              <!-- Resposta da CPM -->
               <div class="cpm-resposta">
-                <h5>📋 Comentário/Decisão da CPM:</h5>
-                <div v-if="avaliacao.resposta_cpm" class="resposta-existente">
-                  <p>{{ avaliacao.resposta_cpm }}</p>
-                  <small class="data-resposta">Respondido em: {{ formatDate(avaliacao.data_resposta_cpm) }}</small>
+                <h5>💬 Resposta da CPM:</h5>
+                <div v-if="reclamacao.resposta_cpm" class="resposta-existente">
+                  <p>{{ reclamacao.resposta_cpm }}</p>
+                  <small class="data-resposta">✅ Respondido em: {{ formatDate(reclamacao.respondido_em) }}</small>
+                  <button 
+                    @click="editarResposta(reclamacao)" 
+                    class="btn-secondary btn-small"
+                  >
+                    ✏️ Editar Resposta
+                  </button>
                 </div>
                 <div v-else class="sem-resposta">
                   <textarea 
-                    v-model="avaliacao.nova_resposta" 
+                    v-model="reclamacao.nova_resposta" 
                     class="textarea-resposta"
-                    rows="3"
-                    placeholder="Digite o comentário ou decisão da CPM sobre esta avaliação..."
+                    rows="4"
+                    placeholder="Digite a resposta da CPM para esta reclamação. Seja detalhado e explicativo sobre as ações tomadas ou que serão tomadas..."
                   ></textarea>
-                  <button 
-                    @click="salvarRespostaCPM(avaliacao)" 
-                    class="btn-primary btn-small"
-                    :disabled="!avaliacao.nova_resposta || salvandoResposta"
-                  >
-                    {{ salvandoResposta ? 'Salvando...' : 'Salvar Resposta' }}
-                  </button>
+                  <div class="resposta-acoes">
+                    <button 
+                      @click="salvarRespostaReclamacao(reclamacao)" 
+                      class="btn-primary btn-small"
+                      :disabled="!reclamacao.nova_resposta || salvandoResposta"
+                    >
+                      <span v-if="salvandoResposta" class="spinner-small"></span>
+                      {{ salvandoResposta ? 'Salvando...' : '💾 Salvar Resposta' }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2087,11 +2156,11 @@
         </div>
       </div>
       
-      <!-- Estado vazio para Avaliações -->
-      <div v-if="avaliacoesFiltradas.length === 0" class="empty-state">
-        <div class="empty-icon">⭐</div>
-        <h3>Nenhuma avaliação encontrada</h3>
-        <p>Quando houver avaliações de materiais, elas aparecerão aqui.</p>
+      <!-- Estado vazio para Reclamações -->
+      <div v-if="reclamacoesFiltradas.length === 0" class="empty-state">
+        <div class="empty-icon">📢</div>
+        <h3>Nenhuma reclamação encontrada</h3>
+        <p>Quando houver reclamações dos usuários, elas aparecerão aqui para gerenciamento.</p>
       </div>
 
     </div>
@@ -2271,6 +2340,7 @@ export default {
         busca: '',
         status: ''
       },
+      debounceTimer: null,
       participantes: [],
       participantesFiltrados: [],
       loadingParticipantes: false,
@@ -2382,14 +2452,17 @@ export default {
        
 
        
-       // Dados para Avaliações dos Usuários RDM
-       avaliacoes: [],
-       avaliacoesFiltradas: [],
+       // Dados para Reclamações do Reclame Aqui
+       reclamacoes: [],
+       reclamacoesFiltradas: [],
        salvandoResposta: false,
-       filtroAvaliacoes: {
+       salvandoStatus: false,
+       salvandoPrioridade: false,
+       filtroReclamacoes: {
          busca: '',
-         rating: '',
-         usuario: ''
+         status: '',
+         categoria: '',
+         prioridade: ''
        },
        
        // Controle de abas internas na seção de reclamações
@@ -2412,6 +2485,14 @@ export default {
     if (this.activeTab === 'lembretes') {
       await this.carregarEstatisticasLembretes()
       await this.carregarRdmsPendentes()
+    }
+  },
+
+  beforeUnmount() {
+    // Limpar timer de debounce se existir
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
+      this.debounceTimer = null
     }
   },
   
@@ -2437,9 +2518,9 @@ export default {
           }
         })
       } else if (novaAba === 'reclamacoes') {
-        // Carregar dados quando acessar a aba de avaliações
+        // Carregar dados quando acessar a aba de reclamações
         this.$nextTick(() => {
-          this.carregarAvaliacoes()
+          this.carregarReclamacoes()
         })
       }
     }
@@ -2474,6 +2555,19 @@ export default {
       
       editaisRascunho() {
         return this.editais.filter(edital => edital.status === 'RASCUNHO')
+      },
+      
+      // Propriedades computadas para reclamações
+      reclamacoesPendentes() {
+        return this.reclamacoes.filter(r => r.status === 'pendente' || r.status === 'em_analise').length
+      },
+      
+      reclamacoesRespondidas() {
+        return this.reclamacoes.filter(r => r.status === 'respondida' || r.status === 'resolvida').length
+      },
+      
+      reclamacoesNaoRespondidas() {
+        return this.reclamacoes.filter(r => r.status === 'pendente' || r.status === 'em_analise').length
       },
       
       editaisFinalizados() {
@@ -2583,9 +2677,9 @@ export default {
         // Carregar minutas padrão
         await this.carregarMinutasDisponiveis()
         
-        // Carregar usuários e avaliações
+        // Carregar usuários e reclamações
         await this.carregarUsuarios()
-        await this.carregarAvaliacoes()
+        await this.carregarReclamacoes()
         
         // Contar por status - também filtrando por tenant_id
         const statsCounts = await Promise.all([
@@ -3155,8 +3249,10 @@ export default {
      inicializarFiltros() {
        this.produtosFiltrados = [...this.produtos]
        this.diligenciasFiltradas = [...this.produtosComDiligencia]
+       this.editaisFiltrados = [...this.editais]
        this.aplicarFiltros()
        this.aplicarFiltrosDiligencia()
+       this.aplicarFiltrosEditais()
      },
      
      aplicarFiltros() {
@@ -4187,23 +4283,70 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
       },
 
       aplicarFiltrosEditais() {
-        let editaisFiltrados = [...this.editais]
+        try {
+          let editaisFiltrados = [...this.editais]
 
-        if (this.filtroEditais.busca) {
-          const busca = this.filtroEditais.busca.toLowerCase()
-          editaisFiltrados = editaisFiltrados.filter(edital =>
-            edital.numero.toLowerCase().includes(busca) ||
-            edital.descricao.toLowerCase().includes(busca)
-          )
+          // Aplicar filtro de busca
+          if (this.filtroEditais.busca && this.filtroEditais.busca.trim()) {
+            const busca = this.filtroEditais.busca.toLowerCase().trim()
+            editaisFiltrados = editaisFiltrados.filter(edital => {
+              try {
+                // Verificar se as propriedades existem e não são null/undefined
+                const numero = edital.numero ? edital.numero.toString().toLowerCase() : ''
+                const descricao = edital.descricao ? edital.descricao.toString().toLowerCase() : ''
+                
+                // Buscar em número e descrição
+                return numero.includes(busca) || descricao.includes(busca)
+              } catch (error) {
+                console.warn('Erro ao filtrar edital:', edital, error)
+                return false
+              }
+            })
+          }
+
+          // Aplicar filtro de status
+          if (this.filtroEditais.status && this.filtroEditais.status.trim()) {
+            editaisFiltrados = editaisFiltrados.filter(edital =>
+              edital.status === this.filtroEditais.status
+            )
+          }
+
+          this.editaisFiltrados = editaisFiltrados
+          
+        } catch (error) {
+          console.error('Erro ao aplicar filtros aos editais:', error)
+          // Em caso de erro, mostrar todos os editais sem filtro
+          this.editaisFiltrados = [...this.editais]
+          
+          // Exibir mensagem de erro amigável ao usuário
+          this.$swal.fire({
+            icon: 'warning',
+            title: 'Aviso',
+            text: 'Houve um problema ao aplicar os filtros. Mostrando todos os editais.',
+            timer: 3000,
+            showConfirmButton: false
+          })
         }
+      },
 
-        if (this.filtroEditais.status) {
-          editaisFiltrados = editaisFiltrados.filter(edital =>
-            edital.status === this.filtroEditais.status
-          )
+      // Método com debounce para melhorar performance da busca
+      debouncedFiltrarEditais() {
+        // Limpar timeout anterior se existir
+        if (this.debounceTimer) {
+          clearTimeout(this.debounceTimer)
         }
+        
+        // Configurar novo timeout de 300ms
+        this.debounceTimer = setTimeout(() => {
+          this.aplicarFiltrosEditais()
+        }, 300)
+      },
 
-        this.editaisFiltrados = editaisFiltrados
+      // Método para limpar todos os filtros
+      limparFiltrosEditais() {
+        this.filtroEditais.busca = ''
+        this.filtroEditais.status = ''
+        this.aplicarFiltrosEditais()
       },
 
       async abrirModalNovoEdital() {
@@ -5411,43 +5554,92 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
       },
 
       async salvarEdicaoEdital() {
-        if (!this.editalEditando.numero || !this.editalEditando.descricao) {
-          this.$swal.fire('Erro', 'Número e descrição são obrigatórios', 'error')
+        // Validação de campos obrigatórios
+        if (!this.editalEditando.numero || !this.editalEditando.numero.trim()) {
+          this.$swal.fire('Erro', 'Número do edital é obrigatório', 'error')
           return
         }
+
+        if (!this.editalEditando.descricao || !this.editalEditando.descricao.trim()) {
+          this.$swal.fire('Erro', 'Descrição do edital é obrigatória', 'error')
+          return
+        }
+
+        // Validação de formato do número
+        if (this.editalEditando.numero.trim().length < 3) {
+          this.$swal.fire('Erro', 'Número do edital deve ter pelo menos 3 caracteres', 'error')
+          return
+        }
+
+        console.log('🔍 Iniciando edição do edital:', {
+          id: this.editalEditando.id,
+          numero: this.editalEditando.numero,
+          descricao: this.editalEditando.descricao,
+          tenant_id: this.currentTenantId
+        })
 
         this.salvandoEdicaoEdital = true
 
         try {
           // Verificar se o número já existe em outro edital (apenas se mudou o número)
-          const { data: editalExistente } = await supabase
+          const { data: editaisExistentes, error: checkError } = await supabase
             .from('editais')
             .select('id')
             .eq('numero', this.editalEditando.numero)
             .eq('tenant_id', this.currentTenantId)
             .neq('id', this.editalEditando.id)
-            .single()
 
-          if (editalExistente) {
+          if (checkError) {
+            console.error('Erro ao verificar duplicata:', checkError)
+            this.$swal.fire('Erro', 'Erro ao verificar duplicata de edital. Tente novamente.', 'error')
+            return
+          }
+
+          if (editaisExistentes && editaisExistentes.length > 0) {
             this.$swal.fire('Erro', `Já existe outro edital com o número "${this.editalEditando.numero}". Por favor, escolha outro número.`, 'error')
             return
           }
 
+          // Preparar dados para atualização - limpar campos vazios
+          const dadosAtualizacao = {
+            numero: this.editalEditando.numero.trim(),
+            descricao: this.editalEditando.descricao.trim(),
+            atualizado_em: new Date().toISOString()
+          }
+
+          // Adicionar campos opcionais apenas se preenchidos
+          if (this.editalEditando.conteudo && this.editalEditando.conteudo.trim()) {
+            dadosAtualizacao.conteudo = this.editalEditando.conteudo.trim()
+          }
+
+          if (this.editalEditando.data_publicacao && this.editalEditando.data_publicacao.trim()) {
+            dadosAtualizacao.data_publicacao = this.editalEditando.data_publicacao
+          }
+
+          if (this.editalEditando.data_limite_impugnacao && this.editalEditando.data_limite_impugnacao.trim()) {
+            dadosAtualizacao.data_limite_impugnacao = this.editalEditando.data_limite_impugnacao
+          }
+
+          console.log('🔄 Atualizando edital:', {
+            id: this.editalEditando.id,
+            tenant_id: this.currentTenantId,
+            dados: dadosAtualizacao
+          })
+
           // Atualizar edital
-          const { error } = await supabase
+          const { data: editalAtualizado, error } = await supabase
             .from('editais')
-            .update({
-              numero: this.editalEditando.numero,
-              descricao: this.editalEditando.descricao,
-              conteudo: this.editalEditando.conteudo,
-              data_publicacao: this.editalEditando.data_publicacao || null,
-              data_limite_impugnacao: this.editalEditando.data_limite_impugnacao || null,
-              updated_at: new Date().toISOString()
-            })
+            .update(dadosAtualizacao)
             .eq('id', this.editalEditando.id)
             .eq('tenant_id', this.currentTenantId)
+            .select()
 
-          if (error) throw error
+          if (error) {
+            console.error('❌ Erro detalhado na atualização do edital:', error)
+            throw error
+          }
+
+          console.log('✅ Edital atualizado com sucesso:', editalAtualizado)
 
           this.$swal.fire({
             icon: 'success',
@@ -5464,8 +5656,31 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
           this.fecharModalEditarEdital()
 
         } catch (error) {
-          console.error('Erro ao salvar edital:', error)
-          this.$swal.fire('Erro', 'Não foi possível salvar as alterações. Tente novamente.', 'error')
+          console.error('❌ Erro ao salvar edital:', error)
+          
+          // Tratamento específico para diferentes tipos de erro
+          let mensagemErro = 'Não foi possível salvar as alterações. Tente novamente.'
+          
+          if (error.code === '23505') {
+            mensagemErro = 'Já existe um edital com este número. Por favor, escolha outro número.'
+          } else if (error.code === '23514') {
+            mensagemErro = 'Dados inválidos fornecidos. Verifique se todos os campos estão corretos.'
+          } else if (error.code === 'PGRST116') {
+            mensagemErro = 'Nenhum edital foi encontrado para atualizar. O edital pode ter sido removido.'
+          } else if (error.code === 'PGRST204') {
+            mensagemErro = 'Erro no esquema do banco de dados. Contacte o administrador do sistema.'
+            console.error('❌ Erro PGRST204 - Coluna não encontrada:', error)
+          } else if (error.message) {
+            if (error.message.includes('duplicate key')) {
+              mensagemErro = 'Já existe um edital com este número.'
+            } else if (error.message.includes('violates check constraint')) {
+              mensagemErro = 'Os dados fornecidos não atendem aos requisitos do sistema.'
+            } else if (error.message.includes('permission denied')) {
+              mensagemErro = 'Você não tem permissão para editar este edital.'
+            }
+          }
+          
+          this.$swal.fire('Erro', mensagemErro, 'error')
         } finally {
           this.salvandoEdicaoEdital = false
         }
@@ -6913,89 +7128,202 @@ Verifique:
     
 
     
-    // === MÉTODOS PARA AVALIAÇÕES ===
-    async carregarAvaliacoes() {
+    // === MÉTODOS PARA RECLAMAÇÕES ===
+    async carregarReclamacoes() {
       try {
-        console.log('🔍 [AVALIAÇÕES CPM] === DEBUG COMPLETO ===')
-        console.log('🔍 [AVALIAÇÕES CPM] Tenant ID atual:', this.currentTenantId)
+        console.log('🔍 [RECLAMAÇÕES CPM] Carregando reclamações para tenant:', this.currentTenantId)
         
-        // PRIMEIRO: Testar SEM filtro de tenant para ver se tem dados
-        console.log('🔍 [AVALIAÇÕES CPM] TESTE 1: TODAS as avaliações (sem filtro)')
-        const { data: todasSemFiltro, error: erroSemFiltro } = await supabase
-          .from('material_feedbacks')
-          .select('*')
-          .order('criado_em', { ascending: false })
-        
-        console.log('📊 [AVALIAÇÕES CPM] TESTE 1 - Total geral:', todasSemFiltro?.length || 0)
-        if (todasSemFiltro && todasSemFiltro.length > 0) {
-          console.log('📊 [AVALIAÇÕES CPM] TESTE 1 - Primeira avaliação:', todasSemFiltro[0])
-          console.log('📊 [AVALIAÇÕES CPM] TESTE 1 - Tenant IDs encontrados:', [...new Set(todasSemFiltro.map(a => a.tenant_id))])
-        }
-        
-        // SEGUNDO: Com filtro de tenant (como estava antes)
-        console.log('🔍 [AVALIAÇÕES CPM] TESTE 2: Com filtro de tenant')
-        const { data: todasAvaliacoes, error: erroTodas } = await supabase
-          .from('material_feedbacks')
+        const { data: reclamacoes, error } = await supabase
+          .from('reclame_aqui')
           .select('*')
           .eq('tenant_id', this.currentTenantId)
           .order('criado_em', { ascending: false })
         
-        console.log('📊 [AVALIAÇÕES CPM] TESTE 2 - Com tenant:', todasAvaliacoes?.length || 0)
-        
-        if (erroTodas) {
-          console.error('❌ [AVALIAÇÕES CPM] Erro ao carregar avaliações básicas:', erroTodas)
-          this.avaliacoes = []
-          this.aplicarFiltrosAvaliacoes()
-          return
-        }
-        
-        if (!todasAvaliacoes || todasAvaliacoes.length === 0) {
-          console.log('📭 [AVALIAÇÕES CPM] Nenhuma avaliação encontrada para este tenant')
-          console.log('🔍 [AVALIAÇÕES CPM] Vamos usar TODAS as avaliações temporariamente para debug...')
-          
-          // TEMPORÁRIO: usar todas as avaliações para debug
-          if (todasSemFiltro && todasSemFiltro.length > 0) {
-            this.avaliacoes = await this.enriquecerAvaliacoesComUsuarios(todasSemFiltro)
-            console.log('🔄 [AVALIAÇÕES CPM] Usando TODAS as avaliações (sem filtro de tenant)')
-          } else {
-            this.avaliacoes = []
-          }
-          
-          this.aplicarFiltrosAvaliacoes()
-          return
-        }
-        
-        // TERCEIRO: Tentar JOIN com usuários
-        console.log('🔍 [AVALIAÇÕES CPM] TESTE 3: JOIN com usuários')
-        const { data: avaliacoesComUsuario, error: erroJoin } = await supabase
-          .from('material_feedbacks')
-          .select(`
-            *,
-            usuario_rdm:usuarios_rdm(nome_usuario, unidade_setor, email, telefone)
-          `)
-          .eq('tenant_id', this.currentTenantId)
-          .order('criado_em', { ascending: false })
-        
-        if (erroJoin) {
-          console.error('⚠️ [AVALIAÇÕES CPM] Erro no JOIN, usando dados básicos:', erroJoin)
-          this.avaliacoes = await this.enriquecerAvaliacoesComUsuarios(todasAvaliacoes)
+        if (error) {
+          console.error('❌ [RECLAMAÇÕES CPM] Erro ao carregar reclamações:', error)
+          this.reclamacoes = []
         } else {
-          console.log('✅ [AVALIAÇÕES CPM] JOIN executado com sucesso:', avaliacoesComUsuario?.length || 0)
-          this.avaliacoes = avaliacoesComUsuario || []
+          console.log('✅ [RECLAMAÇÕES CPM] Reclamações carregadas:', reclamacoes?.length || 0)
+          this.reclamacoes = reclamacoes || []
+          
+          // Inicializar campos auxiliares para cada reclamação
+          this.reclamacoes.forEach(reclamacao => {
+            if (!reclamacao.nova_resposta) {
+              this.$set(reclamacao, 'nova_resposta', '')
+            }
+            if (!reclamacao.novo_status) {
+              this.$set(reclamacao, 'novo_status', reclamacao.status)
+            }
+            if (!reclamacao.nova_prioridade) {
+              this.$set(reclamacao, 'nova_prioridade', reclamacao.prioridade)
+            }
+          })
         }
         
-        this.aplicarFiltrosAvaliacoes()
-        console.log('🎯 [AVALIAÇÕES CPM] === FIM DEBUG - RESULTADO FINAL ===')
-        console.log('🎯 [AVALIAÇÕES CPM] Avaliações carregadas:', this.avaliacoes.length)
+        this.aplicarFiltrosReclamacoes()
         
       } catch (error) {
-        console.error('❌ [AVALIAÇÕES CPM] Erro geral ao carregar avaliações:', error)
-        this.avaliacoes = []
-        this.aplicarFiltrosAvaliacoes()
+        console.error('❌ [RECLAMAÇÕES CPM] Erro geral ao carregar reclamações:', error)
+        this.reclamacoes = []
+        this.aplicarFiltrosReclamacoes()
       }
     },
     
-    // Método auxiliar para enriquecer avaliações com dados de usuários
+    // Filtrar reclamações
+    aplicarFiltrosReclamacoes() {
+      this.reclamacoesFiltradas = this.reclamacoes.filter(reclamacao => {
+        const matchBusca = !this.filtroReclamacoes.busca ||
+          reclamacao.titulo_reclamacao.toLowerCase().includes(this.filtroReclamacoes.busca.toLowerCase()) ||
+          reclamacao.nome_reclamante.toLowerCase().includes(this.filtroReclamacoes.busca.toLowerCase()) ||
+          reclamacao.descricao_reclamacao.toLowerCase().includes(this.filtroReclamacoes.busca.toLowerCase())
+        
+        const matchStatus = !this.filtroReclamacoes.status || reclamacao.status === this.filtroReclamacoes.status
+        const matchCategoria = !this.filtroReclamacoes.categoria || reclamacao.categoria === this.filtroReclamacoes.categoria
+        const matchPrioridade = !this.filtroReclamacoes.prioridade || reclamacao.prioridade === this.filtroReclamacoes.prioridade
+        
+        return matchBusca && matchStatus && matchCategoria && matchPrioridade
+      })
+    },
+    
+    // Salvar resposta da CPM para uma reclamação
+    async salvarRespostaReclamacao(reclamacao) {
+      if (!reclamacao.nova_resposta?.trim()) {
+        alert('Por favor, digite uma resposta antes de salvar.')
+        return
+      }
+      
+      this.salvandoResposta = true
+      
+      try {
+        const { error } = await supabase
+          .from('reclame_aqui')
+          .update({
+            resposta_cpm: reclamacao.nova_resposta,
+            respondido_por: this.currentUserId,
+            respondido_em: new Date().toISOString(),
+            status: 'respondida'
+          })
+          .eq('id', reclamacao.id)
+        
+        if (error) {
+          throw error
+        }
+        
+        // Atualizar localmente
+        reclamacao.resposta_cpm = reclamacao.nova_resposta
+        reclamacao.respondido_em = new Date().toISOString()
+        reclamacao.status = 'respondida'
+        reclamacao.nova_resposta = ''
+        
+        alert('✅ Resposta salva com sucesso!')
+        this.aplicarFiltrosReclamacoes()
+        
+      } catch (error) {
+        console.error('❌ Erro ao salvar resposta:', error)
+        alert('❌ Erro ao salvar resposta. Tente novamente.')
+      } finally {
+        this.salvandoResposta = false
+      }
+    },
+    
+    // Alterar status de uma reclamação
+    async alterarStatusReclamacao(reclamacao) {
+      if (!reclamacao.novo_status || reclamacao.novo_status === reclamacao.status) {
+        return
+      }
+      
+      this.salvandoStatus = true
+      
+      try {
+        const { error } = await supabase
+          .from('reclame_aqui')
+          .update({
+            status: reclamacao.novo_status
+          })
+          .eq('id', reclamacao.id)
+        
+        if (error) {
+          throw error
+        }
+        
+        // Atualizar localmente
+        reclamacao.status = reclamacao.novo_status
+        
+        this.aplicarFiltrosReclamacoes()
+        
+      } catch (error) {
+        console.error('❌ Erro ao alterar status:', error)
+        alert('❌ Erro ao alterar status. Tente novamente.')
+        // Reverter o valor
+        reclamacao.novo_status = reclamacao.status
+      } finally {
+        this.salvandoStatus = false
+      }
+    },
+    
+    // Alterar prioridade de uma reclamação
+    async alterarPrioridadeReclamacao(reclamacao) {
+      if (!reclamacao.nova_prioridade || reclamacao.nova_prioridade === reclamacao.prioridade) {
+        return
+      }
+      
+      this.salvandoPrioridade = true
+      
+      try {
+        const { error } = await supabase
+          .from('reclame_aqui')
+          .update({
+            prioridade: reclamacao.nova_prioridade
+          })
+          .eq('id', reclamacao.id)
+        
+        if (error) {
+          throw error
+        }
+        
+        // Atualizar localmente
+        reclamacao.prioridade = reclamacao.nova_prioridade
+        
+        this.aplicarFiltrosReclamacoes()
+        
+      } catch (error) {
+        console.error('❌ Erro ao alterar prioridade:', error)
+        alert('❌ Erro ao alterar prioridade. Tente novamente.')
+        // Reverter o valor
+        reclamacao.nova_prioridade = reclamacao.prioridade
+      } finally {
+        this.salvandoPrioridade = false
+      }
+    },
+    
+    // Editar resposta existente
+    editarResposta(reclamacao) {
+      reclamacao.nova_resposta = reclamacao.resposta_cpm
+      reclamacao.resposta_cpm = null // Temporariamente limpar para mostrar o textarea
+    },
+    
+    
+    getPrioridadeClass(prioridade) {
+      const classes = {
+        'baixa': 'prioridade-baixa',
+        'normal': 'prioridade-normal',
+        'alta': 'prioridade-alta',
+        'critica': 'prioridade-critica'
+      }
+      return classes[prioridade] || 'prioridade-normal'
+    },
+    
+    getPrioridadeText(prioridade) {
+      const texts = {
+        'baixa': 'Baixa',
+        'normal': 'Normal', 
+        'alta': 'Alta',
+        'critica': 'Crítica'
+      }
+      return texts[prioridade] || prioridade
+    },
+    
+    // Método antigo - manter para compatibilidade
     async enriquecerAvaliacoesComUsuarios(avaliacoes) {
       try {
         const avaliacoesEnriquecidas = []
@@ -7541,7 +7869,6 @@ O usuário pode fazer login imediatamente no sistema RDM.`,
        currency: 'BRL'
      }).format(value)
    }
-
  }
 </script>
 
@@ -11075,5 +11402,522 @@ th {
   .section-intro h4 {
     font-size: 18px;
   }
+}
+
+/* === ESTILOS PARA RECLAMAÇÕES === */
+.reclamacoes-section {
+  padding: 20px;
+}
+
+.stats-reclamacoes {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid #e9ecef;
+}
+
+.stat-item.pendentes {
+  background: #fff3cd;
+  color: #856404;
+  border-color: #ffeaa7;
+}
+
+.stat-item.respondidas {
+  background: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.filtros-reclamacoes {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.filtro-group label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.filtro-group input,
+.filtro-group select {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.reclamacoes-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.reclamacao-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.reclamacao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.reclamacao-info h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.reclamacao-meta {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.reclamacao-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.status-badge,
+.categoria-badge,
+.prioridade-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-pendente {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-em-analise {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.status-respondida {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-resolvida {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.categoria-badge {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.prioridade-baixa {
+  background: #d4edda;
+  color: #155724;
+}
+
+.prioridade-normal {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.prioridade-alta {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.prioridade-critica {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.reclamacao-detalhes {
+  margin-top: 15px;
+}
+
+.descricao-reclamacao h5 {
+  color: #495057;
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.descricao-reclamacao p {
+  color: #6c757d;
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+}
+
+.cpm-acoes {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.acao-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.acao-group label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 13px;
+}
+
+.acao-group select {
+  padding: 6px 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.cpm-resposta {
+  margin-top: 20px;
+}
+
+.cmp-resposta h5 {
+  color: #495057;
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.resposta-existente {
+  background: #f8fff9;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #28a745;
+  margin-bottom: 10px;
+}
+
+.resposta-existente p {
+  margin: 0 0 10px 0;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.data-resposta {
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.sem-resposta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.textarea-resposta {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.textarea-resposta:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.resposta-acoes {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-primary.btn-small {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary.btn-small:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-secondary.btn-small {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary.btn-small:hover {
+  background: #5a6268;
+}
+
+.btn-small:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsividade para reclamações */
+@media (max-width: 768px) {
+  .filtros-reclamacoes {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .stats-reclamacoes {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .reclamacao-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .reclamacao-badges {
+    align-items: flex-start;
+  }
+  
+  .cpm-acoes {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .resposta-acoes {
+    flex-direction: column;
+  }
+}
+
+/* === BALÃOZINHO DE NOTIFICAÇÃO === */
+.tab {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* === CORREÇÕES DE OVERFLOW EM ANÁLISE/DOCUMENTOS === */
+.produto-detalhes-modal {
+  max-width: 900px !important;
+  width: 90% !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+.produto-detalhes-grid {
+  max-width: 100%;
+  overflow-x: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.detalhes-section {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow-x: auto;
+}
+
+.detalhes-section pre {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.detalhes-section p {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* Documentos em lista (se houver) */
+.documentos-lista {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  margin-top: 10px;
+  background: #f8f9fa;
+}
+
+.documento-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e9ecef;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  background: white;
+  margin-bottom: 5px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.documento-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.documento-nome {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 4px;
+}
+
+.documento-info {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* Modal body para melhor scroll */
+.modal-body {
+  max-height: calc(90vh - 140px);
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* Responsividade para documentos */
+@media (max-width: 768px) {
+  .produto-detalhes-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .produto-detalhes-modal {
+    width: 95% !important;
+    margin: 10px;
+  }
+  
+  .detalhes-section pre {
+    font-size: 12px;
+    padding: 8px;
+  }
+  
+  .documentos-lista {
+    max-height: 200px;
+    padding: 8px;
+  }
+  
+  .documento-item {
+    padding: 6px 8px;
+  }
+}
+
+/* Scroll customizado para documentos */
+.documentos-lista::-webkit-scrollbar {
+  width: 6px;
+}
+
+.documentos-lista::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.documentos-lista::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.documentos-lista::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 </style> 

@@ -128,7 +128,7 @@
         <h3>Nenhuma análise registrada</h3>
         <p>Comece criando análises de preços para identificar tendências e oportunidades de economia.</p>
         <button @click="abrirModalNovaAnalise" class="btn-primary">
-          ➕ Criar Primeira Análise
+          ➕ Criar Análise
         </button>
       </div>
 

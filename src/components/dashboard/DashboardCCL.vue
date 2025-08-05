@@ -61,75 +61,83 @@
       
       <div class="dashboard-section">
         <div class="section-header">
-          <h3>📋 Processos Pendentes de Julgamento</h3>
+          <h3>📋 Processos Administrativos Pendentes</h3>
           <p class="section-description">
-            Processos analisados pela CPM que aguardam julgamento pela Comissão de Contratação ou Licitação (CCL)
+            Processos administrativos finalizados pela CPM que aguardam julgamento pela Comissão de Contratação ou Licitação (CCL)
           </p>
         </div>
-        <table v-if="produtosPendentes.length > 0">
+        <table v-if="processosPendentes.length > 0">
           <thead>
             <tr>
-              <th>Nome do Produto</th>
-              <th>Marca/Modelo</th>
-              <th>Fornecedor</th>
-              <th>Categoria</th>
-              <th>Parecer CPM</th>
-              <th>Data Análise</th>
+              <th>Número do Processo</th>
+              <th>Tipo</th>
+              <th>Produto(s)</th>
+              <th>Status CPM</th>
+              <th>Data Finalização</th>
               <th>Prazo CCL</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="produto in produtosPendentesPaginados" :key="produto.id">
-              <td class="produto-info">
-                <strong>{{ produto.nome }}</strong>
+            <tr v-for="processo in processosPendentesPaginados" :key="processo.id">
+              <td class="processo-info">
+                <strong>{{ processo.numero_processo }}</strong>
                 <br>
-                <small>{{ produto.modelo || 'Modelo não informado' }}</small>
+                <small>{{ processo.folha_rosto?.tipo_processo || 'Processo Administrativo' }}</small>
               </td>
-              <td>{{ produto.marca }}</td>
-              <td>{{ produto.fabricante || 'Não informado' }}</td>
-              <td>{{ getCategoriaName(produto.categoria_id) }}</td>
               <td>
-                <span class="status-badge" :class="getStatusClass(produto.status)">
-                  {{ formatarStatusCPM(produto.status) }}
+                <span class="tipo-badge" :class="getTipoProcessoClass(processo.folha_rosto?.tipo_processo)">
+                  {{ processo.folha_rosto?.tipo_processo || 'Padronização' }}
                 </span>
               </td>
-              <td>{{ formatDate(produto.criado_em) }}</td>
+              <td class="produtos-processo">
+                <span v-if="processo.produtos_relacionados && processo.produtos_relacionados.length > 0" class="produtos-lista">
+                  {{ processo.produtos_relacionados.slice(0, 2).map(p => p.nome).join(', ') }}
+                  <span v-if="processo.produtos_relacionados.length > 2"> +{{ processo.produtos_relacionados.length - 2 }} mais</span>
+                </span>
+                <span v-else class="texto-cinza">Produtos vinculados</span>
+              </td>
               <td>
-                <span class="prazo-badge" :class="getPrazoClass(produto.criado_em)">
-                  {{ calcularPrazoRestante(produto.criado_em) }}
+                <span class="status-badge" :class="getStatusClass(processo.status)">
+                  {{ formatarStatusProcesso(processo.status) }}
+                </span>
+              </td>
+              <td>{{ formatDate(processo.atualizado_em) }}</td>
+              <td>
+                <span class="prazo-badge" :class="getPrazoClass(processo.atualizado_em)">
+                  {{ calcularPrazoRestante(processo.atualizado_em) }}
                 </span>
               </td>
               <td>
-                <button @click="julgarProcesso(produto)" class="btn-small btn-primary">
-                  ⚖️ Julgar
+                <button @click="visualizarProcesso(processo)" class="btn-small btn-secondary">
+                  📄 Ver Processo
                 </button>
-                <button @click="visualizarDocumentacao(produto)" class="btn-small btn-secondary">
-                  📄 Docs
+                <button @click="julgarProcessoAdministrativo(processo)" class="btn-small btn-primary">
+                  📋 Emitir Ata de Julgamento
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
         
-        <!-- Controles de Paginação para Produtos Pendentes -->
-        <div v-if="produtosPendentes.length > 0" class="pagination-controls">
-          <button @click="paginaAnterior('produtosPendentes')" :disabled="paginacao.produtosPendentes.paginaAtual <= 1" class="pagination-btn">
+        <!-- Controles de Paginação para Processos Pendentes -->
+        <div v-if="processosPendentes.length > 0" class="pagination-controls">
+          <button @click="paginaAnterior('processosPendentes')" :disabled="paginacao.processosPendentes.paginaAtual <= 1" class="pagination-btn">
             ← Anterior
           </button>
           <span class="pagination-info">
-            Página {{ paginacao.produtosPendentes.paginaAtual }} de {{ calcularTotalPaginas('produtosPendentes') || 1 }}
-            ({{ produtosPendentes.length }} itens)
+            Página {{ paginacao.processosPendentes.paginaAtual }} de {{ calcularTotalPaginas('processosPendentes') || 1 }}
+            ({{ processosPendentes.length }} itens)
           </span>
-          <button @click="proximaPagina('produtosPendentes')" :disabled="paginacao.produtosPendentes.paginaAtual >= calcularTotalPaginas('produtosPendentes')" class="pagination-btn">
+          <button @click="proximaPagina('processosPendentes')" :disabled="paginacao.processosPendentes.paginaAtual >= calcularTotalPaginas('processosPendentes')" class="pagination-btn">
             Próxima →
           </button>
         </div>
         
         <div v-else class="empty-state">
           <div class="empty-icon">⚖️</div>
-          <h4>Não há processos pendentes de julgamento</h4>
-          <p>Todos os processos analisados pela CPM já foram julgados pela CCL.</p>
+          <h4>Não há processos administrativos pendentes</h4>
+          <p>Não há processos administrativos finalizados pela CPM aguardando julgamento da CCL.</p>
         </div>
       </div>
 
@@ -399,7 +407,7 @@
       <div class="homologacoes-header">
         <h3>📋 Homologações</h3>
         <p class="homologacoes-description">
-          Gestão de atos de homologação pela autoridade competente conforme Passo 8 dos documentos oficiais
+          Gestão de atos de homologação pela autoridade competente
         </p>
         <div class="homologacoes-actions">
           <button @click="consultarPendentes" class="btn-primary">
@@ -489,11 +497,8 @@
                   <td>
                     <div class="acoes-linha">
                       <template v-if="!processo.jaDecidido">
-                        <button @click="homologarProcesso(processo)" class="btn-small btn-success">
-                          ✅ Homologar
-                        </button>
-                        <button @click="indeferirProcesso(processo)" class="btn-small btn-danger">
-                          ❌ Indeferir
+                        <button @click="emitirAtaJulgamento(processo)" class="btn-small btn-primary">
+                          📋 Emitir Ata de Julgamento
                         </button>
                         <button @click="visualizarAta(processo)" class="btn-small btn-secondary">
                           👁️ Ver Ata
@@ -591,12 +596,7 @@
           </div>
         </div>
 
-        <!-- DCBs Ativas -->
-        <div class="homo-section">
-          <div class="homo-section-header">
-            <h4>📜 Declarações de Conformidade de Bem (DCBs) Ativas</h4>
-            <button @click="gerenciarDCBs" class="btn-link">Gerenciar todas</button>
-          </div>
+        <!-- Seção removida: DCBs são atribuição da CPM, não da CCL -->
           <div v-if="dcbsAtivas.length > 0" class="dcb-grid">
             <div v-for="dcb in dcbsAtivasPaginadas" :key="dcb.id" class="dcb-card">
               <div class="dcb-header">
@@ -654,7 +654,7 @@ export default {
   data() {
     return {
       activeTab: 'dashboard',
-      produtosPendentes: [],
+      processosPendentes: [],
       atasRecentes: [],
       pendentes: 0,
       aprovados: 0,
@@ -714,7 +714,7 @@ export default {
           itensPorPagina: 5,
           total: 0
         },
-        produtosPendentes: {
+        processosPendentes: {
           paginaAtual: 1,
           itensPorPagina: 5,
           total: 0
@@ -765,10 +765,10 @@ export default {
       return this.recursos.slice(inicio, fim)
     },
     
-    produtosPendentesPaginados() {
-      const inicio = (this.paginacao.produtosPendentes.paginaAtual - 1) * this.paginacao.produtosPendentes.itensPorPagina
-      const fim = inicio + this.paginacao.produtosPendentes.itensPorPagina
-      return this.produtosPendentes.slice(inicio, fim)
+    processosPendentesPaginados() {
+      const inicio = (this.paginacao.processosPendentes.paginaAtual - 1) * this.paginacao.processosPendentes.itensPorPagina
+      const fim = inicio + this.paginacao.processosPendentes.itensPorPagina
+      return this.processosPendentes.slice(inicio, fim)
     },
     
     recursosAnalisePageinados() {
@@ -870,18 +870,22 @@ export default {
           return
         }
         
-        // Carregar produtos pendentes e já julgados
-        const { data: pendentesData, error: pendentesError } = await supabase
-          .from('produtos')
-          .select('*')
+        // Carregar processos administrativos finalizados pela CPM que aguardam julgamento da CCL
+        const { data: processosData, error: processosError } = await supabase
+          .from('processos_administrativos')
+          .select(`
+            *,
+            folha_rosto,
+            produtos_relacionados
+          `)
           .eq('tenant_id', this.currentTenantId)
-          .in('status', ['aprovado', 'reprovado', 'julgado_aprovado', 'julgado_reprovado']) // produtos da CPM e já julgados pela CCL
-          .order('criado_em', { ascending: false })
-          .limit(10)
+          .eq('status', 'assinado_orgao_admin') // Apenas processos já assinados pelo órgão administrativo
+          .order('atualizado_em', { ascending: false })
+          .limit(20)
         
-        if (pendentesError) throw pendentesError
+        if (processosError) throw processosError
         
-        this.produtosPendentes = pendentesData || []
+        this.processosPendentes = processosData || []
         
         // Carregar recursos do banco de dados
         await this.carregarRecursos()
@@ -898,15 +902,15 @@ export default {
           this.contarPorStatus('homologado') // Processos homologados
         ])
         
-        this.pendentes = statsCounts[0] || this.produtosPendentes.filter(p => ['aprovado', 'reprovado'].includes(p.status)).length
-        this.aprovados = statsCounts[1] || this.produtosPendentes.filter(p => ['julgado_aprovado', 'julgado_reprovado'].includes(p.status)).length
+        this.pendentes = statsCounts[0] || this.processosPendentes.filter(p => p.status === 'assinado_orgao_admin').length
+        this.aprovados = statsCounts[1] || this.processosPendentes.filter(p => p.status === 'julgado_ccl').length
         this.homologados = statsCounts[2]
         
         // Contar recursos em análise
         this.recursosEmAnalise = this.recursos.filter(r => r.status === 'EM ANÁLISE' || r.status === 'AGUARDANDO CPM').length
         
         // Atualizar paginação
-        this.atualizarTotalPaginacao('produtosPendentes', this.produtosPendentes.length)
+        this.atualizarTotalPaginacao('processosPendentes', this.processosPendentes.length)
         this.atualizarTotalPaginacao('recursosAnalise', this.recursos.length)
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
@@ -918,7 +922,7 @@ export default {
       if (!this.currentTenantId) return 0
       
       let query = supabase
-        .from('produtos')
+        .from('processos_administrativos')
         .select('id', { count: 'exact' })
         .eq('tenant_id', this.currentTenantId)
       
@@ -991,6 +995,301 @@ export default {
         default: return status
       }
     },
+    
+    formatarStatusProcesso(status) {
+      switch (status) {
+        case 'assinado_orgao_admin': return 'Pronto para Julgamento'
+        case 'ata_julgamento_ccl_aprovacao': return 'Ata de Julgamento Emitida - Recomenda Aprovação'
+        case 'ata_julgamento_ccl_rejeicao': return 'Ata de Julgamento Emitida - Recomenda Rejeição'
+        case 'diligencia_ccl': return 'Diligência CCL'
+        case 'homologado': return 'Homologado pela Autoridade Competente'
+        case 'indeferido': return 'Indeferido pela Autoridade Competente'
+        case 'tramitando_ccl': return 'Em Análise CCL'
+        default: return status
+      }
+    },
+    
+    getTipoProcessoClass(tipo) {
+      switch (tipo) {
+        case 'Padronização': return 'tipo-padronizacao'
+        case 'Despadronização': return 'tipo-despadronizacao'
+        default: return 'tipo-default'
+      }
+    },
+    
+    async visualizarProcesso(processo) {
+      try {
+        this.$swal({
+          title: `📄 Processo ${processo.numero_processo}`,
+          html: `
+            <div style="text-align: left; padding: 15px; max-height: 500px; overflow-y: auto;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0;">📰 Informações do Processo</h4>
+                <p><strong>Número:</strong> ${processo.numero_processo}</p>
+                <p><strong>Tipo:</strong> ${processo.folha_rosto?.tipo_processo || 'Não informado'}</p>
+                <p><strong>Status:</strong> ${this.formatarStatusProcesso(processo.status)}</p>
+                <p><strong>Data Finalização:</strong> ${this.formatDate(processo.atualizado_em)}</p>
+              </div>
+              
+              <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0;">📎 Produtos Relacionados</h4>
+                ${processo.produtos_relacionados && processo.produtos_relacionados.length > 0 ? 
+                  processo.produtos_relacionados.map(p => `
+                    <div style="border-bottom: 1px solid #bbdefb; padding: 8px 0;">
+                      <strong>${p.nome}</strong><br>
+                      <small>Marca: ${p.marca || 'Não informado'}</small>
+                    </div>
+                  `).join('') : 
+                  '<p style="color: #666; font-style: italic;">Nenhum produto relacionado</p>'
+                }
+              </div>
+              
+              <div style="background: #fff3e0; padding: 15px; border-radius: 8px;">
+                <h4 style="margin: 0 0 10px 0;">⚖️ Próximos Passos</h4>
+                <p>Este processo foi finalizado pela CPM e está pronto para julgamento da CCL.</p>
+                <p>Utilize o botão "Julgar" para iniciar o processo de julgamento.</p>
+              </div>
+            </div>
+          `,
+          width: '700px',
+          confirmButtonText: '✔️ Fechar'
+        })
+      } catch (error) {
+        console.error('Erro ao visualizar processo:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: 'Erro ao carregar detalhes do processo.',
+          icon: 'error'
+        })
+      }
+    },
+    
+    async julgarProcessoAdministrativo(processo) {
+      try {
+        const { value: julgamento } = await this.$swal({
+          title: `📋 Emitir Ata de Julgamento - Processo ${processo.numero_processo}`,
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0;">📄 Dados do Processo</h4>
+                <p><strong>Número:</strong> ${processo.numero_processo}</p>
+                <p><strong>Tipo:</strong> ${processo.folha_rosto?.tipo_processo || 'Não informado'}</p>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Recomendação da CCL para a Autoridade Competente:</label>
+                <select id="recomendacaoProcesso" class="swal2-select" style="width: 100%;">
+                  <option value="">Selecione a recomendação...</option>
+                  <option value="recomendar_aprovacao">📋 Recomendar Aprovação</option>
+                  <option value="recomendar_rejeicao">📋 Recomendar Rejeição</option>
+                  <option value="solicitar_diligencia">📋 Solicitar Diligência</option>
+                </select>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Análise Técnica e Fundamentação:</label>
+                <textarea id="fundamentacaoProcesso" class="swal2-textarea" rows="6" placeholder="Descreva a análise técnica completa que será incluída na Ata de Julgamento..." style="width: 100%;"></textarea>
+              </div>
+              
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <h5 style="margin: 0 0 10px 0; color: #2e7d32;">📋 Fluxo da Ata de Julgamento:</h5>
+                <ol style="margin: 0; padding-left: 20px; font-size: 13px;">
+                  <li>CCL elabora Ata de Julgamento com análise técnica completa</li>
+                  <li>Ata é salva em formato Word e posteriormente em PDF</li>
+                  <li>Documento é assinado eletronicamente por todos os membros da CCL</li>
+                  <li>Ata é anexada ao processo administrativo</li>
+                  <li>Processo é encaminhado à Autoridade Competente para decisão final</li>
+                </ol>
+              </div>
+              
+              <div style="background: #fff3cd; padding: 10px; border-radius: 4px;">
+                <small><strong>⚠️ Importante:</strong> A CCL elabora a Ata de Julgamento com recomendação técnica. A decisão final de homologar ou indeferir é competência exclusiva da Autoridade Competente.</small>
+              </div>
+            </div>
+          `,
+          width: '700px',
+          showCancelButton: true,
+          confirmButtonText: '📋 Emitir Ata de Julgamento',
+          cancelButtonText: '❌ Cancelar',
+          preConfirm: () => {
+            const recomendacao = document.getElementById('recomendacaoProcesso').value
+            const fundamentacao = document.getElementById('fundamentacaoProcesso').value.trim()
+            
+            if (!recomendacao) {
+              this.$swal.showValidationMessage('Selecione uma recomendação')
+              return false
+            }
+            
+            if (!fundamentacao) {
+              this.$swal.showValidationMessage('A análise técnica e fundamentação são obrigatórias')
+              return false
+            }
+            
+            return { recomendacao, fundamentacao }
+          }
+        })
+        
+        if (!julgamento) return
+        
+        // Definir novo status baseado na recomendação da CCL
+        let novoStatus
+        switch (julgamento.recomendacao) {
+          case 'recomendar_aprovacao':
+            novoStatus = 'ata_julgamento_ccl_aprovacao'
+            break
+          case 'recomendar_rejeicao':
+            novoStatus = 'ata_julgamento_ccl_rejeicao'
+            break
+          case 'solicitar_diligencia':
+            novoStatus = 'diligencia_ccl'
+            break
+        }
+        
+        // Atualizar processo no banco
+        const { error } = await supabase
+          .from('processos_administrativos')
+          .update({
+            status: novoStatus,
+            ata_julgamento_ccl: julgamento.fundamentacao,
+            recomendacao_ccl: julgamento.recomendacao,
+            ata_emitida_ccl_em: new Date().toISOString(),
+            atualizado_em: new Date().toISOString()
+          })
+          .eq('id', processo.id)
+        
+        if (error) throw error
+        
+        // Recarregar dados
+        await this.carregarDados()
+        
+        this.$swal({
+          title: '📋 Ata de Julgamento Emitida!',
+          text: `A Ata de Julgamento do processo ${processo.numero_processo} foi criada com sucesso. O processo será encaminhado à Autoridade Competente para decisão final.`,
+          icon: 'success'
+        })
+        
+      } catch (error) {
+        console.error('Erro ao julgar processo:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: `Erro ao registrar julgamento: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+    
+    // Método para emitir ata de julgamento (substitui homologar/indeferir)
+    async emitirAtaJulgamento(processo) {
+      try {
+        const { value: ataJulgamento } = await this.$swal({
+          title: `📋 Emitir Ata de Julgamento - Processo ${processo.numeroAta}`,
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0;">📄 Dados do Processo</h4>
+                <p><strong>Ata:</strong> ${processo.numeroAta}</p>
+                <p><strong>Produtos:</strong> ${processo.totalProdutos}</p>
+                <p><strong>Data do Julgamento CCL:</strong> ${this.formatDate(processo.dataJulgamento)}</p>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Recomendação da CCL para a Autoridade Competente:</label>
+                <select id="recomendacaoAta" class="swal2-select" style="width: 100%;">
+                  <option value="">Selecione a recomendação...</option>
+                  <option value="recomendar_homologacao">📋 Recomendar Homologação do Processo</option>
+                  <option value="recomendar_indeferimento">📋 Recomendar Indeferimento do Processo</option>
+                  <option value="solicitar_esclarecimentos">📋 Solicitar Esclarecimentos Adicionais</option>
+                </select>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Fundamentação Técnica da CCL:</label>
+                <textarea id="fundamentacaoAta" class="swal2-textarea" rows="6" placeholder="Descreva a análise técnica completa que será incluída na Ata de Julgamento..." style="width: 100%;"></textarea>
+              </div>
+              
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <h5 style="margin: 0 0 10px 0; color: #2e7d32;">📋 Fluxo da Ata de Julgamento:</h5>
+                <ol style="margin: 0; padding-left: 20px; font-size: 13px;">
+                  <li>CCL elabora Ata com análise técnica e recomendação</li>
+                  <li>Ata é salva em formato Word e PDF</li>
+                  <li>Documento é assinado eletronicamente pelos membros da CCL</li>
+                  <li>Ata é anexada ao processo administrativo</li>
+                  <li>Processo é remetido à Autoridade Competente para decisão final</li>
+                </ol>
+              </div>
+              
+              <div style="background: #fff3cd; padding: 10px; border-radius: 4px;">
+                <small><strong>⚠️ Importante:</strong> A CCL elabora a Ata com recomendação técnica. A decisão final de homologar ou indeferir é competência exclusiva da Autoridade Competente.</small>
+              </div>
+            </div>
+          `,
+          width: '700px',
+          showCancelButton: true,
+          confirmButtonText: '📋 Emitir Ata de Julgamento',
+          cancelButtonText: '❌ Cancelar',
+          preConfirm: () => {
+            const recomendacao = document.getElementById('recomendacaoAta').value
+            const fundamentacao = document.getElementById('fundamentacaoAta').value.trim()
+            
+            if (!recomendacao) {
+              this.$swal.showValidationMessage('Selecione uma recomendação')
+              return false
+            }
+            
+            if (!fundamentacao) {
+              this.$swal.showValidationMessage('A fundamentação técnica é obrigatória')
+              return false
+            }
+            
+            return { recomendacao, fundamentacao }
+          }
+        })
+        
+        if (!ataJulgamento) return
+        
+        // Simular criação da ata (aqui seria integrado com sistema de documentos)
+        this.$swal({
+          title: '📋 Ata de Julgamento Emitida!',
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: #2e7d32;">✅ Ata Criada com Sucesso</h4>
+                <p><strong>Processo:</strong> ${processo.numeroAta}</p>
+                <p><strong>Recomendação:</strong> ${ataJulgamento.recomendacao.replace('recomendar_', '').replace('_', ' ').toUpperCase()}</p>
+                <p><strong>Status:</strong> Aguardando assinatura eletrônica dos membros da CCL</p>
+              </div>
+              
+              <div style="background: #d1ecf1; padding: 15px; border-radius: 8px;">
+                <h5 style="margin: 0 0 10px 0; color: #0277bd;">📋 Próximos Passos:</h5>
+                <ol style="margin: 0; padding-left: 20px; font-size: 13px;">
+                  <li>Ata será disponibilizada para assinatura eletrônica</li>
+                  <li>Após assinatura, será salva como PDF</li>
+                  <li>Processo será encaminhado à Autoridade Competente</li>
+                  <li>Autoridade decidirá pela homologação ou indeferimento</li>
+                </ol>
+              </div>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: '✅ Entendido'
+        })
+        
+        // Aqui você atualizaria o status no banco de dados
+        // Por exemplo: status = 'ata_julgamento_emitida_ccl'
+        
+        // Recarregar dados
+        await this.carregarDados()
+        
+      } catch (error) {
+        console.error('Erro ao emitir ata de julgamento:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: `Erro ao emitir ata de julgamento: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+    
     calcularPrazoRestante(dataAnalise) {
       if (!dataAnalise) return 'Sem prazo'
       
@@ -1094,18 +1393,21 @@ export default {
               </div>
             </div>
 
-            <!-- Decisão da CCL -->
+            <!-- Recomendação da CCL -->
             <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-              <h4 style="margin: 0 0 15px 0; color: #388e3c;">⚖️ Decisão da CCL</h4>
+              <h4 style="margin: 0 0 15px 0; color: #388e3c;">📋 Recomendação da CCL para Autoridade Competente</h4>
               <div style="margin-bottom: 15px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 8px;">Decisão Final:</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 8px;">Recomendação Técnica:</label>
                 <select id="decisaoCCL" class="swal2-select" style="width: 100%;">
-                  <option value="">Selecione uma decisão</option>
-                  <option value="homologado">✅ Homologar (Aprovar pré-qualificação)</option>
-                  <option value="indeferido">❌ Indeferir (Rejeitar pré-qualificação)</option>
+                  <option value="">Selecione uma recomendação</option>
+                  <option value="recomendar_homologacao">📋 Recomendar Homologação (Aprovar pré-qualificação)</option>
+                  <option value="recomendar_indeferimento">📋 Recomendar Indeferimento (Rejeitar pré-qualificação)</option>
                   <option value="diligencia">📋 Solicitar Diligência à CPM</option>
                   <option value="pendencia">⏳ Aguardar Documentação Complementar</option>
                 </select>
+              </div>
+              <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                <small><strong>⚠️ Importante:</strong> Esta é uma recomendação técnica da CCL. A decisão final de homologar ou indeferir será tomada pela Autoridade Competente.</small>
               </div>
             </div>
 
@@ -1140,7 +1442,7 @@ export default {
         `,
         width: '900px',
         showCancelButton: true,
-        confirmButtonText: '⚖️ Confirmar Julgamento',
+        confirmButtonText: '📋 Emitir Ata de Julgamento',
         cancelButtonText: '❌ Cancelar',
         confirmButtonColor: '#2e7d32',
         cancelButtonColor: '#d32f2f',
@@ -1288,8 +1590,8 @@ export default {
     
     mapearDecisaoParaStatus(decisao) {
       switch (decisao) {
-        case 'homologado': return 'julgado_aprovado'
-        case 'indeferido': return 'julgado_reprovado'
+        case 'recomendar_homologacao': return 'ata_julgamento_recomenda_aprovacao'
+        case 'recomendar_indeferimento': return 'ata_julgamento_recomenda_rejeicao'
         case 'diligencia': return 'diligencia'
         case 'pendencia': return 'pendencia_documentacao'
         default: return 'julgamento_pendente'
@@ -3868,7 +4170,7 @@ Exemplo:
                   <li>Verificação da tempestividade (3 dias úteis)</li>
                   <li>Análise da fundamentação legal</li>
                   <li>Avaliação técnica do mérito</li>
-                  <li>Decisão motivada (Deferir/Indeferir/Encaminhar CPM)</li>
+                  <li>Análise técnica e recomendação motivada à Autoridade Competente</li>
                   <li>Comunicação às partes interessadas</li>
                 </ol>
               </div>
@@ -4074,185 +4376,6 @@ Exemplo:
       if (diasRestantes <= 1) return 'prazo-urgente'
       if (diasRestantes <= 3) return 'prazo-atencao'
       return 'prazo-normal'
-    },
-    homologarProcesso(processo) {
-      this.$swal({
-        title: '✅ Homologar Processo',
-        html: `
-          <div style="text-align: left; padding: 15px;">
-            <h4>Ata: ${processo.numeroAta}</h4>
-            <p><strong>Produtos:</strong> ${processo.totalProdutos}</p>
-            <p><strong>Decisão CCL:</strong> ${processo.decisaoCCL}</p>
-            <hr>
-            <div style="margin: 15px 0;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Autoridade Competente:</label>
-              <input id="autoridadeHomo" class="swal2-input" type="text" placeholder="Nome da autoridade" value="Dr. João Silva - Secretário">
-            </div>
-            <div style="margin: 15px 0;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Fundamentação da Homologação:</label>
-              <textarea id="fundamentacaoHomo" class="swal2-textarea" placeholder="Justificativa para homologação..." style="height: 100px;">Os processos foram conduzidos em conformidade com a Lei 14.133/2021 e demais normas aplicáveis, atendendo aos princípios da legalidade, impessoalidade e moralidade.</textarea>
-            </div>
-            <div style="background: #d4edda; padding: 10px; border-radius: 4px; margin-top: 15px;">
-              <small><strong>Efeitos:</strong> Serão emitidas as DCBs para os produtos aprovados e incluídos no Catálogo de Bens Padronizados.</small>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: '✅ Confirmar Homologação',
-        cancelButtonText: '❌ Cancelar',
-        confirmButtonColor: '#28a745',
-        preConfirm: () => {
-          const autoridade = document.getElementById('autoridadeHomo').value
-          const fundamentacao = document.getElementById('fundamentacaoHomo').value
-          
-          if (!autoridade.trim() || !fundamentacao.trim()) {
-            this.$swal.showValidationMessage('Preencha todos os campos obrigatórios')
-            return false
-          }
-          
-          return { autoridade, fundamentacao }
-        }
-      }).then(async (result) => {
-        if (result.isConfirmed) {
-          try {
-            // Criar registro de homologação no banco
-            const homologacaoData = {
-              tenant_id: this.currentTenantId,
-              ata_julgamento_id: processo.id,
-              numero_ata: processo.numeroAta,
-              data_homologacao: new Date().toISOString(),
-              tipo_homologacao: 'HOMOLOGADA',
-              total_produtos: processo.totalProdutos,
-              autoridade_competente: result.value.autoridade,
-              fundamentacao: result.value.fundamentacao
-            }
-            
-            const { data: homologacao, error: errorHomologacao } = await supabase
-              .from('homologacoes')
-              .insert([homologacaoData])
-              .select()
-              .single()
-            
-            if (errorHomologacao) {
-              throw new Error(`Erro ao criar homologação: ${errorHomologacao.message}`)
-            }
-            
-            // Gerar DCBs automaticamente para produtos da ata homologada
-            await this.gerarDCBsAutomaticamente(homologacao, processo)
-            
-            // Recarregar dados atualizados
-            await this.carregarHomologacoes()
-            await this.carregarProcessosPendentesHomologacao()
-            await this.carregarDCBsAtivas()
-            
-            this.$swal({
-              title: '🎉 Processo Homologado',
-              text: 'O processo foi homologado com sucesso! As DCBs foram emitidas automaticamente.',
-              icon: 'success'
-            })
-            
-          } catch (error) {
-            console.error('Erro ao homologar processo:', error)
-            this.$swal({
-              title: '❌ Erro',
-              text: `Erro ao homologar processo: ${error.message}`,
-              icon: 'error'
-            })
-          }
-        }
-      })
-    },
-    indeferirProcesso(processo) {
-      this.$swal({
-        title: '❌ Indeferir Processo',
-        html: `
-          <div style="text-align: left; padding: 15px;">
-            <h4>Ata: ${processo.numeroAta}</h4>
-            <p><strong>Produtos:</strong> ${processo.totalProdutos}</p>
-            <p><strong>Decisão CCL:</strong> ${processo.decisaoCCL}</p>
-            <hr>
-            <div style="margin: 15px 0;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Motivo do Indeferimento:</label>
-              <select id="motivoIndeferimento" class="swal2-select">
-                <option value="">Selecione o motivo</option>
-                <option value="irregularidade_processual">Irregularidade Processual</option>
-                <option value="documentacao_incompleta">Documentação Incompleta</option>
-                <option value="nao_atendimento_requisitos">Não Atendimento aos Requisitos</option>
-                <option value="interesse_publico">Contrário ao Interesse Público</option>
-                <option value="outros">Outros Motivos</option>
-              </select>
-            </div>
-            <div style="margin: 15px 0;">
-              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Fundamentação:</label>
-              <textarea id="fundamentacaoIndeferimento" class="swal2-textarea" placeholder="Justificativa detalhada..." style="height: 100px;"></textarea>
-            </div>
-            <div style="background: #f8d7da; padding: 10px; border-radius: 4px; margin-top: 15px;">
-              <small><strong>Atenção:</strong> O indeferimento impedirá a emissão das DCBs e os produtos não serão incluídos no catálogo.</small>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: '❌ Confirmar Indeferimento',
-        cancelButtonText: '🔙 Cancelar',
-        confirmButtonColor: '#dc3545',
-        preConfirm: () => {
-          const motivo = document.getElementById('motivoIndeferimento').value
-          const fundamentacao = document.getElementById('fundamentacaoIndeferimento').value
-          
-          if (!motivo || !fundamentacao.trim()) {
-            this.$swal.showValidationMessage('Selecione o motivo e forneça a fundamentação')
-            return false
-          }
-          
-          return { motivo, fundamentacao }
-        }
-      }).then(async (result) => {
-        if (result.isConfirmed) {
-          try {
-            // Salvar indeferimento no banco
-            const { error } = await supabase
-              .from('homologacoes')
-              .insert([{
-                tenant_id: this.currentTenantId,
-                ata_julgamento_id: processo.id,
-                numero_ata: processo.numeroAta,
-                total_produtos: processo.totalProdutos,
-                tipo_homologacao: 'INDEFERIDA',
-                motivo_indeferimento: result.value.motivo,
-                fundamentacao: result.value.fundamentacao,
-                data_homologacao: new Date().toISOString(),
-                autoridade_competente: this.usuarioNome || 'Autoridade Competente'
-              }])
-
-            if (error) {
-              console.error('Erro ao salvar indeferimento:', error)
-              this.$swal({
-                title: '❌ Erro ao Salvar',
-                text: 'Não foi possível salvar o indeferimento. Verifique se a tabela homologacoes existe.',
-                icon: 'error'
-              })
-              return
-            }
-
-            // Recarregar dados
-            await this.carregarProcessosPendentesHomologacao()
-            await this.carregarHomologacoes()
-
-            this.$swal({
-              title: '📝 Processo Indeferido',
-              text: 'O processo foi indeferido e removido da lista de pendências. Os interessados serão notificados automaticamente.',
-              icon: 'success'
-            })
-          } catch (error) {
-            console.error('Erro ao indeferir processo:', error)
-            this.$swal({
-              title: '❌ Erro',
-              text: `Erro: ${error.message}`,
-              icon: 'error'
-            })
-          }
-        }
-      })
     },
     consultarPendentes() {
       this.$swal({
@@ -6231,5 +6354,57 @@ th {
   flex-direction: column;
   gap: 6px;
   flex-shrink: 0;
+}
+
+/* Estilos para processos administrativos */
+.processo-info {
+  text-align: left;
+}
+
+.processo-info strong {
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.processo-info small {
+  color: #666;
+  font-style: italic;
+}
+
+.tipo-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tipo-padronizacao {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.tipo-despadronizacao {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.tipo-default {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.produtos-processo {
+  max-width: 200px;
+  font-size: 13px;
+}
+
+.produtos-lista {
+  color: #2c3e50;
+}
+
+.texto-cinza {
+  color: #999;
+  font-style: italic;
 }
 </style> 

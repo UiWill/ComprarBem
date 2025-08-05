@@ -1,8 +1,8 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h2>Comprar Bem: Compras Inteligentes</h2>
-      <p>Saúde e Administração</p>
+      <h2>COMPRAR BEM</h2>
+      <p>COMPRAS PÚBLICAS INTELIGENTES</p>
       
       <div class="tabs">
         <button 
@@ -50,119 +50,53 @@
       
       <!-- Register Form -->
       <div v-if="activeTab === 'register'">
-        <div class="form-group">
-          <label for="registerEmail">E-mail</label>
-          <input 
-            id="registerEmail" 
-            v-model="registerEmail" 
-            type="email" 
-            placeholder="Seu e-mail"
-            required
-          >
-        </div>
-        
-        <div class="form-group">
-          <label for="registerPassword">Senha</label>
-          <input 
-            id="registerPassword" 
-            v-model="registerPassword" 
-            type="password" 
-            placeholder="Sua senha"
-            required
-          >
-        </div>
-        
-        <div class="form-group">
-          <label for="confirmPassword">Confirmar Senha</label>
-          <input 
-            id="confirmPassword" 
-            v-model="confirmPassword" 
-            type="password" 
-            placeholder="Confirme sua senha"
-            required
-          >
-        </div>
-        
-        <div class="form-group">
-          <label for="nomeInstitucional">Nome da Instituição</label>
-          <input 
-            id="nomeInstitucional" 
-            v-model="nomeInstitucional" 
-            type="text" 
-            placeholder="Nome da sua instituição"
-            required
-          >
-        </div>
-        
-        <button 
-          @click="register" 
-          class="btn-primary" 
-          type="button"
-        >
-          {{ loading ? 'Registrando...' : 'Registrar' }}
-        </button>
-        
-        <button 
-          @click="testeSimples" 
-          class="btn-test" 
-          style="margin-top: 10px;"
-        >
-          Teste Simples
-        </button>
-        
-        <div v-if="!validRegistration" class="validation-info">
-          <p>O formulário não está válido porque:</p>
-          <ul>
-            <li v-if="!registerEmail">Falta o e-mail</li>
-            <li v-if="!registerPassword">Falta a senha</li>
-            <li v-if="registerPassword && registerPassword.length < 6">A senha precisa ter pelo menos 6 caracteres</li>
-            <li v-if="registerPassword !== confirmPassword">As senhas não conferem</li>
-            <li v-if="!nomeInstitucional">Falta o nome da instituição</li>
-          </ul>
+        <!-- Link para Registro de Órgão -->
+        <div class="registro-orgao-link-simple">
+          <p class="info-text-center">
+            É um órgão público novo no sistema?
+          </p>
+          <router-link to="/registro-orgao" class="btn-registro-orgao">
+            📝 Cadastrar Órgão Completo
+          </router-link>
+          <small class="help-text-center">
+            Cria automaticamente os 4 perfis de acesso necessários
+          </small>
         </div>
       </div>
       
       <p class="error-message" v-if="errorMsg">{{ errorMsg }}</p>
       
-      <!-- Link para Sistema RDM -->
-      <div class="rdm-access">
-        <hr style="margin: 20px 0;">
-        <p style="text-align: center; color: #666; margin-bottom: 15px;">
-          <strong>🏥 Sistema RDM Online</strong>
-        </p>
-        <router-link to="/rdm" class="btn-rdm">
-          📝 Acessar Dashboard RDM
-        </router-link>
-        <p style="font-size: 12px; color: #888; text-align: center; margin-top: 10px;">
-          Para usuários cadastrados emitir Requisições de Materiais
-        </p>
+      <!-- Seção de Acesso Público -->
+      <div class="public-access-section">
+        <div class="public-options">
+          <div class="public-option" @click="acessarRDMOnline()">
+            <div class="option-icon">🏥</div>
+            <div class="option-content">
+              <h4>Sistema RDM On-line</h4>
+              <p>📝 Acessar Dashboard RDM</p>
+              <small>Para usuários cadastrados emitirem RDMs</small>
+            </div>
+            <div class="option-arrow">→</div>
+          </div>
+          
+          <div class="public-option" @click="acessarReclameAqui()">
+            <div class="option-icon">📢</div>
+            <div class="option-content">
+              <h4>Catálogo de Bens Padronizados</h4>
+              <p>🗣️ Sistema de Reclamações</p>
+              <small>Acesso público para consultar produtos e registrar reclamações</small>
+            </div>
+            <div class="option-arrow">→</div>
+          </div>
+        </div>
       </div>
       
-      <!-- Link para Catálogo Público -->
-      <div class="public-access">
-        <hr style="margin: 20px 0;">
-        <p style="text-align: center; color: #666; margin-bottom: 15px;">
-          <strong>📋 Catálogo Público de Produtos</strong>
-        </p>
-        <router-link to="/catalogo-publico" class="btn-public">
-          🔍 Ver Catálogo e Avaliar Produtos
-        </router-link>
-        <p style="font-size: 12px; color: #888; text-align: center; margin-top: 10px;">
-          Acesso público para consultar produtos e registrar avaliações
-        </p>
-      </div>
-      
-      <!-- Botão para teste -->
-      <div class="test-buttons" v-if="activeTab === 'register'">
-        <button @click="testarSupabase" class="btn-test">Testar Conexão Supabase</button>
-      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { supabase } from '@/services/supabase'
-import { v4 as uuidv4 } from 'uuid'
 
 export default {
   name: 'Login',
@@ -172,68 +106,12 @@ export default {
       // Login
       email: '',
       password: '',
-      // Register
-      registerEmail: '',
-      registerPassword: '',
-      confirmPassword: '',
-      nomeInstitucional: '',
       // Common
       loading: false,
       errorMsg: ''
     }
   },
-  computed: {
-    validRegistration() {
-      return this.registerEmail && 
-             this.registerPassword && 
-             this.registerPassword === this.confirmPassword &&
-             this.nomeInstitucional &&
-             this.registerPassword.length >= 6
-    }
-  },
-  mounted() {
-    console.log('Componente Login montado', {
-      activeTab: this.activeTab
-    })
-  },
-  watch: {
-    activeTab(newVal) {
-      console.log('Aba ativa alterada para:', newVal)
-    },
-    registerEmail(newVal) {
-      console.log('E-mail de registro alterado:', newVal)
-    },
-    registerPassword(newVal) {
-      console.log('Senha de registro alterada:', newVal ? '****' : '')
-    }
-  },
   methods: {
-    async testarSupabase() {
-      console.log('Testando conexão com Supabase...')
-      try {
-        // Verificar se a tabela tenants existe
-        const { data, error } = await supabase
-          .from('tenants')
-          .select('*')
-          .limit(1)
-        
-        console.log('Resultado do teste tabela tenants:', { data, error })
-        
-        if (error) {
-          alert(`Erro ao acessar tabela: ${error.message}`)
-        } else {
-          alert(`Conexão OK! ${data ? data.length : 0} registros encontrados.`)
-        }
-        
-        // Testar criação de um UUID
-        const testUuid = uuidv4()
-        console.log('Teste UUID gerado:', testUuid)
-        
-      } catch (err) {
-        console.error('Erro no teste:', err)
-        alert(`Erro na conexão: ${err.message}`)
-      }
-    },
     async login() {
       try {
         this.loading = true
@@ -246,135 +124,65 @@ export default {
         
         if (error) throw error
         
-        // Redirecionar para Dashboard
-        this.$router.push('/dashboard')
+        // Obter perfil do usuário para redirecionamento correto
+        try {
+          // Aguardar um momento para o Supabase processar o login
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          // Obter dados do usuário
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          if (user) {
+            // Buscar perfil na tabela usuarios
+            const { data: usuario } = await supabase
+              .from('usuarios')
+              .select('perfil_usuario')
+              .eq('id', user.id)
+              .single()
+            
+            // Redirecionar baseado no perfil do usuário
+            switch (usuario?.perfil_usuario) {
+              case 'ccl':
+                // CCL: apenas painel CCL
+                this.$router.push('/ccl')
+                break
+              case 'cpm':
+                // CPM: dashboard completo
+                this.$router.push('/dashboard')
+                break
+              case 'orgao_administrativo':
+              case 'assessoria_juridica':
+                // Órgão Admin e Assessoria: processos administrativos
+                this.$router.push('/processos-administrativos')
+                break
+              default:
+                // Fallback para dashboard (se houver outros perfis)
+                this.$router.push('/dashboard')
+            }
+          } else {
+            // Fallback se não conseguir obter dados do usuário
+            this.$router.push('/dashboard')
+          }
+        } catch (redirectError) {
+          console.warn('Erro ao obter perfil para redirecionamento:', redirectError)
+          // Em caso de erro, redirecionar para dashboard (o router guard vai ajustar)
+          this.$router.push('/dashboard')
+        }
       } catch (error) {
         this.errorMsg = error.message || 'Erro ao fazer login'
       } finally {
         this.loading = false
       }
     },
-    async register() {
-      console.log('Método register chamado', { 
-        email: this.registerEmail,
-        password: '****', 
-        nomeInstitucional: this.nomeInstitucional 
-      })
-      
-      if (!this.validRegistration) {
-        console.log('Formulário inválido')
-        this.errorMsg = 'Verifique os campos do formulário'
-        return
-      }
-      
-      try {
-        this.loading = true
-        this.errorMsg = ''
-        
-        // PASSO 1: Criar o usuário básico no sistema de autenticação
-        console.log('Iniciando registro de usuário no Supabase...')
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: this.registerEmail,
-          password: this.registerPassword
-        })
-        
-        console.log('Resposta do registro de usuário:', { authData, authError })
-        
-        if (authError) {
-          if (!authError.message.includes('already registered')) {
-            throw authError
-          }
-        }
-        
-        // Pegar o ID da autenticação (será usado depois para o tenant)
-        const authUserId = authData?.user?.id
-        console.log('ID da autenticação:', authUserId)
-        
-        // PASSO 2: Gerar UUIDs
-        const tenantId = uuidv4()
-        const usuarioId = uuidv4()
-        
-        // PASSOS 3 e 4: Primeiro criar o tenant, depois criar ou atualizar o usuário
-        
-        // Primeiro, remover qualquer usuário existente com este email
-        try {
-          const { error: deleteError } = await supabase
-            .from('usuarios')
-            .delete()
-            .eq('email', this.registerEmail)
-          
-          if (deleteError) {
-            console.warn('Aviso ao tentar remover usuário existente:', deleteError)
-          }
-        } catch (e) {
-          console.warn('Erro ao tentar remover usuário:', e)
-        }
-        
-        // Criar tenant
-        console.log('Criando tenant...')
-        const { data: tenantData, error: tenantError } = await supabase
-          .from('tenants')
-          .insert({
-            id: tenantId,
-            nome: this.nomeInstitucional,
-            descricao: `Tenant para ${this.registerEmail}`,
-            ativo: true
-          })
-          .select()
-        
-        if (tenantError) {
-          throw new Error(`Erro ao criar tenant: ${tenantError.message}`)
-        }
-        
-        // Agora criar o usuário
-        console.log('Criando usuário...')
-        const { data: userData, error: userError } = await supabase
-          .from('usuarios')
-          .insert({
-            id: usuarioId,
-            email: this.registerEmail,
-            nome: this.nomeInstitucional,
-            tenant_id: tenantId,
-            tipo: 'admin',
-            ativo: true
-          })
-          .select()
-        
-        if (userError) {
-          if (userError.message.includes('duplicate key')) {
-            this.errorMsg = 'Este email já está registrado. Por favor, contate o suporte.'
-            throw new Error(`Email já existe na base de dados: ${userError.message}`)
-          } else {
-            throw new Error(`Erro ao criar usuário: ${userError.message}`)
-          }
-        }
-        
-        // Atualizar o tenant com o user_id (usando o ID da autenticação do Supabase)
-        console.log('Atualizando tenant com user_id...')
-        const { error: updateTenantError } = await supabase
-          .from('tenants')
-          .update({ user_id: authUserId })
-          .eq('id', tenantId)
-        
-        if (updateTenantError) {
-          console.warn('Aviso: Não foi possível atualizar o tenant com user_id:', updateTenantError)
-          // Continuamos mesmo com esse erro
-        }
-        
-        console.log('Registro concluído com sucesso!')
-        alert('Registro realizado com sucesso! Verifique seu e-mail para confirmar a conta.')
-        this.activeTab = 'login'
-        this.email = this.registerEmail
-      } catch (error) {
-        console.error('Erro detalhado no registro:', error)
-        this.errorMsg = this.errorMsg || error.message || 'Erro ao fazer registro'
-      } finally {
-        this.loading = false
-      }
+    
+    acessarRDMOnline() {
+      // Redirecionar para login RDM específico
+      this.$router.push('/rdm')
     },
-    testeSimples() {
-      console.log('Botão de teste simples clicado')
-      alert('Teste de evento de clique funcionando!')
+    
+    acessarReclameAqui() {
+      // Redirecionar para sistema de reclamações
+      this.$router.push('/catalogo-publico')
     }
   }
 }
@@ -538,5 +346,191 @@ input {
 
 .rdm-access {
   margin-top: 20px;
+}
+
+.registro-orgao-link {
+  margin: 20px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid #e2e8f0;
+}
+
+.info-text {
+  margin: 0 0 15px 0;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.btn-registro-orgao {
+  display: inline-block;
+  padding: 12px 24px;
+  background: white;
+  color: #f5576c;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-registro-orgao:hover {
+  background: #f8f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);
+  color: #e74c3c;
+  text-decoration: none;
+}
+
+.help-text {
+  display: block;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Estilos para balão simples de registro */
+.registro-orgao-link-simple {
+  margin: 40px 0;
+  padding: 30px;
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.info-text-center {
+  margin: 0 0 20px 0;
+  color: #495057;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.help-text-center {
+  display: block;
+  margin-top: 15px;
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Estilos para seção de acesso público */
+.public-access-section {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  color: #495057;
+}
+
+.public-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.public-option {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.public-option:hover {
+  background: #f8f9fa;
+  border-color: #2c3e50;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.option-icon {
+  font-size: 2rem;
+  margin-right: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background: #e9ecef;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.option-content {
+  flex: 1;
+}
+
+.option-content h4 {
+  margin: 0 0 5px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.option-content p {
+  margin: 0 0 5px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.option-content small {
+  font-size: 0.8rem;
+  color: #6c757d;
+  line-height: 1.3;
+}
+
+.option-arrow {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-left: 15px;
+  color: #6c757d;
+  transition: transform 0.3s ease;
+}
+
+.public-option:hover .option-arrow {
+  transform: translateX(5px);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .public-access-section {
+    margin-top: 20px;
+    padding: 20px;
+  }
+  
+  .public-option {
+    padding: 15px;
+  }
+  
+  .option-icon {
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    margin-right: 15px;
+  }
+  
+  .option-content h4 {
+    font-size: 1.1rem;
+  }
+  
+  .option-content p {
+    font-size: 0.9rem;
+  }
+  
+  .option-content small {
+    font-size: 0.8rem;
+  }
 }
 </style> 

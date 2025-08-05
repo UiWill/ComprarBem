@@ -7,9 +7,8 @@
           <span class="subtitle">Compras Públicas Inteligentes</span>
         </div>
       </div>
-      <nav class="main-nav">
+      <nav class="main-nav" v-if="!isUsuarioProcessosOnly">
         <router-link to="/dashboard">Painel CPM</router-link>
-        <router-link to="/ccl">Painel CCL</router-link>
         <router-link to="/cadastro">Cadastrar Produto</router-link>
         <router-link to="/catalogo" class="nav-item">
           <span>Catálogo</span>
@@ -26,6 +25,16 @@
           <span class="nav-subtitle">Administrativos</span>
         </router-link>
       </nav>
+      
+      <!-- Indicador para usuários de Processos -->
+      <div v-if="isUsuarioProcessosOnly" class="processos-indicator">
+        <span class="processos-badge" v-if="perfilUsuario === 'orgao_administrativo'">
+          📋 Órgão Administrativo - Assinaturas e Homologações
+        </span>
+        <span class="processos-badge" v-if="perfilUsuario === 'assessoria_juridica'">
+          ⚖️ Assessoria Jurídica - Análise Legal
+        </span>
+      </div>
       <div class="user-menu">
         <div class="profile-dropdown">
           <button @click="toggleDropdown" class="profile-btn">
@@ -74,7 +83,9 @@ export default {
     return {
       nomeUsuario: '',
       emailUsuario: '',
-      dropdownOpen: false
+      dropdownOpen: false,
+      isUsuarioProcessosOnly: false,
+      perfilUsuario: ''
     }
   },
   
@@ -100,6 +111,23 @@ export default {
         
         this.nomeUsuario = user.user_metadata?.nome || user.email?.split('@')[0] || 'Usuário'
         this.emailUsuario = user.email || ''
+        
+        // Verificar perfil do usuário
+        const { data: usuario } = await supabase
+          .from('usuarios')
+          .select('perfil_usuario')
+          .eq('id', user.id)
+          .single()
+        
+        this.perfilUsuario = usuario?.perfil_usuario || ''
+        
+        // Verificar se é usuário que só acessa processos
+        this.isUsuarioProcessosOnly = ['orgao_administrativo', 'assessoria_juridica'].includes(this.perfilUsuario)
+        
+        if (this.isUsuarioProcessosOnly) {
+          console.log(`🔒 Usuário ${this.perfilUsuario} logado - Acesso restrito a Processos Administrativos`)
+        }
+        
       } catch (error) {
         console.error('Erro na verificação de autenticação:', error)
         this.$router.push('/')
@@ -325,5 +353,26 @@ export default {
 .main-content {
   flex: 1;
   background-color: #f5f7fa;
+}
+
+/* Indicadores de Processos */
+.processos-indicator {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 2rem;
+  background: rgba(52, 152, 219, 0.1);
+  border-bottom: 1px solid #3498db;
+}
+
+.processos-badge {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 </style>

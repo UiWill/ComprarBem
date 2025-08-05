@@ -210,16 +210,39 @@ export default {
       try {
         console.log('🔐 Tentativa de login RDM:', this.loginData.email)
         
-        // Buscar usuário RDM
-        const { data: usuarioRDM, error: errorUsuario } = await supabase
+        // Buscar usuário RDM - query simplificada
+        console.log('🔍 Buscando usuário RDM no banco:', this.loginData.email)
+        
+        const { data: usuarios, error: errorUsuario } = await supabase
           .from('usuarios_rdm')
           .select('*')
           .eq('email', this.loginData.email)
-          .eq('ativo', true)
-          .single()
         
-        if (errorUsuario || !usuarioRDM) {
-          throw new Error('Email não encontrado ou usuário inativo. Verifique seus dados ou contate o CPM.')
+        const usuarioRDM = usuarios && usuarios.length > 0 ? usuarios[0] : null
+        
+        console.log('🔍 Resultado da busca:', {
+          encontrou: !!usuarioRDM,
+          erro: errorUsuario?.message || 'Nenhum erro',
+          dados: usuarioRDM ? {
+            id: usuarioRDM.id,
+            nome: usuarioRDM.nome_usuario,
+            email: usuarioRDM.email,
+            ativo: usuarioRDM.ativo,
+            tem_senha: !!usuarioRDM.senha_temporaria
+          } : null
+        })
+        
+        if (errorUsuario) {
+          console.error('❌ Erro na consulta ao banco:', errorUsuario)
+          throw new Error('Erro ao consultar banco de dados. Tente novamente.')
+        }
+        
+        if (!usuarioRDM) {
+          throw new Error('Email não encontrado. Verifique se o email está correto ou contate o CPM.')
+        }
+        
+        if (!usuarioRDM.ativo) {
+          throw new Error('Usuário inativo. Contate o CPM para ativar sua conta.')
         }
         
         console.log('✅ Usuário RDM encontrado:', usuarioRDM.nome_usuario)

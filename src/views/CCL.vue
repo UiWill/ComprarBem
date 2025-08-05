@@ -7,7 +7,7 @@
           <span class="subtitle">Compras Públicas Inteligentes</span>
         </div>
       </div>
-      <nav class="main-nav">
+      <nav class="main-nav" v-if="!isUsuarioCCL">
         <router-link to="/dashboard">Painel CPM</router-link>
         <router-link to="/ccl">Painel CCL</router-link>
         <router-link to="/cadastro">Cadastrar Produto</router-link>
@@ -26,6 +26,11 @@
           <span class="nav-subtitle">Administrativos</span>
         </router-link>
       </nav>
+      
+      <!-- Indicador para usuário CCL -->
+      <div v-if="isUsuarioCCL" class="ccl-indicator">
+        <span class="ccl-badge">⚖️ CCL - Acesso Exclusivo</span>
+      </div>
       <div class="user-menu">
         <div class="profile-dropdown" ref="profileDropdown">
           <button 
@@ -97,6 +102,7 @@ export default {
     return {
       dropdownOpen: false,
       modalEmailAberto: false,
+      isUsuarioCCL: false,
       nomeUsuario: 'comprarBemTeste',
       emailUsuario: 'comprarbemteste@gmail.com',
       configEmail: {
@@ -129,6 +135,19 @@ export default {
         if (user) {
           this.usuarioEmail = user.email
           this.usuarioNome = user.user_metadata?.nome || user.email.split('@')[0]
+          
+          // Verificar se é usuário CCL
+          const { data: usuario } = await supabase
+            .from('usuarios')
+            .select('perfil_usuario')
+            .eq('id', user.id)
+            .single()
+          
+          this.isUsuarioCCL = usuario?.perfil_usuario === 'ccl'
+          
+          if (this.isUsuarioCCL) {
+            console.log('🔒 Usuário CCL logado - Navegação restrita')
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar dados do usuário:', error)
@@ -495,5 +514,26 @@ export default {
 .dashboard-header p {
   margin: 0;
   color: #666;
+}
+
+/* Indicador CCL */
+.ccl-indicator {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 2rem;
+  background: rgba(231, 76, 60, 0.1);
+  border-bottom: 1px solid #e74c3c;
+}
+
+.ccl-badge {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 </style> 

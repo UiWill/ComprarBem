@@ -9,7 +9,6 @@
       </div>
       <nav class="main-nav">
         <router-link to="/dashboard">Painel CPM</router-link>
-        <router-link to="/ccl">Painel CCL</router-link>
         <router-link to="/cadastro">Cadastrar Produto</router-link>
         <router-link to="/catalogo" class="nav-item">
           <span>Catálogo</span>

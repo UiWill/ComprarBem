@@ -2,51 +2,98 @@
   <div class="processos-container">
     <div class="content-wrapper">
       <aside class="sidebar">
+        <div class="iniciar-processo-section">
+          <h3>🏛️ Processos Administrativos</h3>
+          <p class="subtitle">Sistema de Pré-qualificação de Bens conforme Lei 14.133/2021</p>
+          
+          <!-- Aviso de desenvolvimento -->
+          <div class="aviso-desenvolvimento">
+            <div class="aviso-icon">🚧</div>
+            <div class="aviso-content">
+              <h4>Finalização em Desenvolvimento</h4>
+              <p>Esta funcionalidade está sendo finalizada e será <strong>totalmente liberada em 07/08/2025</strong>.</p>
+              <small>Algumas funcionalidades já estão disponíveis para testes.</small>
+            </div>
+          </div>
+          
+          <div class="botoes-principais">
+            <button @click="abrirAssistente('padronizacao')" class="btn-processo padronizacao">
+              <span class="icone">✅</span>
+              <div class="texto">
+                <strong>Padronização</strong>
+                <small>Incluir produtos no catálogo</small>
+              </div>
+            </button>
+            
+            <button @click="abrirAssistente('despadronizacao')" class="btn-processo despadronizacao">
+              <span class="icone">❌</span>
+              <div class="texto">
+                <strong>Despadronização</strong>
+                <small>Remover produtos do catálogo</small>
+              </div>
+            </button>
+          </div>
+        </div>
+
         <div class="filter-section">
-          <h3>🔍 Filtros Avançados</h3>
+          <h3>🔍 Filtros</h3>
           
           <div class="filter-group">
-            <label>📁 Categoria</label>
-            <select v-model="filtroCategoria" @change="filtrarDocumentos">
-              <option value="">Todas as categorias</option>
-              <option value="manual">📖 Manuais</option>
-              <option value="template">📄 Templates</option>
-              <option value="instrucao">📋 Instruções</option>
-              <option value="normativa">⚖️ Normativas</option>
-              <option value="formulario">📝 Formulários</option>
+            <label>📁 Tipo de Processo</label>
+            <select v-model="filtroTipo" @change="filtrarProcessos">
+              <option value="">Todos os tipos</option>
+              <option value="padronizacao">✅ Padronização</option>
+              <option value="despadronizacao">❌ Despadronização</option>
             </select>
           </div>
 
           <div class="filter-group">
-            <label>🔎 Buscar Documentos</label>
+            <label>📊 Status</label>
+            <select v-model="filtroStatus" @change="filtrarProcessos">
+              <option value="">Todos os status</option>
+              
+              <!-- NOVOS STATUS - LEI 14.133/2021 -->
+              <option value="rascunho">📝 Em Criação</option>
+              <option value="criado_cpm">🎯 Criado pela CPM</option>
+              <option value="aprovado_cpm">✅ Aprovado pela CPM</option>
+              <option value="assinado_admin">✍️ Assinado pelo Órgão</option>
+              <option value="julgamento_ccl">⚖️ Julgamento CCL</option>
+              <option value="aprovado_ccl">✅ Aprovado pela CCL</option>
+              <option value="aprovado_juridico">⚖️ Aprovado Juridicamente</option>
+              <option value="homologado">🏆 Homologado</option>
+              <option value="rejeitado_cpm">❌ Rejeitado pela CPM</option>
+              <option value="rejeitado_admin">❌ Rejeitado pelo Órgão</option>
+              <option value="rejeitado_ccl">❌ Rejeitado pela CCL</option>
+              <option value="rejeitado_juridico">❌ Rejeitado Juridicamente</option>
+              <option value="rejeitado_final">❌ Rejeitado Final</option>
+              
+              <!-- STATUS ANTIGOS (COMPATIBILIDADE) -->
+              <option value="iniciado">🆕 Iniciado</option>
+              <option value="analise_cppm">🔍 Análise CPPM</option>
+              <option value="julgamento_ccl">⚖️ Julgamento CCL</option>
+              <option value="finalizado">✅ Finalizado</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>🔎 Buscar Processos</label>
             <input 
               type="text" 
               v-model="termoBusca" 
-              @input="filtrarDocumentos"
-              placeholder="Digite palavras-chave..."
+              @input="filtrarProcessos"
+              placeholder="Número do processo ou objeto..."
               class="search-input"
             >
           </div>
 
           <div class="filter-group">
-            <label>📅 Período</label>
-            <select v-model="filtroPeriodo" @change="filtrarDocumentos">
-              <option value="">Todos os períodos</option>
-              <option value="ultima_semana">Última semana</option>
-              <option value="ultimo_mes">Último mês</option>
-              <option value="ultimos_3_meses">Últimos 3 meses</option>
-              <option value="ultimo_ano">Último ano</option>
-            </select>
-          </div>
-
-          <div class="filter-group">
             <label>📊 Ordenar por</label>
-            <select v-model="ordenacao" @change="filtrarDocumentos">
+            <select v-model="ordenacao" @change="filtrarProcessos">
               <option value="data_desc">Mais recentes</option>
               <option value="data_asc">Mais antigos</option>
-              <option value="titulo_asc">A-Z (Título)</option>
-              <option value="titulo_desc">Z-A (Título)</option>
-              <option value="categoria">Por categoria</option>
+              <option value="numero_asc">Número (crescente)</option>
+              <option value="numero_desc">Número (decrescente)</option>
+              <option value="status">Por status</option>
             </select>
           </div>
 
@@ -54,26 +101,33 @@
             <h4>📈 Estatísticas</h4>
             <div class="stats-item">
               <span class="stats-label">Total:</span>
-              <span class="stats-value">{{ documentos.length }}</span>
+              <span class="stats-value">{{ processos.length }}</span>
             </div>
             <div class="stats-item">
               <span class="stats-label">Filtrados:</span>
-              <span class="stats-value">{{ documentosFiltrados.length }}</span>
+              <span class="stats-value">{{ processosFiltrados.length }}</span>
+            </div>
+            <div class="stats-item" v-if="estatisticas">
+              <span class="stats-label">Em andamento:</span>
+              <span class="stats-value">{{ estatisticas.por_status?.analise_cppm || 0 }}</span>
             </div>
           </div>
         </div>
 
-        <div class="upload-section" v-if="podeUpload">
-          <h3>Adicionar Documento</h3>
-          <button @click="abrirModalUpload" class="btn-upload">
-            📄 Novo Documento
+        <div class="acoes-rapidas-section">
+          <h3>⚡ Ações Rápidas</h3>
+          <button @click="abrirRelatorios" class="btn-acao">
+            📊 Relatórios
+          </button>
+          <button @click="abrirConfiguracoes" class="btn-acao">
+            ⚙️ Configurações
           </button>
         </div>
       </aside>
 
-      <section class="documents-section">
-        <div class="documents-header">
-          <h3>Documentos ({{ documentosFiltrados.length }})</h3>
+      <section class="processos-section">
+        <div class="processos-header">
+          <h3>Processos Administrativos ({{ processosFiltrados.length }})</h3>
           <div class="view-options">
             <button @click="visualizacao = 'grid'" :class="{ active: visualizacao === 'grid' }">
               ⊞ Grade
@@ -86,158 +140,236 @@
 
         <div v-if="carregando" class="loading">
           <div class="spinner"></div>
-          <p>Carregando documentos...</p>
+          <p>Carregando processos...</p>
         </div>
 
-        <div v-else-if="documentosFiltrados.length === 0" class="empty-state">
-          <div class="empty-icon">📂</div>
-          <h4>Nenhum documento encontrado</h4>
-          <p>Tente ajustar os filtros ou adicione novos documentos</p>
+        <div v-else-if="processosFiltrados.length === 0" class="empty-state">
+          <div class="empty-icon">🏛️</div>
+          <h4>Nenhum processo encontrado</h4>
+          <p>Inicie um novo processo ou ajuste os filtros de busca</p>
+          <button @click="abrirAssistente()" class="btn-primary">
+            🆕 Iniciar Primeiro Processo
+          </button>
         </div>
 
-        <div v-else class="documents-container" :class="visualizacao">
+        <div v-else class="processos-container" :class="visualizacao">
           <div 
-            v-for="documento in documentosFiltrados" 
-            :key="documento.id"
-            @click="visualizarDocumento(documento)"
-            class="document-card"
+            v-for="processo in processosFiltrados" 
+            :key="processo.id"
+            @click="visualizarProcesso(processo)"
+            class="processo-card"
           >
-            <div class="document-icon">
-              {{ getIconeCategoria(documento.categoria) }}
-            </div>
-            <div class="document-info">
-              <h4>{{ documento.titulo }}</h4>
-              <p class="document-desc">{{ documento.descricao }}</p>
-              <div class="document-meta">
-                <span class="categoria">{{ getNomeCategoria(documento.categoria) }}</span>
-                <span class="data">{{ formatarData(documento.criado_em) }}</span>
+            <div class="processo-header">
+              <div class="processo-numero">
+                <span class="numero">{{ processo.numero_processo }}</span>
+                <span class="tipo" :class="processo.tipo_processo">
+                  {{ obterTipoProcesso(processo.tipo_processo).icone }}
+                  {{ obterTipoProcesso(processo.tipo_processo).label }}
+                </span>
+              </div>
+              <div class="processo-status">
+                <span class="status-badge" :class="obterStatusProcesso(processo.status).cor">
+                  {{ obterStatusProcesso(processo.status).label }}
+                </span>
               </div>
             </div>
-            <div class="document-actions">
-              <button @click.stop="baixarDocumento(documento)" class="btn-action">
-                ⬇️
+            
+            <div class="processo-info">
+              <h4>{{ processo.nome_orgao }}</h4>
+              <p class="interessado">Interessado: {{ processo.unidade_interessada }}</p>
+              <p class="objeto">{{ processo.objeto.substring(0, 150) }}...</p>
+            </div>
+            
+            <div class="processo-meta">
+              <div class="meta-item">
+                <span class="meta-label">📄 Documentos:</span>
+                <span class="meta-value">{{ processo.total_documentos || 0 }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">📅 Autuação:</span>
+                <span class="meta-value">{{ formatarData(processo.data_autuacao) }}</span>
+              </div>
+              <div class="meta-item" v-if="processo.total_produtos">
+                <span class="meta-label">📦 Produtos:</span>
+                <span class="meta-value">{{ processo.total_produtos }}</span>
+              </div>
+            </div>
+            
+            <div class="processo-actions">
+              <button @click.stop="abrirProcesso(processo)" class="btn-action primary">
+                👁️ Ver
               </button>
-              <button v-if="podeEditar" @click.stop="editarDocumento(documento)" class="btn-action">
-                ✏️
+              <button @click.stop="editarProcesso(processo)" class="btn-action">
+                ✏️ Editar
               </button>
+              <button @click.stop="gerarRelatorio(processo)" class="btn-action">
+                📄 PDF
+              </button>
+            </div>
+            
+            <!-- Ações de Workflow baseadas no perfil do usuário -->
+            <div v-if="obterAcoesProcesso(processo).length > 0" class="workflow-actions">
+              <div class="workflow-header">
+                <span class="workflow-label">🔄 Ações Disponíveis</span>
+              </div>
+              <div class="workflow-buttons">
+                <button 
+                  v-for="acao in obterAcoesProcesso(processo)" 
+                  :key="acao"
+                  @click.stop="executarAcaoWorkflow(processo, acao)"
+                  class="btn-workflow"
+                  :class="{ 
+                    'aprovacao': acao.includes('aprovar') || acao.includes('homologar') || acao.includes('assinar'),
+                    'rejeicao': acao.includes('rejeitar'),
+                    'submissao': acao.includes('submeter')
+                  }"
+                >
+                  {{ obterLabelAcao(acao) }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </section>
     </div>
 
-    <!-- Modal de Upload -->
-    <div v-if="modalUploadAberto" class="modal-overlay" @click="fecharModalUpload">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h3>Adicionar Documento</h3>
-          <button @click="fecharModalUpload" class="btn-close">&times;</button>
+    <!-- Assistente de Processo -->
+    <div v-if="mostrarAssistente" class="modal-overlay assistente-overlay" @click="fecharAssistente">
+      <div class="modal assistente-modal" @click.stop>
+        <div class="assistente-header-modal">
+          <h3>🎯 Assistente de Processo Administrativo</h3>
+          <button @click="fecharAssistente" class="btn-close">&times;</button>
         </div>
-        <div class="modal-body">
-          <form @submit.prevent="uploadDocumento">
-            <div class="form-group">
-              <label>Título *</label>
-              <input type="text" v-model="novoDocumento.titulo" required>
-            </div>
-            
-            <div class="form-group">
-              <label>Descrição</label>
-              <textarea v-model="novoDocumento.descricao" rows="3"></textarea>
-            </div>
-            
-            <div class="form-group">
-              <label>Categoria *</label>
-              <select v-model="novoDocumento.categoria" required>
-                <option value="">Selecione uma categoria</option>
-                <option value="manual">Manual</option>
-                <option value="template">Template</option>
-                <option value="instrucao">Instrução</option>
-                <option value="normativa">Normativa</option>
-                <option value="formulario">Formulário</option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label>Arquivo *</label>
-              <input 
-                type="file" 
-                @change="selecionarArquivo" 
-                accept=".pdf,.doc,.docx,.xlsx,.xls"
-                required
-              >
-              <small>Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX</small>
-            </div>
-            
-            <div class="form-actions">
-              <button type="button" @click="fecharModalUpload" class="btn-secondary">
-                Cancelar
-              </button>
-              <button type="submit" :disabled="enviandoUpload" class="btn-primary">
-                {{ enviandoUpload ? 'Enviando...' : 'Salvar' }}
-              </button>
-            </div>
-          </form>
+        <div class="assistente-content">
+          <AssistenteProcesso 
+            @processo-criado="processoCriado"
+            @cancelar="fecharAssistente"
+          />
         </div>
       </div>
     </div>
 
-    <!-- Modal de Visualização Expandido -->
-    <div v-if="documentoSelecionado" class="modal-overlay" @click="fecharVisualizacao">
+    <!-- Modal de Visualização de Processo -->
+    <div v-if="processoSelecionado" class="modal-overlay" @click="fecharVisualizacaoProcesso">
       <div class="modal modal-large" @click.stop>
         <div class="modal-header">
-          <div class="document-title-section">
-            <div class="document-icon-large">
-              {{ getIconeCategoria(documentoSelecionado.categoria) }}
+          <div class="processo-title-section">
+            <div class="processo-icon-large">
+              {{ obterTipoProcesso(processoSelecionado.tipo_processo).icone }}
             </div>
             <div>
-              <h3>{{ documentoSelecionado.titulo }}</h3>
-              <span class="document-category-badge">{{ getNomeCategoria(documentoSelecionado.categoria) }}</span>
+              <h3>Processo {{ processoSelecionado.numero_processo }}</h3>
+              <span class="processo-tipo-badge" :class="processoSelecionado.tipo_processo">
+                {{ obterTipoProcesso(processoSelecionado.tipo_processo).label }}
+              </span>
+              <span class="processo-status-badge" :class="obterStatusProcesso(processoSelecionado.status).cor">
+                {{ obterStatusProcesso(processoSelecionado.status).label }}
+              </span>
             </div>
           </div>
-          <button @click="fecharVisualizacao" class="btn-close">&times;</button>
+          <button @click="fecharVisualizacaoProcesso" class="btn-close">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="document-viewer-container">
-            <div class="document-details-panel">
-              <h4>📋 Informações do Documento</h4>
+          <div class="processo-viewer-container">
+            <div class="processo-details-panel">
+              <h4>📋 Informações do Processo</h4>
+              
               <div class="detail-item">
-                <strong>📝 Descrição:</strong>
-                <p>{{ documentoSelecionado.descricao || 'Sem descrição disponível' }}</p>
-              </div>
-              <div class="detail-item">
-                <strong>📁 Categoria:</strong>
-                <span class="category-pill">{{ getNomeCategoria(documentoSelecionado.categoria) }}</span>
-              </div>
-              <div class="detail-item">
-                <strong>📅 Data de Criação:</strong>
-                <span>{{ formatarData(documentoSelecionado.criado_em) }}</span>
-              </div>
-              <div class="detail-item" v-if="documentoSelecionado.tamanho_arquivo">
-                <strong>💾 Tamanho:</strong>
-                <span>{{ formatarTamanho(documentoSelecionado.tamanho_arquivo) }}</span>
-              </div>
-              <div class="detail-item" v-if="documentoSelecionado.tipo_mime">
-                <strong>📄 Tipo:</strong>
-                <span>{{ documentoSelecionado.tipo_mime }}</span>
+                <strong>🏛️ Órgão:</strong>
+                <p>{{ processoSelecionado.nome_orgao }}</p>
               </div>
               
-              <div class="document-actions-panel">
-                <button @click="baixarDocumento(documentoSelecionado)" class="btn-primary btn-large">
-                  ⬇️ Baixar Documento
+              <div class="detail-item">
+                <strong>👥 Interessado:</strong>
+                <p>{{ processoSelecionado.unidade_interessada }}</p>
+              </div>
+              
+              <div class="detail-item">
+                <strong>📅 Data de Autuação:</strong>
+                <span>{{ formatarData(processoSelecionado.data_autuacao) }}</span>
+              </div>
+              
+              <div class="detail-item" v-if="processoSelecionado.data_finalizacao">
+                <strong>🏁 Data de Finalização:</strong>
+                <span>{{ formatarData(processoSelecionado.data_finalizacao) }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <strong>📄 Documentos:</strong>
+                <span>{{ processoSelecionado.total_documentos || 0 }}</span>
+              </div>
+              
+              <div class="detail-item" v-if="processoSelecionado.total_produtos">
+                <strong>📦 Produtos:</strong>
+                <span>{{ processoSelecionado.total_produtos }}</span>
+              </div>
+              
+              <div class="detail-item" v-if="processoSelecionado.observacoes">
+                <strong>💭 Observações:</strong>
+                <p>{{ processoSelecionado.observacoes }}</p>
+              </div>
+              
+              <div class="processo-actions-panel">
+                <button @click="gerarRelatorio(processoSelecionado)" class="btn-primary btn-large">
+                  📄 Gerar Relatório PDF
                 </button>
-                <button v-if="podeEditar" @click="editarDocumento(documentoSelecionado)" class="btn-secondary">
-                  ✏️ Editar Informações
+                
+                <!-- Botão para enviar para análise administrativa -->
+                <button 
+                  v-if="podeEnviarParaAnalise(processoSelecionado)" 
+                  @click="enviarParaAnaliseAdministrativa(processoSelecionado)" 
+                  class="btn-success btn-large"
+                >
+                  🚀 Enviar para Análise Administrativa
                 </button>
-                <button @click="compartilharDocumento(documentoSelecionado)" class="btn-secondary">
-                  🔗 Compartilhar
+                
+                <button @click="adicionarDocumento(processoSelecionado)" class="btn-secondary">
+                  📎 Adicionar Documento
+                </button>
+                <button @click="editarProcesso(processoSelecionado)" class="btn-secondary">
+                  ✏️ Editar Processo
+                </button>
+                <button @click="verTramitacao(processoSelecionado)" class="btn-secondary">
+                  📋 Ver Tramitação
                 </button>
               </div>
             </div>
             
-            <div class="document-preview-panel">
-              <h4>👁️ Visualização do Documento</h4>
-              <div class="preview-container">
-                <div v-if="documentoSelecionado.categoria === 'manual'" class="manual-preview">
+            <div class="processo-content-panel">
+              <h4>🎯 Objeto do Processo</h4>
+              <div class="objeto-container">
+                <p class="objeto-texto">{{ processoSelecionado.objeto }}</p>
+              </div>
+              
+              <h4>📄 Documentos do Processo</h4>
+              <div class="documentos-container">
+                <div v-if="documentosProcesso.length === 0" class="empty-documentos">
+                  <p>⚠️ Nenhum documento encontrado</p>
+                  <button @click="carregarDocumentosProcesso(processoSelecionado.id)" class="btn-secondary">
+                    🔄 Recarregar
+                  </button>
+                </div>
+                <div v-else class="lista-documentos">
+                  <div 
+                    v-for="doc in documentosProcesso" 
+                    :key="doc.id"
+                    class="documento-item"
+                  >
+                    <div class="doc-numero">Fl. {{ String(doc.numero_folha).padStart(3, '0') }}</div>
+                    <div class="doc-info">
+                      <h5>{{ doc.titulo }}</h5>
+                      <p>{{ doc.descricao }}</p>
+                      <small>{{ formatarData(doc.data_autuacao) }}</small>
+                    </div>
+                    <div class="doc-status">
+                      <span v-if="doc.assinado" class="status-assinado">✅ Assinado</span>
+                      <span v-else class="status-pendente">⏳ Pendente</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div v-if="false" class="manual-preview">
                   <div class="manual-content">
                     <div class="manual-header">
                       <h5>📖 Manual do Sistema Comprar Bem</h5>
@@ -495,7 +627,7 @@
                     </div>
                   </div>
                 </div>
-                <div v-else-if="documentoSelecionado.categoria === 'normativa' && documentoSelecionado.titulo.includes('Lei 14.133')" class="lei-preview">
+                <div v-if="false" class="lei-preview">
                   <div class="lei-content">
                     <div class="lei-header">
                       <h5>⚖️ Lei 14.133/2021 - Nova Lei de Licitações</h5>
@@ -700,11 +832,10 @@
                     </div>
                   </div>
                 </div>
-                <div v-else class="document-placeholder">
-                  <div class="placeholder-icon">{{ getIconeCategoria(documentoSelecionado.categoria) }}</div>
-                  <h5>{{ documentoSelecionado.titulo }}</h5>
-                  <p>Visualização completa disponível após o download</p>
-                  <small>Tipo: {{ documentoSelecionado.tipo_mime || 'Documento' }}</small>
+                <div v-if="false" class="processo-placeholder">
+                  <div class="placeholder-icon">🏛️</div>
+                  <h5>Processo Administrativo</h5>
+                  <p>Visualização completa dos documentos em desenvolvimento</p>
                 </div>
               </div>
             </div>
@@ -716,262 +847,570 @@
 </template>
 
 <script>
+import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
 import DocumentosAdministrativosService from '../../services/documentosAdministrativos'
+import AssistenteProcesso from './AssistenteProcesso.vue'
 
 export default {
   name: 'ProcessosAdministrativosComponent',
+  components: {
+    AssistenteProcesso
+  },
   data() {
     return {
-      documentos: [],
-      documentosFiltrados: [],
+      processos: [],
+      processosFiltrados: [],
+      documentosProcesso: [],
+      estatisticas: null,
       carregando: true,
       
-      filtroCategoria: '',
+      filtroTipo: '',
+      filtroStatus: '',
       termoBusca: '',
-      filtroPeriodo: '',
       ordenacao: 'data_desc',
       visualizacao: 'grid',
-      secaoAtiva: 0,
-      secaoLeiAtiva: 0,
-      leiSections: [
-        { icone: '🎯', titulo: 'O que Mudou' },
-        { icone: '📋', titulo: 'Modalidades' },
-        { icone: '⏰', titulo: 'Prazos' },
-        { icone: '🎯', titulo: 'Pré-qualificação' },
-        { icone: '📊', titulo: 'Critérios' },
-        { icone: '🔍', titulo: 'Transparência' }
-      ],
-      manuaisSections: [
-        { icone: '🎯', titulo: 'O que é o Sistema' },
-        { icone: '📊', titulo: 'Dashboard CPM' },
-        { icone: '⚖️', titulo: 'Dashboard CCL' },
-        { icone: '📝', titulo: 'DCB' },
-        { icone: '📊', titulo: 'RDM' },
-        { icone: '📚', titulo: 'Catálogo' }
-      ],
       
-      modalUploadAberto: false,
-      enviandoUpload: false,
-      documentoSelecionado: null,
+      // Controle de fluxo
+      perfilUsuario: '',
       
-      novoDocumento: {
-        titulo: '',
-        descricao: '',
-        categoria: '',
-        arquivo: null
-      },
+      // Modais
+      mostrarAssistente: false,
+      processoSelecionado: null,
       
-      podeUpload: true,
-      podeEditar: true
+      // Edição
+      modoEdicao: false,
+      processoParaEditar: null,
+      
+      // Dados auxiliares para visualização detalhada
+      produtosProcesso: [],
+      historicoTramitacao: [],
     }
   },
   
   async mounted() {
-    await this.carregarDocumentos()
+    await this.carregarPerfilUsuario()
+    await this.carregarProcessos()
+    await this.carregarEstatisticas()
+  },
+  
+  beforeUnmount() {
+    // Garantir que o scroll seja restaurado ao sair
+    document.body.style.overflow = 'auto'
   },
   
   methods: {
-    async carregarDocumentos() {
+    // =====================================================
+    // CARREGAMENTO DE DADOS
+    // =====================================================
+    
+    async carregarPerfilUsuario() {
+      try {
+        this.perfilUsuario = await ProcessosAdministrativosService.obterPerfilUsuario()
+      } catch (error) {
+        console.error('Erro ao carregar perfil do usuário:', error)
+        this.perfilUsuario = ''
+      }
+    },
+    
+    async carregarProcessos() {
       try {
         this.carregando = true
-        this.documentos = await DocumentosAdministrativosService.listarDocumentos()
-        this.filtrarDocumentos()
+        const filtros = {
+          tipo_processo: this.filtroTipo,
+          status: this.filtroStatus,
+          busca: this.termoBusca
+        }
+        this.processos = await ProcessosAdministrativosService.listarProcessos(filtros)
+        this.filtrarProcessos()
       } catch (error) {
-        console.error('Erro ao carregar documentos:', error)
-        this.documentos = []
-        alert('Erro ao carregar documentos. Tente novamente.')
+        console.error('Erro ao carregar processos:', error)
+        this.processos = []
+        alert('Erro ao carregar processos. Tente novamente.')
       } finally {
         this.carregando = false
       }
     },
     
-    async filtrarDocumentos() {
+    async carregarEstatisticas() {
       try {
-        const filtros = {}
-        if (this.filtroCategoria) {
-          filtros.categoria = this.filtroCategoria
-        }
-        if (this.termoBusca) {
-          filtros.busca = this.termoBusca
-        }
-        
-        this.documentosFiltrados = await DocumentosAdministrativosService.buscarDocumentos(
-          this.termoBusca, 
-          filtros
-        )
+        this.estatisticas = await ProcessosAdministrativosService.obterEstatisticas()
       } catch (error) {
-        console.error('Erro ao filtrar documentos:', error)
-        // Fallback para filtro local
-        let filtrados = [...this.documentos]
+        console.error('Erro ao carregar estatísticas:', error)
+      }
+    },
+    
+    async carregarDocumentosProcesso(processoId) {
+      try {
+        this.documentosProcesso = await ProcessosAdministrativosService.listarDocumentosProcesso(processoId)
+      } catch (error) {
+        console.error('Erro ao carregar documentos do processo:', error)
+        this.documentosProcesso = []
+      }
+    },
+    
+    async carregarProdutosProcesso(processoId) {
+      try {
+        this.produtosProcesso = await ProcessosAdministrativosService.listarProdutosProcesso(processoId)
+      } catch (error) {
+        console.error('Erro ao carregar produtos do processo:', error)
+        this.produtosProcesso = []
+      }
+    },
+    
+    async carregarHistoricoTramitacao(processoId) {
+      try {
+        this.historicoTramitacao = await ProcessosAdministrativosService.obterHistoricoTramitacao(processoId)
+      } catch (error) {
+        console.error('Erro ao carregar histórico de tramitação:', error)
+        this.historicoTramitacao = []
+      }
+    },
+    
+    podeEditarProcesso(processo) {
+      // Só pode editar processos em rascunho ou aguardando aprovação
+      const statusProcesso = processo?.status?.toLowerCase() || ''
+      const statusEditaveis = ['rascunho', 'aguardando_aprovacao']
+      return statusEditaveis.includes(statusProcesso)
+    },
+    
+    podeEnviarParaAnalise(processo) {
+      console.log('🔍 DEBUG - Verificando botão enviar:', {
+        processo: processo?.numero_processo || processo?.id,
+        status: processo?.status,
+        tipo: processo?.tipo_processo,
+        documentos: this.documentosProcesso?.length || 0,
+        produtos: this.produtosProcesso?.length || 0
+      })
+      
+      // Status permitidos (considerando maiúsculo e minúsculo)
+      const statusPermitidos = ['rascunho', 'RASCUNHO', 'aguardando_aprovacao', 'AGUARDANDO_APROVACAO']
+      const statusProcesso = processo?.status?.toLowerCase() || ''
+      const podeEnviar = ['rascunho', 'aguardando_aprovacao'].includes(statusProcesso)
+      
+      console.log('🎯 Resultado:', podeEnviar ? '✅ MOSTRAR BOTÃO' : '❌ OCULTAR BOTÃO')
+      
+      return podeEnviar
+    },
+    
+    gerarHTMLRelatorio(processo, documentos, produtos) {
+      const dataAtual = new Date().toLocaleDateString('pt-BR')
+      
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Relatório do Processo ${processo.numero_processo || processo.id}</title>
+          <style>
+            body { font-family: 'Times New Roman', serif; margin: 2cm; }
+            .cabecalho { text-align: center; margin-bottom: 2cm; border-bottom: 2px solid #000; padding-bottom: 1cm; }
+            .secao { margin-bottom: 2cm; }
+            .secao h2 { color: #2c3e50; border-bottom: 1px solid #ccc; padding-bottom: 0.5cm; }
+            .item { margin-bottom: 0.5cm; }
+            .item strong { color: #4a5568; }
+            .documentos-lista, .produtos-lista { margin-left: 1cm; }
+            .documento-item, .produto-item { margin-bottom: 0.3cm; padding: 0.3cm; background: #f8f9fa; }
+            .rodape { margin-top: 3cm; text-align: center; font-size: 10pt; color: #666; }
+            @media print { body { margin: 1cm; } }
+          </style>
+        </head>
+        <body>
+          <div class="cabecalho">
+            <h1>RELATÓRIO DE PROCESSO ADMINISTRATIVO</h1>
+            <h2>Processo Nº ${processo.numero_processo || processo.id}</h2>
+          </div>
+          
+          <div class="secao">
+            <h2>📋 Dados Gerais</h2>
+            <div class="item"><strong>Número do Processo:</strong> ${processo.numero_processo || 'Não definido'}</div>
+            <div class="item"><strong>Tipo:</strong> ${processo.tipo_processo === 'padronizacao' ? 'Padronização' : 'Despadronização'}</div>
+            <div class="item"><strong>Status:</strong> ${this.formatarStatus(processo.status)}</div>
+            <div class="item"><strong>Órgão:</strong> ${processo.nome_orgao}</div>
+            <div class="item"><strong>Unidade Interessada:</strong> ${processo.unidade_interessada}</div>
+            <div class="item"><strong>Data de Criação:</strong> ${this.formatarData(processo.created_at)}</div>
+            ${processo.observacoes ? `<div class="item"><strong>Observações:</strong> ${processo.observacoes}</div>` : ''}
+          </div>
+          
+          <div class="secao">
+            <h2>📄 Documentos</h2>
+            <div class="documentos-lista">
+              ${documentos.map(doc => `
+                <div class="documento-item">
+                  <strong>Fl. ${String(doc.numero_folha).padStart(3, '0')}</strong> - ${doc.nome_documento || doc.tipo_documento}
+                  <br><small>Criado em: ${this.formatarData(doc.data_autuacao)}</small>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          
+          ${produtos.length > 0 ? `
+          <div class="secao">
+            <h2>📦 Produtos</h2>
+            <div class="produtos-lista">
+              ${produtos.map(produto => `
+                <div class="produto-item">
+                  <strong>${produto.nome_produto || produto.nome}</strong>
+                  <br>Categoria: ${produto.categoria_produto || produto.categoria || 'N/A'}
+                  ${produto.observacoes_processo ? `<br>Observações: ${produto.observacoes_processo}` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+          
+          <div class="rodape">
+            <p>Relatório gerado automaticamente pelo Sistema Comprar Bem em ${dataAtual}</p>
+            <p>Este documento é uma representação fiel do processo administrativo registrado no sistema.</p>
+          </div>
+        </body>
+        </html>
+      `
+    },
+    
+    // =====================================================
+    // FILTROS E BUSCA
+    // =====================================================
+    
+    async filtrarProcessos() {
+      try {
+        // Aplicar filtros localmente primeiro
+        let filtrados = [...this.processos]
         
-        if (this.filtroCategoria) {
-          filtrados = filtrados.filter(doc => doc.categoria === this.filtroCategoria)
+        if (this.filtroTipo) {
+          filtrados = filtrados.filter(p => p.tipo_processo === this.filtroTipo)
+        }
+        
+        if (this.filtroStatus) {
+          filtrados = filtrados.filter(p => p.status === this.filtroStatus)
         }
         
         if (this.termoBusca) {
           const termo = this.termoBusca.toLowerCase()
-          filtrados = filtrados.filter(doc => 
-            doc.titulo.toLowerCase().includes(termo) ||
-            (doc.descricao && doc.descricao.toLowerCase().includes(termo))
+          filtrados = filtrados.filter(p => 
+            p.numero_processo.toLowerCase().includes(termo) ||
+            p.objeto.toLowerCase().includes(termo) ||
+            p.nome_orgao.toLowerCase().includes(termo)
           )
         }
         
-        this.documentosFiltrados = filtrados
+        // Aplicar ordenação
+        this.aplicarOrdenacao(filtrados)
+        
+        this.processosFiltrados = filtrados
+      } catch (error) {
+        console.error('Erro ao filtrar processos:', error)
+        this.processosFiltrados = [...this.processos]
       }
     },
     
-    getIconeCategoria(categoria) {
-      return DocumentosAdministrativosService.obterIconeCategoria(categoria)
-    },
-    
-    getNomeCategoria(categoria) {
-      return DocumentosAdministrativosService.obterNomeCategoria(categoria)
-    },
-    
-    formatarData(data) {
-      return new Date(data).toLocaleDateString('pt-BR')
-    },
-    
-    abrirModalUpload() {
-      this.modalUploadAberto = true
-      this.novoDocumento = {
-        titulo: '',
-        descricao: '',
-        categoria: '',
-        arquivo: null
+    aplicarOrdenacao(processos) {
+      switch (this.ordenacao) {
+        case 'data_desc':
+          processos.sort((a, b) => new Date(b.data_autuacao) - new Date(a.data_autuacao))
+          break
+        case 'data_asc':
+          processos.sort((a, b) => new Date(a.data_autuacao) - new Date(b.data_autuacao))
+          break
+        case 'numero_asc':
+          processos.sort((a, b) => a.numero_processo.localeCompare(b.numero_processo))
+          break
+        case 'numero_desc':
+          processos.sort((a, b) => b.numero_processo.localeCompare(a.numero_processo))
+          break
+        case 'status':
+          processos.sort((a, b) => a.status.localeCompare(b.status))
+          break
       }
     },
     
-    fecharModalUpload() {
-      this.modalUploadAberto = false
+    // =====================================================
+    // GESTÃO DE PROCESSOS
+    // =====================================================
+    
+    abrirAssistente(tipo = null) {
+      this.mostrarAssistente = true
+      // Prevenir scroll da página de fundo
+      document.body.style.overflow = 'hidden'
     },
     
-    selecionarArquivo(event) {
-      const arquivo = event.target.files[0]
-      if (arquivo) {
-        try {
-          DocumentosAdministrativosService.validarArquivo(arquivo)
-          this.novoDocumento.arquivo = arquivo
-        } catch (error) {
-          alert(error.message)
-          event.target.value = ''
+    processoCriado(processo) {
+      this.fecharAssistente()
+      this.carregarProcessos()
+      alert(`Processo ${processo.numero_processo} criado com sucesso!`)
+      
+      // Abrir o processo recém-criado
+      this.abrirProcesso(processo)
+    },
+    
+    async abrirProcesso(processo) {
+      try {
+        console.log('Carregando processo:', processo.id)
+        this.processoSelecionado = await ProcessosAdministrativosService.obterProcesso(processo.id)
+        
+        if (!this.processoSelecionado) {
+          throw new Error('Processo não encontrado')
         }
+        
+        // Carregar documentos do processo
+        await this.carregarDocumentosProcesso(processo.id)
+        
+        // Carregar produtos se for padronização
+        if (this.processoSelecionado.tipo_processo === 'padronizacao') {
+          await this.carregarProdutosProcesso(processo.id)
+        }
+        
+        // Carregar histórico de tramitação
+        await this.carregarHistoricoTramitacao(processo.id)
+        
+        console.log('Processo carregado com sucesso:', this.processoSelecionado)
+        
+      } catch (error) {
+        console.error('Erro ao abrir processo:', error)
+        alert(`Erro ao carregar detalhes do processo: ${error.message}`)
       }
     },
     
-    async uploadDocumento() {
-      if (!this.novoDocumento.arquivo) {
-        alert('Selecione um arquivo para fazer upload')
+    visualizarProcesso(processo) {
+      this.abrirProcesso(processo)
+    },
+    
+    // =====================================================
+    // GESTÃO DE MODAIS
+    // =====================================================
+    
+    fecharAssistente() {
+      this.mostrarAssistente = false
+      // Restaurar scroll da página
+      document.body.style.overflow = 'auto'
+    },
+    
+    fecharVisualizacaoProcesso() {
+      this.processoSelecionado = null
+      this.documentosProcesso = []
+    },
+    
+    // =====================================================
+    // AÇÕES DOS PROCESSOS
+    // =====================================================
+    
+    editarProcesso(processo) {
+      console.log('Editar processo:', processo)
+      
+      // Verificar se o processo pode ser editado
+      if (!this.podeEditarProcesso(processo)) {
+        alert('Este processo não pode ser editado no estado atual.')
         return
       }
       
+      // Abrir o assistente em modo de edição
+      this.modoEdicao = true
+      this.processoParaEditar = processo
+      this.mostrarAssistente = true
+    },
+    
+    async gerarRelatorio(processo) {
       try {
-        this.enviandoUpload = true
+        console.log('Gerando relatório PDF para processo:', processo.id)
         
-        // Validar arquivo
-        DocumentosAdministrativosService.validarArquivo(this.novoDocumento.arquivo)
+        // Buscar dados completos do processo
+        const processoCompleto = await ProcessosAdministrativosService.obterProcesso(processo.id)
+        const documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processo.id)
         
-        // Upload do arquivo
-        const resultadoUpload = await DocumentosAdministrativosService.uploadArquivo(
-          this.novoDocumento.arquivo
+        let produtos = []
+        if (processoCompleto.tipo_processo === 'padronizacao') {
+          produtos = await ProcessosAdministrativosService.listarProdutosProcesso(processo.id)
+        }
+        
+        // Gerar HTML do relatório
+        const htmlRelatorio = this.gerarHTMLRelatorio(processoCompleto, documentos, produtos)
+        
+        // Abrir em nova janela para impressão/PDF
+        const novaJanela = window.open('', '_blank')
+        novaJanela.document.write(htmlRelatorio)
+        novaJanela.document.close()
+        
+        // Aguardar carregar e imprimir
+        setTimeout(() => {
+          novaJanela.print()
+        }, 1000)
+        
+      } catch (error) {
+        console.error('Erro ao gerar relatório:', error)
+        alert(`Erro ao gerar relatório: ${error.message}`)
+      }
+    },
+    
+    async enviarParaAnaliseAdministrativa(processo) {
+      try {
+        const confirmacao = confirm(
+          `🚀 ENVIAR PARA ANÁLISE ADMINISTRATIVA\n\n` +
+          `Tem certeza que deseja enviar o processo "${processo.numero_processo}" para análise administrativa?\n\n` +
+          `Após o envio, o processo não poderá mais ser editado até retornar para revisão.`
         )
         
-        // Criar documento com metadados
-        await DocumentosAdministrativosService.criarDocumento({
-          titulo: this.novoDocumento.titulo,
-          descricao: this.novoDocumento.descricao,
-          categoria: this.novoDocumento.categoria,
-          nome_arquivo: resultadoUpload.nome_original,
-          tamanho_arquivo: resultadoUpload.tamanho,
-          tipo_mime: resultadoUpload.tipo_mime,
-          url_arquivo: resultadoUpload.url
-        })
+        if (!confirmacao) return
         
-        await this.carregarDocumentos()
-        this.fecharModalUpload()
-        alert('Documento enviado com sucesso!')
+        console.log('Enviando processo para análise administrativa:', processo.id)
+        
+        // Atualizar status do processo
+        await ProcessosAdministrativosService.tramitarProcesso(
+          processo.id, 
+          'analise_administrativa',
+          'Processo enviado para análise administrativa'
+        )
+        
+        // Atualizar na lista local
+        const index = this.processos.findIndex(p => p.id === processo.id)
+        if (index !== -1) {
+          this.processos[index].status = 'analise_administrativa'
+        }
+        
+        // Atualizar processo selecionado se necessário
+        if (this.processoSelecionado && this.processoSelecionado.id === processo.id) {
+          this.processoSelecionado.status = 'analise_administrativa'
+        }
+        
+        alert('✅ Processo enviado para análise administrativa com sucesso!')
+        
+        // Recarregar dados
+        await this.carregarProcessos()
         
       } catch (error) {
-        console.error('Erro no upload:', error)
-        alert(`Erro ao fazer upload: ${error.message}`)
-      } finally {
-        this.enviandoUpload = false
+        console.error('Erro ao enviar processo para análise:', error)
+        alert(`❌ Erro ao enviar processo para análise: ${error.message}`)
       }
     },
     
-    visualizarDocumento(documento) {
-      this.documentoSelecionado = documento
+    adicionarDocumento(processo) {
+      // TODO: Implementar adição de documento
+      console.log('Adicionar documento:', processo)
+      alert('Funcionalidade de adição de documento em desenvolvimento')
     },
     
-    fecharVisualizacao() {
-      this.documentoSelecionado = null
+    verTramitacao(processo) {
+      // TODO: Implementar visualização de tramitação
+      console.log('Ver tramitação:', processo)
+      alert('Funcionalidade de tramitação em desenvolvimento')
     },
     
-    async baixarDocumento(documento) {
+    // =====================================================
+    // AÇÕES RÁPIDAS
+    // =====================================================
+    
+    abrirRelatorios() {
+      alert('Funcionalidade de relatórios em desenvolvimento')
+    },
+    
+    abrirConfiguracoes() {
+      alert('Funcionalidade de configurações em desenvolvimento')
+    },
+    
+    // =====================================================
+    // GESTÃO DE FLUXO - AÇÕES DE WORKFLOW
+    // =====================================================
+    
+    obterAcoesProcesso(processo) {
+      if (!this.perfilUsuario) return []
+      return ProcessosAdministrativosService.obterAcoesDisponiveis(processo.status, this.perfilUsuario)
+    },
+    
+    async executarAcaoWorkflow(processo, acao) {
       try {
-        if (!documento.url_arquivo) {
-          alert('URL do arquivo não disponível')
-          return
+        const observacoes = prompt(`Observações para ${acao}:`) || ''
+        
+        let resultado
+        
+        switch (acao) {
+          case 'submeter_analise':
+            resultado = await ProcessosAdministrativosService.submeterParaAnalise(processo.id, observacoes)
+            break
+          case 'aprovar_cpm':
+            resultado = await ProcessosAdministrativosService.aprovarCPM(processo.id, observacoes)
+            break
+          case 'rejeitar_cpm':
+            resultado = await ProcessosAdministrativosService.rejeitarCPM(processo.id, observacoes)
+            break
+          case 'assinar_admin':
+            resultado = await ProcessosAdministrativosService.assinarAdministrativo(processo.id, observacoes)
+            break
+          case 'rejeitar_admin':
+            resultado = await ProcessosAdministrativosService.rejeitarAdministrativo(processo.id, observacoes)
+            break
+          case 'enviar_ccl':
+            resultado = await ProcessosAdministrativosService.enviarParaCCL(processo.id, observacoes)
+            break
+          case 'aprovar_ccl':
+            resultado = await ProcessosAdministrativosService.aprovarCCL(processo.id, observacoes)
+            break
+          case 'rejeitar_ccl':
+            resultado = await ProcessosAdministrativosService.rejeitarCCL(processo.id, observacoes)
+            break
+          case 'aprovar_juridico':
+            resultado = await ProcessosAdministrativosService.aprovarJuridico(processo.id, observacoes)
+            break
+          case 'rejeitar_juridico':
+            resultado = await ProcessosAdministrativosService.rejeitarJuridico(processo.id, observacoes)
+            break
+          case 'homologar':
+            resultado = await ProcessosAdministrativosService.homologarProcesso(processo.id, observacoes)
+            break
+          case 'rejeitar_final':
+            resultado = await ProcessosAdministrativosService.rejeitarFinal(processo.id, observacoes)
+            break
+          default:
+            throw new Error(`Ação não reconhecida: ${acao}`)
         }
         
-        const blob = await DocumentosAdministrativosService.baixarArquivo(documento.url_arquivo)
-        
-        // Criar link temporário para download
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.style.display = 'none'
-        a.href = url
-        a.download = documento.nome_arquivo || 'documento'
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        
+        if (resultado) {
+          alert(`Ação executada com sucesso! Processo agora está: ${resultado.processo.status}`)
+          await this.carregarProcessos()
+          
+          // Se há processo selecionado, atualizar
+          if (this.processoSelecionado && this.processoSelecionado.id === processo.id) {
+            this.processoSelecionado = resultado.processo
+          }
+        }
       } catch (error) {
-        console.error('Erro no download:', error)
-        alert(`Erro ao baixar arquivo: ${error.message}`)
+        console.error('Erro ao executar ação:', error)
+        alert(`Erro ao executar ação: ${error.message}`)
       }
     },
     
-    async editarDocumento(documento) {
-      // Por enquanto, permitir apenas edição de título e descrição
-      const novoTitulo = prompt('Novo título:', documento.titulo)
-      if (novoTitulo && novoTitulo !== documento.titulo) {
-        try {
-          await DocumentosAdministrativosService.atualizarDocumento(documento.id, {
-            titulo: novoTitulo
-          })
-          await this.carregarDocumentos()
-          alert('Documento atualizado com sucesso!')
-        } catch (error) {
-          console.error('Erro ao editar:', error)
-          alert(`Erro ao editar documento: ${error.message}`)
-        }
+    obterLabelAcao(acao) {
+      const labels = {
+        'submeter_analise': '🎯 Submeter para Análise',
+        'aprovar_cpm': '✅ Aprovar (CPM)',
+        'rejeitar_cpm': '❌ Rejeitar (CPM)',
+        'assinar_admin': '✍️ Assinar (Órgão)',
+        'rejeitar_admin': '❌ Rejeitar (Órgão)',
+        'enviar_ccl': '📤 Enviar para CCL',
+        'aprovar_ccl': '⚖️ Aprovar (CCL)',
+        'rejeitar_ccl': '❌ Rejeitar (CCL)',
+        'aprovar_juridico': '⚖️ Aprovar (Jurídico)',
+        'rejeitar_juridico': '❌ Rejeitar (Jurídico)',
+        'homologar': '🏆 Homologar',
+        'rejeitar_final': '❌ Rejeitar Final'
       }
+      
+      return labels[acao] || acao
     },
     
-    formatarTamanho(bytes) {
-      if (!bytes) return 'N/A'
-      const sizes = ['Bytes', 'KB', 'MB', 'GB']
-      if (bytes === 0) return '0 Bytes'
-      const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)))
-      return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
+    // =====================================================
+    // UTILITÁRIOS
+    // =====================================================
+    
+    formatarData(data) {
+      if (!data) return 'N/A'
+      return new Date(data).toLocaleDateString('pt-BR')
     },
     
-    compartilharDocumento(documento) {
-      const url = `${window.location.origin}/processos-administrativos?doc=${documento.id}`
-      navigator.clipboard.writeText(url).then(() => {
-        alert('Link copiado para a área de transferência!')
-      }).catch(() => {
-        prompt('Link para compartilhar:', url)
-      })
+    obterTipoProcesso(tipo) {
+      return ProcessosAdministrativosService.obterTipoProcesso(tipo)
     },
     
-    visualizarDocumento(documento) {
-      this.documentoSelecionado = documento
-      this.secaoAtiva = 0 // Reset para a primeira seção quando abrir um novo documento
-      this.secaoLeiAtiva = 0 // Reset para a primeira seção da lei
-    }
+    obterStatusProcesso(status) {
+      return ProcessosAdministrativosService.obterStatusProcesso(status)
+    },
   }
 }
 </script>
@@ -1050,7 +1489,134 @@ export default {
   background: #34495e;
 }
 
-.documents-section {
+.iniciar-processo-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.iniciar-processo-section h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.subtitle {
+  margin: 0 0 1.5rem 0;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.aviso-desenvolvimento {
+  display: flex;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #fef3cd, #fde68a);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 6px rgba(245, 158, 11, 0.1);
+}
+
+.aviso-icon {
+  font-size: 1.5rem;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+}
+
+.aviso-content h4 {
+  margin: 0 0 0.5rem 0;
+  color: #92400e;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.aviso-content p {
+  margin: 0 0 0.25rem 0;
+  color: #a16207;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.aviso-content small {
+  color: #b45309;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.botoes-principais {
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
+}
+
+.btn-processo {
+  background: white;
+  border: 2px solid #e2e8f0;
+  color: #2d3748;
+  padding: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+}
+
+.btn-processo:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-processo .icone {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.btn-processo .texto strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  color: #2d3748;
+}
+
+.btn-processo .texto small {
+  font-size: 0.8rem;
+  color: #718096;
+}
+
+.acoes-rapidas-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-acao {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.btn-acao:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.processos-section {
   background: white;
   padding: 1.5rem;
   height: 100vh;
@@ -1059,14 +1625,14 @@ export default {
   overflow: hidden;
 }
 
-.documents-header {
+.processos-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
 }
 
-.documents-header h3 {
+.processos-header h3 {
   color: #2d3748;
   margin: 0;
 }
@@ -1133,98 +1699,197 @@ export default {
   margin-bottom: 1rem;
 }
 
-.documents-container {
+.processos-container {
   flex: 1;
   overflow-y: auto;
   padding-right: 0.5rem;
 }
 
-.documents-container.grid {
+.processos-container.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
 }
 
-.documents-container.list {
+.processos-container.list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-}
-
-.document-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
   gap: 1rem;
 }
 
-.document-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+.processo-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.document-icon {
-  font-size: 2rem;
-  flex-shrink: 0;
+.processo-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  border-color: #cbd5e0;
 }
 
-.document-info {
-  flex: 1;
+.processo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
 }
 
-.document-info h4 {
-  margin: 0 0 0.5rem;
+.processo-numero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.numero {
+  font-size: 1.2rem;
+  font-weight: 700;
   color: #2d3748;
-  font-size: 1rem;
 }
 
-.document-desc {
-  margin: 0 0 0.75rem;
-  color: #718096;
+.tipo {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.tipo.padronizacao {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tipo.despadronizacao {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.processo-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge.blue {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.green {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.yellow {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-badge.red {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-badge.gray {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.processo-info {
+  margin-bottom: 1rem;
+}
+
+.processo-info h4 {
+  margin: 0 0 0.5rem;
+  color: #1f2937;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.interessado {
+  margin: 0 0 0.5rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.objeto {
+  margin: 0;
+  color: #4b5563;
   font-size: 0.9rem;
   line-height: 1.4;
 }
 
-.document-meta {
+.processo-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.meta-item {
   display: flex;
-  gap: 1rem;
-  font-size: 0.8rem;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.categoria {
-  background: #e2e8f0;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  color: #4a5568;
+.meta-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
 }
 
-.data {
-  color: #a0aec0;
+.meta-value {
+  font-size: 0.9rem;
+  color: #1f2937;
+  font-weight: 600;
 }
 
-.document-actions {
+.processo-actions {
   display: flex;
   gap: 0.5rem;
-  flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .btn-action {
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  background: #f7fafc;
-  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .btn-action:hover {
-  background: #e2e8f0;
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+.btn-action.primary {
+  background: #2c3e50;
+  color: white;
+  border-color: #2c3e50;
+}
+
+.btn-action.primary:hover {
+  background: #34495e;
 }
 
 .modal-overlay {
@@ -1351,6 +2016,15 @@ export default {
   background: #cbd5e0;
 }
 
+.btn-success {
+  background: #48bb78;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #38a169;
+}
+
 .document-details {
   margin-bottom: 1.5rem;
 }
@@ -1360,13 +2034,14 @@ export default {
   line-height: 1.5;
 }
 
-.document-title-section {
+
+.processo-title-section {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
-.document-icon-large {
+.processo-icon-large {
   font-size: 2.5rem;
   width: 60px;
   height: 60px;
@@ -1377,30 +2052,50 @@ export default {
   border-radius: 12px;
 }
 
-.document-category-badge {
+.processo-tipo-badge {
   background: #e2e8f0;
   color: #4a5568;
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 500;
+  margin-right: 0.5rem;
 }
 
-.document-viewer-container {
+.processo-tipo-badge.padronizacao {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.processo-tipo-badge.despadronizacao {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.processo-status-badge {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.processo-viewer-container {
   display: grid;
   grid-template-columns: 350px 1fr;
   gap: 2rem;
   height: 100%;
 }
 
-.document-details-panel {
+.processo-details-panel {
   background: #f8f9fa;
   border-radius: 8px;
   padding: 1.5rem;
   height: fit-content;
 }
 
-.document-details-panel h4 {
+.processo-details-panel h4 {
   margin: 0 0 1.5rem 0;
   color: #2d3748;
   font-size: 1.1rem;
@@ -1439,7 +2134,7 @@ export default {
   font-weight: 500;
 }
 
-.document-actions-panel {
+.processo-actions-panel {
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 2px solid #e2e8f0;
@@ -1452,7 +2147,7 @@ export default {
   margin-bottom: 0.75rem;
 }
 
-.document-preview-panel {
+.processo-content-panel {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -1460,10 +2155,108 @@ export default {
   overflow-y: auto;
 }
 
-.document-preview-panel h4 {
+.processo-content-panel h4 {
   margin: 0 0 1.5rem 0;
   color: #2d3748;
   font-size: 1.1rem;
+}
+
+.objeto-container {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.objeto-texto {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.6;
+  text-align: justify;
+}
+
+.documentos-container {
+  margin-bottom: 2rem;
+}
+
+.empty-documentos {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+}
+
+.lista-documentos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.documento-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.documento-item:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.doc-numero {
+  background: #2c3e50;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 60px;
+  text-align: center;
+}
+
+.doc-info {
+  flex: 1;
+}
+
+.doc-info h5 {
+  margin: 0 0 0.25rem 0;
+  color: #1f2937;
+  font-size: 1rem;
+}
+
+.doc-info p {
+  margin: 0 0 0.25rem 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.doc-info small {
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.doc-status {
+  text-align: center;
+}
+
+.status-assinado {
+  color: #059669;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-pendente {
+  color: #d97706;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .preview-container {
@@ -1657,7 +2450,7 @@ export default {
   }
 }
 
-.document-placeholder {
+.processo-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1671,6 +2464,73 @@ export default {
   font-size: 4rem;
   margin-bottom: 1rem;
   opacity: 0.5;
+}
+
+/* Estilos específicos para o assistente */
+.assistente-overlay {
+  z-index: 2000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.assistente-modal {
+  width: 95vw;
+  height: 95vh;
+  max-width: none;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.assistente-header-modal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: #2c3e50;
+  color: white;
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
+}
+
+.assistente-header-modal h3 {
+  margin: 0;
+  color: white;
+}
+
+.assistente-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f8fafc;
+  border-radius: 0 0 12px 12px;
+  position: relative;
+  max-height: calc(95vh - 80px);
+}
+
+/* Scroll customizado para o assistente */
+.assistente-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.assistente-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.assistente-content::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+
+.assistente-content::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 .stats-section {
@@ -1954,6 +2814,96 @@ export default {
     flex-direction: column;
     text-align: center;
     gap: 0.5rem;
+  }
+}
+
+/* Estilos para Workflow Actions */
+.workflow-actions {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.workflow-header {
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.workflow-label {
+  font-size: 0.8rem;
+  color: #4a5568;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workflow-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn-workflow {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-workflow.aprovacao {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.btn-workflow.aprovacao:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+}
+
+.btn-workflow.rejeicao {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.btn-workflow.rejeicao:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
+.btn-workflow.submissao {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.btn-workflow.submissao:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Responsividade para workflow actions */
+@media (max-width: 768px) {
+  .workflow-buttons {
+    flex-direction: column;
+  }
+  
+  .btn-workflow {
+    width: 100%;
+    text-align: center;
   }
 }
 </style>

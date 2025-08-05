@@ -80,7 +80,7 @@
         <h3>Nenhuma cotação registrada</h3>
         <p>Comece registrando cotações de fornecedores para análise técnica e padronização de produtos.</p>
         <button @click="abrirModalNovaCotacao" class="btn-primary">
-          ➕ Registrar Primeira Cotação
+          ➕ Registrar Cotação
         </button>
       </div>
 
