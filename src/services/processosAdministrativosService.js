@@ -74,6 +74,19 @@ export class ProcessosAdministrativosService {
         throw error
       }
 
+      // Calcular totais
+      if (data) {
+        data.total_documentos = data.documentos?.length || 0
+        data.total_produtos = data.produtos?.length || 0
+        
+        console.log(`Processo ${id} carregado:`, {
+          total_documentos: data.total_documentos,
+          total_produtos: data.total_produtos,
+          documentos: data.documentos?.map(d => ({ id: d.id, titulo: d.titulo || d.nome_documento, numero_folha: d.numero_folha })),
+          produtos: data.produtos?.map(p => ({ id: p.id, nome: p.nome }))
+        })
+      }
+
       return data
     } catch (error) {
       console.error('Erro no serviço de processos:', error)
@@ -147,6 +160,38 @@ export class ProcessosAdministrativosService {
         throw new Error('Usuário não autenticado ou sem tenant')
       }
 
+      // Primeiro verificar se o processo existe
+      const { data: processoExistente, error: errorVerificacao } = await supabase
+        .from('processos_administrativos')
+        .select('id, tenant_id, status')
+        .eq('id', id)
+        
+      console.log('🔍 Debug - Verificando processo existente:', {
+        id,
+        tenantId,
+        processoExistente,
+        errorVerificacao
+      })
+      
+      if (errorVerificacao) {
+        throw new Error(`Erro ao verificar processo: ${errorVerificacao.message}`)
+      }
+      
+      if (!processoExistente || processoExistente.length === 0) {
+        throw new Error(`Processo com ID ${id} não encontrado`)
+      }
+      
+      if (processoExistente.length > 1) {
+        throw new Error(`Múltiplos processos encontrados com ID ${id}`)
+      }
+      
+      const processo = processoExistente[0]
+      
+      if (processo.tenant_id !== tenantId) {
+        throw new Error(`Processo não pertence ao tenant atual. Esperado: ${tenantId}, Encontrado: ${processo.tenant_id}`)
+      }
+      
+      // Agora fazer o update
       const { data, error } = await supabase
         .from('processos_administrativos')
         .update({
@@ -172,6 +217,284 @@ export class ProcessosAdministrativosService {
   }
 
   // =====================================================
+  // GESTÃO DE EDITAIS NO PROCESSO
+  // =====================================================
+
+  static async vincularEditalProcesso(processoId, dadosEdital) {
+    try {
+      const tenantId = await getTenantId()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const user = sessionData?.session?.user
+
+      if (!tenantId || !user) {
+        throw new Error('Usuário não autenticado ou sem tenant')
+      }
+
+      // Upload do arquivo PDF do edital ou usar URL existente
+      let editalUrl = dadosEdital.arquivo_url || null // Usar URL existente se fornecida
+      
+      if (dadosEdital.arquivo && !editalUrl) {
+        const arquivo = dadosEdital.arquivo
+        const nomeArquivo = `edital_${processoId}_${Date.now()}.pdf`
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('processos-documentos')
+          .upload(nomeArquivo, arquivo, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (uploadError) {
+          throw new Error(`Erro ao fazer upload do edital: ${uploadError.message}`)
+        }
+
+        // Obter URL pública do arquivo
+        const { data: urlData } = supabase.storage
+          .from('processos-documentos')
+          .getPublicUrl(uploadData.path)
+        
+        editalUrl = urlData.publicUrl
+      }
+
+      // Atualizar processo com dados do edital
+      const { data, error } = await supabase
+        .from('processos_administrativos')
+        .update({
+          numero_edital: dadosEdital.numero_edital,
+          ano_edital: dadosEdital.ano_edital,
+          edital_id: dadosEdital.edital_id, // ID do edital vinculado
+          edital_pdf_url: editalUrl,
+          edital_vinculado: true,
+          data_vinculacao_edital: new Date().toISOString(),
+          atualizado_por: user.id,
+          atualizado_em: new Date().toISOString()
+        })
+        .eq('id', processoId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Erro ao vincular edital:', error)
+        throw error
+      }
+
+      // Criar documento do edital no processo
+      const numeroFolha = await this.obterProximoNumeroFolha(processoId)
+      
+      const documentoEdital = {
+        processo_id: processoId,
+        tipo_documento: 'EDITAL',
+        nome_documento: `Edital de Pré-Qualificação nº ${dadosEdital.numero_edital}`,
+        titulo: `Edital de Pré-Qualificação nº ${dadosEdital.numero_edital}`,
+        descricao: dadosEdital.descricao || 'Edital de Chamamento Público anexado ao processo',
+        conteudo_html: this.gerarHTMLEdital(dadosEdital),
+        numero_sequencial: numeroFolha,
+        numero_folha: numeroFolha,
+        arquivo_url: editalUrl
+      }
+
+      await this.criarDocumento(documentoEdital)
+
+      return data
+    } catch (error) {
+      console.error('Erro ao vincular edital ao processo:', error)
+      throw error
+    }
+  }
+
+  static async obterDocumentacaoProdutos(processoId) {
+    try {
+      const tenantId = await getTenantId()
+      if (!tenantId) {
+        throw new Error('Usuário não autenticado ou sem tenant')
+      }
+
+      // Buscar produtos do processo com sua documentação completa
+      const { data: produtos, error } = await supabase
+        .from('produtos_prequalificacao')
+        .select(`
+          *,
+          produto_info:produtos!inner (
+            nome,
+            marca,
+            modelo,
+            fabricante,
+            registro_anvisa,
+            registro_inmetro,
+            cbpf,
+            norma_abnt,
+            norma_regulamentadora,
+            origem,
+            codigo_material,
+            descricao
+          ),
+          documentos_produto:arquivos_produto (
+            id,
+            nome_arquivo,
+            tipo_arquivo,
+            tamanho,
+            url_arquivo,
+            data_upload
+          )
+        `)
+        .eq('processo_id', processoId)
+        .eq('tenant_id', tenantId)
+
+      if (error) {
+        console.error('Erro ao obter documentação dos produtos:', error)
+        throw error
+      }
+
+      // Estruturar dados da documentação
+      const documentacaoCompleta = produtos.map(produto => ({
+        produto_id: produto.produto_id,
+        nome_produto: produto.produto_info.nome,
+        marca: produto.produto_info.marca,
+        modelo: produto.produto_info.modelo,
+        fabricante: produto.produto_info.fabricante,
+        
+        // Documentação técnica obrigatória
+        documentacao_tecnica: {
+          numero_anvisa: produto.produto_info.registro_anvisa,
+          certificado_inmetro: produto.produto_info.registro_inmetro,
+          cbpf: produto.produto_info.cbpf,
+          norma_abnt: produto.produto_info.norma_abnt,
+          norma_regulamentadora: produto.produto_info.norma_regulamentadora,
+          origem: produto.produto_info.origem,
+          codigo_material: produto.produto_info.codigo_material,
+          especificacao_detalhada: produto.produto_info.descricao
+        },
+
+        // Arquivos anexados ao produto
+        documentos_anexados: produto.documentos_produto || [],
+
+        // Checklist de documentação baseado no tipo de produto
+        checklist_documentacao: this.gerarChecklistDocumentacao(produto.produto_info)
+      }))
+
+      return documentacaoCompleta
+    } catch (error) {
+      console.error('Erro ao obter documentação dos produtos:', error)
+      throw error
+    }
+  }
+
+  static gerarChecklistDocumentacao(produto) {
+    const checklist = []
+    
+    // Documentação básica (sempre necessária)
+    checklist.push({
+      documento: 'Especificação técnica completa',
+      obrigatório: true,
+      presente: !!produto.descricao,
+      valor: produto.descricao
+    })
+
+    // Documentação específica baseada no produto
+    if (produto.registro_anvisa) {
+      checklist.push({
+        documento: 'Certificado de Registro ANVISA/MS',
+        obrigatório: true,
+        presente: true,
+        valor: produto.registro_anvisa
+      })
+    }
+
+    if (produto.registro_inmetro) {
+      checklist.push({
+        documento: 'Certificação/Registro INMETRO',
+        obrigatório: true,
+        presente: true,
+        valor: produto.registro_inmetro
+      })
+    }
+
+    if (produto.cbpf) {
+      checklist.push({
+        documento: 'Certificado de Boas Práticas de Fabricação',
+        obrigatório: true,
+        presente: true,
+        valor: produto.cbpf
+      })
+    }
+
+    if (produto.norma_abnt) {
+      checklist.push({
+        documento: 'Norma ABNT aplicável',
+        obrigatório: true,
+        presente: true,
+        valor: produto.norma_abnt
+      })
+    }
+
+    if (produto.norma_regulamentadora) {
+      checklist.push({
+        documento: 'Norma Regulamentadora',
+        obrigatório: true,
+        presente: true,
+        valor: produto.norma_regulamentadora
+      })
+    }
+
+    // Documentação adicional recomendada
+    checklist.push({
+      documento: 'Manual técnico em português',
+      obrigatório: false,
+      presente: false,
+      observacao: 'Verificar se foi anexado nos documentos do produto'
+    })
+
+    checklist.push({
+      documento: 'Instruções de uso',
+      obrigatório: false,
+      presente: false,
+      observacao: 'Conforme RDC 751/2022 quando aplicável'
+    })
+
+    return checklist
+  }
+
+  static gerarHTMLEdital(dadosEdital) {
+    const dataVinculacao = new Date().toLocaleDateString('pt-BR')
+    
+    return `
+      <div class="documento-edital">
+        <h1>EDITAL DE PRÉ-QUALIFICAÇÃO DE BENS</h1>
+        <h2>Nº ${dadosEdital.numero_edital}</h2>
+        
+        <div class="secao">
+          <h3>IDENTIFICAÇÃO</h3>
+          <p><strong>Número do Edital:</strong> ${dadosEdital.numero_edital}</p>
+          <p><strong>Ano:</strong> ${dadosEdital.ano_edital}</p>
+          <p><strong>Data de Vinculação ao Processo:</strong> ${dataVinculacao}</p>
+          ${dadosEdital.data_publicacao ? `<p><strong>Data de Publicação:</strong> ${new Date(dadosEdital.data_publicacao).toLocaleDateString('pt-BR')}</p>` : ''}
+        </div>
+
+        ${dadosEdital.objeto ? `
+        <div class="secao">
+          <h3>OBJETO</h3>
+          <p>${dadosEdital.objeto}</p>
+        </div>
+        ` : ''}
+
+        <div class="secao">
+          <h3>DOCUMENTO ANEXADO</h3>
+          <p>O edital completo com todos os anexos obrigatórios está disponível em formato PDF.</p>
+          ${dadosEdital.observacoes ? `<p><strong>Observações:</strong> ${dadosEdital.observacoes}</p>` : ''}
+        </div>
+
+        <div class="assinatura">
+          <p>Data: ${dataVinculacao}</p>
+          <br>
+          <p>_________________________________________</p>
+          <p>Responsável pela vinculação do edital</p>
+        </div>
+      </div>
+    `
+  }
+
+  // =====================================================
   // GESTÃO DE DOCUMENTOS
   // =====================================================
 
@@ -182,8 +505,9 @@ export class ProcessosAdministrativosService {
         throw new Error('Usuário não autenticado ou sem tenant')
       }
 
-      const { data, error } = await supabase
-        .from('vw_documentos_completos')
+      // Buscar documentos diretamente da tabela documentos_processo
+      const { data: documentos, error } = await supabase
+        .from('documentos_processo')
         .select('*')
         .eq('processo_id', processoId)
         .eq('tenant_id', tenantId)
@@ -194,7 +518,8 @@ export class ProcessosAdministrativosService {
         throw error
       }
 
-      return data || []
+      console.log(`Encontrados ${documentos?.length || 0} documentos para o processo ${processoId}`)
+      return documentos || []
     } catch (error) {
       console.error('Erro no serviço de documentos:', error)
       throw error

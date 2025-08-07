@@ -19,7 +19,8 @@
       "Bash(rg:*)",
       "mcp__ide__getDiagnostics",
       "Bash(npm run lint:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

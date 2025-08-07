@@ -4,17 +4,7 @@
       <aside class="sidebar">
         <div class="iniciar-processo-section">
           <h3>🏛️ Processos Administrativos</h3>
-          <p class="subtitle">Sistema de Pré-qualificação de Bens conforme Lei 14.133/2021</p>
-          
-          <!-- Aviso de desenvolvimento -->
-          <div class="aviso-desenvolvimento">
-            <div class="aviso-icon">🚧</div>
-            <div class="aviso-content">
-              <h4>Finalização em Desenvolvimento</h4>
-              <p>Esta funcionalidade está sendo finalizada e será <strong>totalmente liberada em 07/08/2025</strong>.</p>
-              <small>Algumas funcionalidades já estão disponíveis para testes.</small>
-            </div>
-          </div>
+          <p class="subtitle">Sistema Comprar Bem Compras Públicas Inteligentes</p>
           
           <div class="botoes-principais">
             <button @click="abrirAssistente('padronizacao')" class="btn-processo padronizacao">
@@ -202,6 +192,13 @@
               <button @click.stop="editarProcesso(processo)" class="btn-action">
                 ✏️ Editar
               </button>
+              <button @click.stop="abrirModalEdital(processo)" class="btn-action" 
+                      :title="processo.edital_vinculado ? 'Edital já vinculado' : 'Vincular edital PDF'">
+                {{ processo.edital_vinculado ? '📄 Edital' : '📎 + Edital' }}
+              </button>
+              <button @click.stop="visualizarDocumentacao(processo)" class="btn-action">
+                📋 Docs
+              </button>
               <button @click.stop="gerarRelatorio(processo)" class="btn-action">
                 📄 PDF
               </button>
@@ -242,6 +239,8 @@
         </div>
         <div class="assistente-content">
           <AssistenteProcesso 
+            :processo-edicao="processoParaEditar"
+            :modo-edicao="modoEdicao"
             @processo-criado="processoCriado"
             @cancelar="fecharAssistente"
           />
@@ -842,19 +841,45 @@
           </div>
         </div>
       </div>
+      <!-- Modal para Vincular Edital -->
+      <ModalVincularEdital
+        :visivel="mostrarModalEdital"
+        :processo="processoSelecionado"
+        @edital-vinculado="onEditalVinculado"
+        @fechar="fecharModalEdital"
+      />
+      
+      <!-- Modal para Visualizar Documentação -->
+      <div v-if="mostrarDocumentacao && processoSelecionado" class="modal-overlay" @click="fecharDocumentacao">
+        <div class="modal-documentacao" @click.stop>
+          <div class="modal-header">
+            <h3>📋 Documentação dos Produtos - {{ processoSelecionado.numero_processo }}</h3>
+            <button @click="fecharDocumentacao" class="btn-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <DocumentacaoProdutos :processoId="processoSelecionado.id" />
+          </div>
+        </div>
+      </div>
     </div>
+    
   </div>
 </template>
 
 <script>
-import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
+import ProcessosAdministrativosService from '../../services/ProcessosAdministrativosService'
 import DocumentosAdministrativosService from '../../services/documentosAdministrativos'
 import AssistenteProcesso from './AssistenteProcesso.vue'
+import ModalVincularEdital from './ModalVincularEdital.vue'
+import DocumentacaoProdutos from './DocumentacaoProdutos.vue'
+import { supabase } from '../../services/supabase'
 
 export default {
   name: 'ProcessosAdministrativosComponent',
   components: {
-    AssistenteProcesso
+    AssistenteProcesso,
+    ModalVincularEdital,
+    DocumentacaoProdutos
   },
   data() {
     return {
@@ -875,6 +900,8 @@ export default {
       
       // Modais
       mostrarAssistente: false,
+      mostrarModalEdital: false,
+      mostrarDocumentacao: false,
       processoSelecionado: null,
       
       // Edição
@@ -1000,70 +1027,765 @@ export default {
         <html>
         <head>
           <meta charset="utf-8">
-          <title>Relatório do Processo ${processo.numero_processo || processo.id}</title>
+          <title>Caderno do Processo ${processo.numero_processo || processo.id}</title>
           <style>
-            body { font-family: 'Times New Roman', serif; margin: 2cm; }
-            .cabecalho { text-align: center; margin-bottom: 2cm; border-bottom: 2px solid #000; padding-bottom: 1cm; }
-            .secao { margin-bottom: 2cm; }
-            .secao h2 { color: #2c3e50; border-bottom: 1px solid #ccc; padding-bottom: 0.5cm; }
-            .item { margin-bottom: 0.5cm; }
-            .item strong { color: #4a5568; }
-            .documentos-lista, .produtos-lista { margin-left: 1cm; }
-            .documento-item, .produto-item { margin-bottom: 0.3cm; padding: 0.3cm; background: #f8f9fa; }
-            .rodape { margin-top: 3cm; text-align: center; font-size: 10pt; color: #666; }
-            @media print { body { margin: 1cm; } }
+            @page {
+              margin: 2cm;
+              @bottom-center {
+                content: "Página " counter(page) " - Processo ${processo.numero_processo || processo.id}";
+                font-size: 10pt;
+                color: #666;
+              }
+            }
+            
+            body { 
+              font-family: 'Times New Roman', serif; 
+              font-size: 12pt;
+              line-height: 1.6;
+              color: #000;
+              margin: 0;
+              padding: 0;
+              background: white;
+            }
+            
+            .page-break {
+              page-break-before: always;
+            }
+            
+            .documento-pagina {
+              width: 21cm;
+              min-height: 29.7cm;
+              margin: 0 auto 2cm auto;
+              padding: 2cm;
+              background: white;
+              box-shadow: 0 0 10px rgba(0,0,0,0.1);
+              position: relative;
+            }
+            
+            /* === ESTILOS PADRONIZADOS PARA TODOS OS DOCUMENTOS === */
+            
+            .folha-numero {
+              position: absolute;
+              top: 0.5cm;
+              right: 1cm;
+              font-size: 11pt;
+              color: #333;
+              font-weight: bold;
+              background: white;
+              padding: 5px 10px;
+              border: 1px solid #ddd;
+              border-radius: 3px;
+            }
+            
+            .documento-header {
+              text-align: center;
+              margin-bottom: 2cm;
+              border-bottom: 2px solid #000;
+              padding-bottom: 1cm;
+            }
+            
+            .documento-header h1 {
+              font-family: 'Times New Roman', serif;
+              font-size: 16pt;
+              font-weight: bold;
+              margin: 10px 0;
+              color: #000;
+            }
+            
+            .documento-header h2 {
+              font-family: 'Times New Roman', serif;
+              font-size: 14pt;
+              font-weight: bold;
+              margin: 5px 0;
+              color: #000;
+            }
+            
+            .documento-conteudo {
+              font-family: 'Times New Roman', serif;
+              font-size: 12pt;
+              line-height: 1.6;
+              text-align: justify;
+              color: #000;
+            }
+            
+            .documento-conteudo h1,
+            .documento-conteudo h2,
+            .documento-conteudo h3 {
+              font-family: 'Times New Roman', serif;
+              font-weight: bold;
+              color: #000;
+              margin: 1cm 0 0.5cm 0;
+            }
+            
+            .documento-conteudo h1 { font-size: 16pt; }
+            .documento-conteudo h2 { font-size: 14pt; }
+            .documento-conteudo h3 { font-size: 12pt; }
+            
+            .documento-conteudo p {
+              font-family: 'Times New Roman', serif;
+              font-size: 12pt;
+              line-height: 1.6;
+              margin-bottom: 1cm;
+              text-align: justify;
+            }
+            
+            .documento-conteudo strong {
+              font-weight: bold;
+            }
+            
+            .caixa-bordered {
+              border: 2px solid #000;
+              padding: 1.5cm;
+              margin: 2cm auto;
+              max-width: 16cm;
+            }
+            
+            .campo {
+              margin-bottom: 1cm;
+              text-align: left;
+            }
+            
+            .campo.objeto {
+              text-align: justify;
+              line-height: 1.4;
+            }
+            
+            .campo.observacoes {
+              margin-top: 1.5cm;
+              border-top: 1px solid #ccc;
+              padding-top: 1cm;
+            }
+            
+            .observacoes-conteudo {
+              margin-top: 0.5cm;
+              text-align: justify;
+              line-height: 1.5;
+              font-style: italic;
+            }
+            
+            .campo strong {
+              font-weight: bold;
+            }
+            
+            .numero-processo {
+              font-weight: bold;
+              font-size: 14pt;
+              margin-bottom: 1cm;
+              text-align: center;
+            }
+            
+            .tabela {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 1cm 0;
+              font-size: 11pt;
+            }
+            
+            .tabela th, .tabela td {
+              border: 1px solid #333;
+              padding: 8px;
+              text-align: left;
+              vertical-align: top;
+            }
+            
+            .tabela th {
+              background-color: #f5f5f5;
+              font-weight: bold;
+              text-align: center;
+            }
+            
+            .assinatura {
+              margin-top: 3cm;
+              text-align: center;
+            }
+            
+            .linha-assinatura {
+              border-top: 1px solid #000;
+              width: 300px;
+              margin: 2cm auto 0.5cm auto;
+            }
+            
+            @media print {
+              .documento-pagina {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+              }
+              
+              .page-break {
+                page-break-before: always;
+              }
+            }
           </style>
         </head>
         <body>
-          <div class="cabecalho">
-            <h1>RELATÓRIO DE PROCESSO ADMINISTRATIVO</h1>
-            <h2>Processo Nº ${processo.numero_processo || processo.id}</h2>
-          </div>
-          
-          <div class="secao">
-            <h2>📋 Dados Gerais</h2>
-            <div class="item"><strong>Número do Processo:</strong> ${processo.numero_processo || 'Não definido'}</div>
-            <div class="item"><strong>Tipo:</strong> ${processo.tipo_processo === 'padronizacao' ? 'Padronização' : 'Despadronização'}</div>
-            <div class="item"><strong>Status:</strong> ${this.formatarStatus(processo.status)}</div>
-            <div class="item"><strong>Órgão:</strong> ${processo.nome_orgao}</div>
-            <div class="item"><strong>Unidade Interessada:</strong> ${processo.unidade_interessada}</div>
-            <div class="item"><strong>Data de Criação:</strong> ${this.formatarData(processo.created_at)}</div>
-            ${processo.observacoes ? `<div class="item"><strong>Observações:</strong> ${processo.observacoes}</div>` : ''}
-          </div>
-          
-          <div class="secao">
-            <h2>📄 Documentos</h2>
-            <div class="documentos-lista">
-              ${documentos.map(doc => `
-                <div class="documento-item">
-                  <strong>Fl. ${String(doc.numero_folha).padStart(3, '0')}</strong> - ${doc.nome_documento || doc.tipo_documento}
-                  <br><small>Criado em: ${this.formatarData(doc.data_autuacao)}</small>
+          <!-- DOCUMENTOS DO PROCESSO -->
+          ${documentos.map((doc, index) => `
+            ${index > 0 ? '<div class="page-break"></div>' : ''}
+            <div class="documento-pagina">
+              <div class="folha-numero">Fl. ${String(doc.numero_folha).padStart(3, '0')}</div>
+              
+              ${doc.conteudo_html ? doc.conteudo_html : `
+                <div class="documento-header">
+                  <h1>${processo.nome_orgao}</h1>
+                  <h2>${doc.nome_documento || doc.tipo_documento}</h2>
+                  <p>Processo nº ${processo.numero_processo}</p>
                 </div>
-              `).join('')}
+                
+                <div class="documento-conteudo">
+                  <h3>INFORMAÇÕES DO DOCUMENTO</h3>
+                  <p><strong>Tipo:</strong> ${doc.tipo_documento}</p>
+                  <p><strong>Título:</strong> ${doc.titulo || doc.nome_documento || 'Sem título'}</p>
+                  <p><strong>Descrição:</strong> ${doc.descricao || 'Documento do processo administrativo'}</p>
+                  <p><strong>Data de Autuação:</strong> ${this.formatarData(doc.data_autuacao)}</p>
+                  
+                  ${doc.arquivo_url ? `
+                  <h3>ARQUIVO ANEXO</h3>
+                  <p><strong>Observação:</strong> Este documento possui arquivo anexo com informações complementares.</p>
+                  
+                  <p style="margin-top: 1cm;"><strong>Arquivo:</strong> 
+                    <a href="${doc.arquivo_url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
+                      ${doc.arquivo_url}
+                    </a>
+                  </p>
+                  ` : ''}
+                  
+                  ${doc.observacoes ? `
+                  <h3>OBSERVAÇÕES</h3>
+                  <div style="background: #f8f9fa; padding: 1cm; border-left: 4px solid #007bff; margin: 1cm 0;">
+                    ${doc.observacoes}
+                  </div>
+                  ` : ''}
+                  
+                  <div style="margin-top: 3cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm; color: #666;">
+                    <p>Sistema Comprar Bem - Processo nº ${processo.numero_processo}</p>
+                  </div>
+                </div>
+              `}
+            </div>
+          `).join('')}
+          
+          ${produtos.length > 0 ? `
+            <div class="page-break"></div>
+            <div class="documento-pagina">
+              <div class="folha-numero">Anexo - Produtos</div>
+              
+              <div class="documento-header">
+                <h1>${processo.nome_orgao}</h1>
+                <h2>RELAÇÃO DE PRODUTOS</h2>
+                <p>Processo nº ${processo.numero_processo}</p>
+              </div>
+              
+              <div class="documento-conteudo">
+                <table class="tabela">
+                  <thead>
+                    <tr>
+                      <th>ITEM</th>
+                      <th>CÓDIGO</th>
+                      <th>PRODUTO</th>
+                      <th>ESPECIFICAÇÕES</th>
+                      ${processo.tipo_processo === 'padronizacao' ? '<th>VALOR ESTIMADO</th>' : '<th>MOTIVO</th>'}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${produtos.map((produto, idx) => `
+                      <tr>
+                        <td>${idx + 1}</td>
+                        <td>${produto.codigo || 'N/A'}</td>
+                        <td>${produto.nome_produto || produto.nome}</td>
+                        <td>${produto.especificacoes_tecnicas || 'A definir'}</td>
+                        <td>${processo.tipo_processo === 'padronizacao' ? 
+                          (produto.valor_estimado ? `R$ ${produto.valor_estimado}` : 'A definir') :
+                          (produto.observacoes_processo || 'Conforme avaliação técnica')
+                        }</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ` : ''}
+          
+          <!-- ÍNDICE DE DOCUMENTOS -->
+          <div class="page-break"></div>
+          <div class="documento-pagina">
+            <div class="folha-numero">Índice</div>
+            
+            <div class="documento-header">
+              <h1>${processo.nome_orgao}</h1>
+              <h2>ÍNDICE DE DOCUMENTOS</h2>
+              <p>Processo nº ${processo.numero_processo}</p>
+            </div>
+            
+            <div class="documento-conteudo">
+              <h3>📋 DADOS GERAIS DO PROCESSO</h3>
+              <p><strong>Número:</strong> ${processo.numero_processo || 'Não definido'}</p>
+              <p><strong>Tipo:</strong> ${processo.tipo_processo === 'padronizacao' ? 'Padronização de Produtos' : 'Despadronização de Produtos'}</p>
+              <p><strong>Status:</strong> ${this.formatarStatus(processo.status)}</p>
+              <p><strong>Órgão:</strong> ${processo.nome_orgao}</p>
+              <p><strong>Unidade:</strong> ${processo.unidade_interessada}</p>
+              <p><strong>Data:</strong> ${this.formatarData(processo.data_autuacao)}</p>
+              
+              
+              <h3 style="margin-top: 2cm;">RELAÇÃO DE DOCUMENTOS</h3>
+              
+              <table class="tabela" style="margin-top: 1cm;">
+                <thead>
+                  <tr>
+                    <th style="width: 12%;">FOLHA</th>
+                    <th style="width: 50%;">DOCUMENTO</th>
+                    <th style="width: 18%;">DATA</th>
+                    <th style="width: 20%;">ARQUIVO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${documentos.map(doc => `
+                    <tr>
+                      <td style="text-align: center; font-weight: bold;">Fl. ${String(doc.numero_folha).padStart(3, '0')}</td>
+                      <td>
+                        <strong>${doc.nome_documento || doc.tipo_documento}</strong>
+                        ${doc.tipo_documento !== (doc.nome_documento || doc.tipo_documento) ? `<br><small style="color: #666;">(${doc.tipo_documento})</small>` : ''}
+                      </td>
+                      <td style="text-align: center;">${this.formatarData(doc.data_autuacao)}</td>
+                      <td style="text-align: center;">
+                        ${doc.arquivo_url ? `
+                          <a href="${doc.arquivo_url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
+                            Abrir PDF
+                          </a>
+                        ` : '-'}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              
+              <div style="margin-top: 2cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm;">
+                <p><strong>Total de documentos:</strong> ${documentos.length} | <strong>Com arquivos:</strong> ${documentos.filter(d => d.arquivo_url).length}</p>
+                ${produtos.length > 0 ? `<p><strong>Total de produtos:</strong> ${produtos.length}</p>` : ''}
+                <p style="color: #666; margin-top: 1cm;">Gerado em ${dataAtual} - Sistema Comprar Bem</p>
+              </div>
+              
             </div>
           </div>
           
           ${produtos.length > 0 ? `
-          <div class="secao">
-            <h2>📦 Produtos</h2>
-            <div class="produtos-lista">
-              ${produtos.map(produto => `
-                <div class="produto-item">
-                  <strong>${produto.nome_produto || produto.nome}</strong>
-                  <br>Categoria: ${produto.categoria_produto || produto.categoria || 'N/A'}
-                  ${produto.observacoes_processo ? `<br>Observações: ${produto.observacoes_processo}` : ''}
-                </div>
-              `).join('')}
+          <!-- RESUMO DOS PRODUTOS -->
+          <div class="page-break"></div>
+          <div class="documento-pagina">
+            <div class="folha-numero">Produtos</div>
+            
+            <div class="documento-header">
+              <h1>${processo.nome_orgao}</h1>
+              <h2>PRODUTOS ${processo.tipo_processo === 'padronizacao' ? 'PARA PRÉ-QUALIFICAÇÃO' : 'PARA DESPADRONIZAÇÃO'}</h2>
+              <p>Processo nº ${processo.numero_processo}</p>
+            </div>
+            
+            <div class="documento-conteudo">
+              <table class="tabela">
+                <thead>
+                  <tr>
+                    <th style="width: 8%;">ITEM</th>
+                    <th style="width: 15%;">CÓDIGO</th>
+                    <th style="width: 35%;">PRODUTO</th>
+                    <th style="width: 25%;">ESPECIFICAÇÕES</th>
+                    <th style="width: 17%;">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${produtos.map((produto, idx) => `
+                    <tr>
+                      <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                      <td style="text-align: center;">${produto.codigo || 'N/A'}</td>
+                      <td><strong>${produto.nome_produto || produto.nome}</strong><br>
+                          <small>Marca: ${produto.marca || 'N/A'} | Modelo: ${produto.modelo || 'N/A'}</small></td>
+                      <td style="font-size: 10pt;">${produto.especificacoes_tecnicas || produto.especificacoes || 'A definir'}</td>
+                      <td style="text-align: center;">${produto.status_avaliacao || 'Pendente'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              
+              <div class="assinatura">
+                <div class="linha-assinatura"></div>
+                <p><strong>Equipe Técnica Responsável</strong></p>
+                <p>${processo.nome_orgao}</p>
+              </div>
             </div>
           </div>
           ` : ''}
-          
-          <div class="rodape">
-            <p>Relatório gerado automaticamente pelo Sistema Comprar Bem em ${dataAtual}</p>
-            <p>Este documento é uma representação fiel do processo administrativo registrado no sistema.</p>
-          </div>
         </body>
         </html>
+      `
+    },
+
+    async completarDocumentosProcesso(processo, documentosExistentes, produtos, dadosDFD) {
+      let documentosCompletos = [...documentosExistentes]
+      
+      // Limpar numerações antigas para renumerar corretamente
+      documentosCompletos.forEach(doc => {
+        if (doc.tipo_documento !== 'FOLHA_ROSTO' && doc.tipo_documento !== 'DFD') {
+          delete doc.numero_folha
+        }
+      })
+      
+      // Verificar se existe Folha de Rosto
+      const temFolhaRosto = documentosExistentes.find(doc => doc.tipo_documento === 'FOLHA_ROSTO' || doc.tipo_documento === 'folha_rosto')
+      if (!temFolhaRosto) {
+        const folhaRosto = {
+          numero_folha: 1,
+          tipo_documento: 'FOLHA_ROSTO',
+          nome_documento: 'Folha de Rosto do Processo Administrativo',
+          titulo: 'Folha de Rosto',
+          descricao: 'Folha de rosto do processo administrativo',
+          data_autuacao: processo.data_autuacao || processo.created_at,
+          conteudo_html: this.gerarHTMLFolhaRosto(processo)
+        }
+        documentosCompletos.unshift(folhaRosto)
+      } else {
+        // Garantir que folha de rosto seja sempre número 1
+        const folhaRosto = documentosCompletos.find(doc => doc.tipo_documento === 'FOLHA_ROSTO' || doc.tipo_documento === 'folha_rosto')
+        if (folhaRosto) folhaRosto.numero_folha = 1
+      }
+      
+      // Verificar se existe DFD - SEMPRE INCLUIR
+      const temDFD = documentosExistentes.find(doc => doc.tipo_documento === 'DFD' || doc.tipo_documento === 'dfd')
+      console.log('Tem DFD existente?', !!temDFD)
+      console.log('Dados DFD passados:', dadosDFD)
+      
+      if (!temDFD) {
+        // Buscar DFD se não foi passado
+        if (!dadosDFD) {
+          console.log('Buscando DFD no banco...')
+          try {
+            const { data: dfdData } = await supabase
+              .from('dfd_processo')
+              .select('*')
+              .eq('processo_id', processo.id)
+              .single()
+            dadosDFD = dfdData
+            console.log('DFD encontrado no banco:', dadosDFD)
+          } catch (error) {
+            console.log('DFD não encontrado no banco, criando com dados padrão')
+            dadosDFD = {
+              justificativa: 'Justificativa da necessidade conforme demanda apresentada',
+              descricao_necessidade: 'Descrição detalhada da necessidade identificada',
+              criterios_aceitacao: 'Critérios de aceitação e ensaios estabelecidos',
+              observacoes_especiais: 'Observações especiais e condições do processo'
+            }
+          }
+        }
+        
+        const modeloDFD = processo.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'
+        const dfd = {
+          numero_folha: 2, // Conforme Instrução: sempre Fl. 002
+          tipo_documento: 'DFD',
+          nome_documento: `Documento de Formalização de Demanda - ${modeloDFD}`,
+          titulo: `DFD - Documento de Formalização de Demanda (${modeloDFD})`,
+          descricao: `Documento de Formalização de Demanda do processo de ${processo.tipo_processo}`,
+          data_autuacao: dadosDFD?.created_at || processo.created_at,
+          conteudo_html: this.gerarHTMLDFD(processo, dadosDFD, produtos)
+        }
+        
+        console.log('Criando DFD:', dfd)
+        
+        // Inserir DFD após folha de rosto
+        const folhaRostoIndex = documentosCompletos.findIndex(doc => doc.tipo_documento === 'FOLHA_ROSTO')
+        if (folhaRostoIndex >= 0) {
+          documentosCompletos.splice(folhaRostoIndex + 1, 0, dfd)
+        } else {
+          documentosCompletos.push(dfd)
+        }
+        console.log('DFD adicionado aos documentos')
+      } else {
+        // DFD existe, garantir que tenha conteúdo HTML
+        console.log('DFD existente encontrado')
+        const dfd = documentosCompletos.find(doc => doc.tipo_documento === 'DFD' || doc.tipo_documento === 'dfd')
+        if (dfd) {
+          dfd.numero_folha = 2
+          const modeloDFD = processo.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'
+          dfd.nome_documento = `Documento de Formalização de Demanda - ${modeloDFD}`
+          dfd.titulo = `DFD - Documento de Formalização de Demanda (${modeloDFD})`
+          
+          // Garantir que tenha conteúdo HTML
+          if (!dfd.conteudo_html) {
+            console.log('Gerando HTML para DFD existente')
+            dfd.conteudo_html = this.gerarHTMLDFD(processo, dadosDFD || {}, produtos)
+          }
+        }
+      }
+      
+      // Buscar edital apenas para incluir no índice (sem gerar página)
+      if (processo.edital_id && processo.tipo_processo === 'padronizacao') {
+        try {
+          const temEdital = documentosCompletos.find(doc => doc.tipo_documento === 'EDITAL')
+          if (!temEdital) {
+            const { data: edital } = await supabase
+              .from('editais')
+              .select('*')
+              .eq('id', processo.edital_id)
+              .single()
+              
+            if (edital && edital.arquivo_url) {
+              // Adicionar apenas para referência no índice (sem conteúdo HTML)
+              const referenciaEdital = {
+                numero_folha: null, // Não será incluído no caderno principal
+                tipo_documento: 'EDITAL_REFERENCIA',
+                nome_documento: `Edital - ${edital.titulo}`,
+                titulo: edital.titulo,
+                descricao: 'Edital de Chamamento Público (arquivo externo)',
+                data_autuacao: edital.created_at,
+                arquivo_url: edital.arquivo_url,
+                conteudo_html: null // Sem página própria
+              }
+              documentosCompletos.push(referenciaEdital)
+              console.log('Edital adicionado apenas para referência no índice')
+            }
+          }
+        } catch (error) {
+          console.log('Erro ao buscar edital:', error)
+        }
+      }
+      
+      // Buscar e incluir documentos dos produtos se existirem
+      if (produtos && produtos.length > 0) {
+        for (const produto of produtos) {
+          try {
+            // Verificar se tem documentos específicos do produto
+            const { data: documentosProduto } = await supabase
+              .from('produtos_prequalificacao')
+              .select('documentos_adicionados')
+              .eq('id', produto.id)
+              .single()
+              
+            if (documentosProduto?.documentos_adicionados && documentosProduto.documentos_adicionados.length > 0) {
+              for (const doc of documentosProduto.documentos_adicionados) {
+                const temDocumento = documentosCompletos.find(d => 
+                  d.nome_documento === `${produto.nome} - ${doc.nome}` ||
+                  d.arquivo_url === doc.url
+                )
+                
+                if (!temDocumento) {
+                  const documentoProduto = {
+                    numero_folha: null, // Será numerado depois
+                    tipo_documento: 'DOCUMENTO_PRODUTO',
+                    nome_documento: `${produto.nome} - ${doc.nome}`,
+                    titulo: `Documentação: ${produto.nome}`,
+                    descricao: `Documento do produto: ${doc.nome}`,
+                    data_autuacao: produto.created_at || new Date(),
+                    arquivo_url: doc.url,
+                    conteudo_html: `
+                      <div class="documento-header">
+                        <h1>${processo.nome_orgao}</h1>
+                        <h2>DOCUMENTAÇÃO DE PRODUTO</h2>
+                        <p>Processo nº ${processo.numero_processo}</p>
+                      </div>
+                      
+                      <div class="documento-conteudo">
+                        <h3>DADOS DO PRODUTO</h3>
+                        
+                        <p><strong>Nome do Produto:</strong> ${produto.nome}</p>
+                        <p><strong>Marca:</strong> ${produto.marca || 'N/A'}</p>
+                        <p><strong>Modelo:</strong> ${produto.modelo || 'N/A'}</p>
+                        <p><strong>Categoria:</strong> ${produto.categoria || produto.categoria_nome || 'N/A'}</p>
+                        <p><strong>Fabricante:</strong> ${produto.fabricante || 'N/A'}</p>
+                        
+                        <h3>ESPECIFICAÇÕES TÉCNICAS</h3>
+                        ${produto.especificacoes ? `<div style="margin-left: 1cm; background: #f9f9f9; padding: 1cm; border: 1px solid #ddd;">${produto.especificacoes}</div>` : '<p style="font-style: italic; color: #666;">Especificações não informadas</p>'}
+                        
+                        <h3>DOCUMENTO ANEXO</h3>
+                        <p><strong>Tipo de Documento:</strong> ${doc.nome}</p>
+                        <p><strong>Descrição:</strong> Documento técnico do produto anexado ao processo</p>
+                        
+                        <p style="margin-top: 2cm;"><strong>Arquivo:</strong> 
+                          <a href="${doc.url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
+                            ${doc.url}
+                          </a>
+                        </p>
+                        
+                        ${produto.observacoes ? `
+                        <h3>OBSERVAÇÕES</h3>
+                        <p style="margin-left: 1cm; font-style: italic; text-align: justify;">
+                          ${produto.observacoes}
+                        </p>
+                        ` : ''}
+                        
+                        <h3>AVALIAÇÃO TÉCNICA</h3>
+                        <p><strong>Status:</strong> ${produto.status_avaliacao || 'Pendente de avaliação'}</p>
+                        <p><strong>Data de Inclusão:</strong> ${this.formatarData(produto.created_at)}</p>
+                        
+                        <div style="margin-top: 2cm; padding: 1cm; border: 2px solid #000; text-align: center;">
+                          <p><strong>DECLARAÇÃO DE CONFORMIDADE</strong></p>
+                          <p style="text-align: justify; margin-top: 1cm;">
+                            Declaro que o produto acima especificado atende aos requisitos técnicos estabelecidos 
+                            no Edital de Pré-qualificação, estando em conformidade com as normas aplicáveis 
+                            e possuindo os padrões mínimos de qualidade exigidos para inclusão no Catálogo 
+                            Eletrônico de Bens Padronizados.
+                          </p>
+                          
+                          <div class="assinatura">
+                            <div class="linha-assinatura"></div>
+                            <p>Responsável Técnico</p>
+                          </div>
+                        </div>
+                      </div>
+                    `
+                  }
+                  documentosCompletos.push(documentoProduto)
+                }
+              }
+            }
+          } catch (error) {
+            console.log('Erro ao buscar documentos do produto:', produto.id, error)
+          }
+        }
+      }
+      
+      // Renumerar documentos seguindo Instrução Processual
+      let proximoNumero
+      if (processo.tipo_processo === 'padronizacao') {
+        // PADRONIZAÇÃO: Fl. 001 (Folha Rosto), Fl. 002 (DFD), Fl. 003 (Edital), Fl. 004+ (demais)
+        proximoNumero = 4
+      } else {
+        // DESPADRONIZAÇÃO: Fl. 001 (Folha Rosto), Fl. 002 (DFD), Fl. 003+ (demais) - SEM EDITAL
+        proximoNumero = 3
+      }
+      
+      documentosCompletos.forEach(doc => {
+        if (!doc.numero_folha) {
+          doc.numero_folha = proximoNumero++
+        }
+      })
+      
+      // Reordenar por número de folha garantindo ordem correta
+      return documentosCompletos.sort((a, b) => {
+        // Folha de rosto sempre primeiro
+        if (a.tipo_documento === 'FOLHA_ROSTO') return -1
+        if (b.tipo_documento === 'FOLHA_ROSTO') return 1
+        
+        // DFD sempre segundo
+        if (a.tipo_documento === 'DFD') return b.tipo_documento === 'FOLHA_ROSTO' ? 1 : -1
+        if (b.tipo_documento === 'DFD') return a.tipo_documento === 'FOLHA_ROSTO' ? -1 : 1
+        
+        // Demais documentos por número
+        return (a.numero_folha || 999) - (b.numero_folha || 999)
+      })
+    },
+
+    gerarHTMLFolhaRosto(processo) {
+      // Texto conforme INSTRUÇÃO PROCESSUAL oficial
+      const objetoTexto = processo.tipo_processo === 'padronizacao' ? 
+        `CHAMAMENTO PÚBLICO DESTINADO À REALIZAÇÃO DO PROCEDIMENTO AUXILIAR DE PRÉ-QUALIFICAÇÃO DE BENS PREVISTO NO ART. 80, INCISO II, DA LEI FEDERAL Nº 14.133/2021, OBJETIVANDO PROMOVER A SELEÇÃO TÉCNICA DE MARCAS E MODELOS DE PRODUTOS QUE POSSUAM OS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE, ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINAM, CONFORME AS CARACTERÍSTICAS E CONDIÇÕES CONSTANTES NO EDITAL E SEUS ANEXOS, PARA SEREM INCLUÍDOS NO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS, COM VISTAS ÀS AQUISIÇÕES EVENTUAIS E FUTURAS.` :
+        `DESPADRONIZAÇÃO DE MARCA(S) E MODELO(S) DE PRODUTO(S) QUE NÃO MAIS ATENDE(M) AOS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE E ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINA(M), COM VISTAS À SUA RETIRADA DO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS.`
+      
+      return `
+        <div class="folha-rosto-simples" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 25cm;">
+          <div class="caixa-bordered" style="border: 2px solid #000; padding: 1.5cm; max-width: 16cm; width: 100%;">
+            
+            <div class="numero-processo" style="font-weight: bold; font-size: 14pt; margin-bottom: 1cm; text-align: center;">
+              <strong>PROCESSO ADMINISTRATIVO Nº ${processo.numero_processo || '[não definido]'}</strong>
+            </div>
+            
+            <div class="campo" style="margin-bottom: 1cm; text-align: left;">
+              <strong>NOME DO ÓRGÃO:</strong> ${processo.nome_orgao}
+            </div>
+            
+            <div class="campo" style="margin-bottom: 1cm; text-align: left;">
+              <strong>INTERESSADO(A):</strong> ${processo.unidade_interessada || 'DEPARTAMENTO DE COMPRAS E LICITAÇÕES'}
+            </div>
+            
+            <div class="campo" style="margin-bottom: 1cm; text-align: left;">
+              <strong>DATA DE AUTUAÇÃO:</strong> ${this.formatarData(processo.data_autuacao)}
+            </div>
+            
+            <div class="campo objeto" style="margin-bottom: 1cm; text-align: justify; line-height: 1.4;">
+              <strong>OBJETO:</strong> ${objetoTexto}
+            </div>
+
+            ${processo.observacoes ? `
+            <div class="campo observacoes" style="margin-top: 1.5cm; border-top: 1px solid #ccc; padding-top: 1cm;">
+              <strong>OBSERVAÇÕES:</strong>
+              <div class="observacoes-conteudo" style="margin-top: 0.5cm; text-align: justify; line-height: 1.5; font-style: italic;">${processo.observacoes}</div>
+            </div>
+            ` : ''}
+            
+          </div>
+        </div>
+      `
+    },
+
+    gerarHTMLDFD(processo, dadosDFD, produtos) {
+      const modeloTipo = processo.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'
+      const finalidade = processo.tipo_processo === 'padronizacao' ? 
+        'PADRONIZAÇÃO DE MARCAS E MODELOS DE PRODUTOS' : 
+        'DESPADRONIZAÇÃO DE MARCAS E MODELOS DE PRODUTOS'
+        
+      const tituloCompleto = `DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - ${modeloTipo}`
+
+      return `
+        <div class="documento-header" style="text-align: center; margin-bottom: 2cm;">
+          <h1 style="font-size: 16pt; font-weight: bold; margin: 10px 0;">${tituloCompleto}</h1>
+          <h2 style="font-size: 12pt; margin: 10px 0;">(${finalidade})</h2>
+        </div>
+        
+        <div class="documento-conteudo" style="text-align: justify; line-height: 1.8;">
+          <div class="campo" style="margin-bottom: 1cm;">
+            <span style="font-weight: bold;">Demandante:</span> Comissão Permanente de Padronização de Materiais - CPPM
+          </div>
+          
+          <div class="campo" style="margin-bottom: 1cm;">
+            <span style="font-weight: bold;">Presidente:</span> ${dadosDFD?.nome_presidente || '_________________________________'}
+            <span style="font-weight: bold; margin-left: 2cm;">Matrícula:</span> ${dadosDFD?.matricula_presidente || '_________________'}
+          </div>
+          
+          <div class="campo" style="margin-bottom: 1cm;">
+            <span style="font-weight: bold;">E-mail:</span> ${dadosDFD?.email_presidente || '________________________'}
+            <span style="font-weight: bold; margin-left: 2cm;">Telefone:</span> ${dadosDFD?.telefone_presidente || '_________________'}
+          </div>
+          
+          <h2 style="margin-top: 2cm;">1. OBJETO DESTE DFD:</h2>
+          <p>${finalidade.charAt(0).toUpperCase() + finalidade.slice(1)} que ${processo.tipo_processo === 'padronizacao' ? 'possuam os padrões mínimos de qualidade' : 'não mais atendem aos padrões mínimos de qualidade'}, estética, rendimento, durabilidade e adequação ao uso.</p>
+          
+          ${produtos && produtos.length > 0 ? `
+          <h3>1.1. Relação de ${processo.tipo_processo === 'padronizacao' ? 'Bens' : 'Bens Passíveis de Despadronização'}:</h3>
+          <table class="tabela" style="width: 100%; border-collapse: collapse; margin: 1cm 0; font-size: 11pt;">
+            <thead>
+              <tr style="background-color: #f0f0f0;">
+                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">ITEM</th>
+                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">CÓDIGO</th>
+                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">DESCRIÇÃO</th>
+                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">UNIDADE</th>
+                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">${processo.tipo_processo === 'padronizacao' ? 'REQUISITOS MÍNIMOS' : 'MOTIVAÇÃO'}</th>
+                ${processo.tipo_processo === 'padronizacao' ? '<th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">PREÇO ESTIMADO</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${produtos.map((produto, index) => `
+                <tr>
+                  <td style="border: 1px solid #000; padding: 8px; text-align: center;">${index + 1}</td>
+                  <td style="border: 1px solid #000; padding: 8px;">${produto.codigo || 'N/A'}</td>
+                  <td style="border: 1px solid #000; padding: 8px;">${produto.nome_produto}</td>
+                  <td style="border: 1px solid #000; padding: 8px; text-align: center;">UN</td>
+                  <td style="border: 1px solid #000; padding: 8px;">${produto.especificacoes_tecnicas || 'A definir'}</td>
+                  ${processo.tipo_processo === 'padronizacao' ? `<td style="border: 1px solid #000; padding: 8px; text-align: right;">R$ ${produto.valor_estimado || '0,00'}</td>` : ''}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ` : ''}
+          
+          <p style="margin-top: 2cm; text-align: justify;">
+            Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.
+          </p>
+          
+          <p style="margin-top: 1cm;">Em ${new Date().toLocaleDateString('pt-BR')}.</p>
+          
+          <div class="assinatura" style="margin-top: 3cm; text-align: center;">
+            <div class="linha-assinatura" style="border-top: 1px solid #000; width: 300px; margin: 2cm auto 0.5cm auto;"></div>
+            <p><strong>${dadosDFD?.nome_presidente || 'Nome do Presidente da CPPM'}</strong></p>
+            <p>Presidente da Comissão Permanente de Padronização de Materiais - CPPM</p>
+            <p>Matrícula: ${dadosDFD?.matricula_presidente || '[não informada]'}</p>
+          </div>
+        </div>
       `
     },
     
@@ -1180,6 +1902,9 @@ export default {
     
     fecharAssistente() {
       this.mostrarAssistente = false
+      // Limpar variáveis de edição
+      this.modoEdicao = false
+      this.processoParaEditar = null
       // Restaurar scroll da página
       document.body.style.overflow = 'auto'
     },
@@ -1214,25 +1939,51 @@ export default {
         
         // Buscar dados completos do processo
         const processoCompleto = await ProcessosAdministrativosService.obterProcesso(processo.id)
-        const documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processo.id)
         
+        // Buscar todos os documentos com conteúdo HTML
+        let documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processo.id)
+        
+        // Buscar produtos
         let produtos = []
         if (processoCompleto.tipo_processo === 'padronizacao') {
           produtos = await ProcessosAdministrativosService.listarProdutosProcesso(processo.id)
         }
         
+        // Buscar dados DFD se existir
+        let dadosDFD = null
+        try {
+          const { data: dfd } = await supabase
+            .from('dfd_processo')
+            .select('*')
+            .eq('processo_id', processo.id)
+            .single()
+          dadosDFD = dfd
+        } catch (error) {
+          console.log('DFD não encontrado para o processo')
+        }
+        
+        // Debug: verificar documentos encontrados
+        console.log('Documentos encontrados:', documentos)
+        console.log('Produtos encontrados:', produtos)
+        console.log('DFD encontrado:', dadosDFD)
+        
+        // Gerar documentos que faltam se necessário
+        const documentosCompletos = await this.completarDocumentosProcesso(processoCompleto, documentos, produtos, dadosDFD)
+        
+        console.log('Documentos completos após processamento:', documentosCompletos)
+        
         // Gerar HTML do relatório
-        const htmlRelatorio = this.gerarHTMLRelatorio(processoCompleto, documentos, produtos)
+        const htmlRelatorio = this.gerarHTMLRelatorio(processoCompleto, documentosCompletos, produtos)
         
-        // Abrir em nova janela para impressão/PDF
-        const novaJanela = window.open('', '_blank')
-        novaJanela.document.write(htmlRelatorio)
-        novaJanela.document.close()
+        // Criar blob e abrir em nova janela
+        const blob = new Blob([htmlRelatorio], { type: 'text/html' })
+        const url = URL.createObjectURL(blob)
+        const novaJanela = window.open(url, '_blank')
         
-        // Aguardar carregar e imprimir
+        // Aguardar carregar
         setTimeout(() => {
-          novaJanela.print()
-        }, 1000)
+          URL.revokeObjectURL(url)
+        }, 5000)
         
       } catch (error) {
         console.error('Erro ao gerar relatório:', error)
@@ -1303,6 +2054,48 @@ export default {
     
     abrirConfiguracoes() {
       alert('Funcionalidade de configurações em desenvolvimento')
+    },
+    
+    // =====================================================
+    // GESTÃO DE EDITAIS E DOCUMENTAÇÃO
+    // =====================================================
+    
+    abrirModalEdital(processo) {
+      this.processoSelecionado = processo
+      this.mostrarModalEdital = true
+    },
+    
+    fecharModalEdital() {
+      this.mostrarModalEdital = false
+      this.processoSelecionado = null
+    },
+    
+    async onEditalVinculado(evento) {
+      try {
+        // Atualizar processo na lista
+        const index = this.processos.findIndex(p => p.id === evento.processo.id)
+        if (index !== -1) {
+          this.processos[index] = { ...this.processos[index], ...evento.processo }
+        }
+        
+        // Recarregar lista para garantir dados atualizados
+        await this.carregarProcessos()
+        
+        console.log('Edital vinculado com sucesso:', evento.dadosEdital)
+        
+      } catch (error) {
+        console.error('Erro ao processar vinculação de edital:', error)
+      }
+    },
+    
+    visualizarDocumentacao(processo) {
+      this.processoSelecionado = processo
+      this.mostrarDocumentacao = true
+    },
+    
+    fecharDocumentacao() {
+      this.mostrarDocumentacao = false
+      this.processoSelecionado = null
     },
     
     // =====================================================
@@ -1410,6 +2203,10 @@ export default {
     
     obterStatusProcesso(status) {
       return ProcessosAdministrativosService.obterStatusProcesso(status)
+    },
+
+    formatarStatus(status) {
+      return ProcessosAdministrativosService.obterStatusProcesso(status).label
     },
   }
 }
@@ -1946,6 +2743,36 @@ export default {
   padding: 1.5rem;
   flex: 1;
   overflow-y: auto;
+}
+
+/* Modal específico para documentação */
+.modal-documentacao {
+  background: white;
+  border-radius: 12px;
+  width: 95%;
+  max-width: 1400px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-documentacao .modal-header {
+  background: #f7fafc;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 1.5rem 2rem;
+}
+
+.modal-documentacao .modal-header h3 {
+  font-size: 1.3rem;
+  color: #2d3748;
+  margin: 0;
+}
+
+.modal-documentacao .modal-body {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
 }
 
 .form-group {

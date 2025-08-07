@@ -31,9 +31,12 @@
     </div>
 
     <div class="assistente-conteudo">
-      <!-- Etapa 1: Informações Básicas -->
+      <!-- Etapa 0: Folha de Rosto -->
       <div v-if="etapaAtual === 0" class="etapa-conteudo">
-        <h3>📋 Informações Básicas do Processo</h3>
+        <div class="etapa-header-numeracao">
+          <span class="numero-pagina">Página 1</span>
+          <h3>📋 Folha de Rosto do Processo</h3>
+        </div>
         <div class="tipo-processo-container">
           <div class="tipo-processo-escolha">
             <h4>Escolha o tipo de processo:</h4>
@@ -83,9 +86,10 @@
               </div>
             </div>
           </div>
-
-          <div v-if="dadosProcesso.tipo_processo" class="dados-basicos">
-            <h4>Dados do Órgão:</h4>
+          
+          <!-- Campos da Folha de Rosto -->
+          <div v-if="dadosProcesso.tipo_processo" class="folha-rosto-campos">
+            <h4>📋 Dados da Folha de Rosto:</h4>
             <div class="form-group">
               <label>Número do Processo *</label>
               <input 
@@ -118,19 +122,99 @@
             </div>
             
             <div class="form-group">
-              <label>Observações Iniciais</label>
-              <textarea 
-                v-model="dadosProcesso.observacoes" 
-                rows="3"
-                placeholder="Observações especiais sobre este processo..."
-              ></textarea>
+              <label>Data de Autuação *</label>
+              <input 
+                type="date" 
+                v-model="dadosProcesso.data_autuacao" 
+                required
+              >
+            </div>
+            
+            <!-- Preview da Folha de Rosto -->
+            <div class="folha-rosto-preview-mini">
+              <h4>🔍 Preview da Folha de Rosto:</h4>
+              <div class="preview-container">
+                <FolhaRosto 
+                  :numeroProcesso="dadosProcesso.numero_processo"
+                  :tipoProcesso="dadosProcesso.tipo_processo"
+                  :dataInicio="formatarDataBrasileira(dadosProcesso.data_autuacao)"
+                  :dadosOrgao="{
+                    nome: dadosProcesso.nome_orgao,
+                    unidade_interessada: dadosProcesso.unidade_interessada
+                  }"
+                  :observacoes="dadosProcesso.observacoes"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etapa 1: Informações Básicas -->
+      <div v-if="etapaAtual === 1" class="etapa-conteudo">
+        <div class="etapa-header-numeracao">
+          <span class="numero-pagina">Página 2</span>
+          <h3>📋 Informações Básicas do Processo</h3>
+        </div>
+        
+        <div class="resumo-processo">
+          <h4>📄 Resumo dos Dados Informados:</h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <strong>Número do Processo:</strong>
+              <span>{{ dadosProcesso.numero_processo }}</span>
+            </div>
+            <div class="info-item">
+              <strong>Tipo de Processo:</strong>
+              <span>{{ dadosProcesso.tipo_processo === 'padronizacao' ? 'Padronização' : 'Despadronização' }}</span>
+            </div>
+            <div class="info-item">
+              <strong>Nome do Órgão:</strong>
+              <span>{{ dadosProcesso.nome_orgao }}</span>
+            </div>
+            <div class="info-item">
+              <strong>Unidade Interessada:</strong>
+              <span>{{ dadosProcesso.unidade_interessada }}</span>
+            </div>
+            <div class="info-item">
+              <strong>Data de Autuação:</strong>
+              <span>{{ formatarDataBrasileira(dadosProcesso.data_autuacao) }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="observacoes-adicionais">
+          <h4>💬 Observações Adicionais (opcional):</h4>
+          <div class="form-group">
+            <label>Observações sobre o processo</label>
+            <textarea 
+              v-model="dadosProcesso.observacoes" 
+              rows="4"
+              placeholder="Adicione observações especiais sobre este processo, instruções para a equipe, detalhes importantes, etc..."
+            ></textarea>
+          </div>
+          
+          <div class="dica-observacoes">
+            <div class="dica-icon">💡</div>
+            <div class="dica-texto">
+              <strong>Dica:</strong> Use este campo para adicionar informações que serão úteis durante o processo, como:
+              <ul>
+                <li>Prioridades especiais</li>
+                <li>Prazos específicos</li>
+                <li>Contatos responsáveis</li>
+                <li>Observações técnicas</li>
+              </ul>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Etapa 2: DFD -->
-      <div v-if="etapaAtual === 1" class="etapa-conteudo">
+      <div v-if="etapaAtual === 2" class="etapa-conteudo">
+        <div class="etapa-header-numeracao">
+          <span class="numero-pagina">Página 3</span>
+          <h3>📄 Documento de Formalização de Demanda</h3>
+        </div>
         <FormularioDFD
           v-if="processoTemporario"
           :processo-id="processoTemporario.id"
@@ -142,8 +226,11 @@
       </div>
 
       <!-- Etapa 3: Seleção de Produtos Aprovados (apenas para padronização) -->
-      <div v-if="etapaAtual === 2 && dadosProcesso.tipo_processo === 'padronizacao'" class="etapa-conteudo">
-        <h3>📦 Selecionar Produtos para Pré-qualificação</h3>
+      <div v-if="etapaAtual === 3 && dadosProcesso.tipo_processo === 'padronizacao'" class="etapa-conteudo">
+        <div class="etapa-header-numeracao">
+          <span class="numero-pagina">Página 4</span>
+          <h3>📦 Selecionar Produtos para Pré-qualificação</h3>
+        </div>
         <div class="produtos-configuracao">
           <div class="produtos-header">
             <h4>Selecione os produtos já aprovados pela CPM:</h4>
@@ -228,11 +315,50 @@
                     </div>
                     <div class="info-item">
                       <strong>Especificações:</strong> 
-                      <p>{{ produto.especificacoes || produto.especificacoes_tecnicas || 'Ver cadastro completo' }}</p>
+                      <div class="especificacoes-content">
+                        <p>{{ produto.especificacoes_tecnicas }}</p>
+                        <button 
+                          v-if="produto.especificacoes_tecnicas === 'Especificações não disponíveis'"
+                          @click="verCadastroCompleto(produto)" 
+                          class="btn-ver-cadastro"
+                        >
+                          📋 Ver Cadastro Completo
+                        </button>
+                      </div>
                     </div>
                   </div>
                   
                   <!-- Campos específicos do processo -->
+                  <!-- Documentos do Produto -->
+                  <div v-if="produto.documentos && produto.documentos.length > 0" class="produto-documentos">
+                    <h6>📄 Documentos do Produto:</h6>
+                    <div class="documentos-produto-grid">
+                      <div 
+                        v-for="doc in produto.documentos" 
+                        :key="doc.id"
+                        class="documento-produto-item"
+                      >
+                        <div class="doc-icon">📄</div>
+                        <div class="doc-info">
+                          <strong>{{ doc.nome }}</strong>
+                          <small>{{ doc.tipo }}</small>
+                        </div>
+                        <div class="doc-actions">
+                          <a :href="doc.arquivo_url" target="_blank" class="btn-visualizar-doc">
+                            👁️ Ver
+                          </a>
+                          <button 
+                            @click="adicionarDocumentoProcesso(doc, index)" 
+                            class="btn-adicionar-doc"
+                            :class="{ 'adicionado': produto.documentos_adicionados && produto.documentos_adicionados.includes(doc.id) }"
+                          >
+                            {{ produto.documentos_adicionados && produto.documentos_adicionados.includes(doc.id) ? '✅ Adicionado' : '➕ Adicionar' }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div class="produto-processo-info">
                     <h6>📋 Informações Específicas do Processo:</h6>
                     <div class="form-row">
@@ -274,123 +400,177 @@
         </div>
       </div>
 
-      <!-- Etapa 4: Folha de Rosto -->
-      <div v-if="etapaAtual === (dadosProcesso.tipo_processo === 'padronizacao' ? 3 : 2)" class="etapa-conteudo">
-        <h3>📋 Folha de Rosto do Processo</h3>
-        <div class="folha-rosto-container">
-          <div class="folha-rosto-info">
-            <p>A folha de rosto será gerada automaticamente com base nos dados informados.</p>
-            <p><strong>Número do Processo:</strong> {{ numeroProcesso }}</p>
-            <p><strong>Tipo:</strong> {{ dadosProcesso.tipo_processo === 'padronizacao' ? 'Padronização' : 'Despadronização' }}</p>
+      <!-- Etapa final: Documentação -->
+      <div v-if="etapaAtual === (dadosProcesso.tipo_processo === 'padronizacao' ? 4 : 3)" class="etapa-conteudo">
+        <div class="etapa-header-numeracao">
+          <span class="numero-pagina">Página {{ dadosProcesso.tipo_processo === 'padronizacao' ? '5+' : '4+' }}</span>
+          <h3>📁 Documentação do Processo</h3>
+        </div>
+        <div class="documentacao-container">
+          <div class="documentacao-info">
+            <p>Upload dos documentos necessários para completar o processo administrativo.</p>
+            <p>Faça o upload de todos os documentos que compõem este processo. Eles serão organizados em formato de caderno eletrônico.</p>
           </div>
           
-          <div class="folha-rosto-preview">
-            <FolhaRosto 
-              :numeroProcesso="dadosProcesso.numero_processo"
-              :tipoProcesso="dadosProcesso.tipo_processo"
-              :dadosOrgao="{
-                nome: dadosProcesso.nome_orgao,
-                departamento: 'DEPARTAMENTO DE COMPRAS E LICITAÇÕES',
-                unidade_interessada: dadosProcesso.unidade_interessada
-              }"
-            />
+          <!-- Seção de Vinculação de Edital -->
+          <div v-if="dadosProcesso.tipo_processo === 'padronizacao'" class="edital-section">
+            <div class="edital-header">
+              <h4>📎 Edital de Pré-Qualificação</h4>
+              <p>Selecione um edital existente do órgão para vincular ao processo</p>
+            </div>
+            
+            <div v-if="!editalVinculado" class="edital-form">
+              <div class="form-group">
+                <label>Editais Disponíveis do Órgão</label>
+                <button 
+                  @click="carregarEditaisDisponiveis" 
+                  class="btn-carregar-editais"
+                  :disabled="carregandoEditais"
+                >
+                  {{ carregandoEditais ? '🔄 Carregando...' : '🔍 Buscar Editais' }}
+                </button>
+              </div>
+              
+              <div v-if="editaisDisponiveis.length > 0" class="editais-lista">
+                <h5>📋 Editais Encontrados:</h5>
+                <div class="editais-grid">
+                  <div 
+                    v-for="edital in editaisDisponiveis" 
+                    :key="edital.id"
+                    class="edital-item"
+                    :class="{ 'selecionado': editalSelecionado && editalSelecionado.id === edital.id }"
+                    @click="selecionarEdital(edital)"
+                  >
+                    <div class="edital-info">
+                      <h6>{{ edital.numero_edital }}</h6>
+                      <p class="edital-data">{{ formatarData(edital.data_publicacao) }}</p>
+                      <p class="edital-tipo">{{ edital.tipo_edital || 'Pré-Qualificação' }}</p>
+                      <div v-if="edital.produtos_count" class="edital-produtos">
+                        📦 {{ edital.produtos_count }} produtos
+                      </div>
+                    </div>
+                    <div class="edital-status">
+                      <span v-if="edital.status === 'ativo'" class="status-ativo">✅ Ativo</span>
+                      <span v-else class="status-inativo">⏸️ {{ edital.status }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div v-else-if="editaisCarregados && editaisDisponiveis.length === 0" class="editais-vazio">
+                <div class="vazio-icon">📄</div>
+                <p>Nenhum edital encontrado para este órgão</p>
+                <small>Verifique se há editais cadastrados no sistema</small>
+              </div>
+              
+              <div v-if="editalSelecionado" class="edital-selecionado">
+                <h5>📎 Edital Selecionado:</h5>
+                <div class="edital-preview">
+                  <div class="preview-info">
+                    <strong>{{ editalSelecionado.numero_edital }}</strong>
+                    <p>Data: {{ formatarData(editalSelecionado.data_publicacao) }}</p>
+                    <p v-if="editalSelecionado.descricao">{{ editalSelecionado.descricao }}</p>
+                  </div>
+                  <div class="preview-acoes">
+                    <a v-if="editalSelecionado.arquivo_url" :href="editalSelecionado.arquivo_url" target="_blank" class="btn-ver-edital">
+                      👁️ Ver PDF
+                    </a>
+                    <div v-else class="aviso-pdf">
+                      📄 PDF não disponível para visualização
+                    </div>
+                    <button @click="editalSelecionado = null" class="btn-remover-selecao">
+                      🗑️ Remover
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="edital-acao">
+                <button 
+                  @click="vincularEditalSelecionado" 
+                  class="btn-vincular-edital"
+                  :disabled="!editalSelecionado || processando"
+                >
+                  {{ processando ? '🔄 Vinculando...' : '📎 Vincular Edital Selecionado' }}
+                </button>
+              </div>
+            </div>
+            
+            <div v-else class="edital-vinculado">
+              <div class="vinculado-success">
+                <div class="success-icon">✅</div>
+                <div class="success-info">
+                  <h5>Edital Vinculado com Sucesso</h5>
+                  <p><strong>Número:</strong> {{ dadosProcesso.numero_edital }}</p>
+                  <p v-if="dadosProcesso.data_vinculacao_edital">
+                    <strong>Data:</strong> {{ formatarData(dadosProcesso.data_vinculacao_edital) }}
+                  </p>
+                </div>
+                <button @click="editarEdital" class="btn-editar-edital">✏️ Editar</button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Etapa 5: Revisão e Finalização -->
-      <div v-if="etapaAtual === (dadosProcesso.tipo_processo === 'padronizacao' ? 4 : 3)" class="etapa-conteudo">
-        <h3>✅ Revisão e Finalização</h3>
-        <div class="revisao-container">
-          <div class="revisao-secao">
-            <h4>📋 Dados do Processo</h4>
-            <div class="revisao-item">
-              <strong>Número do Processo:</strong> {{ dadosProcesso.numero_processo }}
+          
+          <div class="documentos-section">
+            <div class="documentos-header">
+              <h4>📄 Documentos do Processo</h4>
+              <button @click="adicionarDocumento" class="btn-adicionar">
+                ➕ Adicionar Documento
+              </button>
             </div>
-            <div class="revisao-item">
-              <strong>Tipo:</strong> 
-              {{ dadosProcesso.tipo_processo === 'padronizacao' ? 'Padronização' : 'Despadronização' }}
+            
+            <div v-if="documentos.length === 0" class="documentos-vazio">
+              <div class="vazio-icon">📄</div>
+              <p>Nenhum documento adicionado ainda</p>
+              <p><small>Clique em "Adicionar Documento" para fazer upload dos arquivos</small></p>
             </div>
-            <div class="revisao-item">
-              <strong>Órgão:</strong> {{ dadosProcesso.nome_orgao }}
-            </div>
-            <div class="revisao-item">
-              <strong>Unidade Interessada:</strong> {{ dadosProcesso.unidade_interessada }}
-            </div>
-            <div v-if="dadosProcesso.observacoes" class="revisao-item">
-              <strong>Observações:</strong> {{ dadosProcesso.observacoes }}
-            </div>
-          </div>
-
-          <div class="revisao-secao">
-            <h4>📄 DFD Criado</h4>
-            <div class="revisao-item">
-              <strong>Status:</strong> 
-              <span class="status-badge green">✅ DFD Criado com Sucesso</span>
-            </div>
-            <div class="revisao-item">
-              <strong>Modelo:</strong> {{ dfdCriada?.dfd?.modelo_usado?.toUpperCase() }}
-            </div>
-          </div>
-
-          <div v-if="dadosProcesso.tipo_processo === 'padronizacao' && produtos.length > 0" class="revisao-secao">
-            <h4>📦 Produtos Configurados</h4>
-            <div class="revisao-item">
-              <strong>Total de Produtos:</strong> {{ produtos.length }}
-            </div>
-            <div class="produtos-resumo">
+            
+            <div v-else class="documentos-lista">
               <div 
-                v-for="(produto, index) in produtos" 
+                v-for="(documento, index) in documentos" 
                 :key="index"
-                class="produto-resumo"
+                class="documento-item"
               >
-                <strong>{{ produto.nome_produto }}</strong>
-                <span v-if="produto.marca">- {{ produto.marca }}</span>
-                <span v-if="produto.modelo">{{ produto.modelo }}</span>
+                <div class="documento-info">
+                  <div class="documento-icon">📄</div>
+                  <div class="documento-detalhes">
+                    <h5>{{ documento.nome }}</h5>
+                    <p class="documento-tipo">{{ documento.tipo }}</p>
+                    <p class="documento-data">Adicionado em: {{ formatarData(documento.data_upload) }}</p>
+                  </div>
+                </div>
+                <div class="documento-acoes">
+                  <button @click="visualizarDocumento(documento)" class="btn-visualizar">👁️ Ver</button>
+                  <button @click="removerDocumento(index)" class="btn-remover">🗑️ Remover</button>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div class="proximos-passos">
-            <h4>🎯 Próximos Passos</h4>
-            <div v-if="dadosProcesso.tipo_processo === 'padronizacao'" class="passos-lista">
-              <div class="passo-item">
-                <div class="passo-numero">1</div>
-                <div class="passo-texto">Criação do Edital de Chamamento Público</div>
-              </div>
-              <div class="passo-item">
-                <div class="passo-numero">2</div>
-                <div class="passo-texto">Publicação do Aviso no Diário Oficial</div>
-              </div>
-              <div class="passo-item">
-                <div class="passo-numero">3</div>
-                <div class="passo-texto">Recebimento e Análise de Propostas</div>
-              </div>
-              <div class="passo-item">
-                <div class="passo-numero">4</div>
-                <div class="passo-texto">Análise Técnica pela CPPM</div>
-              </div>
-              <div class="passo-item">
-                <div class="passo-numero">5</div>
-                <div class="passo-texto">Julgamento pela CCL</div>
-              </div>
-              <div class="passo-item">
-                <div class="passo-numero">6</div>
-                <div class="passo-texto">Emissão das DCBs e Inclusão no Catálogo</div>
-              </div>
-            </div>
-            <div v-else class="passos-lista">
-              <div class="passo-item">
-                <div class="passo-numero">1</div>
-                <div class="passo-texto">Elaboração do Relatório de Problemas</div>
-              </div>
-              <div class="passo-item">
-                <div class="passo-numero">2</div>
-                <div class="passo-texto">Análise pela CCL</div>
-              </div>
-              <div class="passo-item">
-                <div class="passo-numero">3</div>
-                <div class="passo-texto">Remoção dos Produtos do Catálogo</div>
+            
+            <!-- Numeração automática -->
+            <div class="numeracao-info">
+              <h4>📊 Numeração Automática - Caderno Eletrônico</h4>
+              <p>O sistema numera automaticamente todas as páginas do processo:</p>
+              <div class="exemplo-numeracao">
+                <div class="paginas-fixas">
+                  <strong>Páginas Fixas:</strong>
+                  <ul>
+                    <li>Página 1: Folha de Rosto</li>
+                    <li>Página 2: Informações Básicas</li>
+                    <li>Página 3: DFD</li>
+                    <li v-if="dadosProcesso.tipo_processo === 'padronizacao'">Página 4: Produtos</li>
+                  </ul>
+                </div>
+                <div class="paginas-documentos">
+                  <strong>Documentos Adicionais:</strong>
+                  <span v-if="documentos.length === 0">
+                    Página {{ dadosProcesso.tipo_processo === 'padronizacao' ? '5' : '4' }}+ (conforme documentos adicionados)
+                  </span>
+                  <ul v-else>
+                    <li v-for="(documento, index) in documentos" :key="index">
+                      Página {{ (dadosProcesso.tipo_processo === 'padronizacao' ? 5 : 4) + index }}: {{ documento.nome }}
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -432,7 +612,7 @@
 </template>
 
 <script>
-import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
+import ProcessosAdministrativosService from '../../services/ProcessosAdministrativosService'
 import FormularioDFD from './FormularioDFD.vue'
 import FolhaRosto from './FolhaRosto.vue'
 import { supabase } from '../../services/supabase'
@@ -442,6 +622,18 @@ export default {
   components: {
     FormularioDFD,
     FolhaRosto
+  },
+  props: {
+    // Processo a ser editado (se existir)
+    processoEdicao: {
+      type: Object,
+      default: null
+    },
+    // Modo de edição ou criação
+    modoEdicao: {
+      type: Boolean,
+      default: false
+    }
   },
   data() {
     return {
@@ -455,6 +647,7 @@ export default {
         numero_processo: '',
         nome_orgao: '',
         unidade_interessada: '',
+        data_autuacao: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
         observacoes: ''
       },
       
@@ -464,7 +657,26 @@ export default {
       produtosAprovados: [],
       produtosSelecionados: [],
       mostrarSeletorProdutos: false,
-      carregandoProdutos: false
+      carregandoProdutos: false,
+      
+      // Campos para documentação
+      documentos: [],
+      
+      // Campos para edital
+      dadosEdital: {
+        numero_edital: '',
+        data_publicacao: '',
+        arquivo: null,
+        observacoes: ''
+      },
+      erroEdital: '',
+      dragoverEdital: false,
+      
+      // Seleção de editais existentes
+      editaisDisponiveis: [],
+      editalSelecionado: null,
+      carregandoEditais: false,
+      editaisCarregados: false
     }
   },
   
@@ -472,8 +684,12 @@ export default {
     etapas() {
       const etapasBase = [
         {
+          titulo: 'Folha de Rosto',
+          descricao: 'Escolha do tipo e dados iniciais'
+        },
+        {
           titulo: 'Informações Básicas',
-          descricao: 'Tipo de processo e dados do órgão'
+          descricao: 'Dados do órgão e unidade'
         },
         {
           titulo: 'DFD',
@@ -489,13 +705,8 @@ export default {
       }
       
       etapasBase.push({
-        titulo: 'Folha de Rosto',
-        descricao: 'Capa do processo administrativo'
-      })
-      
-      etapasBase.push({
-        titulo: 'Finalização',
-        descricao: 'Revisão e conclusão'
+        titulo: 'Documentação',
+        descricao: 'Upload de documentos do processo'
       })
       
       return etapasBase
@@ -504,40 +715,191 @@ export default {
     podeAvancar() {
       switch (this.etapaAtual) {
         case 0:
+          // Etapa Folha de Rosto - precisa preencher todos os campos da folha de rosto
           return this.dadosProcesso.tipo_processo && 
                  this.dadosProcesso.numero_processo &&
                  this.dadosProcesso.nome_orgao && 
-                 this.dadosProcesso.unidade_interessada
+                 this.dadosProcesso.unidade_interessada &&
+                 this.dadosProcesso.data_autuacao
         case 1:
-          return this.dfdCriada
+          // Etapa Informações Básicas - sempre pode avançar (apenas observações opcionais)
+          return true
         case 2:
+          // Etapa DFD
+          return this.dfdCriada
+        case 3:
+          // Etapa Produtos (apenas para padronização)
           if (this.dadosProcesso.tipo_processo === 'padronizacao') {
             return this.produtos.length > 0 && this.produtos.every(p => p.nome_produto)
           }
           return true
-        case 3:
-          // Etapa da folha de rosto - sempre pode avançar pois número já foi definido na etapa 0
+        case 4:
+          // Etapa Documentação - sempre pode finalizar
           return true
         default:
           return true
       }
+    },
+    
+    editalVinculado() {
+      return this.dadosProcesso.edital_vinculado || false
+    }
+  },
+  
+  mounted() {
+    // Se estamos em modo de edição, carregar dados do processo existente
+    if (this.modoEdicao && this.processoEdicao) {
+      this.carregarDadosProcesso()
     }
   },
   
   methods: {
+    async carregarDadosProcesso() {
+      try {
+        console.log('Carregando dados do processo:', this.processoEdicao)
+        
+        // Definir processo temporário para continuar o workflow
+        this.processoTemporario = this.processoEdicao
+        
+        // Carregar dados básicos
+        this.dadosProcesso = {
+          tipo_processo: this.processoEdicao.tipo_processo || '',
+          numero_processo: this.processoEdicao.numero_processo || '',
+          nome_orgao: this.processoEdicao.nome_orgao || '',
+          unidade_interessada: this.processoEdicao.unidade_interessada || '',
+          data_autuacao: this.processoEdicao.data_autuacao ? 
+            new Date(this.processoEdicao.data_autuacao).toISOString().split('T')[0] : 
+            new Date().toISOString().split('T')[0],
+          observacoes: this.processoEdicao.observacoes || '',
+          
+          // Dados do edital (se existirem)
+          numero_edital: this.processoEdicao.numero_edital || '',
+          edital_vinculado: this.processoEdicao.edital_vinculado || false,
+          data_vinculacao_edital: this.processoEdicao.data_vinculacao_edital || null
+        }
+        
+        // Carregar produtos se for processo de padronização
+        if (this.processoEdicao.tipo_processo === 'padronizacao') {
+          await this.carregarProdutosProcesso()
+        }
+        
+        // Carregar documentos
+        await this.carregarDocumentosProcesso()
+        
+        // Verificar DFD - se existe DFD, marcar como criado
+        this.dfdCriada = { id: 'existing', processo_id: this.processoEdicao.id }
+        
+        // Determinar etapa atual baseada no status do processo
+        this.determinarEtapaAtual()
+        
+        console.log('Dados carregados com sucesso:', {
+          dadosProcesso: this.dadosProcesso,
+          produtos: this.produtos,
+          documentos: this.documentos,
+          etapaAtual: this.etapaAtual
+        })
+        
+      } catch (error) {
+        console.error('Erro ao carregar dados do processo:', error)
+        alert('Erro ao carregar dados do processo: ' + error.message)
+      }
+    },
+    
+    async carregarProdutosProcesso() {
+      try {
+        const { data, error } = await supabase
+          .from('produtos_prequalificacao')
+          .select('*, produtos(*)')
+          .eq('processo_id', this.processoEdicao.id)
+        
+        if (error) throw error
+        
+        this.produtos = data?.map(item => ({
+          ...item.produtos,
+          nome_produto: item.produtos?.nome || item.nome_produto,
+          categoria_produto: item.produtos?.categoria || item.categoria_produto,
+          especificacoes_tecnicas: item.produtos?.especificacoes || item.especificacoes_tecnicas,
+          quantidade_amostras: item.quantidade_amostras || 0,
+          valor_estimado: item.valor_estimado || null,
+          observacoes_processo: item.observacoes_processo || ''
+        })) || []
+        
+      } catch (error) {
+        console.error('Erro ao carregar produtos do processo:', error)
+        this.produtos = []
+      }
+    },
+    
+    async carregarDocumentosProcesso() {
+      try {
+        // Usar ID correto dependendo se é edição ou criação
+        const processoId = this.processoEdicao?.id || this.processoTemporario?.id
+        if (!processoId) {
+          console.warn('Nenhum ID de processo disponível para carregar documentos')
+          this.documentos = []
+          return
+        }
+        
+        console.log('🔍 Carregando documentos para processo ID:', processoId)
+        
+        const { data, error } = await supabase
+          .from('documentos_processo')
+          .select('*')
+          .eq('processo_id', processoId)
+          .order('numero_sequencial', { ascending: true })
+        
+        if (error) {
+          console.warn('Erro ao carregar documentos (normal se tabela não existe):', error)
+          this.documentos = []
+          return
+        }
+        
+        this.documentos = data?.map(doc => ({
+          nome: doc.nome_documento || doc.titulo || 'Documento',
+          tipo: doc.tipo_documento || 'Documento',
+          data_upload: new Date(doc.data_criacao || doc.criado_em || new Date()),
+          pagina: doc.numero_sequencial || 0,
+          url_arquivo: doc.arquivo_url || doc.url_arquivo,
+          id: doc.id
+        })) || []
+        
+      } catch (error) {
+        console.warn('Erro ao carregar documentos (pode ser normal):', error)
+        this.documentos = []
+      }
+    },
+    
+    determinarEtapaAtual() {
+      // Lógica para determinar em qual etapa o usuário deve começar
+      if (!this.dadosProcesso.tipo_processo || !this.dadosProcesso.numero_processo) {
+        this.etapaAtual = 0 // Folha de Rosto
+      } else if (!this.dfdCriada) {
+        this.etapaAtual = 2 // DFD
+      } else if (this.dadosProcesso.tipo_processo === 'padronizacao' && this.produtos.length === 0) {
+        this.etapaAtual = 3 // Produtos
+      } else {
+        this.etapaAtual = this.dadosProcesso.tipo_processo === 'padronizacao' ? 4 : 3 // Documentação
+      }
+    },
+    
     selecionarTipo(tipo) {
       this.dadosProcesso.tipo_processo = tipo
     },
     
     async proximaEtapa() {
-      if (this.etapaAtual === 0) {
-        // Criar processo temporário
+      if (this.etapaAtual === 1) {
+        // Criar processo temporário após informações básicas
         await this.criarProcessoTemporario()
       }
       
-      if (this.etapaAtual === 2 && this.dadosProcesso.tipo_processo === 'padronizacao') {
+      if (this.etapaAtual === 3 && this.dadosProcesso.tipo_processo === 'padronizacao') {
         // Salvar produtos
         await this.salvarProdutos()
+      }
+      
+      if (this.etapaAtual === 4) {
+        // Salvar documentos (edital, DFD, etc.)
+        await this.salvarDocumentosProcesso()
       }
       
       this.etapaAtual++
@@ -553,12 +915,47 @@ export default {
       try {
         this.processando = true
         this.processoTemporario = await ProcessosAdministrativosService.criarProcesso(this.dadosProcesso)
+        
+        // Criar automaticamente a Folha de Rosto (Fl. 001)
+        await this.criarFolhaDeRosto()
+        
       } catch (error) {
         console.error('Erro ao criar processo:', error)
         alert('Erro ao criar processo: ' + error.message)
         throw error
       } finally {
         this.processando = false
+      }
+    },
+    
+    async criarFolhaDeRosto() {
+      try {
+        const folhaDeRosto = {
+          processo_id: this.processoTemporario.id,
+          tenant_id: this.processoTemporario.tenant_id,
+          numero_folha: 1, // Folha de Rosto é sempre Fl. 001
+          tipo_documento: 'FOLHA_ROSTO',
+          nome_documento: 'Folha de Rosto do Processo Administrativo',
+          titulo: 'Folha de Rosto',
+          descricao: 'Folha de rosto do processo administrativo',
+          data_autuacao: new Date().toISOString(),
+          assinado: false,
+          conteudo_html: null // Será gerado dinamicamente
+        }
+        
+        const { error } = await supabase
+          .from('documentos_processo')
+          .insert([folhaDeRosto])
+        
+        if (error) {
+          console.error('Erro ao criar folha de rosto:', error)
+          throw error
+        }
+        
+        console.log('Folha de rosto criada com sucesso')
+      } catch (error) {
+        console.error('Erro ao criar folha de rosto:', error)
+        throw error
       }
     },
     
@@ -609,22 +1006,54 @@ export default {
       }
     },
     
-    confirmarSelecaoProdutos() {
-      // Converter produtos selecionados para formato do processo
-      this.produtos = this.produtosAprovados
-        .filter(produto => this.produtosSelecionados.includes(produto.id))
-        .map(produto => ({
-          ...produto,
-          nome_produto: produto.nome,
-          categoria_produto: produto.categoria,
-          especificacoes_tecnicas: produto.especificacoes,
-          quantidade_amostras: 0,
-          valor_estimado: null,
-          observacoes_processo: ''
-        }))
-      
-      this.mostrarSeletorProdutos = false
-      this.produtosSelecionados = []
+    async confirmarSelecaoProdutos() {
+      try {
+        this.processando = true
+        
+        // Converter produtos selecionados para formato do processo
+        const produtosSelecionadosData = this.produtosAprovados
+          .filter(produto => this.produtosSelecionados.includes(produto.id))
+        
+        // Carregar documentos para cada produto selecionado
+        const produtosComDocumentos = []
+        for (const produto of produtosSelecionadosData) {
+          // Carregar documentos do produto
+          const { data: documentos, error } = await supabase
+            .from('documentos')
+            .select('*')
+            .eq('produto_id', produto.id)
+          
+          if (error) {
+            console.warn('Erro ao carregar documentos do produto:', produto.nome, error)
+          }
+          
+          console.log('Produto original:', produto)
+          console.log('Documentos carregados:', documentos)
+          
+          produtosComDocumentos.push({
+            ...produto,
+            nome_produto: produto.nome || produto.nome_produto,
+            categoria_produto: produto.categoria || produto.categoria_produto || 'Categoria não informada',
+            especificacoes_tecnicas: produto.especificacoes || produto.especificacoes_tecnicas || produto.descricao || 'Especificações não disponíveis',
+            fabricante: produto.fabricante || 'Fabricante não informado',
+            quantidade_amostras: 0,
+            valor_estimado: null,
+            observacoes_processo: '',
+            documentos: documentos || [],
+            documentos_adicionados: [] // Para rastrear quais documentos foram adicionados ao processo
+          })
+        }
+        
+        this.produtos = produtosComDocumentos
+        this.mostrarSeletorProdutos = false
+        this.produtosSelecionados = []
+        
+      } catch (error) {
+        console.error('Erro ao carregar documentos dos produtos:', error)
+        alert('Erro ao carregar documentos dos produtos: ' + error.message)
+      } finally {
+        this.processando = false
+      }
     },
     
     cancelarSelecaoProdutos() {
@@ -634,6 +1063,51 @@ export default {
     
     removerProdutoSelecionado(index) {
       this.produtos.splice(index, 1)
+    },
+    
+    adicionarDocumentoProcesso(documento, produtoIndex) {
+      const produto = this.produtos[produtoIndex]
+      
+      // Verificar se já foi adicionado
+      if (!produto.documentos_adicionados) {
+        produto.documentos_adicionados = []
+      }
+      
+      if (produto.documentos_adicionados.includes(documento.id)) {
+        // Remover se já estava adicionado
+        produto.documentos_adicionados = produto.documentos_adicionados.filter(id => id !== documento.id)
+        
+        // Remover da lista de documentos do processo
+        this.documentos = this.documentos.filter(doc => doc.documento_produto_id !== documento.id)
+      } else {
+        // Adicionar à lista de documentos adicionados
+        produto.documentos_adicionados.push(documento.id)
+        
+        // Adicionar à lista de documentos do processo
+        const paginaBase = this.dadosProcesso.tipo_processo === 'padronizacao' ? 5 : 4
+        this.documentos.push({
+          nome: `${produto.nome_produto} - ${documento.nome}`,
+          tipo: documento.tipo || 'Documento do Produto',
+          data_upload: new Date(),
+          pagina: paginaBase + this.documentos.length,
+          url_arquivo: documento.arquivo_url,
+          documento_produto_id: documento.id,
+          produto_id: produto.id,
+          documento_original: documento
+        })
+      }
+      
+      // Reorganizar numeração
+      const paginaBase = this.dadosProcesso.tipo_processo === 'padronizacao' ? 5 : 4
+      this.documentos.forEach((doc, i) => {
+        doc.pagina = paginaBase + i
+      })
+    },
+    
+    verCadastroCompleto(produto) {
+      // Abrir modal ou navegar para visualização completa do produto
+      const url = `/analise/${produto.id}`
+      window.open(url, '_blank')
     },
     
     async getTenantId() {
@@ -690,6 +1164,818 @@ export default {
       }
     },
     
+    // Métodos para documentação
+    adicionarDocumento() {
+      // Criar um input file temporário
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.multiple = true
+      input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png'
+      
+      input.addEventListener('change', (event) => {
+        const files = Array.from(event.target.files)
+        const paginaBase = this.dadosProcesso.tipo_processo === 'padronizacao' ? 5 : 4
+        
+        files.forEach((file, index) => {
+          this.documentos.push({
+            nome: file.name,
+            tipo: this.obterTipoDocumento(file.name),
+            arquivo: file,
+            data_upload: new Date(),
+            pagina: paginaBase + this.documentos.length + index
+          })
+        })
+      })
+      
+      input.click()
+    },
+    
+    obterTipoDocumento(nomeArquivo) {
+      const extensao = nomeArquivo.split('.').pop().toLowerCase()
+      const tipos = {
+        'pdf': 'Documento PDF',
+        'doc': 'Documento Word',
+        'docx': 'Documento Word',
+        'jpg': 'Imagem JPEG',
+        'jpeg': 'Imagem JPEG', 
+        'png': 'Imagem PNG'
+      }
+      return tipos[extensao] || 'Documento'
+    },
+    
+    formatarData(data) {
+      return new Date(data).toLocaleString('pt-BR')
+    },
+    
+    formatarDataBrasileira(data) {
+      if (!data) return ''
+      // Para evitar problema de fuso horário com input type="date"
+      const [ano, mes, dia] = data.split('-')
+      const dataFormatada = new Date(ano, mes - 1, dia)
+      return dataFormatada.toLocaleDateString('pt-BR')
+    },
+    
+    visualizarDocumento(documento) {
+      console.log('Visualizar documento:', documento)
+      
+      // Verificar se tem URL do arquivo (tentar diferentes campos possíveis)
+      const urlArquivo = documento.url_arquivo || documento.arquivo_url || documento.arquivo
+      if (urlArquivo && typeof urlArquivo === 'string') {
+        console.log('Abrindo URL:', urlArquivo)
+        window.open(urlArquivo, '_blank')
+        return
+      }
+      
+      // Se tem arquivo blob (upload local)
+      if (documento.arquivo) {
+        const url = URL.createObjectURL(documento.arquivo)
+        window.open(url, '_blank')
+        return
+      }
+      
+      // Se é documento gerado pelo sistema (Folha de Rosto, DFD)
+      if (documento.tipo === 'FOLHA_ROSTO') {
+        this.gerarPDFFolhaRosto()
+        return
+      }
+      
+      if (documento.tipo === 'DFD') {
+        this.gerarPDFDFD()
+        return
+      }
+      
+      // Fallback - mostrar mensagem
+      alert('⚠️ Documento não disponível para visualização.\n\nTipo: ' + documento.tipo)
+    },
+    
+    async gerarPDFFolhaRosto() {
+      try {
+        // Criar conteúdo HTML da folha de rosto
+        const conteudoHTML = this.gerarConteudoFolhaRosto()
+        
+        // Abrir em nova janela para impressão/salvamento
+        const novaJanela = window.open('', '_blank')
+        novaJanela.document.write(conteudoHTML)
+        novaJanela.document.close()
+        
+        // Aguardar carregar e imprimir
+        setTimeout(() => {
+          novaJanela.focus()
+          novaJanela.print()
+        }, 500)
+        
+      } catch (error) {
+        console.error('Erro ao gerar PDF da folha de rosto:', error)
+        alert('Erro ao gerar PDF da folha de rosto: ' + error.message)
+      }
+    },
+    
+    async gerarPDFDFD() {
+      try {
+        // Buscar dados do DFD do processo (usar ID correto dependendo do modo)
+        const processoId = this.processoTemporario?.id || this.processoEdicao?.id
+        console.log('🔍 Debug - Buscando DFD para processo ID:', processoId)
+        
+        const { data: dfd, error } = await supabase
+          .from('dfd_processo')
+          .select('*')
+          .eq('processo_id', processoId)
+          .single()
+        
+        if (error) {
+          console.error('Erro ao buscar DFD:', error)
+          alert('Erro ao carregar dados do DFD: ' + error.message)
+          return
+        }
+        
+        if (!dfd) {
+          console.warn('⚠️ DFD não encontrado para o processo ID:', processoId)
+          alert('DFD não encontrado para este processo. Certifique-se de que o DFD foi criado corretamente.')
+          return
+        }
+        
+        console.log('✅ DFD encontrado:', dfd)
+        
+        // Criar conteúdo HTML do DFD
+        const conteudoHTML = this.gerarConteudoDFD(dfd)
+        
+        // Abrir em nova janela para impressão/salvamento
+        const novaJanela = window.open('', '_blank')
+        novaJanela.document.write(conteudoHTML)
+        novaJanela.document.close()
+        
+        // Aguardar carregar e imprimir
+        setTimeout(() => {
+          novaJanela.focus()
+          novaJanela.print()
+        }, 500)
+        
+      } catch (error) {
+        console.error('Erro ao gerar PDF do DFD:', error)
+        alert('Erro ao gerar PDF do DFD: ' + error.message)
+      }
+    },
+    
+    gerarConteudoFolhaRosto() {
+      const dataAtual = new Date().toLocaleDateString('pt-BR')
+      const objetoTexto = this.dadosProcesso.tipo_processo === 'padronizacao' ? 
+        `CHAMAMENTO PÚBLICO DESTINADO À REALIZAÇÃO DO PROCEDIMENTO AUXILIAR DE PRÉ-QUALIFICAÇÃO DE BENS PREVISTO NO ART. 80, INCISO II, DA LEI FEDERAL Nº 14.133/2021, OBJETIVANDO PROMOVER A SELEÇÃO TÉCNICA DE MARCAS E MODELOS DE PRODUTOS QUE POSSUAM OS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE, ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINAM, CONFORME AS CARACTERÍSTICAS E CONDIÇÕES CONSTANTES NO EDITAL E SEUS ANEXOS, PARA SEREM INCLUÍDOS NO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS, COM VISTAS ÀS AQUISIÇÕES EVENTUAIS E FUTURAS` :
+        `DESPADRONIZAÇÃO DE MARCA(S) E MODELO(S) DE PRODUTO(S) QUE NÃO MAIS ATENDE(M) AOS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE E ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINA(M), COM VISTAS À SUA RETIRADA DO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS`
+      
+      // Usar formato exato do componente FolhaRosto.vue
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Folha de Rosto - ${this.dadosProcesso.numero_processo}</title>
+          <meta charset="utf-8">
+          <style>
+            .folha-rosto {
+              width: 21cm;
+              min-height: 29.7cm;
+              margin: 0 auto;
+              padding: 2cm;
+              background: white;
+              font-family: 'Times New Roman', serif;
+              font-size: 12pt;
+              line-height: 1.6;
+              box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            
+            .folha-rosto-simples {
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
+              min-height: 25cm;
+            }
+            
+            .caixa-bordered {
+              border: 2px solid #000;
+              padding: 1.5cm;
+              max-width: 16cm;
+              width: 100%;
+            }
+            
+            .numero-processo {
+              font-weight: bold;
+              font-size: 14pt;
+              margin-bottom: 1cm;
+              text-align: center;
+            }
+            
+            .campo {
+              margin-bottom: 1cm;
+              text-align: left;
+            }
+            
+            .campo.objeto {
+              text-align: justify;
+              line-height: 1.4;
+            }
+            
+            .campo.observacoes {
+              margin-top: 1.5cm;
+              border-top: 1px solid #ccc;
+              padding-top: 1cm;
+            }
+            
+            .observacoes-conteudo {
+              margin-top: 0.5cm;
+              text-align: justify;
+              line-height: 1.5;
+              font-style: italic;
+            }
+            
+            .campo strong {
+              font-weight: bold;
+            }
+            
+            .folha-numero {
+              margin-top: 4cm;
+              text-align: center;
+              font-size: 10pt;
+              color: #666;
+            }
+            
+            .folha-numero p {
+              margin: 0;
+            }
+            
+            @media print {
+              .folha-rosto {
+                box-shadow: none;
+                margin: 0;
+                padding: 1.5cm;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="folha-rosto">
+            <div class="folha-rosto-simples">
+              <div class="caixa-bordered">
+                
+                <div class="numero-processo">
+                  <strong>PROCESSO ADMINISTRATIVO Nº ${this.dadosProcesso.numero_processo || '[não definido]'}</strong>
+                </div>
+                
+                <div class="campo">
+                  <strong>NOME DO ÓRGÃO:</strong> ${this.dadosProcesso.nome_orgao}
+                </div>
+                
+                <div class="campo">
+                  <strong>INTERESSADO(A):</strong> ${this.dadosProcesso.unidade_interessada}
+                </div>
+                
+                <div class="campo">
+                  <strong>DATA DE AUTUAÇÃO:</strong> ${this.formatarDataBrasileira(this.dadosProcesso.data_autuacao)}
+                </div>
+                
+                <div class="campo objeto">
+                  <strong>OBJETO:</strong> ${objetoTexto}
+                </div>
+
+                ${this.dadosProcesso.observacoes ? `
+                <div class="campo observacoes">
+                  <strong>OBSERVAÇÕES:</strong>
+                  <div class="observacoes-conteudo">${this.dadosProcesso.observacoes.replace(/\n/g, '<br>')}</div>
+                </div>
+                ` : ''}
+                
+              </div>
+              
+              <!-- Número da folha -->
+              <div class="folha-numero">
+                <p>Fl. 001</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    },
+    
+    gerarConteudoDFD(dfd) {
+      const dataAtual = new Date().toLocaleDateString('pt-BR')
+      const modeloTipo = this.dadosProcesso.tipo_processo === 'padronizacao' ? 'MODELO 1' : 'MODELO 2'
+      const finalidade = this.dadosProcesso.tipo_processo === 'padronizacao' ? 
+        'padronização de marcas e modelos de produtos' : 
+        'despadronização de marcas e modelos de produtos'
+      
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>DFD - ${this.dadosProcesso.numero_processo}</title>
+          <meta charset="utf-8">
+          <style>
+            @page {
+              margin: 2cm;
+              @bottom-right {
+                content: "Fl. 002";
+              }
+            }
+            body {
+              font-family: 'Times New Roman', serif;
+              font-size: 12pt;
+              line-height: 1.6;
+              color: #000;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              font-size: 14pt;
+              font-weight: bold;
+              margin: 10px 0;
+            }
+            .campo {
+              margin-bottom: 15px;
+            }
+            .label {
+              font-weight: bold;
+              margin-right: 10px;
+            }
+            .tabela {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
+            }
+            .tabela th, .tabela td {
+              border: 1px solid #000;
+              padding: 8px;
+              text-align: left;
+            }
+            .tabela th {
+              background-color: #f0f0f0;
+              font-weight: bold;
+            }
+            .assinatura {
+              margin-top: 50px;
+              text-align: center;
+            }
+            .linha-assinatura {
+              border-top: 1px solid #000;
+              margin-top: 50px;
+              padding-top: 10px;
+              width: 300px;
+              margin-left: auto;
+              margin-right: auto;
+            }
+            @media print {
+              body { margin: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>(${modeloTipo} – ${finalidade.toUpperCase()})</h1>
+            <h1>DOCUMENTO DE FORMALIZAÇÃO DA DEMANDA – DFD</h1>
+          </div>
+          
+          <div class="campo">
+            <span class="label">Demandante:</span> Comissão Permanente de Padronização de Materiais - CPPM
+          </div>
+          
+          <div class="campo">
+            <span class="label">Presidente:</span> ${dfd.nome_presidente || '_________________________________'}
+            <span class="label">Matrícula:</span> ${dfd.matricula_presidente || '_________________'}
+          </div>
+          
+          <div class="campo">
+            <span class="label">E-mail:</span> ${dfd.email_presidente || '________________________'}
+            <span class="label">Telefone:</span> ${dfd.telefone_presidente || '_________________'}
+          </div>
+          
+          <h2>1. OBJETO DESTE DFD:</h2>
+          <p>${finalidade.charAt(0).toUpperCase() + finalidade.slice(1)} que ${this.dadosProcesso.tipo_processo === 'padronizacao' ? 'possuam os padrões mínimos de qualidade' : 'não mais atendem aos padrões mínimos de qualidade'}, estética, rendimento, durabilidade e adequação ao uso.</p>
+          
+          ${this.produtos && this.produtos.length > 0 ? `
+          <h3>1.1. Relação de ${this.dadosProcesso.tipo_processo === 'padronizacao' ? 'Bens' : 'Bens Passíveis de Despadronização'}:</h3>
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>ITEM</th>
+                <th>CÓDIGO</th>
+                <th>DESCRIÇÃO</th>
+                <th>UNIDADE</th>
+                <th>${this.dadosProcesso.tipo_processo === 'padronizacao' ? 'REQUISITOS MÍNIMOS' : 'MOTIVAÇÃO'}</th>
+                ${this.dadosProcesso.tipo_processo === 'padronizacao' ? '<th>PREÇO ESTIMADO</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${this.produtos.map((produto, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${produto.codigo || 'N/A'}</td>
+                  <td>${produto.nome_produto}</td>
+                  <td>UN</td>
+                  <td>${produto.especificacoes_tecnicas || 'A definir'}</td>
+                  ${this.dadosProcesso.tipo_processo === 'padronizacao' ? `<td>R$ ${produto.valor_estimado || '0,00'}</td>` : ''}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ` : ''}
+          
+          <p style="margin-top: 50px;">
+            Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.
+          </p>
+          
+          <p>Em ${dataAtual}.</p>
+          
+          <div class="assinatura">
+            <div class="linha-assinatura">
+              (Assinatura Eletrônica)<br>
+              Presidente da CPPM
+            </div>
+          </div>
+          
+          <div style="margin-top: 50px;">
+            <p><strong>DESPACHO:</strong></p>
+            <p>De acordo. Autorizo, nos termos da solicitação supra.</p>
+            
+            <div class="assinatura">
+              <div class="linha-assinatura">
+                (Assinatura Eletrônica)<br>
+                Cargo da Autoridade Competente
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    },
+    
+    removerDocumento(index) {
+      this.documentos.splice(index, 1)
+      // Reorganizar numeração
+      const paginaBase = this.dadosProcesso.tipo_processo === 'padronizacao' ? 5 : 4
+      this.documentos.forEach((doc, i) => {
+        doc.pagina = paginaBase + i
+      })
+    },
+    
+    // Métodos para edital
+    validarNumeroEdital() {
+      const regex = /^\d{1,3}\/\d{4}$/
+      if (!this.dadosEdital.numero_edital) {
+        this.erroEdital = ''
+        return
+      }
+      
+      if (!regex.test(this.dadosEdital.numero_edital)) {
+        this.erroEdital = 'Formato inválido. Use XXX/YYYY (ex: 001/2024)'
+      } else {
+        this.erroEdital = ''
+      }
+    },
+    
+    onEditalSelect(event) {
+      const file = event.target.files[0]
+      if (!file) return
+      
+      if (file.type !== 'application/pdf') {
+        alert('Apenas arquivos PDF são aceitos para o edital.')
+        return
+      }
+      
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit
+        alert('Arquivo muito grande. O limite é de 50MB.')
+        return
+      }
+      
+      this.dadosEdital.arquivo = file
+    },
+    
+    onEditalDrop(event) {
+      this.dragoverEdital = false
+      const file = event.dataTransfer.files[0]
+      
+      if (!file) return
+      
+      if (file.type !== 'application/pdf') {
+        alert('Apenas arquivos PDF são aceitos para o edital.')
+        return
+      }
+      
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit
+        alert('Arquivo muito grande. O limite é de 50MB.')
+        return
+      }
+      
+      this.dadosEdital.arquivo = file
+    },
+    
+    removerEdital() {
+      this.dadosEdital.arquivo = null
+      if (this.$refs.editalFileInput) {
+        this.$refs.editalFileInput.value = ''
+      }
+    },
+    
+    editarEdital() {
+      this.dadosProcesso.edital_vinculado = false
+    },
+    
+    formatarTamanhoArquivo(bytes) {
+      if (bytes === 0) return '0 Bytes'
+      const k = 1024
+      const sizes = ['Bytes', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    },
+    
+    async carregarEditaisDisponiveis() {
+      // Prevenir múltiplas chamadas simultâneas
+      if (this.carregandoEditais) {
+        console.log('⚠️ Já está carregando editais, ignorando nova chamada')
+        return
+      }
+      
+      try {
+        this.carregandoEditais = true
+        // Limpar lista anterior para evitar duplicação
+        this.editaisDisponiveis = []
+        console.log('🔄 Limpando lista de editais e carregando novamente...')
+        
+        const tenantId = await this.getTenantId()
+        console.log('🔍 Debug - Tenant ID obtido:', tenantId)
+        console.log('🔍 Debug - Nome do órgão:', this.dadosProcesso.nome_orgao)
+        
+        // Primeiro, vamos buscar TODOS os editais para debug
+        const { data: todosEditais, error: errorTodos } = await supabase
+          .from('editais')
+          .select(`
+            id,
+            numero,
+            data_publicacao,
+            descricao,
+            status,
+            pdf_convertido_url,
+            pdf_convertido_nome,
+            url_documento,
+            tenant_id
+          `)
+          .order('data_publicacao', { ascending: false })
+        
+        console.log('🔍 Debug - TODOS os editais no sistema:', todosEditais)
+        
+        if (errorTodos) {
+          console.error('Erro ao carregar TODOS os editais:', errorTodos)
+        }
+        
+        // Agora buscar com filtro por tenant_id
+        let editaisFiltrados = []
+        
+        if (tenantId) {
+          const { data: editais, error } = await supabase
+            .from('editais')
+            .select(`
+              id,
+              numero,
+              data_publicacao,
+              descricao,
+              status,
+              pdf_convertido_url,
+              pdf_convertido_nome,
+              url_documento,
+              tenant_id
+            `)
+            .eq('tenant_id', tenantId)
+            .eq('status', 'PUBLICADO')
+            .order('data_publicacao', { ascending: false })
+          
+          console.log('🔍 Debug - Editais filtrados por tenant_id:', editais)
+          editaisFiltrados = editais || []
+          
+          if (error) {
+            console.error('Erro ao carregar editais filtrados:', error)
+          }
+        }
+        
+        // Se não encontrou com tenant_id, vamos tentar buscar apenas os publicados
+        if (editaisFiltrados.length === 0) {
+          const { data: editaisPublicados, error: errorPublicados } = await supabase
+            .from('editais')
+            .select(`
+              id,
+              numero,
+              data_publicacao,
+              descricao,
+              status,
+              pdf_convertido_url,
+              pdf_convertido_nome,
+              url_documento,
+              tenant_id
+            `)
+            .eq('status', 'PUBLICADO')
+            .order('data_publicacao', { ascending: false })
+          
+          console.log('🔍 Debug - Editais apenas por status PUBLICADO:', editaisPublicados)
+          editaisFiltrados = editaisPublicados || []
+          
+          if (errorPublicados) {
+            console.error('Erro ao carregar editais publicados:', errorPublicados)
+          }
+        }
+        
+        // Mapear para o formato esperado
+        this.editaisDisponiveis = editaisFiltrados.map(edital => ({
+          id: edital.id,
+          numero_edital: edital.numero,
+          data_publicacao: edital.data_publicacao,
+          tipo_edital: 'Pré-Qualificação',
+          descricao: edital.descricao || 'Edital de Pré-Qualificação',
+          arquivo_url: edital.pdf_convertido_url || edital.url_documento, // Fallback para url_documento
+          status: edital.status ? edital.status.toLowerCase() : 'ativo',
+          produtos_count: 0 // Placeholder - podemos calcular depois se necessário
+        }))
+        
+        console.log('🎯 Editais finais disponíveis:', this.editaisDisponiveis)
+        console.log('🔗 URLs dos PDFs encontrados:', this.editaisDisponiveis.map(e => ({ 
+          numero: e.numero_edital, 
+          url: e.arquivo_url,
+          status: e.status 
+        })))
+        this.editaisCarregados = true
+        
+      } catch (error) {
+        console.error('Erro ao buscar editais:', error)
+        alert('Erro ao buscar editais: ' + error.message)
+        this.editaisDisponiveis = []
+      } finally {
+        this.carregandoEditais = false
+      }
+    },
+    
+    selecionarEdital(edital) {
+      console.log('📎 Edital selecionado:', edital)
+      console.log('🔗 URL do PDF do edital selecionado:', edital.arquivo_url)
+      this.editalSelecionado = edital
+    },
+    
+    async vincularEditalSelecionado() {
+      if (!this.editalSelecionado) {
+        alert('Selecione um edital primeiro.')
+        return
+      }
+      
+      try {
+        this.processando = true
+        
+        // Vincular edital selecionado ao processo
+        const dadosVinculacao = {
+          numero_edital: this.editalSelecionado.numero_edital,
+          data_publicacao: this.editalSelecionado.data_publicacao,
+          edital_id: this.editalSelecionado.id,
+          arquivo_url: this.editalSelecionado.arquivo_url,
+          descricao: this.editalSelecionado.descricao
+        }
+        
+        await ProcessosAdministrativosService.vincularEditalProcesso(
+          this.processoTemporario.id,
+          dadosVinculacao
+        )
+        
+        // Atualizar dados do processo
+        this.dadosProcesso.edital_vinculado = true
+        this.dadosProcesso.numero_edital = this.editalSelecionado.numero_edital
+        this.dadosProcesso.data_vinculacao_edital = new Date()
+        
+        // Limpar seleção de edital
+        const numeroEdital = this.editalSelecionado.numero_edital
+        this.editalSelecionado = null
+        
+        // Recarregar documentos para mostrar o edital vinculado
+        await this.carregarDocumentosProcesso()
+        
+        alert(`✅ Edital ${numeroEdital} vinculado com sucesso!`)
+        
+      } catch (error) {
+        console.error('Erro ao vincular edital:', error)
+        alert('Erro ao vincular edital: ' + error.message)
+      } finally {
+        this.processando = false
+      }
+    },
+    
+    async vincularEdital() {
+      if (!this.dadosEdital.numero_edital || !this.dadosEdital.arquivo || this.erroEdital) {
+        alert('Por favor, preencha o número do edital e selecione um arquivo PDF válido.')
+        return
+      }
+      
+      try {
+        this.processando = true
+        
+        await ProcessosAdministrativosService.vincularEditalProcesso(
+          this.processoTemporario.id,
+          this.dadosEdital
+        )
+        
+        // Atualizar dados do processo
+        this.dadosProcesso.edital_vinculado = true
+        this.dadosProcesso.numero_edital = this.dadosEdital.numero_edital
+        this.dadosProcesso.data_vinculacao_edital = new Date()
+        
+        alert('✅ Edital vinculado com sucesso!')
+        
+      } catch (error) {
+        console.error('Erro ao vincular edital:', error)
+        alert('Erro ao vincular edital: ' + error.message)
+      } finally {
+        this.processando = false
+      }
+    },
+
+    async salvarDocumentosProcesso() {
+      try {
+        console.log('Salvando documentos do processo...')
+        
+        // Salvar DFD se existir
+        if (this.dfdCriada) {
+          await this.salvarDocumentoDFD()
+        }
+        
+        // Salvar edital se selecionado (apenas para padronização)
+        if (this.editalSelecionado && this.dadosProcesso.tipo_processo === 'padronizacao') {
+          await this.salvarDocumentoEdital()
+        }
+        
+        console.log('Documentos do processo salvos com sucesso')
+        
+      } catch (error) {
+        console.error('Erro ao salvar documentos do processo:', error)
+        throw error
+      }
+    },
+
+    async salvarDocumentoDFD() {
+      try {
+        const documentoDFD = {
+          processo_id: this.processoTemporario.id,
+          tenant_id: this.processoTemporario.tenant_id,
+          numero_folha: 2, // DFD é sempre Fl. 002
+          tipo_documento: 'DFD',
+          nome_documento: `Documento de Formalização de Demanda - ${this.dadosProcesso.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'}`,
+          titulo: 'DFD - Documento de Formalização de Demanda',
+          descricao: `Documento de Formalização de Demanda do processo de ${this.dadosProcesso.tipo_processo}`,
+          data_autuacao: new Date().toISOString(),
+          assinado: false,
+          conteudo_html: null // Será gerado dinamicamente
+        }
+        
+        const { error } = await supabase
+          .from('documentos_processo')
+          .insert([documentoDFD])
+        
+        if (error) {
+          console.error('Erro ao salvar DFD:', error)
+          throw error
+        }
+        
+        console.log('DFD salvo com sucesso')
+      } catch (error) {
+        console.error('Erro ao salvar documento DFD:', error)
+        throw error
+      }
+    },
+
+    async salvarDocumentoEdital() {
+      try {
+        const documentoEdital = {
+          processo_id: this.processoTemporario.id,
+          tenant_id: this.processoTemporario.tenant_id,
+          numero_folha: 3, // Edital é sempre Fl. 003 para padronização
+          tipo_documento: 'EDITAL',
+          nome_documento: `Edital de Chamamento Público - ${this.editalSelecionado.titulo}`,
+          titulo: 'Edital de Chamamento Público',
+          descricao: 'Edital de Chamamento Público para Pré-qualificação de Bens',
+          data_autuacao: new Date().toISOString(),
+          arquivo_url: this.editalSelecionado.arquivo_url,
+          assinado: false,
+          conteudo_html: null // Será gerado dinamicamente
+        }
+        
+        const { error } = await supabase
+          .from('documentos_processo')
+          .insert([documentoEdital])
+        
+        if (error) {
+          console.error('Erro ao salvar edital:', error)
+          throw error
+        }
+        
+        console.log('Edital salvo como documento do processo')
+      } catch (error) {
+        console.error('Erro ao salvar documento edital:', error)
+        throw error
+      }
+    },
+
     async finalizarProcesso() {
       try {
         this.processando = true
@@ -831,6 +2117,33 @@ export default {
   margin-bottom: 2rem;
 }
 
+/* Estilos para numeração das etapas */
+.etapa-header-numeracao {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.numero-pagina {
+  background: #2c3e50;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 80px;
+  text-align: center;
+}
+
+.etapa-header-numeracao h3 {
+  margin: 0;
+  color: #2d3748;
+  flex: 1;
+}
+
 .tipos-opcoes {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -903,6 +2216,126 @@ export default {
 .dados-basicos h4 {
   color: #2d3748;
   margin-bottom: 1rem;
+}
+
+/* Estilos para Folha de Rosto */
+.folha-rosto-campos {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid #2c3e50;
+}
+
+.folha-rosto-campos h4 {
+  color: #2d3748;
+  margin-bottom: 1.5rem;
+}
+
+.folha-rosto-preview-mini {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.folha-rosto-preview-mini h4 {
+  color: #2d3748;
+  margin-bottom: 1rem;
+}
+
+.preview-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  background: white;
+}
+
+/* Estilos para Informações Básicas */
+.resumo-processo {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.resumo-processo h4 {
+  color: #0c4a6e;
+  margin-bottom: 1rem;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.info-item {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e0f2fe;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-item strong {
+  color: #0c4a6e;
+  font-size: 0.9rem;
+}
+
+.info-item span {
+  color: #1e40af;
+  font-weight: 500;
+}
+
+.observacoes-adicionais {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.observacoes-adicionais h4 {
+  color: #2d3748;
+  margin-bottom: 1rem;
+}
+
+.dica-observacoes {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #fefce8;
+  border: 1px solid #fde047;
+  border-radius: 8px;
+}
+
+.dica-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.dica-texto {
+  color: #713f12;
+  font-size: 0.9rem;
+}
+
+.dica-texto strong {
+  color: #92400e;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.dica-texto ul {
+  margin: 0.5rem 0 0 1rem;
+  padding: 0;
+}
+
+.dica-texto li {
+  margin: 0.25rem 0;
 }
 
 .form-group {
@@ -1352,6 +2785,117 @@ export default {
   font-size: 1rem;
 }
 
+/* Estilos para documentos dos produtos */
+.produto-documentos {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.produto-documentos h6 {
+  color: #0c4a6e;
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.documentos-produto-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.documento-produto-item {
+  background: white;
+  border: 1px solid #e0f2fe;
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.documento-produto-item:hover {
+  border-color: #0284c7;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1);
+}
+
+.documento-produto-item .doc-icon {
+  font-size: 1.5rem;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.documento-produto-item .doc-info {
+  flex: 1;
+}
+
+.documento-produto-item .doc-info strong {
+  display: block;
+  color: #1e40af;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.documento-produto-item .doc-info small {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.documento-produto-item .doc-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-visualizar-doc {
+  background: #3182ce;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-visualizar-doc:hover {
+  background: #2c5aa0;
+}
+
+.btn-adicionar-doc {
+  background: #48bb78;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  min-width: 90px;
+}
+
+.btn-adicionar-doc:hover:not(.adicionado) {
+  background: #38a169;
+}
+
+.btn-adicionar-doc.adicionado {
+  background: #68d391;
+  cursor: default;
+}
+
+.btn-adicionar-doc.adicionado:hover {
+  background: #68d391;
+}
+
 .folha-rosto-container {
   display: flex;
   flex-direction: column;
@@ -1377,6 +2921,693 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   max-height: 80vh;
   overflow-y: auto;
+}
+
+/* Estilos para a seção de documentação */
+.documentacao-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.documentacao-info {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid #2c3e50;
+}
+
+.documentacao-info p {
+  margin: 0.5rem 0;
+  color: #4a5568;
+}
+
+.documentos-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.documentos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.documentos-header h4 {
+  color: #2d3748;
+  margin: 0;
+}
+
+.documentos-vazio {
+  text-align: center;
+  padding: 3rem;
+  color: #718096;
+}
+
+.documentos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.documento-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.documento-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.documento-icon {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+.documento-detalhes h5 {
+  color: #2d3748;
+  margin: 0 0 0.25rem 0;
+}
+
+.documento-tipo {
+  color: #4a5568;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.documento-data {
+  color: #718096;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.documento-acoes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-visualizar {
+  background: #3182ce;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+}
+
+.btn-visualizar:hover {
+  background: #2c5aa0;
+}
+
+.numeracao-info {
+  background: #e6fffa;
+  border: 1px solid #b2f5ea;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.numeracao-info h4 {
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
+}
+
+.numeracao-info p {
+  color: #4a5568;
+  margin: 0.5rem 0;
+}
+
+.exemplo-numeracao {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #b2f5ea;
+  margin-top: 0.5rem;
+}
+
+.exemplo-numeracao strong {
+  color: #2d3748;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.exemplo-numeracao small {
+  color: #718096;
+}
+
+.paginas-fixas,
+.paginas-documentos {
+  margin: 1rem 0;
+}
+
+.paginas-fixas ul,
+.paginas-documentos ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.paginas-fixas li,
+.paginas-documentos li {
+  margin: 0.25rem 0;
+  color: #4a5568;
+}
+
+.paginas-documentos span {
+  color: #718096;
+  font-style: italic;
+}
+
+/* Estilos específicos para edital */
+.edital-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid #e2e8f0;
+}
+
+.edital-header h4 {
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+}
+
+.edital-header p {
+  color: #4a5568;
+  margin: 0 0 1.5rem 0;
+  font-size: 0.95rem;
+}
+
+.edital-form {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.edital-upload {
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.edital-upload:hover {
+  border-color: #2c3e50;
+  background: #f8f9fa;
+}
+
+.edital-upload.dragover {
+  border-color: #2c3e50;
+  background: #e6fffa;
+  border-style: solid;
+}
+
+.edital-upload.has-file {
+  border-color: #48bb78;
+  background: #f0fff4;
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.upload-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.upload-area p {
+  margin: 0;
+  color: #4a5568;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #2c3e50;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-link:hover {
+  color: #1a202c;
+}
+
+.upload-area small {
+  color: #718096;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.arquivo-selecionado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arquivo-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #48bb78;
+  box-shadow: 0 2px 4px rgba(72, 187, 120, 0.1);
+}
+
+.arquivo-icon {
+  font-size: 2rem;
+  color: #48bb78;
+}
+
+.arquivo-dados {
+  flex: 1;
+}
+
+.arquivo-dados strong {
+  display: block;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+}
+
+.arquivo-dados small {
+  color: #718096;
+}
+
+.btn-remover-arquivo {
+  background: #fed7d7;
+  color: #e53e3e;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-remover-arquivo:hover {
+  background: #feb2b2;
+}
+
+.edital-checklist {
+  background: #e6fffa;
+  border: 1px solid #b2f5ea;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.edital-checklist h5 {
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
+}
+
+.edital-checklist p {
+  color: #4a5568;
+  margin: 0.5rem 0;
+}
+
+.checklist-items {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+}
+
+.checklist-items li {
+  margin: 0.5rem 0;
+  color: #2d3748;
+  font-size: 0.9rem;
+}
+
+.edital-acao {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.btn-vincular-edital {
+  background: #2c3e50;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.btn-vincular-edital:hover:not(:disabled) {
+  background: #1a202c;
+  transform: translateY(-1px);
+}
+
+.btn-vincular-edital:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.edital-vinculado {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #48bb78;
+}
+
+.vinculado-success {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f0fff4;
+  border-radius: 8px;
+  border: 1px solid #9ae6b4;
+}
+
+.success-icon {
+  font-size: 2rem;
+  color: #48bb78;
+  flex-shrink: 0;
+}
+
+.success-info {
+  flex: 1;
+}
+
+.success-info h5 {
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
+}
+
+.success-info p {
+  color: #4a5568;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.btn-editar-edital {
+  background: #e2e8f0;
+  color: #2d3748;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.btn-editar-edital:hover {
+  background: #cbd5e0;
+}
+
+.form-group input.error {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
+
+.error-msg {
+  color: #e53e3e;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.help-text {
+  color: #718096;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+/* Estilos para seleção de editais */
+.btn-carregar-editais {
+  background: #3182ce;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.btn-carregar-editais:hover:not(:disabled) {
+  background: #2c5aa0;
+  transform: translateY(-1px);
+}
+
+.btn-carregar-editais:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.editais-lista {
+  margin: 1.5rem 0;
+}
+
+.editais-lista h5 {
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+}
+
+.editais-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.edital-item {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.edital-item:hover {
+  border-color: #3182ce;
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.1);
+  transform: translateY(-2px);
+}
+
+.edital-item.selecionado {
+  border-color: #48bb78;
+  background: #f0fff4;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.2);
+}
+
+.edital-info {
+  flex: 1;
+}
+
+.edital-info h6 {
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.edital-data {
+  color: #4a5568;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.edital-tipo {
+  color: #718096;
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.edital-produtos {
+  color: #3182ce;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+.edital-status {
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+.status-ativo {
+  background: #c6f6d5;
+  color: #22543d;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-inativo {
+  background: #fed7d7;
+  color: #c53030;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.editais-vazio {
+  text-align: center;
+  padding: 3rem;
+  color: #718096;
+}
+
+.editais-vazio .vazio-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.editais-vazio p {
+  margin: 0.5rem 0;
+  font-weight: 500;
+}
+
+.editais-vazio small {
+  color: #a0aec0;
+}
+
+.edital-selecionado {
+  margin: 1.5rem 0;
+  background: #f0fff4;
+  border: 1px solid #9ae6b4;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.edital-selecionado h5 {
+  color: #22543d;
+  margin: 0 0 1rem 0;
+}
+
+.edital-preview {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #c6f6d5;
+}
+
+.preview-info {
+  flex: 1;
+}
+
+.preview-info strong {
+  display: block;
+  color: #2d3748;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.preview-info p {
+  margin: 0.25rem 0;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.preview-acoes {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+.btn-ver-edital {
+  background: #3182ce;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+}
+
+.btn-ver-edital:hover {
+  background: #2c5aa0;
+}
+
+.aviso-pdf {
+  color: #718096;
+  font-style: italic;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #f7fafc;
+}
+
+.btn-remover-selecao {
+  background: #fed7d7;
+  color: #c53030;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-remover-selecao:hover {
+  background: #feb2b2;
+}
+
+/* Estilo para o botão ver cadastro completo */
+.btn-ver-cadastro {
+  background: #3182ce;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.btn-ver-cadastro:hover {
+  background: #2c5aa0;
+}
+
+.especificacoes-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.especificacoes-content p {
+  margin: 0 0 0.5rem 0;
+  color: #4a5568;
 }
 
 @media (max-width: 768px) {

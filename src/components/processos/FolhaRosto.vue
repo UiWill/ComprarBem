@@ -23,6 +23,11 @@
         <div class="campo objeto">
           <strong>OBJETO:</strong> {{ objetoTexto }}
         </div>
+
+        <div v-if="observacoes" class="campo observacoes">
+          <strong>OBSERVAÇÕES:</strong>
+          <div class="observacoes-conteudo">{{ observacoes }}</div>
+        </div>
         
       </div>
       
@@ -58,6 +63,10 @@ export default {
     dataInicio: {
       type: String,
       default: () => new Date().toLocaleDateString('pt-BR')
+    },
+    observacoes: {
+      type: String,
+      default: ''
     }
   },
   
@@ -116,6 +125,19 @@ export default {
 .campo.objeto {
   text-align: justify;
   line-height: 1.4;
+}
+
+.campo.observacoes {
+  margin-top: 1.5cm;
+  border-top: 1px solid #ccc;
+  padding-top: 1cm;
+}
+
+.observacoes-conteudo {
+  margin-top: 0.5cm;
+  text-align: justify;
+  line-height: 1.5;
+  font-style: italic;
 }
 
 .campo strong {

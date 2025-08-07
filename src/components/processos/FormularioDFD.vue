@@ -65,6 +65,57 @@
     </div>
 
     <form v-if="modeloSelecionado" @submit.prevent="salvarDFD" class="dfd-form">
+      <!-- Seção de Dados do Demandante -->
+      <div class="form-section">
+        <h3>👨‍💼 Dados do Demandante</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome do Presidente da CPPM *</label>
+            <input 
+              type="text" 
+              v-model="dadosDFD.nome_presidente" 
+              required
+              placeholder="Nome completo do presidente..."
+            >
+            <small>Nome do presidente da Comissão Permanente de Padronização de Materiais</small>
+          </div>
+          
+          <div class="form-group">
+            <label>Matrícula *</label>
+            <input 
+              type="text" 
+              v-model="dadosDFD.matricula_presidente" 
+              required
+              placeholder="Ex: 12345678"
+            >
+            <small>Matrícula funcional do presidente</small>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>E-mail *</label>
+            <input 
+              type="email" 
+              v-model="dadosDFD.email_presidente" 
+              required
+              placeholder="presidente@exemplo.gov.br"
+            >
+            <small>E-mail institucional do presidente</small>
+          </div>
+          
+          <div class="form-group">
+            <label>Telefone</label>
+            <input 
+              type="tel" 
+              v-model="dadosDFD.telefone_presidente"
+              placeholder="(xx) 9xxxx-xxxx"
+            >
+            <small>Telefone para contato</small>
+          </div>
+        </div>
+      </div>
+      
       <div class="form-section">
         <h3>🎯 Justificativa</h3>
         <div class="form-group">
@@ -473,7 +524,7 @@
 </template>
 
 <script>
-import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
+import ProcessosAdministrativosService from '../../services/ProcessosAdministrativosService'
 
 export default {
   name: 'FormularioDFD',
@@ -497,6 +548,12 @@ export default {
       salvando: false,
       mostrarPreview: false,
       dadosDFD: {
+        // Dados do demandante
+        nome_presidente: '',
+        matricula_presidente: '',
+        email_presidente: '',
+        telefone_presidente: '',
+        // Campos principais
         justificativa: '',
         necessidade_descricao: '',
         observacoes_especiais: '',
@@ -620,6 +677,12 @@ export default {
     },
     
     async salvarDFD() {
+      // Prevenir múltiplas submissões
+      if (this.salvando) {
+        console.log('⚠️ Já está salvando DFD, ignorando nova chamada')
+        return
+      }
+      
       try {
         this.salvando = true
         
