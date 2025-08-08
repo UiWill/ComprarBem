@@ -3,7 +3,7 @@
     <div class="registro-header">
       <h1>🏛️ Cadastro de Órgão Público</h1>
       <p class="subtitle">
-        Registre seu órgão e crie automaticamente os 4 perfis de acesso necessários
+        Cadastre o órgão e crie os 4 perfis necessários ao acesso pela Comissão de Padronização, Comissão de Contratação, Assessoria Jurídica e Autoridade Competente.
       </p>
     </div>
 

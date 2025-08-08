@@ -212,7 +212,7 @@
 </template>
 
 <script>
-import { ProcessosAdministrativosService } from '@/services/ProcessosAdministrativosService'
+import ProcessosAdministrativosService from '@/services/processosAdministrativosService'
 
 export default {
   name: 'DocumentacaoProdutos',

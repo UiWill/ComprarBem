@@ -56,7 +56,7 @@
             É um órgão público novo no sistema?
           </p>
           <router-link to="/registro-orgao" class="btn-registro-orgao">
-            📝 Cadastrar Órgão Completo
+            📝 Cadastrar Órgão
           </router-link>
           <small class="help-text-center">
             Cria automaticamente os 4 perfis de acesso necessários
@@ -69,24 +69,37 @@
       <!-- Seção de Acesso Público -->
       <div class="public-access-section">
         <div class="public-options">
-          <div class="public-option" @click="acessarRDMOnline()">
-            <div class="option-icon">🏥</div>
-            <div class="option-content">
-              <h4>Sistema RDM On-line</h4>
-              <p>📝 Acessar Dashboard RDM</p>
-              <small>Para usuários cadastrados emitirem RDMs</small>
+          <!-- Primeira linha: RDM e Catálogo lado a lado -->
+          <div class="options-row">
+            <div class="public-option" @click="acessarRDMOnline()">
+              <div class="option-icon">🏥</div>
+              <div class="option-content">
+                <h4>Sistema RDM On-line</h4>
+                <p>📝 Dashboard RDM</p>
+                <small>Usuários cadastrados para emitir RDMs</small>
+              </div>
             </div>
-            <div class="option-arrow">→</div>
+            
+            <div class="public-option" @click="acessarCatalogo()">
+              <div class="option-icon">📦</div>
+              <div class="option-content">
+                <h4>Catálogo de Produtos</h4>
+                <p>📋 Consulta de produtos</p>
+                <small>Consultar marcas e modelos padronizados</small>
+              </div>
+            </div>
           </div>
           
-          <div class="public-option" @click="acessarReclameAqui()">
-            <div class="option-icon">📢</div>
-            <div class="option-content">
-              <h4>Catálogo de Bens Padronizados</h4>
-              <p>🗣️ Sistema de Reclamações</p>
-              <small>Acesso público para consultar produtos e registrar reclamações</small>
+          <!-- Segunda linha: Sistema de Reclamações centralizado -->
+          <div class="options-row centered">
+            <div class="public-option wide" @click="acessarReclameAqui()">
+              <div class="option-icon">📢</div>
+              <div class="option-content">
+                <h4>Sistema de Reclamações</h4>
+                <p>🗣️ Registrar reclamações sobre produtos</p>
+                <small>Sistema para reclamações sobre marcas e modelos de produtos</small>
+              </div>
             </div>
-            <div class="option-arrow">→</div>
           </div>
         </div>
       </div>
@@ -180,9 +193,14 @@ export default {
       this.$router.push('/rdm')
     },
     
+    acessarCatalogo() {
+      // Redirecionar para catálogo público apenas para consulta (sem reclamações)
+      this.$router.push('/catalogo-publico?modo=consulta')
+    },
+    
     acessarReclameAqui() {
       // Redirecionar para sistema de reclamações
-      this.$router.push('/catalogo-publico')
+      this.$router.push('/catalogo-publico?modo=reclamacao')
     }
   }
 }
@@ -203,7 +221,8 @@ export default {
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 400px;
+  max-width: 650px;
+  min-height: auto;
 }
 
 .tabs {
@@ -422,8 +441,8 @@ input {
 
 /* Estilos para seção de acesso público */
 .public-access-section {
-  margin-top: 20px;
-  padding: 20px;
+  margin-top: 25px;
+  padding: 25px;
   background: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 8px;
@@ -433,18 +452,36 @@ input {
 .public-options {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
+}
+
+.options-row {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.options-row.centered {
+  justify-content: center;
 }
 
 .public-option {
   display: flex;
   align-items: center;
-  padding: 15px;
+  padding: 18px;
   background: white;
   border: 1px solid #dee2e6;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  flex: 1;
+  max-width: 48%;
+  min-height: 90px;
+}
+
+.public-option.wide {
+  max-width: 75%;
+  min-height: 90px;
 }
 
 .public-option:hover {
@@ -455,8 +492,8 @@ input {
 }
 
 .option-icon {
-  font-size: 2rem;
-  margin-right: 15px;
+  font-size: 2.2rem;
+  margin-right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -469,49 +506,69 @@ input {
 
 .option-content {
   flex: 1;
+  text-align: center;
 }
 
 .option-content h4 {
-  margin: 0 0 5px 0;
-  font-size: 1.1rem;
+  margin: 0 0 8px 0;
+  font-size: 1.0rem;
   font-weight: 600;
   color: #495057;
+  line-height: 1.2;
 }
 
 .option-content p {
-  margin: 0 0 5px 0;
-  font-size: 0.9rem;
+  margin: 0 0 6px 0;
+  font-size: 0.85rem;
   font-weight: 500;
   color: #2c3e50;
 }
 
 .option-content small {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #6c757d;
   line-height: 1.3;
+  display: block;
 }
 
-.option-arrow {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-left: 15px;
-  color: #6c757d;
-  transition: transform 0.3s ease;
+
+/* Responsividade para tablets */
+@media (max-width: 900px) and (min-width: 769px) {
+  .login-card {
+    max-width: 600px;
+  }
+  
+  .public-option.wide {
+    max-width: 80%;
+  }
 }
 
-.public-option:hover .option-arrow {
-  transform: translateX(5px);
-}
-
-/* Responsividade */
+/* Responsividade para mobile */
 @media (max-width: 768px) {
+  .login-card {
+    max-width: 95%;
+    padding: 25px;
+  }
+  
   .public-access-section {
     margin-top: 20px;
     padding: 20px;
   }
   
+  .options-row {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
   .public-option {
     padding: 15px;
+    max-width: 100%;
+    min-height: 80px;
+  }
+  
+  .public-option.wide {
+    max-width: 100%;
+    min-height: 80px;
   }
   
   .option-icon {

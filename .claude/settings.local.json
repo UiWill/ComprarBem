@@ -20,7 +20,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm run lint:*)",
       "Bash(cp:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

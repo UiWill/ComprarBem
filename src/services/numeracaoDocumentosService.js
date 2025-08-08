@@ -65,6 +65,8 @@ class NumeracaoDocumentosService {
         status: 'ativo'
       }
 
+      console.log('🔍 DEBUG registrarDocumento - dados completos para inserção:', documentoCompleto)
+
       // Inserir documento na tabela
       const { data: documentoCriado, error } = await supabase
         .from('documentos_processo')
@@ -72,7 +74,17 @@ class NumeracaoDocumentosService {
         .select()
         .single()
 
-      if (error) throw error
+      console.log('🔍 DEBUG registrarDocumento - resultado da inserção:', { documentoCriado, error })
+
+      if (error) {
+        console.error('❌ DEBUG registrarDocumento - erro detalhado:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        throw error
+      }
 
       console.log(`Documento criado: ${folha} - ${dadosDocumento.nome_documento}`)
       

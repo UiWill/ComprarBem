@@ -6,7 +6,7 @@
         <div class="header-content">
           <div class="logo-section">
             <h1>🏥 Sistema Comprar Bem</h1>
-            <span class="subtitle">Dashboard RDM</span>
+            <span class="subtitle">Dashboard RDM On-line</span>
           </div>
           
           <div class="user-section">

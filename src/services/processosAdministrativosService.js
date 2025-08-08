@@ -672,12 +672,30 @@ export class ProcessosAdministrativosService {
 
   static async criarDFD(processoId, dadosDFD) {
     try {
+      console.log('🔍 DEBUG criarDFD - processoId recebido:', processoId)
+      console.log('🔍 DEBUG criarDFD - dadosDFD:', dadosDFD)
+
       const tenantId = await getTenantId()
       const { data: sessionData } = await supabase.auth.getSession()
       const user = sessionData?.session?.user
 
       if (!tenantId || !user) {
         throw new Error('Usuário não autenticado ou sem tenant')
+      }
+
+      // Verificar se o processo existe antes de criar o DFD
+      const { data: processoExistente, error: errorProcesso } = await supabase
+        .from('processos_administrativos')
+        .select('id, numero_processo')
+        .eq('id', processoId)
+        .eq('tenant_id', tenantId)
+        .single()
+
+      console.log('🔍 DEBUG criarDFD - processo existente:', processoExistente)
+      console.log('🔍 DEBUG criarDFD - erro ao buscar processo:', errorProcesso)
+
+      if (errorProcesso || !processoExistente) {
+        throw new Error(`Processo ${processoId} não encontrado ou não pertence ao tenant atual`)
       }
 
       // Gerar HTML do DFD
@@ -858,15 +876,22 @@ export class ProcessosAdministrativosService {
       }
 
       // Verificar se o produto já existe na pré-qualificação
-      if (!forcarInsercao && dadosProduto.id) {
+      if (dadosProduto.id) {
         const { data: produtoExistente, error: errorVerificacao } = await supabase
           .from('produtos_prequalificacao')
-          .select('id')
+          .select('id, processo_id')
           .eq('id', dadosProduto.id)
           .eq('tenant_id', tenantId)
           .single()
 
-        if (produtoExistente && !errorVerificacao) {
+        // Se já existe no MESMO processo, apenas retornar o produto existente
+        if (produtoExistente && !errorVerificacao && produtoExistente.processo_id === processoId) {
+          console.log('✅ Produto já existe no mesmo processo, retornando o existente')
+          return produtoExistente
+        }
+
+        // Só dar erro se o produto foi usado em um processo DIFERENTE e não foi forçada a inserção
+        if (produtoExistente && !errorVerificacao && produtoExistente.processo_id !== processoId && !forcarInsercao) {
           const error = new Error('Este produto já foi usado em um processo de pré-qualificação. Deseja reutilizá-lo mesmo assim?')
           error.code = 'PRODUTO_JA_USADO'
           error.produtoId = dadosProduto.id
@@ -900,10 +925,104 @@ export class ProcessosAdministrativosService {
         throw error
       }
 
+      console.log('✅ Produto salvo com sucesso:', data.nome_produto)
+      
+      // AUTOMATICAMENTE salvar TODOS os documentos do produto no processo
+      await this.vincularDocumentosProdutoProcesso(processoId, data)
+      
       return data
     } catch (error) {
       console.error('Erro no serviço de produtos:', error)
       throw error
+    }
+  }
+
+  static async vincularDocumentosProdutoProcesso(processoId, produto) {
+    try {
+      const tenantId = await getTenantId()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const user = sessionData?.session?.user
+
+      if (!tenantId || !user) {
+        throw new Error('Usuário não autenticado ou sem tenant')
+      }
+
+      console.log(`📁 Vinculando documentos do produto ${produto.nome_produto} ao processo`)
+
+      // INVESTIGAR: Buscar documentos em TODAS as possíveis tabelas/estruturas
+      console.log('🔍 INVESTIGAÇÃO - Buscando documentos em arquivos_produto')
+      const { data: documentosArquivos, error: errorArquivos } = await supabase
+        .from('arquivos_produto')
+        .select('*')
+        .eq('produto_id', produto.id)
+
+      console.log('📋 RESULTADO arquivos_produto:', { documentosArquivos, errorArquivos })
+
+      // Buscar também na estrutura do próprio produto
+      console.log('🔍 INVESTIGAÇÃO - Buscando documentos na estrutura do produto')
+      const { data: produtoCompleto, error: errorProduto } = await supabase
+        .from('produtos')
+        .select('*, documentos:arquivos_produto(*)')
+        .eq('id', produto.id)
+        .single()
+
+      console.log('📋 RESULTADO produto completo:', { produtoCompleto, errorProduto })
+
+      // Buscar possível campo de documentos no próprio produto
+      console.log('🔍 INVESTIGAÇÃO - Verificando campos do produto salvo:', produto)
+
+      // Usar documentos encontrados (priorizar arquivos_produto)
+      let documentosOriginais = documentosArquivos
+      
+      if ((!documentosOriginais || documentosOriginais.length === 0) && produtoCompleto?.documentos) {
+        console.log('📋 Usando documentos da relação produto->arquivos_produto')
+        documentosOriginais = produtoCompleto.documentos
+      }
+
+      if (errorArquivos) {
+        console.warn('⚠️ Erro ao buscar documentos do produto:', errorArquivos)
+        return
+      }
+
+      if (!documentosOriginais || documentosOriginais.length === 0) {
+        console.log('ℹ️ Produto não possui documentos para vincular em nenhuma tabela investigada')
+        return
+      }
+
+      console.log(`📋 Encontrados ${documentosOriginais.length} documentos do produto`)
+
+      // Salvar TODOS os documentos na nova tabela vinculados ao processo
+      const documentosParaSalvar = documentosOriginais.map(doc => ({
+        processo_id: processoId,
+        produto_id: produto.id,
+        tenant_id: tenantId,
+        nome_arquivo: doc.nome_arquivo,
+        tipo_arquivo: doc.tipo_arquivo,
+        tamanho: doc.tamanho,
+        url_arquivo: doc.url_arquivo,
+        nome_produto: produto.nome_produto,
+        marca: produto.marca,
+        fabricante: produto.fabricante,
+        criado_por: user.id
+      }))
+
+      const { data: documentosSalvos, error: errorSalvar } = await supabase
+        .from('documentos_produtos_processo')
+        .upsert(documentosParaSalvar, {
+          onConflict: 'processo_id,produto_id,nome_arquivo,tenant_id'
+        })
+        .select()
+
+      if (errorSalvar) {
+        console.error('❌ Erro ao salvar documentos do produto no processo:', errorSalvar)
+        throw errorSalvar
+      }
+
+      console.log(`✅ ${documentosSalvos?.length || documentosParaSalvar.length} documentos vinculados ao processo com sucesso`)
+
+    } catch (error) {
+      console.error('Erro ao vincular documentos do produto ao processo:', error)
+      // Não falhar o salvamento do produto por causa dos documentos
     }
   }
 
@@ -1616,6 +1735,10 @@ export class ProcessosAdministrativosService {
   // UTILITÁRIOS
   // =====================================================
 
+  static async getTenantId() {
+    return await getTenantId()
+  }
+
   static async obterEstatisticas() {
     try {
       const tenantId = await getTenantId()
@@ -1843,9 +1966,7 @@ export class ProcessosAdministrativosService {
           id,
           status,
           created_at,
-          updated_at,
-          created_by,
-          updated_by
+          updated_at
         `)
         .eq('id', processoId)
         .eq('tenant_id', tenantId)
@@ -1864,7 +1985,7 @@ export class ProcessosAdministrativosService {
           data: data.created_at,
           status_anterior: null,
           status_novo: 'rascunho',
-          responsavel: data.created_by,
+          responsavel: 'Sistema',
           observacoes: 'Processo criado'
         }
       ]
@@ -1875,7 +1996,7 @@ export class ProcessosAdministrativosService {
           data: data.updated_at,
           status_anterior: 'rascunho',
           status_novo: data.status,
-          responsavel: data.updated_by,
+          responsavel: 'Sistema',
           observacoes: 'Status atualizado'
         })
       }

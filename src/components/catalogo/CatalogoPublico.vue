@@ -4,28 +4,31 @@
     <div v-if="etapaAtual === 'selecao'" class="selecao-orgao">
       <div class="container">
         <div class="header-section">
-          <h1>📢 Reclame Aqui - Sistema de Reclamações</h1>
-          <p class="subtitle">Selecione o órgão para fazer sua reclamação ou ver reclamações existentes</p>
+          <h1 v-if="modoOperacao === 'consulta'">📦 Catálogo de Bens Padronizados</h1>
+          <h1 v-else>📢 Sistema de Reclamações sobre Marcas e Modelos de Produtos</h1>
+          <p v-if="modoOperacao === 'consulta'" class="subtitle">Selecione o órgão para consultar seu catálogo de produtos padronizados</p>
+          <p v-else class="subtitle">Selecione o órgão para fazer sua reclamação ou ver reclamações existentes</p>
         </div>
         
-        <div class="orgaos-grid" v-if="!carregandoOrgaos">
-          <div v-if="orgaos.length === 0" class="no-orgaos">
-            <p>Nenhum órgão encontrado.</p>
-          </div>
-          <div 
-            v-else
-            v-for="orgao in orgaos" 
-            :key="orgao.tenant_id" 
-            class="orgao-card"
-            @click="selecionarOrgao(orgao)">
-            <div class="orgao-info">
-              <h3>{{ orgao.nome_orgao || orgao.tenant_id }}</h3>
-              <p v-if="orgao.descricao">{{ orgao.descricao }}</p>
-              <div class="orgao-stats">
-                <span class="stat">{{ orgao.total_reclamacoes || 0 }} reclamações</span>
-              </div>
+        <div class="orgao-selector" v-if="!carregandoOrgaos">
+          <div class="selector-container">
+            <h3>Selecione seu órgão:</h3>
+            <div class="dropdown-wrapper">
+              <select v-model="orgaoSelecionadoTemp" @change="confirmarSelecaoOrgao" class="orgao-dropdown">
+                <option value="">-- Selecione um órgão --</option>
+                <option 
+                  v-for="orgao in orgaosOrdenados" 
+                  :key="orgao.tenant_id" 
+                  :value="orgao"
+                >
+                  {{ orgao.nome_orgao || orgao.tenant_id }}
+                </option>
+              </select>
+              <div class="dropdown-arrow">▼</div>
             </div>
-            <div class="orgao-arrow">→</div>
+            <small v-if="orgaos.length === 0" class="no-orgaos-text">
+              Nenhum órgão encontrado.
+            </small>
           </div>
         </div>
         
@@ -45,12 +48,14 @@
         </div>
         
         <div class="reclamacoes-header">
-          <h2>Sistema de Reclamações</h2>
-          <p>Faça sua reclamação ou consulte reclamações existentes</p>
+          <h2 v-if="modoOperacao === 'consulta'">Catálogo de Produtos</h2>
+          <h2 v-else>Sistema de Reclamações</h2>
+          <p v-if="modoOperacao === 'consulta'">Consulte os produtos padronizados deste órgão</p>
+          <p v-else>Faça sua reclamação ou consulte reclamações existentes</p>
         </div>
         
-        <!-- Ações principais -->
-        <div class="acoes-principais">
+        <!-- Ações principais - só no modo reclamação -->
+        <div v-if="modoOperacao === 'reclamacao'" class="acoes-principais">
           <button @click="abrirFormularioReclamacao" class="btn-nova-reclamacao">
             📝 Nova Reclamação
           </button>
@@ -59,8 +64,19 @@
           </button>
         </div>
         
-        <!-- Formulário de Nova Reclamação -->
-        <div v-if="!mostrandoReclamacoes" class="formulario-reclamacao">
+        <!-- No modo consulta, mostrar diretamente o catálogo -->
+        <div v-if="modoOperacao === 'consulta'" class="catalogo-consulta">
+          <div class="catalogo-info">
+            <h3>📋 Catálogo de Produtos Padronizados</h3>
+            <p>{{ orgaoSelecionado.nome_orgao || orgaoSelecionado.tenant_id }}</p>
+            <div class="info-box">
+              <p>ℹ️ Este é o catálogo público de produtos padronizados. Você pode consultar marcas e modelos aprovados, mas não pode fazer reclamações nesta seção.</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Formulário de Nova Reclamação - só no modo reclamação -->
+        <div v-if="modoOperacao === 'reclamacao' && !mostrandoReclamacoes" class="formulario-reclamacao">
           <div class="form-card">
             <h3>📝 Nova Reclamação</h3>
             <form @submit.prevent="salvarReclamacao">
@@ -86,6 +102,7 @@
                   >
                 </div>
               </div>
+              
               
               <div class="form-row">
                 <div class="form-group">
@@ -144,8 +161,8 @@
           </div>
         </div>
         
-        <!-- Lista de Reclamações -->
-        <div v-if="mostrandoReclamacoes" class="lista-reclamacoes">
+        <!-- Lista de Reclamações - só no modo reclamação -->
+        <div v-if="modoOperacao === 'reclamacao' && mostrandoReclamacoes" class="lista-reclamacoes">
           <div class="reclamacoes-filtros">
             <div class="filtros-row">
               <div class="filtro-status">
@@ -311,12 +328,16 @@ export default {
   data() {
     return {
       etapaAtual: 'selecao', // 'selecao' ou 'reclamacoes'
+      modoOperacao: 'reclamacao', // 'consulta' ou 'reclamacao'
       orgaos: [],
       orgaoSelecionado: null,
       carregandoOrgaos: true,
       carregandoReclamacoes: false,
       mostrandoReclamacoes: false,
       salvandoReclamacao: false,
+      
+      // Seleção de órgão
+      orgaoSelecionadoTemp: null,
       
       // Dados da nova reclamação
       novaReclamacao: {
@@ -339,7 +360,22 @@ export default {
       buscaTexto: ''
     }
   },
+  computed: {
+    orgaosOrdenados() {
+      return [...this.orgaos].sort((a, b) => {
+        const nomeA = a.nome_orgao || a.tenant_id || ''
+        const nomeB = b.nome_orgao || b.tenant_id || ''
+        return nomeA.localeCompare(nomeB, 'pt-BR', { sensitivity: 'base' })
+      })
+    }
+  },
   async created() {
+    // Detectar modo de operação pela URL
+    if (this.$route.query.modo === 'consulta') {
+      this.modoOperacao = 'consulta'
+    } else {
+      this.modoOperacao = 'reclamacao'
+    }
     await this.carregarOrgaos()
   },
   methods: {
@@ -408,6 +444,12 @@ export default {
         ]
       } finally {
         this.carregandoOrgaos = false
+      }
+    },
+    
+    confirmarSelecaoOrgao() {
+      if (this.orgaoSelecionadoTemp) {
+        this.selecionarOrgao(this.orgaoSelecionadoTemp)
       }
     },
     
@@ -653,6 +695,64 @@ export default {
   padding: 40px 0;
 }
 
+.orgao-selector {
+  display: flex;
+  justify-content: center;
+  margin: 40px 0;
+}
+
+.selector-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  min-width: 400px;
+}
+
+.selector-container h3 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+}
+
+.dropdown-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.orgao-dropdown {
+  width: 100%;
+  padding: 12px 40px 12px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  background: white;
+  cursor: pointer;
+  appearance: none;
+  transition: border-color 0.3s ease;
+}
+
+.orgao-dropdown:focus {
+  outline: none;
+  border-color: #2c3e50;
+}
+
+.dropdown-arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  pointer-events: none;
+  font-size: 12px;
+}
+
+.no-orgaos-text {
+  color: #666;
+  font-style: italic;
+}
+
 .header-section {
   text-align: center;
   margin-bottom: 40px;
@@ -767,6 +867,46 @@ export default {
 
 .reclamacoes-header p {
   color: #666;
+}
+
+/* Catálogo Consulta */
+.catalogo-consulta {
+  margin-bottom: 30px;
+}
+
+.catalogo-info {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.catalogo-info h3 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 1.5em;
+}
+
+.catalogo-info > p {
+  color: #666;
+  font-size: 1.1em;
+  margin-bottom: 20px;
+}
+
+.info-box {
+  background: #e8f4fd;
+  border: 1px solid #bee5eb;
+  border-radius: 6px;
+  padding: 15px;
+  margin: 20px 0;
+}
+
+.info-box p {
+  margin: 0;
+  color: #0c5460;
+  font-size: 0.95em;
+  line-height: 1.5;
 }
 
 /* Ações Principais */

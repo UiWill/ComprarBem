@@ -5,7 +5,7 @@
       <div class="container">
         <div class="logo-section">
           <h1>🏥 Sistema Comprar Bem</h1>
-          <span class="subtitle">Dashboard RDM Online</span>
+          <span class="subtitle">Dashboard RDM On-line</span>
         </div>
       </div>
     </header>
@@ -16,13 +16,13 @@
         <div class="login-card">
           <div class="card-header">
             <h2>🔐 Acesso RDM</h2>
-            <p>Faça login para emitir suas Requisições de Materiais</p>
+            <p>Faça login para emitir RDMs</p>
           </div>
 
           <!-- Formulário de Login -->
           <form @submit.prevent="fazerLogin" class="login-form">
             <div class="form-group">
-              <label for="email">📧 Email:</label>
+              <label for="email">📧 E-mail:</label>
               <input
                 type="email"
                 id="email"
@@ -91,7 +91,7 @@
           <div class="info-card">
             <h3>📝 O que você pode fazer</h3>
             <ul>
-              <li>✅ Emitir RDMs online</li>
+              <li>✅ Emitir RDMs on-line</li>
               <li>📊 Acompanhar status das solicitações</li>
               <li>📋 Consultar histórico</li>
               <li>🔔 Receber notificações automáticas</li>
@@ -100,8 +100,9 @@
 
           <div class="info-card">
             <h3>⚡ Primeiro Acesso?</h3>
+            <p>Informe o e-mail e senha recebidos por e-mail</p>
             <ol>
-              <li>Use o email e senha enviados por email</li>
+              <li>Use o e-mail e senha enviados por e-mail</li>
               <li>Altere sua senha no primeiro login</li>
               <li>Configure suas preferências</li>
               <li>Comece a usar o sistema!</li>
@@ -121,7 +122,7 @@
         <div class="modal-body">
           <p>Entre em contato com o CPM para redefinir sua senha:</p>
           <div class="contact-info">
-            <p>📧 <strong>Email:</strong> comprarbemteste@gmail.com</p>
+            <p>📧 <strong>E-mail:</strong> comprarbemteste@gmail.com</p>
             <p>📞 <strong>Telefone:</strong> (61) 3315-2425</p>
           </div>
           <p><small>💡 Informe seu nome completo e unidade/setor</small></p>
@@ -139,7 +140,7 @@
         <div class="modal-body">
           <div class="contact-info">
             <h4>💬 Canais de Atendimento:</h4>
-            <p>📧 <strong>Email:</strong> comprarbemteste@gmail.com</p>
+            <p>📧 <strong>E-mail:</strong> comprarbemteste@gmail.com</p>
             <p>📞 <strong>Telefone:</strong> (61) 3315-2425</p>
             <p>🕐 <strong>Horário:</strong> Segunda a Sexta, 8h às 17h</p>
           </div>

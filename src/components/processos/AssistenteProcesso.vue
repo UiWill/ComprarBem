@@ -612,7 +612,7 @@
 </template>
 
 <script>
-import ProcessosAdministrativosService from '../../services/ProcessosAdministrativosService'
+import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
 import FormularioDFD from './FormularioDFD.vue'
 import FolhaRosto from './FolhaRosto.vue'
 import { supabase } from '../../services/supabase'
@@ -746,10 +746,20 @@ export default {
     }
   },
   
-  mounted() {
-    // Se estamos em modo de edição, carregar dados do processo existente
-    if (this.modoEdicao && this.processoEdicao) {
-      this.carregarDadosProcesso()
+  async mounted() {
+    // Tentar carregar progresso salvo primeiro
+    const processoCarregado = await this.carregarProcessoSalvo()
+    
+    // Se não conseguiu carregar progresso salvo E estamos em modo de edição, carregar dados do processo
+    if (!processoCarregado && this.modoEdicao && this.processoEdicao) {
+      await this.carregarDadosProcesso()
+    }
+    
+    // Se carregou processo salvo e tem processo temporário, carregar produtos do banco
+    if (processoCarregado && (this.processoTemporario?.id || this.processoEdicao?.id)) {
+      await this.carregarProdutosProcesso()
+      // Redeterminar etapa após carregar produtos
+      this.determinarEtapaAtual()
     }
   },
   
@@ -807,26 +817,45 @@ export default {
     
     async carregarProdutosProcesso() {
       try {
+        // Usar ID correto dependendo do contexto
+        const processoId = this.processoEdicao?.id || this.processoTemporario?.id
+        if (!processoId) {
+          console.warn('Nenhum processo ID disponível para carregar produtos')
+          return
+        }
+        
         const { data, error } = await supabase
           .from('produtos_prequalificacao')
-          .select('*, produtos(*)')
-          .eq('processo_id', this.processoEdicao.id)
+          .select('*')
+          .eq('processo_id', processoId)
         
         if (error) throw error
         
+        // Carregar produtos e marcar como selecionados
         this.produtos = data?.map(item => ({
-          ...item.produtos,
-          nome_produto: item.produtos?.nome || item.nome_produto,
-          categoria_produto: item.produtos?.categoria || item.categoria_produto,
-          especificacoes_tecnicas: item.produtos?.especificacoes || item.especificacoes_tecnicas,
+          id: item.id,
+          nome_produto: item.nome_produto,
+          marca: item.marca,
+          modelo: item.modelo,
+          fabricante: item.fabricante,
+          categoria_produto: item.categoria_produto,
+          especificacoes_tecnicas: item.especificacoes_tecnicas,
           quantidade_amostras: item.quantidade_amostras || 0,
           valor_estimado: item.valor_estimado || null,
-          observacoes_processo: item.observacoes_processo || ''
+          status_produto: item.status_produto,
+          parecer_cppm: item.parecer_cppm,
+          observacoes_tecnicas: item.observacoes_tecnicas
         })) || []
+        
+        // IMPORTANTE: Marcar produtos como selecionados
+        this.produtosSelecionados = this.produtos.map(produto => produto.id) || []
+        
+        console.log(`📦 ${this.produtos.length} produtos carregados e ${this.produtosSelecionados.length} marcados como selecionados`)
         
       } catch (error) {
         console.error('Erro ao carregar produtos do processo:', error)
         this.produtos = []
+        this.produtosSelecionados = []
       }
     },
     
@@ -870,16 +899,39 @@ export default {
     },
     
     determinarEtapaAtual() {
-      // Lógica para determinar em qual etapa o usuário deve começar
+      // Lógica inteligente para determinar etapa atual baseada no progresso real
+      
+      // Verificar se tem dados básicos
       if (!this.dadosProcesso.tipo_processo || !this.dadosProcesso.numero_processo) {
         this.etapaAtual = 0 // Folha de Rosto
-      } else if (!this.dfdCriada) {
-        this.etapaAtual = 2 // DFD
-      } else if (this.dadosProcesso.tipo_processo === 'padronizacao' && this.produtos.length === 0) {
-        this.etapaAtual = 3 // Produtos
-      } else {
-        this.etapaAtual = this.dadosProcesso.tipo_processo === 'padronizacao' ? 4 : 3 // Documentação
+        return
       }
+      
+      // Verificar se tem dados básicos completos (órgão, unidade)
+      if (!this.dadosProcesso.nome_orgao || !this.dadosProcesso.unidade_interessada) {
+        this.etapaAtual = 1 // Informações Básicas
+        return
+      }
+      
+      // Verificar se tem DFD
+      if (!this.dfdCriada) {
+        this.etapaAtual = 2 // DFD
+        return
+      }
+      
+      // Para processos de padronização, verificar produtos
+      if (this.dadosProcesso.tipo_processo === 'padronizacao') {
+        if (this.produtos.length === 0 || this.produtosSelecionados.length === 0) {
+          this.etapaAtual = 3 // Produtos
+          return
+        } else {
+          this.etapaAtual = 4 // Documentação
+          return
+        }
+      }
+      
+      // Para despadronização, ir direto para documentação após DFD
+      this.etapaAtual = 3 // Documentação (despadronização)
     },
     
     selecionarTipo(tipo) {
@@ -887,6 +939,9 @@ export default {
     },
     
     async proximaEtapa() {
+      // Auto-save antes de avançar para próxima etapa
+      await this.salvarProgressoEtapaAtual()
+      
       if (this.etapaAtual === 1) {
         // Criar processo temporário após informações básicas
         await this.criarProcessoTemporario()
@@ -905,16 +960,133 @@ export default {
       this.etapaAtual++
     },
     
-    voltarEtapa() {
+    async voltarEtapa() {
+      // Auto-save antes de voltar para etapa anterior
+      await this.salvarProgressoEtapaAtual()
+      
       if (this.etapaAtual > 0) {
         this.etapaAtual--
+        // Carregar dados salvos da etapa anterior
+        await this.carregarProgressoEtapa(this.etapaAtual)
       }
+    },
+    
+    async salvarProgressoEtapaAtual() {
+      try {
+        let chaveStorage = null
+        
+        if (this.modoEdicao && this.processoEdicao?.id) {
+          chaveStorage = `processo_edicao_${this.processoEdicao.id}`
+        } else {
+          // Para processos novos, usar ou criar uma chave consistente
+          chaveStorage = localStorage.getItem('processo_atual_novo')
+          if (!chaveStorage) {
+            chaveStorage = `processo_novo_${Date.now()}`
+            localStorage.setItem('processo_atual_novo', chaveStorage)
+          }
+        }
+        
+        const progressoSalvo = {
+          etapaAtual: this.etapaAtual,
+          dadosProcesso: { ...this.dadosProcesso },
+          dadosBasicos: { ...this.dadosBasicos },
+          dadosDFD: { ...this.dadosDFD },
+          produtosSelecionados: Array.isArray(this.produtosSelecionados) ? [...this.produtosSelecionados] : [],
+          documentosUpload: [...(this.documentosUpload || [])],
+          timestamp: new Date().toISOString(),
+          processoId: this.processoTemporario?.id || this.processoEdicao?.id,
+          modoEdicao: this.modoEdicao
+        }
+        
+        localStorage.setItem(chaveStorage, JSON.stringify(progressoSalvo))
+        console.log(`📄 Auto-save realizado - Etapa ${this.etapaAtual}`)
+        console.log(`📄 DEBUG: Produtos selecionados salvos:`, progressoSalvo.produtosSelecionados)
+        
+      } catch (error) {
+        console.error('Erro ao salvar progresso da etapa:', error)
+      }
+    },
+    
+    async carregarProgressoEtapa(etapa) {
+      try {
+        const chaveStorage = this.modoEdicao ? 
+          `processo_edicao_${this.processoEdicao?.id}` : 
+          localStorage.getItem('processo_atual_novo')
+        
+        if (!chaveStorage) return
+        
+        const progressoSalvo = localStorage.getItem(chaveStorage)
+        if (progressoSalvo) {
+          const dados = JSON.parse(progressoSalvo)
+          
+          // Carregar apenas os dados relevantes para a etapa
+          this.dadosProcesso = { ...dados.dadosProcesso }
+          this.dadosBasicos = { ...dados.dadosBasicos }
+          this.dadosDFD = { ...dados.dadosDFD }
+          this.produtosSelecionados = [...(dados.produtosSelecionados || [])]
+          console.log('📄 DEBUG: Produtos selecionados carregados do auto-save:', this.produtosSelecionados)
+          this.documentosUpload = [...(dados.documentosUpload || [])]
+          
+          console.log(`📄 Dados carregados - Etapa ${etapa}`)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar progresso da etapa:', error)
+      }
+    },
+    
+    async carregarProcessoSalvo() {
+      // Função para carregar processo ao iniciar o assistente
+      try {
+        let chaveStorage = null
+        
+        if (this.modoEdicao && this.processoEdicao?.id) {
+          chaveStorage = `processo_edicao_${this.processoEdicao.id}`
+        } else {
+          chaveStorage = localStorage.getItem('processo_atual_novo')
+        }
+        
+        if (!chaveStorage) return false
+        
+        const progressoSalvo = localStorage.getItem(chaveStorage)
+        if (progressoSalvo) {
+          const dados = JSON.parse(progressoSalvo)
+          
+          // Restaurar todos os dados
+          this.etapaAtual = dados.etapaAtual || 0
+          this.dadosProcesso = { ...dados.dadosProcesso }
+          this.dadosBasicos = { ...dados.dadosBasicos }
+          this.dadosDFD = { ...dados.dadosDFD }
+          this.produtosSelecionados = [...(dados.produtosSelecionados || [])]
+          console.log('📄 DEBUG: Produtos selecionados carregados do auto-save:', this.produtosSelecionados)
+          this.documentosUpload = [...(dados.documentosUpload || [])]
+          
+          if (dados.processoId) {
+            this.processoTemporario = { id: dados.processoId }
+          }
+          
+          console.log(`📄 Processo carregado - Retornando para Etapa ${this.etapaAtual}`)
+          return true
+        }
+      } catch (error) {
+        console.error('Erro ao carregar processo salvo:', error)
+      }
+      return false
     },
     
     async criarProcessoTemporario() {
       try {
         this.processando = true
+        
+        // Se já existe processo temporário ou está em modo edição, não criar novo
+        if (this.processoTemporario || this.modoEdicao) {
+          console.log('🔄 DEBUG: Processo já existe ou está em modo edição, pulando criação')
+          console.log('🔄 Processo existente:', this.processoTemporario || this.processoEdicao)
+          return this.processoTemporario || this.processoEdicao
+        }
+        
+        console.log('🚀 DEBUG: Criando novo processo com dados:', this.dadosProcesso)
         this.processoTemporario = await ProcessosAdministrativosService.criarProcesso(this.dadosProcesso)
+        console.log('✅ DEBUG: Processo criado com sucesso:', this.processoTemporario)
         
         // Criar automaticamente a Folha de Rosto (Fl. 001)
         await this.criarFolhaDeRosto()
@@ -998,12 +1170,19 @@ export default {
     },
     
     toggleProdutoSelecionado(produto) {
+      console.log('🔄 DEBUG: Toggling produto:', produto.nome_produto || produto.nome, 'ID:', produto.id)
+      console.log('🔄 DEBUG: produtosSelecionados ANTES:', this.produtosSelecionados)
+      
       const index = this.produtosSelecionados.indexOf(produto.id)
       if (index > -1) {
         this.produtosSelecionados.splice(index, 1)
+        console.log('❌ DEBUG: Produto removido da seleção')
       } else {
         this.produtosSelecionados.push(produto.id)
+        console.log('✅ DEBUG: Produto adicionado à seleção')
       }
+      
+      console.log('🔄 DEBUG: produtosSelecionados DEPOIS:', this.produtosSelecionados)
     },
     
     async confirmarSelecaoProdutos() {
@@ -1121,12 +1300,47 @@ export default {
       try {
         this.processando = true
         
-        for (const produto of this.produtos) {
+        // Pegar apenas produtos selecionados que ainda não foram salvos
+        console.log('🔍 DEBUG: Produtos disponíveis:', this.produtos.length)
+        console.log('🔍 DEBUG: Produtos selecionados IDs:', this.produtosSelecionados)
+        console.log('🔍 DEBUG: Tipo de produtosSelecionados:', typeof this.produtosSelecionados, Array.isArray(this.produtosSelecionados))
+        console.log('🔍 DEBUG: Conteúdo real de produtosSelecionados:', JSON.stringify(this.produtosSelecionados))
+        
+        // Forçar reconstrução do array se estiver corrompido
+        let produtosSelecionadosLimpo = []
+        if (Array.isArray(this.produtosSelecionados)) {
+          produtosSelecionadosLimpo = this.produtosSelecionados.filter(id => typeof id === 'string' && id.length > 0)
+        }
+        
+        console.log(`🔧 DEBUG: Array limpo de produtos selecionados:`, produtosSelecionadosLimpo)
+        
+        // Se ainda estiver vazio, verificar produtos marcados visualmente na interface
+        if (produtosSelecionadosLimpo.length === 0) {
+          console.log('⚠️ DEBUG: Array vazio! Tentando recuperar produtos da interface...')
+          // Como fallback, salvar todos os produtos carregados (usuário já confirmou seleção)
+          produtosSelecionadosLimpo = this.produtos.map(p => p.id)
+          console.log('🔄 DEBUG: Usando todos os produtos como selecionados:', produtosSelecionadosLimpo)
+        }
+        
+        const produtosParaSalvar = this.produtos.filter(produto => 
+          produtosSelecionadosLimpo.includes(produto.id) && 
+          !produto.processo_id  // Produto ainda não foi salvo
+        )
+        
+        console.log(`💾 DEBUG: Produtos para salvar (${produtosParaSalvar.length}):`, produtosParaSalvar)
+        console.log(`📋 DEBUG: ID do processo onde salvar:`, this.processoTemporario.id)
+        
+        for (const produto of produtosParaSalvar) {
           try {
-            await ProcessosAdministrativosService.adicionarProduto(
+            console.log(`🔄 DEBUG: Salvando produto:`, produto.nome_produto || produto.nome)
+            console.log(`🔄 DEBUG: Estrutura completa do produto antes de salvar:`, produto)
+            console.log(`🔄 DEBUG: Documentos do produto (se existirem):`, produto.documentos_produto || 'NENHUM')
+            
+            const resultado = await ProcessosAdministrativosService.adicionarProduto(
               this.processoTemporario.id, 
               produto
             )
+            console.log(`✅ DEBUG: Produto salvo com sucesso:`, resultado)
           } catch (error) {
             if (error.code === 'PRODUTO_JA_USADO') {
               // Produto já foi usado, perguntar se quer forçar
@@ -1975,16 +2189,44 @@ export default {
         throw error
       }
     },
+    
+    limparProgressoSalvo() {
+      try {
+        const chaveStorage = this.modoEdicao ? 
+          `processo_edicao_${this.processoEdicao?.id}` : 
+          localStorage.getItem('processo_atual_novo')
+        
+        if (chaveStorage) {
+          localStorage.removeItem(chaveStorage)
+          if (!this.modoEdicao) {
+            localStorage.removeItem('processo_atual_novo')
+          }
+          console.log('📄 Progresso salvo limpo com sucesso')
+        }
+      } catch (error) {
+        console.error('Erro ao limpar progresso salvo:', error)
+      }
+    },
 
     async finalizarProcesso() {
       try {
         this.processando = true
         
+        console.log('🏁 DEBUG: Iniciando finalização do processo:', this.processoTemporario.id)
+        
+        // Verificar se produtos foram salvos antes de finalizar
+        const produtosSalvos = await ProcessosAdministrativosService.listarProdutosProcesso(this.processoTemporario.id)
+        console.log(`📋 DEBUG: Produtos encontrados no processo antes da finalização (${produtosSalvos.length}):`, produtosSalvos)
+        
         // Atualizar status do processo para "aguardando_aprovacao"
+        console.log('🔄 DEBUG: Atualizando status para aguardando_aprovacao')
         await ProcessosAdministrativosService.atualizarProcesso(
           this.processoTemporario.id,
           { status: 'aguardando_aprovacao' }
         )
+        
+        // Limpar dados salvos após finalização com sucesso
+        this.limparProgressoSalvo()
         
         this.$emit('processo-criado', this.processoTemporario)
         

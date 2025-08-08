@@ -1,5 +1,6 @@
 -- =====================================================
 -- TABELA PARA DOCUMENTOS DOS PRODUTOS VINCULADOS AO PROCESSO
+-- VERSÃO ALTERNATIVA SEM RLS COMPLEXO
 -- =====================================================
 
 -- Criar tabela exclusiva para documentos de produtos no processo
@@ -25,7 +26,7 @@ CREATE TABLE IF NOT EXISTS documentos_produtos_processo (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   criado_por UUID REFERENCES auth.users(id),
   
-  -- Índices para performance
+  -- Constraint única
   UNIQUE(processo_id, produto_id, nome_arquivo, tenant_id)
 );
 
@@ -37,20 +38,13 @@ CREATE INDEX IF NOT EXISTS idx_documentos_produtos_processo_tenant_id ON documen
 -- Habilitar RLS (Row Level Security)
 ALTER TABLE documentos_produtos_processo ENABLE ROW LEVEL SECURITY;
 
--- Política RLS baseada no tenant
-DROP POLICY IF EXISTS "Documentos produtos processo isolados por tenant" ON documentos_produtos_processo;
-
--- Política RLS mais simples - permitir acesso autenticado
-CREATE POLICY "Documentos produtos processo por tenant" ON documentos_produtos_processo
+-- Política RLS simples para usuários autenticados
+DROP POLICY IF EXISTS "Documentos produtos processo acesso" ON documentos_produtos_processo;
+CREATE POLICY "Documentos produtos processo acesso" ON documentos_produtos_processo
   FOR ALL 
   TO authenticated
-  USING (true);
-
--- Alternativa: Se você tem uma função para obter tenant_id, use esta:
--- CREATE POLICY "Documentos produtos processo por tenant" ON documentos_produtos_processo
---   FOR ALL 
---   TO authenticated
---   USING (tenant_id = auth.uid());
+  USING (true)
+  WITH CHECK (true);
 
 -- Comentários para documentação
 COMMENT ON TABLE documentos_produtos_processo IS 'Documentos dos produtos vinculados especificamente a processos administrativos';
@@ -58,3 +52,7 @@ COMMENT ON COLUMN documentos_produtos_processo.processo_id IS 'ID do processo ad
 COMMENT ON COLUMN documentos_produtos_processo.produto_id IS 'ID do produto original (referência)';
 COMMENT ON COLUMN documentos_produtos_processo.nome_produto IS 'Nome do produto (desnormalizado para facilitar consultas)';
 COMMENT ON COLUMN documentos_produtos_processo.url_arquivo IS 'URL do arquivo no storage';
+
+-- Conceder permissões para uso
+GRANT ALL ON documentos_produtos_processo TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;

@@ -524,7 +524,7 @@
 </template>
 
 <script>
-import ProcessosAdministrativosService from '../../services/ProcessosAdministrativosService'
+import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
 
 export default {
   name: 'FormularioDFD',
@@ -547,6 +547,7 @@ export default {
       modeloSelecionado: null,
       salvando: false,
       mostrarPreview: false,
+      autoSaveTimeout: null,
       dadosDFD: {
         // Dados do demandante
         nome_presidente: '',
@@ -597,6 +598,22 @@ export default {
   computed: {
     previewHTML() {
       return this.gerarPreviewHTML()
+    }
+  },
+  
+  watch: {
+    dadosDFD: {
+      handler() {
+        // Salvar automaticamente após mudanças (com debounce)
+        this.salvarRascunhoAutomatico()
+      },
+      deep: true
+    },
+    modeloSelecionado: {
+      handler() {
+        // Salvar automaticamente quando modelo muda
+        this.salvarRascunhoAutomatico()
+      }
     }
   },
   
@@ -728,6 +745,39 @@ export default {
       } finally {
         this.salvando = false
       }
+    },
+    
+    salvarRascunhoAutomatico() {
+      // Limpar timeout anterior se existir
+      if (this.autoSaveTimeout) {
+        clearTimeout(this.autoSaveTimeout)
+      }
+      
+      // Definir novo timeout para salvar após 2 segundos de inatividade
+      this.autoSaveTimeout = setTimeout(() => {
+        try {
+          // Só salvar se houver pelo menos um modelo selecionado e alguns dados preenchidos
+          if (this.modeloSelecionado && (
+            this.dadosDFD.nome_presidente.trim() ||
+            this.dadosDFD.justificativa.trim() ||
+            this.dadosDFD.necessidade_descricao.trim()
+          )) {
+            // Salvar no localStorage como rascunho
+            const rascunho = {
+              processoId: this.processoId,
+              modeloSelecionado: this.modeloSelecionado,
+              dadosDFD: { ...this.dadosDFD },
+              dataSalvo: new Date().toISOString(),
+              autoSave: true
+            }
+            
+            localStorage.setItem(`dfd_rascunho_${this.processoId}`, JSON.stringify(rascunho))
+            console.log('📄 Rascunho DFD salvo automaticamente')
+          }
+        } catch (error) {
+          console.error('Erro ao salvar rascunho automaticamente:', error)
+        }
+      }, 2000) // 2 segundos de debounce
     },
     
     carregarRascunho() {
@@ -905,6 +955,13 @@ export default {
           periodicidade_revisao: ''
         }
       }
+    }
+  },
+  
+  beforeUnmount() {
+    // Limpar timeout de auto-save quando componente for destruído
+    if (this.autoSaveTimeout) {
+      clearTimeout(this.autoSaveTimeout)
     }
   }
 }

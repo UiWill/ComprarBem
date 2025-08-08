@@ -189,12 +189,11 @@
               <button @click.stop="abrirProcesso(processo)" class="btn-action primary">
                 👁️ Ver
               </button>
-              <button @click.stop="editarProcesso(processo)" class="btn-action">
+              <button 
+                v-if="podeEditarProcesso(processo)" 
+                @click.stop="editarProcesso(processo)" 
+                class="btn-action">
                 ✏️ Editar
-              </button>
-              <button @click.stop="abrirModalEdital(processo)" class="btn-action" 
-                      :title="processo.edital_vinculado ? 'Edital já vinculado' : 'Vincular edital PDF'">
-                {{ processo.edital_vinculado ? '📄 Edital' : '📎 + Edital' }}
               </button>
               <button @click.stop="visualizarDocumentacao(processo)" class="btn-action">
                 📋 Docs
@@ -325,7 +324,10 @@
                 <button @click="adicionarDocumento(processoSelecionado)" class="btn-secondary">
                   📎 Adicionar Documento
                 </button>
-                <button @click="editarProcesso(processoSelecionado)" class="btn-secondary">
+                <button 
+                  v-if="podeEditarProcesso(processoSelecionado)" 
+                  @click="editarProcesso(processoSelecionado)" 
+                  class="btn-secondary">
                   ✏️ Editar Processo
                 </button>
                 <button @click="verTramitacao(processoSelecionado)" class="btn-secondary">
@@ -342,7 +344,7 @@
               
               <h4>📄 Documentos do Processo</h4>
               <div class="documentos-container">
-                <div v-if="documentosProcesso.length === 0" class="empty-documentos">
+                <div v-if="documentosProcessoFiltrados.length === 0" class="empty-documentos">
                   <p>⚠️ Nenhum documento encontrado</p>
                   <button @click="carregarDocumentosProcesso(processoSelecionado.id)" class="btn-secondary">
                     🔄 Recarregar
@@ -350,7 +352,7 @@
                 </div>
                 <div v-else class="lista-documentos">
                   <div 
-                    v-for="doc in documentosProcesso" 
+                    v-for="doc in documentosProcessoFiltrados" 
                     :key="doc.id"
                     class="documento-item"
                   >
@@ -362,7 +364,13 @@
                     </div>
                     <div class="doc-status">
                       <span v-if="doc.assinado" class="status-assinado">✅ Assinado</span>
+                      <span v-else-if="doc.status === 'disponivel'" class="status-disponivel">📄 Disponível</span>
                       <span v-else class="status-pendente">⏳ Pendente</span>
+                    </div>
+                    <div v-if="doc.url_arquivo" class="doc-actions">
+                      <button @click="visualizarDocumento(doc)" class="btn-visualizar">
+                        👁️ Ver
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -844,7 +852,7 @@
       <!-- Modal para Vincular Edital -->
       <ModalVincularEdital
         :visivel="mostrarModalEdital"
-        :processo="processoSelecionado"
+        :processo="processoSelecionado || {}"
         @edital-vinculado="onEditalVinculado"
         @fechar="fecharModalEdital"
       />
@@ -867,7 +875,7 @@
 </template>
 
 <script>
-import ProcessosAdministrativosService from '../../services/ProcessosAdministrativosService'
+import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
 import DocumentosAdministrativosService from '../../services/documentosAdministrativos'
 import AssistenteProcesso from './AssistenteProcesso.vue'
 import ModalVincularEdital from './ModalVincularEdital.vue'
@@ -911,6 +919,102 @@ export default {
       // Dados auxiliares para visualização detalhada
       produtosProcesso: [],
       historicoTramitacao: [],
+    }
+  },
+
+  computed: {
+    // Filtra documentos para mostrar apenas edital e documentos inseridos pelo cliente
+    // Inclui: documentos oficiais, documentos dos produtos, documentos adicionais
+    // Exclui: folha de rosto, DFD e documentos null/vazios
+    documentosProcessoFiltrados() {
+      console.log('🔍 DEBUG - Filtrando documentos. Total de documentos:', this.documentosProcesso.length)
+      console.log('🔍 DEBUG - Documentos brutos:', this.documentosProcesso)
+      
+      return this.documentosProcesso.filter(doc => {
+        console.log(`🔍 DEBUG - Analisando documento: ${doc.titulo || doc.nome_documento} (tipo: ${doc.tipo_documento})`)
+        
+        // ❌ EXCLUIR FOLHA DE ROSTO - todas as variações possíveis
+        if (doc.tipo_documento === 'FOLHA_ROSTO' || 
+            doc.tipo_documento === 'folha_rosto' ||
+            (doc.nome_documento && doc.nome_documento.toLowerCase().includes('folha de rosto')) ||
+            (doc.titulo && doc.titulo.toLowerCase().includes('folha de rosto'))) {
+          console.log('❌ DEBUG - EXCLUINDO FOLHA DE ROSTO:', doc.titulo || doc.nome_documento)
+          return false;
+        }
+        
+        // ❌ EXCLUIR DFD - todas as variações possíveis
+        if (doc.tipo_documento === 'DFD' || 
+            doc.tipo_documento === 'dfd' ||
+            (doc.nome_documento && (
+              doc.nome_documento.toLowerCase().includes('formalização de demanda') ||
+              doc.nome_documento.toLowerCase().includes('dfd')
+            )) ||
+            (doc.titulo && (
+              doc.titulo.toLowerCase().includes('formalização de demanda') ||
+              doc.titulo.toLowerCase().includes('dfd')
+            ))) {
+          console.log('❌ DEBUG - EXCLUINDO DFD:', doc.titulo || doc.nome_documento)
+          return false;
+        }
+        
+        // INCLUIR documentos dos produtos (SEM verificar descrição)
+        if (doc.tipo_documento === 'DOCUMENTO_PRODUTO') {
+          console.log('✅ DEBUG - Incluindo documento de produto:', doc.titulo || doc.nome_documento)
+          return true;
+        }
+        
+        // INCLUIR documentos adicionais (SEM verificar descrição)
+        if (doc.tipo_documento === 'DOCUMENTO_ADICIONAL') {
+          console.log('✅ DEBUG - Incluindo documento adicional')
+          return true;
+        }
+        
+        // INCLUIR edital (SEM verificar descrição)
+        if (doc.tipo_documento === 'EDITAL') {
+          console.log('✅ DEBUG - Incluindo edital')
+          return true;
+        }
+        
+        // Para outros tipos de documento, verificar se têm título
+        if (!doc.titulo || doc.titulo === null || doc.titulo.trim() === '') {
+          console.log('❌ DEBUG - Excluindo por falta de título')
+          return false;
+        }
+        
+        // Para documentos oficiais (não de produto), verificar descrição
+        if (doc.tipo_documento !== 'DOCUMENTO_PRODUTO' && 
+            doc.tipo_documento !== 'DOCUMENTO_ADICIONAL' && 
+            doc.tipo_documento !== 'EDITAL' &&
+            (!doc.descricao || doc.descricao === null || doc.descricao.trim() === '')) {
+          console.log('❌ DEBUG - Excluindo documento oficial por falta de descrição')
+          return false;
+        }
+        
+        console.log('✅ DEBUG - Incluindo documento')
+        return true;
+      })
+      // REMOVER DOCUMENTOS DUPLICADOS (mesmo título e tipo)
+      .filter((doc, index, array) => {
+        const isDuplicate = array.findIndex(d => 
+          d.titulo === doc.titulo && 
+          d.tipo_documento === doc.tipo_documento &&
+          d.id !== doc.id
+        ) < index;
+        
+        if (isDuplicate) {
+          console.log('🗑️ DEBUG - Removendo documento duplicado:', doc.titulo)
+        }
+        
+        return !isDuplicate;
+      })
+      .map(doc => {
+        // Remover status "pendente" - todos os documentos são visualizáveis
+        return {
+          ...doc,
+          visualizavel: true,
+          status: doc.assinado ? 'assinado' : 'disponivel'
+        };
+      });
     }
   },
   
@@ -968,7 +1072,102 @@ export default {
     
     async carregarDocumentosProcesso(processoId) {
       try {
-        this.documentosProcesso = await ProcessosAdministrativosService.listarDocumentosProcesso(processoId)
+        console.log('🔍 DEBUG - Carregando documentos para processo:', processoId)
+        
+        // Carregar documentos principais do processo
+        let documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processoId)
+        console.log('🔍 DEBUG - Documentos principais carregados:', documentos)
+        
+        // Carregar documentos dos produtos se for padronização - NOVA TABELA
+        if (this.processoSelecionado?.tipo_processo === 'padronizacao') {
+          console.log('✅ DEBUG - Processo de padronização detectado, carregando documentos de produtos da nova tabela')
+          
+          // Buscar documentos dos produtos diretamente da nova tabela dedicada  
+          const tenantId = await ProcessosAdministrativosService.getTenantId()
+          const { data: documentosProdutos, error: erroDocProdutos } = await supabase
+            .from('documentos_produtos_processo')
+            .select('*')
+            .eq('processo_id', processoId)
+            .eq('tenant_id', tenantId)
+          
+          console.log(`📋 Documentos de produtos encontrados na nova tabela:`, documentosProdutos)
+          
+          if (erroDocProdutos) {
+            console.warn('⚠️ Erro ao buscar documentos de produtos do processo:', erroDocProdutos)
+          }
+          
+          if (documentosProdutos && documentosProdutos.length > 0) {
+            for (const docProduto of documentosProdutos) {
+              const documentoProdutoFormatado = {
+                id: docProduto.id,
+                tipo_documento: 'DOCUMENTO_PRODUTO',
+                titulo: `${docProduto.nome_produto} - ${docProduto.nome_arquivo}`,
+                descricao: `Documento técnico do produto ${docProduto.nome_produto} (${docProduto.marca})`,
+                data_autuacao: docProduto.created_at,
+                numero_folha: null,
+                url_arquivo: docProduto.url_arquivo,
+                nome_arquivo: docProduto.nome_arquivo,
+                tipo_arquivo: docProduto.tipo_arquivo,
+                tamanho: docProduto.tamanho,
+                assinado: false,
+                // Informações extras do produto
+                produto_id: docProduto.produto_id,
+                nome_produto: docProduto.nome_produto,
+                marca: docProduto.marca,
+                fabricante: docProduto.fabricante
+              }
+              documentos.push(documentoProdutoFormatado)
+            }
+            console.log(`✅ ${documentosProdutos.length} documentos de produtos adicionados à lista`)
+          } else {
+            console.log('ℹ️ Nenhum documento de produto encontrado para este processo')
+          }
+        }
+        
+        // Carregar documentos adicionais do processo
+        // NOTA: Tabela documentos_adicionais_processo não existe ainda
+        // Por enquanto, vamos buscar na própria tabela de documentos_processo com tipo específico
+        try {
+          console.log(`🔍 Buscando documentos adicionais para processo ${processoId}`)
+          const { data: documentosAdicionais, error: erroDocAdicionais } = await supabase
+            .from('documentos_processo')
+            .select('*')
+            .eq('processo_id', processoId)
+            .in('tipo_documento', ['DOCUMENTO_ADICIONAL', 'documento_adicional', 'ANEXO', 'anexo'])
+            
+          console.log(`📎 Documentos adicionais encontrados:`, documentosAdicionais)
+          if (erroDocAdicionais) {
+            console.warn('⚠️ Erro ao buscar documentos adicionais:', erroDocAdicionais)
+          }
+            
+          if (documentosAdicionais && documentosAdicionais.length > 0) {
+            for (const docAdicional of documentosAdicionais) {
+              // Verificar se já não foi incluído na busca principal
+              const jaExiste = documentos.find(d => d.id === docAdicional.id)
+              if (!jaExiste) {
+                const documento = {
+                  id: docAdicional.id,
+                  tipo_documento: 'DOCUMENTO_ADICIONAL',
+                  titulo: docAdicional.titulo || docAdicional.nome_documento || 'Documento Adicional',
+                  descricao: docAdicional.descricao || 'Documento adicional anexado ao processo',
+                  data_autuacao: docAdicional.data_autuacao || docAdicional.created_at,
+                  numero_folha: docAdicional.numero_folha,
+                  url_arquivo: docAdicional.url_arquivo,
+                  nome_arquivo: docAdicional.nome_arquivo,
+                  tipo_arquivo: docAdicional.tipo_arquivo,
+                  tamanho: docAdicional.tamanho,
+                  assinado: docAdicional.assinado || false
+                }
+                documentos.push(documento)
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Erro ao buscar documentos adicionais:', error)
+        }
+        
+        console.log(`📋 Total de documentos carregados: ${documentos.length}`, documentos)
+        this.documentosProcesso = documentos
       } catch (error) {
         console.error('Erro ao carregar documentos do processo:', error)
         this.documentosProcesso = []
@@ -994,10 +1193,9 @@ export default {
     },
     
     podeEditarProcesso(processo) {
-      // Só pode editar processos em rascunho ou aguardando aprovação
+      // Só pode editar processos que estão em criação
       const statusProcesso = processo?.status?.toLowerCase() || ''
-      const statusEditaveis = ['rascunho', 'aguardando_aprovacao']
-      return statusEditaveis.includes(statusProcesso)
+      return statusProcesso === 'em_criacao'
     },
     
     podeEnviarParaAnalise(processo) {
@@ -1721,13 +1919,16 @@ export default {
         
       const tituloCompleto = `DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - ${modeloTipo}`
 
-      return `
+      // Função auxiliar para renderizar valor booleano
+      const formatarBooleano = (valor) => valor ? 'SIM' : 'NÃO'
+
+      let htmlConteudo = `
         <div class="documento-header" style="text-align: center; margin-bottom: 2cm;">
           <h1 style="font-size: 16pt; font-weight: bold; margin: 10px 0;">${tituloCompleto}</h1>
           <h2 style="font-size: 12pt; margin: 10px 0;">(${finalidade})</h2>
         </div>
         
-        <div class="documento-conteudo" style="text-align: justify; line-height: 1.8;">
+        <div class="documento-conteudo" style="text-align: justify; line-height: 1.8; font-size: 12pt;">
           <div class="campo" style="margin-bottom: 1cm;">
             <span style="font-weight: bold;">Demandante:</span> Comissão Permanente de Padronização de Materiais - CPPM
           </div>
@@ -1742,11 +1943,13 @@ export default {
             <span style="font-weight: bold; margin-left: 2cm;">Telefone:</span> ${dadosDFD?.telefone_presidente || '_________________'}
           </div>
           
-          <h2 style="margin-top: 2cm;">1. OBJETO DESTE DFD:</h2>
-          <p>${finalidade.charAt(0).toUpperCase() + finalidade.slice(1)} que ${processo.tipo_processo === 'padronizacao' ? 'possuam os padrões mínimos de qualidade' : 'não mais atendem aos padrões mínimos de qualidade'}, estética, rendimento, durabilidade e adequação ao uso.</p>
-          
-          ${produtos && produtos.length > 0 ? `
-          <h3>1.1. Relação de ${processo.tipo_processo === 'padronizacao' ? 'Bens' : 'Bens Passíveis de Despadronização'}:</h3>
+          <h2 style="margin-top: 2cm; font-size: 14pt;">1. OBJETO DESTE DFD:</h2>
+          <p>${finalidade.charAt(0).toUpperCase() + finalidade.slice(1)} que ${processo.tipo_processo === 'padronizacao' ? 'possuam os padrões mínimos de qualidade' : 'não mais atendem aos padrões mínimos de qualidade'}, estética, rendimento, durabilidade e adequação ao uso.</p>`
+
+      // Incluir produtos se existirem
+      if (produtos && produtos.length > 0) {
+        htmlConteudo += `
+          <h3 style="font-size: 13pt; margin-top: 1.5cm;">1.1. Relação de ${processo.tipo_processo === 'padronizacao' ? 'Bens' : 'Bens Passíveis de Despadronização'}:</h3>
           <table class="tabela" style="width: 100%; border-collapse: collapse; margin: 1cm 0; font-size: 11pt;">
             <thead>
               <tr style="background-color: #f0f0f0;">
@@ -1770,9 +1973,178 @@ export default {
                 </tr>
               `).join('')}
             </tbody>
-          </table>
-          ` : ''}
-          
+          </table>`
+      }
+
+      // Seção específica para PADRONIZAÇÃO (MODELO_1)
+      if (processo.tipo_processo === 'padronizacao') {
+        if (dadosDFD?.produtos_especificacao) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">2. ESPECIFICAÇÃO DOS PRODUTOS:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.produtos_especificacao}</p>`
+        }
+
+        if (dadosDFD?.quantidade_amostras) {
+          htmlConteudo += `
+            <h3 style="margin-top: 1cm; font-size: 13pt;">2.1. Quantidades de Amostras:</h3>
+            <p style="text-indent: 1.5cm;">${dadosDFD.quantidade_amostras} unidades</p>`
+        }
+
+        if (dadosDFD?.previsao_aquisicoes) {
+          htmlConteudo += `
+            <h3 style="margin-top: 1cm; font-size: 13pt;">2.2. Previsão de Aquisições:</h3>
+            <p style="text-indent: 1.5cm;">${dadosDFD.previsao_aquisicoes} unidades</p>`
+        }
+
+        if (dadosDFD?.especificacoes_tecnicas) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">3. ESPECIFICAÇÕES TÉCNICAS:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.especificacoes_tecnicas}</p>`
+        }
+
+        if (dadosDFD?.ensaios_exigidos) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">4. ENSAIOS EXIGIDOS:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.ensaios_exigidos}</p>`
+        }
+
+        if (dadosDFD?.local_entrega_amostras) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">5. LOCAL DE ENTREGA DAS AMOSTRAS:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.local_entrega_amostras}</p>`
+        }
+
+        if (dadosDFD?.prazo_entrega_amostras) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">6. PRAZO PARA ENTREGA DAS AMOSTRAS:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.prazo_entrega_amostras}</p>`
+        }
+      }
+
+      // Seção específica para DESPADRONIZAÇÃO (MODELO_2)
+      if (processo.tipo_processo === 'despadronizacao') {
+        if (dadosDFD?.produtos_despadronizar) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">2. PRODUTOS A SEREM DESPADRONIZADOS:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.produtos_despadronizar}</p>`
+        }
+
+        // Fontes da demanda
+        htmlConteudo += `
+          <h2 style="margin-top: 2cm; font-size: 14pt;">3. FONTES DA DEMANDA:</h2>`
+
+        const fontes = []
+        if (dadosDFD?.fonte_rdm) fontes.push('Relatórios de Desempenho de Material (RDM)')
+        if (dadosDFD?.fonte_reclamacoes_usuarios) fontes.push('Reclamações de usuários')
+        if (dadosDFD?.fonte_sistema_comprar_bem) fontes.push('Sistema Comprar Bem')
+        if (dadosDFD?.fonte_analise_tecnica) fontes.push('Análise técnica')
+        if (dadosDFD?.fonte_outros) fontes.push('Outros')
+
+        if (fontes.length > 0) {
+          htmlConteudo += `<ul style="margin-left: 2cm;">`
+          fontes.forEach(fonte => {
+            htmlConteudo += `<li>${fonte}</li>`
+          })
+          htmlConteudo += `</ul>`
+        }
+
+        if (dadosDFD?.outras_fontes) {
+          htmlConteudo += `
+            <h3 style="margin-top: 1cm; font-size: 13pt;">3.1. Outras Fontes:</h3>
+            <p style="text-indent: 1.5cm;">${dadosDFD.outras_fontes}</p>`
+        }
+
+        if (dadosDFD?.problemas_identificados) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">4. PROBLEMAS IDENTIFICADOS:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.problemas_identificados}</p>`
+        }
+
+        if (dadosDFD?.frequencia_problemas) {
+          htmlConteudo += `
+            <h3 style="margin-top: 1cm; font-size: 13pt;">4.1. Frequência dos Problemas:</h3>
+            <p style="text-indent: 1.5cm;">${dadosDFD.frequencia_problemas}</p>`
+        }
+
+        if (dadosDFD?.impacto_problemas) {
+          htmlConteudo += `
+            <h3 style="margin-top: 1cm; font-size: 13pt;">4.2. Impacto dos Problemas:</h3>
+            <p style="text-indent: 1.5cm;">${dadosDFD.impacto_problemas}</p>`
+        }
+
+        if (dadosDFD?.quantidade_adquirida) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">5. QUANTIDADES:</h2>
+            <p style="text-indent: 1.5cm;"><strong>Quantidade adquirida:</strong> ${dadosDFD.quantidade_adquirida} unidades</p>`
+        }
+
+        if (dadosDFD?.quantidade_problemas) {
+          htmlConteudo += `
+            <p style="text-indent: 1.5cm;"><strong>Quantidade com problemas:</strong> ${dadosDFD.quantidade_problemas} unidades</p>`
+        }
+
+        if (dadosDFD?.prejuizo_estimado) {
+          htmlConteudo += `
+            <p style="text-indent: 1.5cm;"><strong>Prejuízo estimado:</strong> R$ ${dadosDFD.prejuizo_estimado}</p>`
+        }
+
+        if (dadosDFD?.rdms_negativos) {
+          htmlConteudo += `
+            <p style="text-indent: 1.5cm;"><strong>RDMs negativos:</strong> ${dadosDFD.rdms_negativos}</p>`
+        }
+
+        if (dadosDFD?.parecer_tecnico) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">6. PARECER TÉCNICO:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.parecer_tecnico}</p>`
+        }
+
+        if (dadosDFD?.alternativas_avaliadas) {
+          htmlConteudo += `
+            <h2 style="margin-top: 2cm; font-size: 14pt;">7. ALTERNATIVAS AVALIADAS:</h2>
+            <p style="text-indent: 1.5cm;">${dadosDFD.alternativas_avaliadas}</p>`
+        }
+      }
+
+      // Seção GERAL (MODELO_GERAL) - aplicável a ambos os tipos
+      if (dadosDFD?.base_legal) {
+        htmlConteudo += `
+          <h2 style="margin-top: 2cm; font-size: 14pt;">BASE LEGAL:</h2>
+          <p style="text-indent: 1.5cm;">${dadosDFD.base_legal}</p>`
+      }
+
+      if (dadosDFD?.impacto_esperado) {
+        htmlConteudo += `
+          <h2 style="margin-top: 2cm; font-size: 14pt;">IMPACTO ESPERADO:</h2>
+          <p style="text-indent: 1.5cm;">${dadosDFD.impacto_esperado}</p>`
+      }
+
+      if (dadosDFD?.riscos_identificados) {
+        htmlConteudo += `
+          <h2 style="margin-top: 2cm; font-size: 14pt;">RISCOS IDENTIFICADOS:</h2>
+          <p style="text-indent: 1.5cm;">${dadosDFD.riscos_identificados}</p>`
+      }
+
+      if (dadosDFD?.medidas_mitigadoras) {
+        htmlConteudo += `
+          <h2 style="margin-top: 2cm; font-size: 14pt;">MEDIDAS MITIGADORAS:</h2>
+          <p style="text-indent: 1.5cm;">${dadosDFD.medidas_mitigadoras}</p>`
+      }
+
+      if (dadosDFD?.prazo_vigencia) {
+        htmlConteudo += `
+          <h2 style="margin-top: 2cm; font-size: 14pt;">PRAZO DE VIGÊNCIA:</h2>
+          <p style="text-indent: 1.5cm;">${dadosDFD.prazo_vigencia} meses</p>`
+      }
+
+      if (dadosDFD?.periodicidade_revisao) {
+        htmlConteudo += `
+          <h2 style="margin-top: 2cm; font-size: 14pt;">PERIODICIDADE DE REVISÃO:</h2>
+          <p style="text-indent: 1.5cm;">${dadosDFD.periodicidade_revisao}</p>`
+      }
+
+      // Conclusão
+      htmlConteudo += `
           <p style="margin-top: 2cm; text-align: justify;">
             Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.
           </p>
@@ -1787,6 +2159,8 @@ export default {
           </div>
         </div>
       `
+
+      return htmlConteudo
     },
     
     // =====================================================
@@ -1893,7 +2267,12 @@ export default {
     },
     
     visualizarProcesso(processo) {
-      this.abrirProcesso(processo)
+      // Se o processo está em criação, deve abrir para edição ao invés de visualização
+      if (processo.status === 'em_criacao') {
+        this.editarProcesso(processo)
+      } else {
+        this.abrirProcesso(processo)
+      }
     },
     
     // =====================================================
@@ -1923,7 +2302,7 @@ export default {
       
       // Verificar se o processo pode ser editado
       if (!this.podeEditarProcesso(processo)) {
-        alert('Este processo não pode ser editado no estado atual.')
+        alert('Apenas processos em criação podem ser editados. Depois de criados, é possível apenas adicionar documentos.')
         return
       }
       
@@ -2072,19 +2451,30 @@ export default {
     
     async onEditalVinculado(evento) {
       try {
+        console.log('🔗 DEBUG - Edital vinculado, evento recebido:', evento)
+        
         // Atualizar processo na lista
         const index = this.processos.findIndex(p => p.id === evento.processo.id)
         if (index !== -1) {
           this.processos[index] = { ...this.processos[index], ...evento.processo }
         }
         
-        // Recarregar lista para garantir dados atualizados
-        await this.carregarProcessos()
+        // Atualizar processo selecionado se for o mesmo
+        if (this.processoSelecionado && this.processoSelecionado.id === evento.processo.id) {
+          this.processoSelecionado = { ...this.processoSelecionado, ...evento.processo }
+          console.log('✅ DEBUG - Processo selecionado atualizado')
+        }
         
-        console.log('Edital vinculado com sucesso:', evento.dadosEdital)
+        // RECARREGAR APENAS OS DOCUMENTOS do processo atual (não toda a lista)
+        if (this.processoSelecionado && this.processoSelecionado.id === evento.processo.id) {
+          console.log('🔄 DEBUG - Recarregando documentos do processo após vincular edital')
+          await this.carregarDocumentosProcesso(this.processoSelecionado.id)
+        }
+        
+        console.log('✅ Edital vinculado com sucesso:', evento.dadosEdital)
         
       } catch (error) {
-        console.error('Erro ao processar vinculação de edital:', error)
+        console.error('❌ Erro ao processar vinculação de edital:', error)
       }
     },
     
@@ -2195,6 +2585,15 @@ export default {
     formatarData(data) {
       if (!data) return 'N/A'
       return new Date(data).toLocaleDateString('pt-BR')
+    },
+    
+    visualizarDocumento(documento) {
+      if (documento.url_arquivo) {
+        // Abrir documento em nova aba
+        window.open(documento.url_arquivo, '_blank')
+      } else {
+        alert('Este documento não possui arquivo anexo para visualização.')
+      }
     },
     
     obterTipoProcesso(tipo) {
@@ -2368,7 +2767,6 @@ export default {
 .btn-processo:hover {
   background: #f7fafc;
   border-color: #cbd5e0;
-  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -2522,11 +2920,11 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  will-change: box-shadow, border-color;
 }
 
 .processo-card:hover {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  transform: translateY(-4px);
   border-color: #cbd5e0;
 }
 
@@ -2659,19 +3057,23 @@ export default {
 
 .processo-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  margin-top: 1rem;
 }
 
 .btn-action {
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.8rem;
   border: 1px solid #e2e8f0;
   background: white;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   white-space: nowrap;
+  flex: 0 0 auto;
+  min-width: fit-content;
 }
 
 .btn-action:hover {
@@ -3080,10 +3482,39 @@ export default {
   font-weight: 600;
 }
 
+.status-disponivel {
+  color: #0369a1;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .status-pendente {
   color: #d97706;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.doc-actions {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.btn-visualizar {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  color: white;
+  border: none;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-visualizar:hover {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
 }
 
 .preview-container {
