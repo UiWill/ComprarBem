@@ -883,14 +883,58 @@ export default {
           return
         }
         
-        this.documentos = data?.map(doc => ({
+        // Filtrar documentos para excluir DFD e folha de rosto no assistente
+        const documentosFiltrados = data?.filter(doc => {
+          const tipoDoc = doc.tipo_documento || ''
+          // ❌ EXCLUIR DFD e folha de rosto do assistente
+          if (tipoDoc === 'DFD' || tipoDoc === 'FOLHA_ROSTO') {
+            return false
+          }
+          return true
+        }) || []
+
+        const documentosProcesso = documentosFiltrados.map(doc => ({
           nome: doc.nome_documento || doc.titulo || 'Documento',
           tipo: doc.tipo_documento || 'Documento',
           data_upload: new Date(doc.data_criacao || doc.criado_em || new Date()),
           pagina: doc.numero_sequencial || 0,
           url_arquivo: doc.arquivo_url || doc.url_arquivo,
-          id: doc.id
-        })) || []
+          id: doc.id,
+          origem: 'processo'
+        }))
+
+        // ✅ CARREGAR também documentos dos produtos
+        try {
+          const { data: docsProdutos, error: errorProdutos } = await supabase
+            .from('documentos_produtos_processo')
+            .select('*')
+            .eq('processo_id', processoId)
+            .order('created_at', { ascending: true })
+
+          if (!errorProdutos && docsProdutos) {
+            const documentosProdutos = docsProdutos.map(doc => ({
+              nome: `${doc.nome_arquivo} (${doc.nome_produto})`,
+              tipo: 'DOCUMENTO_PRODUTO',
+              data_upload: new Date(doc.created_at),
+              pagina: 0,
+              url_arquivo: doc.url_arquivo,
+              id: doc.id,
+              origem: 'produto',
+              produto: doc.nome_produto,
+              marca: doc.marca,
+              fabricante: doc.fabricante
+            }))
+
+            this.documentos = [...documentosProcesso, ...documentosProdutos]
+            console.log(`📄 Carregados ${documentosProcesso.length} docs do processo + ${documentosProdutos.length} docs de produtos`)
+          } else {
+            this.documentos = documentosProcesso
+            console.log(`📄 Carregados apenas ${documentosProcesso.length} docs do processo (sem docs de produtos)`)
+          }
+        } catch (errorProdutos) {
+          console.warn('Erro ao carregar documentos dos produtos:', errorProdutos)
+          this.documentos = documentosProcesso
+        }
         
       } catch (error) {
         console.warn('Erro ao carregar documentos (pode ser normal):', error)

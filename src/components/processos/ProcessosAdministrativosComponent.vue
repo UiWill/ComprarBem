@@ -4,14 +4,17 @@
       <aside class="sidebar">
         <div class="iniciar-processo-section">
           <h3>🏛️ Processos Administrativos</h3>
-          <p class="subtitle">Sistema Comprar Bem Compras Públicas Inteligentes</p>
+          <div class="sistema-titulo">
+            <p class="sistema-nome">Sistema Comprar Bem</p>
+            <p class="sistema-slogan">Compras Públicas Inteligentes</p>
+          </div>
           
           <div class="botoes-principais">
             <button @click="abrirAssistente('padronizacao')" class="btn-processo padronizacao">
               <span class="icone">✅</span>
               <div class="texto">
                 <strong>Padronização</strong>
-                <small>Incluir produtos no catálogo</small>
+                <small>Inclusão de marcas de produtos no Catálogo</small>
               </div>
             </button>
             
@@ -19,7 +22,7 @@
               <span class="icone">❌</span>
               <div class="texto">
                 <strong>Despadronização</strong>
-                <small>Remover produtos do catálogo</small>
+                <small>Exclusão de marcas de produtos do Catálogo</small>
               </div>
             </button>
           </div>
@@ -42,26 +45,52 @@
             <select v-model="filtroStatus" @change="filtrarProcessos">
               <option value="">Todos os status</option>
               
-              <!-- NOVOS STATUS - LEI 14.133/2021 -->
-              <option value="rascunho">📝 Em Criação</option>
-              <option value="criado_cpm">🎯 Criado pela CPM</option>
-              <option value="aprovado_cpm">✅ Aprovado pela CPM</option>
-              <option value="assinado_admin">✍️ Assinado pelo Órgão</option>
-              <option value="julgamento_ccl">⚖️ Julgamento CCL</option>
-              <option value="aprovado_ccl">✅ Aprovado pela CCL</option>
-              <option value="aprovado_juridico">⚖️ Aprovado Juridicamente</option>
-              <option value="homologado">🏆 Homologado</option>
-              <option value="rejeitado_cpm">❌ Rejeitado pela CPM</option>
-              <option value="rejeitado_admin">❌ Rejeitado pelo Órgão</option>
-              <option value="rejeitado_ccl">❌ Rejeitado pela CCL</option>
-              <option value="rejeitado_juridico">❌ Rejeitado Juridicamente</option>
-              <option value="rejeitado_final">❌ Rejeitado Final</option>
+              <!-- STATUS PADRONIZAÇÃO (VERDE) - Sequência lógica do cliente -->
+              <optgroup label="🟢 PADRONIZAÇÃO">
+                <option value="rascunho">📝 Em Criação</option>
+                <option value="criado_cpm">🎯 Criado pela CPM</option>
+                <option value="aprovado_cpm">📋 Aprovado pela CPM</option>
+                <option value="assinado_admin">✅ Assinado pelo Órgão</option>
+                <option value="julgamento_ccl">⚖️ Julgamento CCL</option>
+                <option value="aprovado_ccl">💜 Aprovado pela CCL</option>
+                <option value="aprovado_juridico">⚖️ Aprovado Juridicamente</option>
+                <option value="edital_publicado">📃 Com Edital Publicado</option>
+                <option value="homologado">✅ Com Homologação</option>
+                <option value="finalizado">🏆 Finalizado</option>
+                
+                <!-- Status de Rejeição -->
+                <option value="rejeitado_cpm">❌ Rejeitado pela CPM</option>
+                <option value="rejeitado_admin">❌ Rejeitado pelo Órgão</option>
+                <option value="rejeitado_ccl">❌ Rejeitado pela CCL</option>
+                <option value="rejeitado_juridico">❌ Rejeitado Juridicamente</option>
+                <option value="rejeitado_final">❌ Rejeitado Final</option>
+                
+                <!-- Status Antigos (Compatibilidade) -->
+                <option value="aguardando_aprovacao">🔄 Aguardando Aprovação (Legado)</option>
+                <option value="iniciado">🆕 Iniciado (Legado)</option>
+                <option value="analise_cppm">🔍 Análise CPPM (Legado)</option>
+              </optgroup>
+              
+              <!-- STATUS DESPADRONIZAÇÃO (VERMELHO) - Sequência lógica do cliente -->
+              <optgroup label="🔴 DESPADRONIZAÇÃO">
+                <option value="em_criacao_desp">📝 Em Criação</option>
+                <option value="criado_cpm_desp">🎯 Criado pela CPM</option>
+                <option value="submetido_autoridade_desp">📋 Submetido à Autoridade Competente</option>
+                <option value="abertura_autorizada_desp">✅ Abertura Autorizada</option>
+                <option value="aviso_publicado">📢 Com Aviso Publicado</option>
+                <option value="com_recurso_desp">📝 Com Recurso Administrativo</option>
+                <option value="homologado_desp">✅ Com Homologação</option>
+                <option value="excluindo_marcas">❌ Excluindo Marcas do Catálogo</option>
+              </optgroup>
               
               <!-- STATUS ANTIGOS (COMPATIBILIDADE) -->
-              <option value="iniciado">🆕 Iniciado</option>
-              <option value="analise_cppm">🔍 Análise CPPM</option>
-              <option value="julgamento_ccl">⚖️ Julgamento CCL</option>
-              <option value="finalizado">✅ Finalizado</option>
+              <optgroup label="📁 LEGADOS">
+                <option value="rascunho">📝 Rascunho</option>
+                <option value="iniciado">🆕 Iniciado</option>
+                <option value="analise_cppm">🔍 Análise CPPM</option>
+                <option value="julgamento_ccl">⚖️ Julgamento CCL</option>
+                <option value="finalizado">✅ Finalizado</option>
+              </optgroup>
             </select>
           </div>
 
@@ -104,15 +133,6 @@
           </div>
         </div>
 
-        <div class="acoes-rapidas-section">
-          <h3>⚡ Ações Rápidas</h3>
-          <button @click="abrirRelatorios" class="btn-acao">
-            📊 Relatórios
-          </button>
-          <button @click="abrirConfiguracoes" class="btn-acao">
-            ⚙️ Configurações
-          </button>
-        </div>
       </aside>
 
       <section class="processos-section">
@@ -367,10 +387,16 @@
                       <span v-else-if="doc.status === 'disponivel'" class="status-disponivel">📄 Disponível</span>
                       <span v-else class="status-pendente">⏳ Pendente</span>
                     </div>
-                    <div v-if="doc.url_arquivo" class="doc-actions">
-                      <button @click="visualizarDocumento(doc)" class="btn-visualizar">
+                    <div class="doc-actions">
+                      <button v-if="doc.url_arquivo" @click="visualizarDocumento(doc)" class="btn-visualizar">
                         👁️ Ver
                       </button>
+                      <button v-else-if="doc.tipo_documento === 'EDITAL'" @click="buscarUrlEdital(doc)" class="btn-visualizar">
+                        👁️ Ver
+                      </button>
+                      <span v-else class="no-file">
+                        📄 Sem arquivo
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -993,16 +1019,12 @@ export default {
         console.log('✅ DEBUG - Incluindo documento')
         return true;
       })
-      // REMOVER DOCUMENTOS DUPLICADOS (mesmo título e tipo)
+      // REMOVER DOCUMENTOS DUPLICADOS (mesmo ID exato - não título)
       .filter((doc, index, array) => {
-        const isDuplicate = array.findIndex(d => 
-          d.titulo === doc.titulo && 
-          d.tipo_documento === doc.tipo_documento &&
-          d.id !== doc.id
-        ) < index;
+        const isDuplicate = array.findIndex(d => d.id === doc.id) < index;
         
         if (isDuplicate) {
-          console.log('🗑️ DEBUG - Removendo documento duplicado:', doc.titulo)
+          console.log('🗑️ DEBUG - Removendo documento com ID duplicado:', doc.titulo, 'ID:', doc.id)
         }
         
         return !isDuplicate;
@@ -1033,6 +1055,36 @@ export default {
     // =====================================================
     // CARREGAMENTO DE DADOS
     // =====================================================
+    
+    async buscarUrlEdital(doc) {
+      try {
+        console.log('🔍 Buscando URL do edital:', doc.titulo)
+        
+        // Buscar o edital diretamente na tabela documentos_processo
+        const { data: editalDoc, error } = await supabase
+          .from('documentos_processo')
+          .select('*')
+          .eq('processo_id', this.processoSelecionado.id)
+          .eq('tipo_documento', 'EDITAL')
+          .single()
+        
+        console.log('📄 Edital encontrado na tabela documentos_processo:', { editalDoc, error })
+        
+        if (editalDoc && editalDoc.arquivo_url) {
+          // Atualizar o documento com a URL encontrada
+          doc.url_arquivo = editalDoc.arquivo_url
+          console.log('✅ URL do edital encontrada:', doc.url_arquivo)
+          
+          // Visualizar o documento
+          this.visualizarDocumento(doc)
+        } else {
+          alert('❌ URL do PDF do edital não encontrada na tabela documentos_processo.')
+        }
+      } catch (error) {
+        console.error('❌ Erro ao buscar URL do edital:', error)
+        alert('Erro ao localizar o arquivo do edital: ' + error.message)
+      }
+    },
     
     async carregarPerfilUsuario() {
       try {
@@ -1074,33 +1126,34 @@ export default {
       try {
         console.log('🔍 DEBUG - Carregando documentos para processo:', processoId)
         
-        // Carregar documentos principais do processo
+        // SEMPRE carregar documentos principais do processo (folha de rosto, DFD, edital)
         let documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processoId)
-        console.log('🔍 DEBUG - Documentos principais carregados:', documentos)
+        console.log('🔍 DEBUG - Documentos principais carregados (folha de rosto, DFD, edital):', documentos)
         
-        // Carregar documentos dos produtos se for padronização - NOVA TABELA
-        if (this.processoSelecionado?.tipo_processo === 'padronizacao') {
-          console.log('✅ DEBUG - Processo de padronização detectado, carregando documentos de produtos da nova tabela')
-          
-          // Buscar documentos dos produtos diretamente da nova tabela dedicada  
-          const tenantId = await ProcessosAdministrativosService.getTenantId()
-          const { data: documentosProdutos, error: erroDocProdutos } = await supabase
-            .from('documentos_produtos_processo')
-            .select('*')
-            .eq('processo_id', processoId)
-            .eq('tenant_id', tenantId)
-          
-          console.log(`📋 Documentos de produtos encontrados na nova tabela:`, documentosProdutos)
-          
-          if (erroDocProdutos) {
-            console.warn('⚠️ Erro ao buscar documentos de produtos do processo:', erroDocProdutos)
-          }
-          
-          if (documentosProdutos && documentosProdutos.length > 0) {
-            for (const docProduto of documentosProdutos) {
-              const documentoProdutoFormatado = {
-                id: docProduto.id,
-                tipo_documento: 'DOCUMENTO_PRODUTO',
+        // SEMPRE carregar documentos dos produtos da nova tabela (independente do tipo de processo)
+        console.log('🔄 DEBUG - Carregando documentos de produtos da nova tabela para TODOS os processos')
+        
+        // Buscar documentos dos produtos diretamente da nova tabela dedicada  
+        const tenantId = await ProcessosAdministrativosService.getTenantId()
+        const { data: documentosProdutos, error: erroDocProdutos } = await supabase
+          .from('documentos_produtos_processo')
+          .select('*')
+          .eq('processo_id', processoId)
+          .eq('tenant_id', tenantId)
+        
+        console.log(`📋 DEBUG - Documentos de produtos encontrados na nova tabela:`, documentosProdutos)
+        
+        if (erroDocProdutos) {
+          console.warn('⚠️ Erro ao buscar documentos de produtos do processo:', erroDocProdutos)
+        }
+        
+        // SEMPRE adicionar os documentos de produtos encontrados à lista
+        if (documentosProdutos && documentosProdutos.length > 0) {
+          console.log(`✅ DEBUG - Adicionando ${documentosProdutos.length} documentos de produtos à lista`)
+          for (const docProduto of documentosProdutos) {
+            const documentoProdutoFormatado = {
+              id: `produto_${docProduto.id}`, // ID único para evitar conflitos
+              tipo_documento: 'DOCUMENTO_PRODUTO',
                 titulo: `${docProduto.nome_produto} - ${docProduto.nome_arquivo}`,
                 descricao: `Documento técnico do produto ${docProduto.nome_produto} (${docProduto.marca})`,
                 data_autuacao: docProduto.created_at,
@@ -1122,7 +1175,6 @@ export default {
           } else {
             console.log('ℹ️ Nenhum documento de produto encontrado para este processo')
           }
-        }
         
         // Carregar documentos adicionais do processo
         // NOTA: Tabela documentos_adicionais_processo não existe ainda
@@ -1195,7 +1247,7 @@ export default {
     podeEditarProcesso(processo) {
       // Só pode editar processos que estão em criação
       const statusProcesso = processo?.status?.toLowerCase() || ''
-      return statusProcesso === 'em_criacao'
+      return statusProcesso === 'em_criacao' || statusProcesso === 'rascunho'
     },
     
     podeEnviarParaAnalise(processo) {
@@ -2267,10 +2319,16 @@ export default {
     },
     
     visualizarProcesso(processo) {
-      // Se o processo está em criação, deve abrir para edição ao invés de visualização
-      if (processo.status === 'em_criacao') {
+      console.log('🔍 DEBUG - Visualizando processo:', processo.numero_processo, 'Status:', `"${processo.status}"`)
+      console.log('🔍 DEBUG - Processo completo:', processo)
+      console.log('🔍 DEBUG - Comparação:', processo.status === 'em_criacao', processo.status, typeof processo.status)
+      
+      // Se o processo está em criação (status = rascunho), abrir Assistente para continuar editando
+      if (processo.status === 'rascunho' || processo.status === 'em_criacao') {
+        console.log('🔧 Processo EM CRIAÇÃO/RASCUNHO - Abrindo Assistente para edição')
         this.editarProcesso(processo)
       } else {
+        console.log('👁️ Processo FINALIZADO - Abrindo visualização normal, status:', processo.status)
         this.abrirProcesso(processo)
       }
     },
@@ -2612,14 +2670,6 @@ export default {
 </script>
 
 <style scoped>
-.processos-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-
 .content-wrapper {
   display: grid;
   grid-template-columns: 350px 1fr;
@@ -2630,21 +2680,23 @@ export default {
 
 .sidebar {
   background: white;
-  padding: 1.5rem;
+  padding: 0.75rem; /* Reduzido ainda mais para economizar espaço */
   border-right: 1px solid #e2e8f0;
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden; /* Sidebar não vai ter scroll */
+  display: flex;
+  flex-direction: column;
 }
 
 .filter-section h3,
 .upload-section h3 {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem; /* Reduzido de 1rem */
   color: #2d3748;
-  font-size: 1.1rem;
+  font-size: 1rem; /* Reduzido de 1.1rem */
 }
 
 .filter-group {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem; /* Reduzido de 1rem */
 }
 
 .filter-group label {
@@ -2686,8 +2738,8 @@ export default {
 }
 
 .iniciar-processo-section {
-  margin-bottom: 2rem;
-  padding: 1.5rem;
+  margin-bottom: 1rem; /* Aumentado um pouco para melhor visual */
+  padding: 0.75rem; /* Aumentado um pouco para melhor visual */
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -2695,16 +2747,37 @@ export default {
 }
 
 .iniciar-processo-section h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.3rem;
+  margin: 0 0 0.3rem 0; /* Aumentado um pouco para melhor visual */
+  font-size: 1.1rem; /* Aumentado um pouco para melhor visual */
   font-weight: 700;
   color: #2d3748;
 }
 
 .subtitle {
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1rem 0; /* Aumentado um pouco para melhor visual */
   color: #4a5568;
-  font-size: 0.9rem;
+  font-size: 0.9rem; /* Aumentado um pouco para melhor visual */
+}
+
+.sistema-titulo {
+  margin: 0 0 0.75rem 0; /* Aumentado um pouco para melhor visual */
+  text-align: center;
+}
+
+.sistema-nome {
+  margin: 0;
+  font-size: 1rem; /* Reduzido para economizar espaço */
+  font-weight: 600;
+  color: #2d3748;
+  line-height: 1.2;
+}
+
+.sistema-slogan {
+  margin: 0.1rem 0 0 0; /* Reduzido para economizar espaço */
+  font-size: 0.8rem; /* Reduzido para economizar espaço */
+  color: #4a5568;
+  font-style: italic;
+  line-height: 1.2;
 }
 
 .aviso-desenvolvimento {
@@ -2746,7 +2819,7 @@ export default {
 
 .botoes-principais {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem; /* Aumentado um pouco para melhor visual */
   flex-direction: column;
 }
 
@@ -2754,7 +2827,7 @@ export default {
   background: white;
   border: 2px solid #e2e8f0;
   color: #2d3748;
-  padding: 1rem;
+  padding: 0.75rem; /* Reduzido de 1rem */
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -3407,6 +3480,11 @@ export default {
 
 .documentos-container {
   margin-bottom: 2rem;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
 }
 
 .empty-documentos {
@@ -3515,6 +3593,22 @@ export default {
   background: linear-gradient(135deg, #0284c7, #0369a1);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.btn-visualizar.btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.btn-visualizar.btn-warning:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.no-file {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
 .preview-container {

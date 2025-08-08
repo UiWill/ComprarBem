@@ -968,14 +968,34 @@ export class ProcessosAdministrativosService {
 
       console.log('📋 RESULTADO produto completo:', { produtoCompleto, errorProduto })
 
-      // Buscar possível campo de documentos no próprio produto
-      console.log('🔍 INVESTIGAÇÃO - Verificando campos do produto salvo:', produto)
-
-      // Usar documentos encontrados (priorizar arquivos_produto)
-      let documentosOriginais = documentosArquivos
+      // 3. ENCONTRADOS! Verificar campo 'documentos' (sem sufixo) no produto
+      console.log('🔍 INVESTIGAÇÃO 3 - Verificando campo documentos no produto salvo:', produto.documentos)
       
-      if ((!documentosOriginais || documentosOriginais.length === 0) && produtoCompleto?.documentos) {
-        console.log('📋 Usando documentos da relação produto->arquivos_produto')
+      // 4. Verificar se documentos estão no campo correto 'documentos'
+      let documentosOriginaisCandidatos = []
+      if (produto.documentos && Array.isArray(produto.documentos)) {
+        console.log('🎉 SUCESSO! Documentos encontrados no campo "documentos" do produto salvo!')
+        documentosOriginaisCandidatos = produto.documentos
+      }
+      
+      console.log('📋 Documentos candidatos encontrados:', documentosOriginaisCandidatos)
+
+      // Usar documentos encontrados (priorizar diferentes fontes por ordem de prioridade)
+      let documentosOriginais = null
+      
+      // PRIORIDADE 1: Campo 'documentos' (JSON no produto) ✅ CORRETO!
+      if (documentosOriginaisCandidatos.length > 0) {
+        console.log('🎉 USANDO documentos do campo "documentos" (JSON no produto)!')
+        documentosOriginais = documentosOriginaisCandidatos
+      }
+      // PRIORIDADE 2: Tabela arquivos_produto separada  
+      else if (documentosArquivos && documentosArquivos.length > 0) {
+        console.log('📋 USANDO documentos da tabela arquivos_produto')
+        documentosOriginais = documentosArquivos
+      }
+      // PRIORIDADE 3: Relação produto->arquivos_produto
+      else if (produtoCompleto?.documentos && produtoCompleto.documentos.length > 0) {
+        console.log('📋 USANDO documentos da relação produto->arquivos_produto')
         documentosOriginais = produtoCompleto.documentos
       }
 
@@ -996,15 +1016,18 @@ export class ProcessosAdministrativosService {
         processo_id: processoId,
         produto_id: produto.id,
         tenant_id: tenantId,
-        nome_arquivo: doc.nome_arquivo,
-        tipo_arquivo: doc.tipo_arquivo,
-        tamanho: doc.tamanho,
-        url_arquivo: doc.url_arquivo,
+        // Mapear campos corretos dos documentos do produto
+        nome_arquivo: doc.nome_arquivo || doc.nome, // 'nome' nos docs do produto
+        tipo_arquivo: doc.tipo_arquivo || doc.tipo, // 'tipo' nos docs do produto  
+        tamanho: doc.tamanho || null,
+        url_arquivo: doc.url_arquivo || doc.arquivo_url, // 'arquivo_url' nos docs do produto
         nome_produto: produto.nome_produto,
         marca: produto.marca,
         fabricante: produto.fabricante,
         criado_por: user.id
       }))
+      
+      console.log('📋 DEBUG - Documentos mapeados para salvar:', documentosParaSalvar)
 
       const { data: documentosSalvos, error: errorSalvar } = await supabase
         .from('documentos_produtos_processo')
@@ -1806,9 +1829,34 @@ export class ProcessosAdministrativosService {
 
   static obterStatusProcesso(status) {
     const statusMap = {
-      // NOVOS STATUS - LEI 14.133/2021 - FLUXO DE 5 FASES
+      // NOVOS STATUS - CONFORME CLIENTE VERSÃO 05/08/25
+      // 🟢 PADRONIZAÇÃO - Sequência lógica do fluxo processual
       'rascunho': { label: 'Em Criação', cor: 'gray' },
+      'em_criacao': { label: 'Em Criação', cor: 'gray' },
       'criado_cpm': { label: 'Criado pela CPM', cor: 'blue' },
+      'submetido_autoridade': { label: 'Submetido à Autoridade Competente', cor: 'yellow' },
+      'abertura_autorizada': { label: 'Abertura Autorizada', cor: 'green' },
+      'edital_chamamento': { label: 'Edital de Chamamento Público', cor: 'purple' },
+      'analise_juridica': { label: 'Em Análise Jurídica', cor: 'orange' },
+      'com_impugnacao': { label: 'Com Impugnação ao Edital', cor: 'red' },
+      'recebendo_amostras': { label: 'Recebendo Amostras e Documentação', cor: 'cyan' },
+      'avaliacao_cpm': { label: 'Com Avaliação e Relatório da CPM', cor: 'yellow' },
+      'submetido_ccl': { label: 'Submetido ao Julgamento da CCL', cor: 'pink' },
+      'ata_julgamento': { label: 'Ata de Julgamento da CCL', cor: 'purple' },
+      'publicacao_ata': { label: 'Publicação da Ata e Prazo Recursal', cor: 'amber' },
+      'com_recurso': { label: 'Com Recurso Administrativo', cor: 'red' },
+      'expedindo_dcbs': { label: 'Expedindo as DCBs', cor: 'indigo' },
+      'incluindo_marcas': { label: 'Incluindo Marcas no Catálogo', cor: 'green' },
+      
+      // 🔴 DESPADRONIZAÇÃO - Sequência lógica do fluxo processual
+      'em_criacao_desp': { label: 'Em Criação', cor: 'gray' },
+      'criado_cpm_desp': { label: 'Criado pela CPM', cor: 'blue' },
+      'submetido_autoridade_desp': { label: 'Submetido à Autoridade Competente', cor: 'yellow' },
+      'abertura_autorizada_desp': { label: 'Abertura Autorizada', cor: 'green' },
+      'aviso_publicado': { label: 'Com Aviso Publicado', cor: 'purple' },
+      'com_recurso_desp': { label: 'Com Recurso Administrativo', cor: 'red' },
+      'homologado_desp': { label: 'Com Homologação', cor: 'green' },
+      'excluindo_marcas': { label: 'Excluindo Marcas do Catálogo', cor: 'red' },
       'aprovado_cpm': { label: 'Aprovado pela CPM', cor: 'cyan' },
       'rejeitado_cpm': { label: 'Rejeitado pela CPM', cor: 'red' },
       'assinado_admin': { label: 'Assinado pelo Órgão', cor: 'yellow' },
@@ -1818,15 +1866,15 @@ export class ProcessosAdministrativosService {
       'rejeitado_ccl': { label: 'Rejeitado pela CCL', cor: 'red' },
       'aprovado_juridico': { label: 'Aprovado Juridicamente', cor: 'purple' },
       'rejeitado_juridico': { label: 'Rejeitado Juridicamente', cor: 'red' },
-      'homologado': { label: 'Homologado', cor: 'green' },
+      'homologado': { label: 'Com Homologação', cor: 'green' },
       'rejeitado_final': { label: 'Rejeitado Final', cor: 'red' },
       
       // STATUS ANTIGOS (MANTIDOS PARA COMPATIBILIDADE)
       'iniciado': { label: 'Iniciado', cor: 'blue' },
-      'aguardando_aprovacao': { label: 'Aguardando Aprovação', cor: 'orange' },
+      'aguardando_aprovacao': { label: 'Criado pela CPM', cor: 'blue' },
       'analise_cppm': { label: 'Análise CPPM', cor: 'yellow' },
       'aguardando_edital': { label: 'Aguardando Edital', cor: 'purple' },
-      'edital_publicado': { label: 'Edital Publicado', cor: 'green' },
+      'edital_publicado': { label: 'Com Edital Publicado', cor: 'green' },
       'recebendo_propostas': { label: 'Recebendo Propostas', cor: 'cyan' },
       'analise_tecnica': { label: 'Análise Técnica', cor: 'indigo' },
       'prazo_recursal': { label: 'Prazo Recursal', cor: 'amber' },
