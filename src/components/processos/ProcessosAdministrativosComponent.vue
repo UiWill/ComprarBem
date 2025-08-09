@@ -260,6 +260,7 @@
           <AssistenteProcesso 
             :processo-edicao="processoParaEditar"
             :modo-edicao="modoEdicao"
+            :tipo-processo-inicial="tipoProcessoInicial"
             @processo-criado="processoCriado"
             @cancelar="fecharAssistente"
           />
@@ -376,7 +377,7 @@
                     :key="doc.id"
                     class="documento-item"
                   >
-                    <div class="doc-numero">Fl. {{ String(doc.numero_folha).padStart(3, '0') }}</div>
+                    <div class="doc-numero">{{ doc.folha_numero || `Fl. ${String(doc.numero_sequencial || 0).padStart(3, '0')}` }}</div>
                     <div class="doc-info">
                       <h5>{{ doc.titulo }}</h5>
                       <p>{{ doc.descricao }}</p>
@@ -388,7 +389,7 @@
                       <span v-else class="status-pendente">⏳ Pendente</span>
                     </div>
                     <div class="doc-actions">
-                      <button v-if="doc.url_arquivo" @click="visualizarDocumento(doc)" class="btn-visualizar">
+                      <button v-if="doc.arquivo_url || doc.url_arquivo" @click="visualizarDocumento(doc)" class="btn-visualizar">
                         👁️ Ver
                       </button>
                       <button v-else-if="doc.tipo_documento === 'EDITAL'" @click="buscarUrlEdital(doc)" class="btn-visualizar">
@@ -895,6 +896,132 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal para Adicionar Documento -->
+      <div v-if="mostrarModalAdicionarDoc && processoSelecionado" class="modal-overlay" @click="fecharModalAdicionarDoc">
+        <div class="modal-adicionar-doc" @click.stop>
+          <div class="modal-header">
+            <h3>📎 Adicionar Documento - {{ processoSelecionado.numero_processo }}</h3>
+            <button @click="fecharModalAdicionarDoc" class="btn-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="adicionar-documento-form">
+              <div class="info-processo">
+                <div class="info-item">
+                  <strong>Processo:</strong> {{ processoSelecionado.numero_processo }}
+                </div>
+                <div class="info-item">
+                  <strong>Status:</strong> <span :class="`status-${obterStatusProcesso(processoSelecionado.status).cor}`">{{ obterStatusProcesso(processoSelecionado.status).label }}</span>
+                </div>
+                <div class="info-item">
+                  <strong>Tipo:</strong> {{ obterTipoProcesso(processoSelecionado.tipo_processo).label }}
+                </div>
+              </div>
+
+              <div class="upload-section">
+                <h4>📄 Selecionar Documento</h4>
+                <div class="upload-area" @drop="onDropDocumento($event)" @dragover.prevent @dragenter.prevent>
+                  <input ref="documentoInput" type="file" @change="onSelectDocumento($event)" multiple accept=".pdf" style="display: none;">
+                  <div class="upload-content">
+                    <div class="upload-icon">📎</div>
+                    <p>Clique para selecionar ou arraste arquivos aqui</p>
+                    <small>Formato aceito: Apenas arquivos PDF</small>
+                    <button type="button" @click="$refs.documentoInput.click()" class="btn-upload-doc">
+                      Selecionar Arquivos
+                    </button>
+                  </div>
+                </div>
+                
+                <div v-if="documentosParaUpload.length > 0" class="documentos-selecionados">
+                  <h5>📋 Documentos Selecionados:</h5>
+                  <div v-for="(doc, index) in documentosParaUpload" :key="index" class="documento-item">
+                    <div class="doc-info">
+                      <span class="doc-nome">{{ doc.name }}</span>
+                      <span class="doc-tamanho">{{ formatarTamanho(doc.size) }}</span>
+                    </div>
+                    <button @click="removerDocumento(index)" class="btn-remover">❌</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="tipoDocumento">Tipo do Documento:</label>
+                  <select id="tipoDocumento" v-model="tipoDocumentoSelecionado">
+                    <option value="">Selecione o tipo</option>
+                    <option value="COMPLEMENTAR">Documento Complementar</option>
+                    <option value="CORRECAO">Correção/Retificação</option>
+                    <option value="ADICIONAL">Documento Adicional</option>
+                    <option value="PARECER">Parecer Técnico</option>
+                    <option value="MANIFESTACAO">Manifestação</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="observacoesDoc">Observações (opcional):</label>
+                  <textarea id="observacoesDoc" v-model="observacoesDocumento" rows="3" placeholder="Descreva o conteúdo do documento ou justificativa para a inclusão"></textarea>
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button @click="fecharModalAdicionarDoc" class="btn-secondary">Cancelar</button>
+                <button @click="uploadDocumentos" :disabled="documentosParaUpload.length === 0 || !tipoDocumentoSelecionado || processandoUpload" class="btn-primary">
+                  {{ processandoUpload ? 'Enviando...' : `📤 Adicionar ${documentosParaUpload.length} Documento${documentosParaUpload.length > 1 ? 's' : ''}` }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal para Ver Tramitação -->
+      <div v-if="mostrarModalTramitacao && processoSelecionado" class="modal-overlay" @click="fecharModalTramitacao">
+        <div class="modal-tramitacao" @click.stop>
+          <div class="modal-header">
+            <h3>📋 Histórico de Tramitação - {{ processoSelecionado.numero_processo }}</h3>
+            <button @click="fecharModalTramitacao" class="btn-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="tramitacao-info">
+              <div class="processo-info">
+                <div class="info-row">
+                  <span class="label">Status Atual:</span>
+                  <span :class="`status-badge status-${obterStatusProcesso(processoSelecionado.status).cor}`">
+                    {{ obterStatusProcesso(processoSelecionado.status).label }}
+                  </span>
+                </div>
+                <div class="info-row">
+                  <span class="label">Data de Autuação:</span>
+                  <span>{{ formatarData(processoSelecionado.data_autuacao) }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">Tipo:</span>
+                  <span>{{ obterTipoProcesso(processoSelecionado.tipo_processo).label }}</span>
+                </div>
+              </div>
+
+              <div class="historico-container">
+                <h4>📈 Linha do Tempo</h4>
+                <div v-if="historicoTramitacao.length === 0" class="sem-historico">
+                  <p>⏳ Nenhuma tramitação registrada ainda</p>
+                </div>
+                <div v-else class="linha-tempo">
+                  <div v-for="(evento, index) in historicoTramitacao" :key="index" class="evento-tramitacao">
+                    <div class="evento-data">{{ formatarDataHora(evento.data_evento) }}</div>
+                    <div class="evento-status">
+                      <span :class="`status-badge status-${evento.cor || 'gray'}`">
+                        {{ evento.status_destino }}
+                      </span>
+                    </div>
+                    <div class="evento-descricao">{{ evento.descricao || evento.observacoes }}</div>
+                    <div v-if="evento.responsavel" class="evento-responsavel">
+                      👤 {{ evento.responsavel }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
   </div>
@@ -903,6 +1030,7 @@
 <script>
 import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
 import DocumentosAdministrativosService from '../../services/documentosAdministrativos'
+import NumeracaoDocumentosService from '../../services/numeracaoDocumentosService'
 import AssistenteProcesso from './AssistenteProcesso.vue'
 import ModalVincularEdital from './ModalVincularEdital.vue'
 import DocumentacaoProdutos from './DocumentacaoProdutos.vue'
@@ -936,15 +1064,24 @@ export default {
       mostrarAssistente: false,
       mostrarModalEdital: false,
       mostrarDocumentacao: false,
+      mostrarModalAdicionarDoc: false,
+      mostrarModalTramitacao: false,
       processoSelecionado: null,
       
       // Edição
       modoEdicao: false,
       processoParaEditar: null,
+      tipoProcessoInicial: null,
       
       // Dados auxiliares para visualização detalhada
       produtosProcesso: [],
       historicoTramitacao: [],
+      
+      // Upload de documentos
+      documentosParaUpload: [],
+      tipoDocumentoSelecionado: '',
+      observacoesDocumento: '',
+      processandoUpload: false,
     }
   },
 
@@ -998,6 +1135,12 @@ export default {
         // INCLUIR edital (SEM verificar descrição)
         if (doc.tipo_documento === 'EDITAL') {
           console.log('✅ DEBUG - Incluindo edital')
+          return true;
+        }
+        
+        // INCLUIR documentos adicionados via modal (novos tipos)
+        if (['COMPLEMENTAR', 'CORRECAO', 'ADICIONAL', 'PARECER', 'MANIFESTACAO'].includes(doc.tipo_documento)) {
+          console.log('✅ DEBUG - Incluindo documento adicionado:', doc.tipo_documento, doc.titulo || doc.nome_documento)
           return true;
         }
         
@@ -1310,6 +1453,8 @@ export default {
               background: white;
               box-shadow: 0 0 10px rgba(0,0,0,0.1);
               position: relative;
+              overflow: visible;
+              word-wrap: break-word;
             }
             
             /* === ESTILOS PADRONIZADOS PARA TODOS OS DOCUMENTOS === */
@@ -1329,31 +1474,33 @@ export default {
             
             .documento-header {
               text-align: center;
-              margin-bottom: 2cm;
+              margin-bottom: 2.5cm;
               border-bottom: 2px solid #000;
-              padding-bottom: 1cm;
+              padding-bottom: 1.5cm;
             }
             
             .documento-header h1 {
               font-family: 'Times New Roman', serif;
               font-size: 16pt;
               font-weight: bold;
-              margin: 10px 0;
+              margin: 1cm 0 0.8cm 0;
               color: #000;
+              line-height: 1.4;
             }
             
             .documento-header h2 {
               font-family: 'Times New Roman', serif;
               font-size: 14pt;
               font-weight: bold;
-              margin: 5px 0;
+              margin: 0.8cm 0 0.5cm 0;
               color: #000;
+              line-height: 1.3;
             }
             
             .documento-conteudo {
               font-family: 'Times New Roman', serif;
               font-size: 12pt;
-              line-height: 1.6;
+              line-height: 1.7;
               text-align: justify;
               color: #000;
             }
@@ -1364,7 +1511,8 @@ export default {
               font-family: 'Times New Roman', serif;
               font-weight: bold;
               color: #000;
-              margin: 1cm 0 0.5cm 0;
+              margin: 1.5cm 0 0.8cm 0;
+              line-height: 1.4;
             }
             
             .documento-conteudo h1 { font-size: 16pt; }
@@ -1374,8 +1522,8 @@ export default {
             .documento-conteudo p {
               font-family: 'Times New Roman', serif;
               font-size: 12pt;
-              line-height: 1.6;
-              margin-bottom: 1cm;
+              line-height: 1.7;
+              margin-bottom: 1.2cm;
               text-align: justify;
             }
             
@@ -1429,6 +1577,7 @@ export default {
               border-collapse: collapse;
               margin: 1cm 0;
               font-size: 11pt;
+              table-layout: fixed;
             }
             
             .tabela th, .tabela td {
@@ -1436,6 +1585,9 @@ export default {
               padding: 8px;
               text-align: left;
               vertical-align: top;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
+              hyphens: auto;
             }
             
             .tabela th {
@@ -1445,25 +1597,40 @@ export default {
             }
             
             .assinatura {
-              margin-top: 3cm;
+              margin-top: 4cm;
               text-align: center;
+              page-break-inside: avoid;
             }
             
             .linha-assinatura {
               border-top: 1px solid #000;
               width: 300px;
-              margin: 2cm auto 0.5cm auto;
+              margin: 2.5cm auto 1cm auto;
             }
             
             @media print {
               .documento-pagina {
                 box-shadow: none;
                 margin: 0;
-                padding: 0;
+                padding: 2cm 2cm 3cm 2cm; /* Margem inferior extra */
+                page-break-inside: avoid;
               }
               
               .page-break {
                 page-break-before: always;
+              }
+              
+              .tabela {
+                page-break-inside: auto;
+              }
+              
+              .tabela tr {
+                page-break-inside: avoid;
+              }
+              
+              .documento-conteudo {
+                orphans: 3;
+                widows: 3;
               }
             }
           </style>
@@ -1473,7 +1640,7 @@ export default {
           ${documentos.map((doc, index) => `
             ${index > 0 ? '<div class="page-break"></div>' : ''}
             <div class="documento-pagina">
-              <div class="folha-numero">Fl. ${String(doc.numero_folha).padStart(3, '0')}</div>
+              <div class="folha-numero">Fl. ${String(doc.numero_sequencial || index + 1).padStart(3, '0')}</div>
               
               ${doc.conteudo_html ? doc.conteudo_html : `
                 <div class="documento-header">
@@ -1589,9 +1756,11 @@ export default {
                   </tr>
                 </thead>
                 <tbody>
-                  ${documentos.map(doc => `
+                  ${documentos
+                    .filter(doc => doc.tipo_documento !== 'DFD' && doc.tipo_documento !== 'FOLHA_ROSTO')
+                    .map(doc => `
                     <tr>
-                      <td style="text-align: center; font-weight: bold;">Fl. ${String(doc.numero_folha).padStart(3, '0')}</td>
+                      <td style="text-align: center; font-weight: bold;">Fl. ${String(doc.numero_sequencial || 1).padStart(3, '0')}</td>
                       <td>
                         <strong>${doc.nome_documento || doc.tipo_documento}</strong>
                         ${doc.tipo_documento !== (doc.nome_documento || doc.tipo_documento) ? `<br><small style="color: #666;">(${doc.tipo_documento})</small>` : ''}
@@ -1610,7 +1779,7 @@ export default {
               </table>
               
               <div style="margin-top: 2cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm;">
-                <p><strong>Total de documentos:</strong> ${documentos.length} | <strong>Com arquivos:</strong> ${documentos.filter(d => d.arquivo_url).length}</p>
+                <p><strong>Total de documentos:</strong> ${documentos.filter(d => d.tipo_documento !== 'DFD' && d.tipo_documento !== 'FOLHA_ROSTO').length} | <strong>Com arquivos:</strong> ${documentos.filter(d => d.arquivo_url && d.tipo_documento !== 'DFD' && d.tipo_documento !== 'FOLHA_ROSTO').length}</p>
                 ${produtos.length > 0 ? `<p><strong>Total de produtos:</strong> ${produtos.length}</p>` : ''}
                 <p style="color: #666; margin-top: 1cm;">Gerado em ${dataAtual} - Sistema Comprar Bem</p>
               </div>
@@ -1678,24 +1847,19 @@ export default {
         }
       })
       
-      // Verificar se existe Folha de Rosto
-      const temFolhaRosto = documentosExistentes.find(doc => doc.tipo_documento === 'FOLHA_ROSTO' || doc.tipo_documento === 'folha_rosto')
-      if (!temFolhaRosto) {
-        const folhaRosto = {
-          numero_folha: 1,
-          tipo_documento: 'FOLHA_ROSTO',
-          nome_documento: 'Folha de Rosto do Processo Administrativo',
-          titulo: 'Folha de Rosto',
-          descricao: 'Folha de rosto do processo administrativo',
-          data_autuacao: processo.data_autuacao || processo.created_at,
-          conteudo_html: this.gerarHTMLFolhaRosto(processo)
-        }
-        documentosCompletos.unshift(folhaRosto)
-      } else {
-        // Garantir que folha de rosto seja sempre número 1
-        const folhaRosto = documentosCompletos.find(doc => doc.tipo_documento === 'FOLHA_ROSTO' || doc.tipo_documento === 'folha_rosto')
-        if (folhaRosto) folhaRosto.numero_folha = 1
-      }
+      // Usar apenas a folha de rosto que vem do banco (não gerar nova)
+      // A folha de rosto com conteúdo HTML completo já está nos documentosExistentes
+      const folhasRosto = documentosExistentes.filter(doc => doc.tipo_documento === 'FOLHA_ROSTO')
+      console.log('🔍 DEBUG - Folhas de rosto encontradas:', folhasRosto.length)
+      folhasRosto.forEach((folha, index) => {
+        console.log(`📄 Folha ${index + 1}:`, {
+          nome: folha.nome_documento,
+          titulo: folha.titulo,
+          temConteudoHTML: !!folha.conteudo_html,
+          tipoConteudo: folha.conteudo_html ? 'Com HTML' : 'Sem HTML',
+          primeirosPedacos: folha.conteudo_html ? folha.conteudo_html.substring(0, 200) + '...' : 'N/A'
+        })
+      })
       
       // Verificar se existe DFD - SEMPRE INCLUIR
       const temDFD = documentosExistentes.find(doc => doc.tipo_documento === 'DFD' || doc.tipo_documento === 'dfd')
@@ -1796,7 +1960,9 @@ export default {
         }
       }
       
-      // Buscar e incluir documentos dos produtos se existirem
+      // Coletar todos os documentos de produtos para criar uma página consolidada
+      let documentosProdutoConsolidados = []
+      
       if (produtos && produtos.length > 0) {
         for (const produto of produtos) {
           try {
@@ -1809,79 +1975,10 @@ export default {
               
             if (documentosProduto?.documentos_adicionados && documentosProduto.documentos_adicionados.length > 0) {
               for (const doc of documentosProduto.documentos_adicionados) {
-                const temDocumento = documentosCompletos.find(d => 
-                  d.nome_documento === `${produto.nome} - ${doc.nome}` ||
-                  d.arquivo_url === doc.url
-                )
-                
-                if (!temDocumento) {
-                  const documentoProduto = {
-                    numero_folha: null, // Será numerado depois
-                    tipo_documento: 'DOCUMENTO_PRODUTO',
-                    nome_documento: `${produto.nome} - ${doc.nome}`,
-                    titulo: `Documentação: ${produto.nome}`,
-                    descricao: `Documento do produto: ${doc.nome}`,
-                    data_autuacao: produto.created_at || new Date(),
-                    arquivo_url: doc.url,
-                    conteudo_html: `
-                      <div class="documento-header">
-                        <h1>${processo.nome_orgao}</h1>
-                        <h2>DOCUMENTAÇÃO DE PRODUTO</h2>
-                        <p>Processo nº ${processo.numero_processo}</p>
-                      </div>
-                      
-                      <div class="documento-conteudo">
-                        <h3>DADOS DO PRODUTO</h3>
-                        
-                        <p><strong>Nome do Produto:</strong> ${produto.nome}</p>
-                        <p><strong>Marca:</strong> ${produto.marca || 'N/A'}</p>
-                        <p><strong>Modelo:</strong> ${produto.modelo || 'N/A'}</p>
-                        <p><strong>Categoria:</strong> ${produto.categoria || produto.categoria_nome || 'N/A'}</p>
-                        <p><strong>Fabricante:</strong> ${produto.fabricante || 'N/A'}</p>
-                        
-                        <h3>ESPECIFICAÇÕES TÉCNICAS</h3>
-                        ${produto.especificacoes ? `<div style="margin-left: 1cm; background: #f9f9f9; padding: 1cm; border: 1px solid #ddd;">${produto.especificacoes}</div>` : '<p style="font-style: italic; color: #666;">Especificações não informadas</p>'}
-                        
-                        <h3>DOCUMENTO ANEXO</h3>
-                        <p><strong>Tipo de Documento:</strong> ${doc.nome}</p>
-                        <p><strong>Descrição:</strong> Documento técnico do produto anexado ao processo</p>
-                        
-                        <p style="margin-top: 2cm;"><strong>Arquivo:</strong> 
-                          <a href="${doc.url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
-                            ${doc.url}
-                          </a>
-                        </p>
-                        
-                        ${produto.observacoes ? `
-                        <h3>OBSERVAÇÕES</h3>
-                        <p style="margin-left: 1cm; font-style: italic; text-align: justify;">
-                          ${produto.observacoes}
-                        </p>
-                        ` : ''}
-                        
-                        <h3>AVALIAÇÃO TÉCNICA</h3>
-                        <p><strong>Status:</strong> ${produto.status_avaliacao || 'Pendente de avaliação'}</p>
-                        <p><strong>Data de Inclusão:</strong> ${this.formatarData(produto.created_at)}</p>
-                        
-                        <div style="margin-top: 2cm; padding: 1cm; border: 2px solid #000; text-align: center;">
-                          <p><strong>DECLARAÇÃO DE CONFORMIDADE</strong></p>
-                          <p style="text-align: justify; margin-top: 1cm;">
-                            Declaro que o produto acima especificado atende aos requisitos técnicos estabelecidos 
-                            no Edital de Pré-qualificação, estando em conformidade com as normas aplicáveis 
-                            e possuindo os padrões mínimos de qualidade exigidos para inclusão no Catálogo 
-                            Eletrônico de Bens Padronizados.
-                          </p>
-                          
-                          <div class="assinatura">
-                            <div class="linha-assinatura"></div>
-                            <p>Responsável Técnico</p>
-                          </div>
-                        </div>
-                      </div>
-                    `
-                  }
-                  documentosCompletos.push(documentoProduto)
-                }
+                documentosProdutoConsolidados.push({
+                  produto: produto,
+                  documento: doc
+                })
               }
             }
           } catch (error) {
@@ -1889,21 +1986,126 @@ export default {
           }
         }
       }
-      
-      // Renumerar documentos seguindo Instrução Processual
-      let proximoNumero
-      if (processo.tipo_processo === 'padronizacao') {
-        // PADRONIZAÇÃO: Fl. 001 (Folha Rosto), Fl. 002 (DFD), Fl. 003 (Edital), Fl. 004+ (demais)
-        proximoNumero = 4
-      } else {
-        // DESPADRONIZAÇÃO: Fl. 001 (Folha Rosto), Fl. 002 (DFD), Fl. 003+ (demais) - SEM EDITAL
-        proximoNumero = 3
+
+      // Adicionar documentos da nova tabela dedicada (documentos_produtos_processo)
+      const documentosProcessoProdutos = documentosCompletos.filter(doc => doc.tipo_documento === 'DOCUMENTO_PRODUTO')
+      documentosProcessoProdutos.forEach(doc => {
+        // Extrair informações do documento formatado
+        documentosProdutoConsolidados.push({
+          documento: {
+            nome: doc.nome_arquivo || 'Documento',
+            url: doc.arquivo_url
+          },
+          produto: {
+            nome: doc.nome_produto || doc.titulo.split(' - ')[0] || 'Produto',
+            marca: doc.marca || 'N/A',
+            modelo: doc.modelo || 'N/A',
+            categoria: doc.categoria || 'N/A',
+            fabricante: doc.fabricante || 'N/A',
+            created_at: doc.data_autuacao
+          }
+        })
+      })
+
+      // Se há documentos de produtos, criar uma única página consolidada
+      if (documentosProdutoConsolidados.length > 0) {
+        // Remover documentos individuais de produtos da lista
+        documentosCompletos = documentosCompletos.filter(doc => doc.tipo_documento !== 'DOCUMENTO_PRODUTO')
+        
+        // Criar página consolidada de documentação de produtos
+        // Esta página deve aparecer APÓS a página de dados dos produtos
+        const documentacaoConsolidada = {
+          numero_folha: null, // Será numerado depois
+          tipo_documento: 'DOCUMENTACAO_PRODUTOS',
+          nome_documento: 'Documentação de Produtos',
+          titulo: 'Documentação de Produtos',
+          descricao: 'Documentos técnicos dos produtos do processo',
+          data_autuacao: new Date(),
+          ordem_especial: 999, // Para aparecer depois dos produtos
+          conteudo_html: `
+            <div class="documento-header">
+              <h1>${processo.nome_orgao}</h1>
+              <h2>DOCUMENTAÇÃO DE PRODUTOS</h2>
+              <p>Processo nº ${processo.numero_processo}</p>
+            </div>
+            
+            <div class="documento-conteudo">
+              <h3>RELAÇÃO DE DOCUMENTOS DE PRODUTOS</h3>
+              <p>Os seguintes documentos técnicos estão anexados aos produtos deste processo:</p>
+              
+              ${documentosProdutoConsolidados.map((item, index) => `
+                <div style="margin: 1cm 0; padding: 0.5cm; border-left: 3px solid #1976d2;">
+                  <p><strong>${index + 1}. ${item.produto.nome}</strong></p>
+                  <p><strong>Documento:</strong> ${item.documento.nome}</p>
+                  <p><strong>Link:</strong> 
+                    <a href="${item.documento.url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
+                      Abrir documento
+                    </a>
+                  </p>
+                </div>
+              `).join('')}
+            </div>
+          `
+        }
+        
+        documentosCompletos.push(documentacaoConsolidada)
+        console.log(`✅ Criada página consolidada com ${documentosProdutoConsolidados.length} documentos de produtos`)
       }
       
-      documentosCompletos.forEach(doc => {
-        if (!doc.numero_folha) {
-          doc.numero_folha = proximoNumero++
+      // Primeiro, separar folhas de rosto e escolher a melhor
+      const folhasRostoParaFiltrar = documentosCompletos.filter(doc => doc.tipo_documento === 'FOLHA_ROSTO')
+      const outrosDocumentos = documentosCompletos.filter(doc => doc.tipo_documento !== 'FOLHA_ROSTO')
+      
+      let melhorFolhaRosto = null
+      if (folhasRostoParaFiltrar.length > 0) {
+        // Ordenar folhas de rosto por complexidade do conteúdo (mais completa primeiro)
+        folhasRostoParaFiltrar.sort((a, b) => {
+          const scoreA = (a.conteudo_html || '').length + 
+                        ((a.conteudo_html || '').includes('NOME DO ÓRGÃO') ? 1000 : 0) +
+                        ((a.conteudo_html || '').includes('INTERESSADO') ? 1000 : 0) +
+                        ((a.conteudo_html || '').includes('DATA DE AUTUAÇÃO') ? 1000 : 0) +
+                        ((a.conteudo_html || '').includes('OBJETO:') ? 1000 : 0)
+          
+          const scoreB = (b.conteudo_html || '').length + 
+                        ((b.conteudo_html || '').includes('NOME DO ÓRGÃO') ? 1000 : 0) +
+                        ((b.conteudo_html || '').includes('INTERESSADO') ? 1000 : 0) +
+                        ((b.conteudo_html || '').includes('DATA DE AUTUAÇÃO') ? 1000 : 0) +
+                        ((b.conteudo_html || '').includes('OBJETO:') ? 1000 : 0)
+          
+          return scoreB - scoreA // Ordem decrescente (mais completa primeiro)
+        })
+        
+        melhorFolhaRosto = folhasRostoParaFiltrar[0]
+        console.log(`✅ Escolhida melhor folha de rosto: ${melhorFolhaRosto.nome_documento}`)
+        console.log(`📊 Score: ${(melhorFolhaRosto.conteudo_html || '').length}`)
+        
+        if (folhasRostoParaFiltrar.length > 1) {
+          console.log(`❌ Removidas ${folhasRostoParaFiltrar.length - 1} folhas de rosto duplicadas`)
         }
+      }
+      
+      // Remover DFDs duplicados
+      const dfds = outrosDocumentos.filter(doc => doc.tipo_documento === 'DFD')
+      const outrosDocumentosSemDFD = outrosDocumentos.filter(doc => doc.tipo_documento !== 'DFD')
+      const melhorDFD = dfds.length > 0 ? dfds[0] : null
+      
+      if (dfds.length > 1) {
+        console.log(`❌ Removidos ${dfds.length - 1} DFDs duplicados`)
+      }
+      
+      // Recriar lista com apenas os documentos únicos
+      documentosCompletos = []
+      if (melhorFolhaRosto) documentosCompletos.push(melhorFolhaRosto)
+      if (melhorDFD) documentosCompletos.push(melhorDFD)
+      documentosCompletos.push(...outrosDocumentosSemDFD)
+      
+      // Renumerar documentos seguindo Instrução Processual
+      let proximoNumero = 1
+      
+      documentosCompletos.forEach((doc, index) => {
+        // Atribuir numeração sequencial
+        doc.numero_sequencial = proximoNumero++
+        doc.numero_folha = doc.numero_sequencial
       })
       
       // Reordenar por número de folha garantindo ordem correta
@@ -1975,28 +2177,23 @@ export default {
       const formatarBooleano = (valor) => valor ? 'SIM' : 'NÃO'
 
       let htmlConteudo = `
-        <div class="documento-header" style="text-align: center; margin-bottom: 2cm;">
+        <div class="documento-header" style="text-align: center; margin-bottom: 1.5cm;">
           <h1 style="font-size: 16pt; font-weight: bold; margin: 10px 0;">${tituloCompleto}</h1>
-          <h2 style="font-size: 12pt; margin: 10px 0;">(${finalidade})</h2>
         </div>
         
-        <div class="documento-conteudo" style="text-align: justify; line-height: 1.8; font-size: 12pt;">
-          <div class="campo" style="margin-bottom: 1cm;">
-            <span style="font-weight: bold;">Demandante:</span> Comissão Permanente de Padronização de Materiais - CPPM
-          </div>
+        <div class="documento-conteudo" style="text-align: justify; line-height: 1.6; font-size: 12pt; word-wrap: break-word; overflow-wrap: break-word;">
           
-          <div class="campo" style="margin-bottom: 1cm;">
-            <span style="font-weight: bold;">Presidente:</span> ${dadosDFD?.nome_presidente || '_________________________________'}
-            <span style="font-weight: bold; margin-left: 2cm;">Matrícula:</span> ${dadosDFD?.matricula_presidente || '_________________'}
-          </div>
+          <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">JUSTIFICATIVA</h2>
+          <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.justificativa || 'Justificativa da necessidade conforme processo administrativo.'}</p>
           
-          <div class="campo" style="margin-bottom: 1cm;">
-            <span style="font-weight: bold;">E-mail:</span> ${dadosDFD?.email_presidente || '________________________'}
-            <span style="font-weight: bold; margin-left: 2cm;">Telefone:</span> ${dadosDFD?.telefone_presidente || '_________________'}
-          </div>
+          <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">DESCRIÇÃO DA NECESSIDADE</h2>
+          <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.descricao_necessidade || 'Descrição detalhada da necessidade identificada.'}</p>
           
-          <h2 style="margin-top: 2cm; font-size: 14pt;">1. OBJETO DESTE DFD:</h2>
-          <p>${finalidade.charAt(0).toUpperCase() + finalidade.slice(1)} que ${processo.tipo_processo === 'padronizacao' ? 'possuam os padrões mínimos de qualidade' : 'não mais atendem aos padrões mínimos de qualidade'}, estética, rendimento, durabilidade e adequação ao uso.</p>`
+          <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">CRITÉRIOS DE ACEITAÇÃO</h2>
+          <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.criterios_aceitacao || 'Critérios de aceitação conforme normas técnicas aplicáveis.'}</p>
+          
+          <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">OBSERVAÇÕES ESPECIAIS</h2>
+          <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.observacoes_especiais || 'Observações especiais do processo.'}</p>`
 
       // Incluir produtos se existirem
       if (produtos && produtos.length > 0) {
@@ -2203,11 +2400,10 @@ export default {
           
           <p style="margin-top: 1cm;">Em ${new Date().toLocaleDateString('pt-BR')}.</p>
           
-          <div class="assinatura" style="margin-top: 3cm; text-align: center;">
-            <div class="linha-assinatura" style="border-top: 1px solid #000; width: 300px; margin: 2cm auto 0.5cm auto;"></div>
-            <p><strong>${dadosDFD?.nome_presidente || 'Nome do Presidente da CPPM'}</strong></p>
-            <p>Presidente da Comissão Permanente de Padronização de Materiais - CPPM</p>
-            <p>Matrícula: ${dadosDFD?.matricula_presidente || '[não informada]'}</p>
+          <div style="margin-top: 2cm; text-align: center;">
+            <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+            <div style="border-top: 1px solid #000; width: 400px; margin: 1.5cm auto 0.5cm auto;"></div>
+            <p><strong>Presidente da CPPM</strong></p>
           </div>
         </div>
       `
@@ -2276,9 +2472,16 @@ export default {
     // =====================================================
     
     abrirAssistente(tipo = null) {
+      // SEMPRE criar novo processo - nunca editar um existente
+      this.modoEdicao = false
+      this.processoParaEditar = null
+      this.tipoProcessoInicial = tipo // Passar o tipo clicado para o assistente
+      
       this.mostrarAssistente = true
       // Prevenir scroll da página de fundo
       document.body.style.overflow = 'hidden'
+      
+      console.log('🆕 Abrindo assistente para criar NOVO processo. Tipo pré-selecionado:', tipo)
     },
     
     processoCriado(processo) {
@@ -2342,6 +2545,7 @@ export default {
       // Limpar variáveis de edição
       this.modoEdicao = false
       this.processoParaEditar = null
+      this.tipoProcessoInicial = null
       // Restaurar scroll da página
       document.body.style.overflow = 'auto'
     },
@@ -2356,7 +2560,7 @@ export default {
     // =====================================================
     
     editarProcesso(processo) {
-      console.log('Editar processo:', processo)
+      console.log('✏️ EDITAR processo existente:', processo.numero_processo, 'Status:', processo.status)
       
       // Verificar se o processo pode ser editado
       if (!this.podeEditarProcesso(processo)) {
@@ -2368,6 +2572,10 @@ export default {
       this.modoEdicao = true
       this.processoParaEditar = processo
       this.mostrarAssistente = true
+      // Prevenir scroll da página de fundo
+      document.body.style.overflow = 'hidden'
+      
+      console.log('✏️ Assistente aberto em modo EDIÇÃO para processo:', processo.numero_processo)
     },
     
     async gerarRelatorio(processo) {
@@ -2380,10 +2588,34 @@ export default {
         // Buscar todos os documentos com conteúdo HTML
         let documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processo.id)
         
-        // Buscar produtos
+        // Buscar produtos e seus documentos
         let produtos = []
         if (processoCompleto.tipo_processo === 'padronizacao') {
           produtos = await ProcessosAdministrativosService.listarProdutosProcesso(processo.id)
+          
+          // Buscar documentos dos produtos para incluir no relatório
+          const tenantId = await ProcessosAdministrativosService.getTenantId()
+          const { data: documentosProdutos } = await supabase
+            .from('documentos_produtos_processo')
+            .select('*')
+            .eq('processo_id', processo.id)
+            .eq('tenant_id', tenantId)
+          
+          if (documentosProdutos && documentosProdutos.length > 0) {
+            // Adicionar documentos de produtos à lista de documentos
+            for (const docProduto of documentosProdutos) {
+              documentos.push({
+                id: `produto_${docProduto.id}`,
+                tipo_documento: 'DOCUMENTO_PRODUTO',
+                nome_documento: `${docProduto.nome_produto} - ${docProduto.nome_arquivo}`,
+                titulo: `${docProduto.nome_produto} - ${docProduto.nome_arquivo}`,
+                descricao: `Documento técnico do produto ${docProduto.nome_produto}`,
+                data_autuacao: docProduto.created_at,
+                arquivo_url: docProduto.url_arquivo,
+                nome_arquivo: docProduto.nome_arquivo
+              })
+            }
+          }
         }
         
         // Buscar dados DFD se existir
@@ -2395,8 +2627,17 @@ export default {
             .eq('processo_id', processo.id)
             .single()
           dadosDFD = dfd
+          console.log('✅ DFD carregado do banco:', dadosDFD)
         } catch (error) {
-          console.log('DFD não encontrado para o processo')
+          console.log('⚠️ DFD não encontrado no banco, usando dados padrão')
+          // Dados padrão mais ricos se não encontrar no banco
+          dadosDFD = {
+            justificativa: 'Justificativa da necessidade conforme processo administrativo e demanda apresentada pelos setores solicitantes.',
+            descricao_necessidade: 'Descrição detalhada da necessidade identificada para padronização/despadronização dos produtos especificados.',
+            criterios_aceitacao: 'Critérios de aceitação e ensaios estabelecidos conforme normas técnicas aplicáveis.',
+            observacoes_especiais: 'Observações especiais e condições específicas do processo de avaliação.',
+            modelo_usado: 'MODELO_1'
+          }
         }
         
         // Debug: verificar documentos encontrados
@@ -2412,15 +2653,112 @@ export default {
         // Gerar HTML do relatório
         const htmlRelatorio = this.gerarHTMLRelatorio(processoCompleto, documentosCompletos, produtos)
         
-        // Criar blob e abrir em nova janela
+        // Criar blob para visualização
         const blob = new Blob([htmlRelatorio], { type: 'text/html' })
         const url = URL.createObjectURL(blob)
-        const novaJanela = window.open(url, '_blank')
         
-        // Aguardar carregar
+        // Criar nome do arquivo PDF
+        const nomeArquivo = `Processo_${processoCompleto.numero_processo || processoCompleto.id}_${new Date().toISOString().split('T')[0]}.pdf`
+        
+        // Abrir em nova janela com funcionalidades de download
+        const novaJanela = window.open('', '_blank')
+        novaJanela.document.write(htmlRelatorio)
+        novaJanela.document.close()
+        
+        // Adicionar funcionalidade de download PDF à nova janela
+        setTimeout(() => {
+          if (novaJanela && !novaJanela.closed) {
+            // Criar elementos de download dinamicamente
+            const downloadControls = novaJanela.document.createElement('div')
+            downloadControls.id = 'download-controls'
+            downloadControls.style.cssText = `
+              position: fixed; 
+              top: 10px; 
+              right: 10px; 
+              background: #fff; 
+              border: 2px solid #dc3545; 
+              border-radius: 8px; 
+              padding: 15px; 
+              box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
+              z-index: 9999;
+              display: flex;
+              gap: 10px;
+              font-family: Arial, sans-serif;
+            `
+            
+            // Botão baixar PDF
+            const btnDownloadPDF = novaJanela.document.createElement('button')
+            btnDownloadPDF.innerHTML = '📄 Baixar PDF'
+            btnDownloadPDF.style.cssText = `
+              background: #dc3545; 
+              color: white; 
+              border: none; 
+              padding: 8px 15px; 
+              border-radius: 5px; 
+              cursor: pointer;
+              font-weight: bold;
+            `
+            btnDownloadPDF.onclick = () => {
+              // Esconder os controles temporariamente
+              downloadControls.style.display = 'none'
+              
+              // Aguardar um momento para garantir que os controles foram escondidos
+              setTimeout(() => {
+                // Usar a API print() do navegador que permite salvar como PDF
+                novaJanela.print()
+                
+                // Mostrar os controles novamente após um tempo
+                setTimeout(() => {
+                  if (!novaJanela.closed) {
+                    downloadControls.style.display = 'flex'
+                  }
+                }, 2000)
+              }, 100)
+            }
+            
+            // Botão fechar
+            const btnClose = novaJanela.document.createElement('button')
+            btnClose.innerHTML = '✕'
+            btnClose.style.cssText = `
+              background: #6c757d; 
+              color: white; 
+              border: none; 
+              padding: 8px 12px; 
+              border-radius: 5px; 
+              cursor: pointer;
+              font-weight: bold;
+            `
+            btnClose.onclick = () => {
+              downloadControls.style.display = 'none'
+            }
+            
+            // Adicionar botões ao container
+            downloadControls.appendChild(btnDownloadPDF)
+            downloadControls.appendChild(btnClose)
+            
+            // Adicionar container ao body
+            novaJanela.document.body.insertBefore(downloadControls, novaJanela.document.body.firstChild)
+            
+            // Adicionar dica no console
+            novaJanela.console.log('💡 DICA: Clique em "Baixar PDF" e escolha "Salvar como PDF" no destino da impressão.')
+            
+            // Adicionar CSS para esconder controles durante a impressão
+            const printStyle = novaJanela.document.createElement('style')
+            printStyle.textContent = `
+              @media print {
+                #download-controls {
+                  display: none !important;
+                }
+              }
+            `
+            novaJanela.document.head.appendChild(printStyle)
+          }
+        }, 1000)
+        
+        // Limpar URL do blob principal após um tempo
         setTimeout(() => {
           URL.revokeObjectURL(url)
-        }, 5000)
+        }, 10000)
         
       } catch (error) {
         console.error('Erro ao gerar relatório:', error)
@@ -2470,15 +2808,23 @@ export default {
     },
     
     adicionarDocumento(processo) {
-      // TODO: Implementar adição de documento
-      console.log('Adicionar documento:', processo)
-      alert('Funcionalidade de adição de documento em desenvolvimento')
+      console.log('📎 Abrindo modal para adicionar documento ao processo:', processo.numero_processo)
+      this.processoSelecionado = processo
+      this.mostrarModalAdicionarDoc = true
     },
     
-    verTramitacao(processo) {
-      // TODO: Implementar visualização de tramitação
-      console.log('Ver tramitação:', processo)
-      alert('Funcionalidade de tramitação em desenvolvimento')
+    async verTramitacao(processo) {
+      console.log('📋 Carregando tramitação do processo:', processo.numero_processo)
+      this.processoSelecionado = processo
+      
+      try {
+        // Carregar histórico de tramitação
+        await this.carregarHistoricoTramitacao(processo.id)
+        this.mostrarModalTramitacao = true
+      } catch (error) {
+        console.error('Erro ao carregar histórico de tramitação:', error)
+        alert('Erro ao carregar histórico de tramitação: ' + error.message)
+      }
     },
     
     // =====================================================
@@ -2543,6 +2889,16 @@ export default {
     
     fecharDocumentacao() {
       this.mostrarDocumentacao = false
+      this.processoSelecionado = null
+    },
+    
+    fecharModalAdicionarDoc() {
+      this.mostrarModalAdicionarDoc = false
+      this.processoSelecionado = null
+    },
+    
+    fecharModalTramitacao() {
+      this.mostrarModalTramitacao = false
       this.processoSelecionado = null
     },
     
@@ -2646,10 +3002,13 @@ export default {
     },
     
     visualizarDocumento(documento) {
-      if (documento.url_arquivo) {
+      const url = documento.arquivo_url || documento.url_arquivo
+      if (url) {
+        console.log('📄 Abrindo documento:', documento.nome_documento, 'URL:', url)
         // Abrir documento em nova aba
-        window.open(documento.url_arquivo, '_blank')
+        window.open(url, '_blank')
       } else {
+        console.warn('⚠️ Documento sem URL:', documento)
         alert('Este documento não possui arquivo anexo para visualização.')
       }
     },
@@ -2664,6 +3023,215 @@ export default {
 
     formatarStatus(status) {
       return ProcessosAdministrativosService.obterStatusProcesso(status).label
+    },
+    
+    // =====================================================
+    // UPLOAD DE DOCUMENTOS
+    // =====================================================
+    
+    onSelectDocumento(event) {
+      const files = Array.from(event.target.files)
+      this.adicionarArquivos(files)
+    },
+    
+    onDropDocumento(event) {
+      event.preventDefault()
+      const files = Array.from(event.dataTransfer.files)
+      this.adicionarArquivos(files)
+    },
+    
+    adicionarArquivos(files) {
+      const formatosPermitidos = ['.pdf']
+      const tamanhoMaximo = 50 * 1024 * 1024 // 50MB
+      
+      files.forEach(file => {
+        const extensao = '.' + file.name.split('.').pop().toLowerCase()
+        
+        if (!formatosPermitidos.includes(extensao)) {
+          alert(`Formato não permitido: ${file.name}. Use apenas arquivos PDF`)
+          return
+        }
+        
+        if (file.size > tamanhoMaximo) {
+          alert(`Arquivo muito grande: ${file.name}. Máximo: 50MB`)
+          return
+        }
+        
+        // Evitar duplicatas
+        const jaExiste = this.documentosParaUpload.some(doc => doc.name === file.name && doc.size === file.size)
+        if (!jaExiste) {
+          this.documentosParaUpload.push(file)
+        }
+      })
+    },
+    
+    removerDocumento(index) {
+      this.documentosParaUpload.splice(index, 1)
+    },
+    
+    formatarTamanho(bytes) {
+      if (bytes === 0) return '0 Bytes'
+      const k = 1024
+      const sizes = ['Bytes', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    },
+    
+    async uploadDocumentos() {
+      if (this.documentosParaUpload.length === 0) {
+        alert('Selecione pelo menos um documento')
+        return
+      }
+      
+      if (!this.tipoDocumentoSelecionado) {
+        alert('Selecione o tipo do documento')
+        return
+      }
+      
+      try {
+        this.processandoUpload = true
+        let sucessos = 0
+        let falhas = []
+        
+        for (let i = 0; i < this.documentosParaUpload.length; i++) {
+          const arquivo = this.documentosParaUpload[i]
+          
+          try {
+            console.log(`📤 Enviando arquivo ${i + 1}/${this.documentosParaUpload.length}: ${arquivo.name}`)
+            
+            // Upload do arquivo para storage com retry
+            const nomeArquivo = `${Date.now()}_${arquivo.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+            let uploadTentativas = 0
+            let uploadSucesso = false
+            let uploadData, uploadError
+            
+            while (uploadTentativas < 3 && !uploadSucesso) {
+              uploadTentativas++
+              console.log(`🔄 Tentativa ${uploadTentativas} de upload para: ${arquivo.name}`)
+              
+              const result = await supabase.storage
+                .from('documentosprocessos')
+                .upload(nomeArquivo, arquivo)
+              
+              uploadData = result.data
+              uploadError = result.error
+              
+              if (!uploadError) {
+                uploadSucesso = true
+                console.log(`✅ Upload realizado com sucesso: ${arquivo.name}`)
+              } else {
+                console.warn(`⚠️ Tentativa ${uploadTentativas} falhou:`, uploadError)
+                if (uploadTentativas < 3) {
+                  await new Promise(resolve => setTimeout(resolve, 2000)) // Aguardar 2s antes da próxima tentativa
+                }
+              }
+            }
+            
+            if (!uploadSucesso) {
+              throw new Error(`Falha no upload após 3 tentativas: ${uploadError?.message || 'Erro desconhecido'}`)
+            }
+            
+            // Obter URL pública
+            const { data: { publicUrl } } = supabase.storage
+              .from('documentosprocessos')
+              .getPublicUrl(nomeArquivo)
+            
+            console.log(`🔗 URL gerada: ${publicUrl}`)
+            
+            // Obter próxima numeração sequencial usando o serviço
+            const { numero, folha } = await NumeracaoDocumentosService.obterProximoNumero(this.processoSelecionado.id)
+            console.log(`📋 Numeração gerada: ${folha} (número ${numero})`)
+            
+            // Inserir registro na tabela documentos_processo com retry
+            const documentoData = {
+              processo_id: this.processoSelecionado.id,
+              tenant_id: await ProcessosAdministrativosService.getTenantId(),
+              numero_sequencial: numero,
+              folha_numero: folha,
+              tipo_documento: this.tipoDocumentoSelecionado,
+              nome_documento: arquivo.name,
+              titulo: arquivo.name,
+              descricao: this.observacoesDocumento || `Documento ${this.tipoDocumentoSelecionado.toLowerCase()} adicionado posteriormente`,
+              arquivo_url: publicUrl,
+              data_autuacao: new Date().toISOString(),
+              assinado: false,
+              status: 'ativo'
+            }
+            
+            let dbTentativas = 0
+            let dbSucesso = false
+            let dbError
+            
+            while (dbTentativas < 3 && !dbSucesso) {
+              dbTentativas++
+              console.log(`🔄 Tentativa ${dbTentativas} de registro no banco para: ${arquivo.name}`)
+              
+              const result = await supabase
+                .from('documentos_processo')
+                .insert([documentoData])
+              
+              dbError = result.error
+              
+              if (!dbError) {
+                dbSucesso = true
+                console.log(`✅ Registro no banco realizado com sucesso: ${arquivo.name}`)
+              } else {
+                console.warn(`⚠️ Tentativa ${dbTentativas} do banco falhou:`, dbError)
+                if (dbTentativas < 3) {
+                  await new Promise(resolve => setTimeout(resolve, 1000)) // Aguardar 1s antes da próxima tentativa
+                }
+              }
+            }
+            
+            if (!dbSucesso) {
+              throw new Error(`Falha no registro no banco após 3 tentativas: ${dbError?.message || 'Erro desconhecido'}`)
+            }
+            
+            sucessos++
+            console.log(`✅ Arquivo processado com sucesso: ${arquivo.name}`)
+            
+          } catch (fileError) {
+            console.error(`❌ Erro ao processar ${arquivo.name}:`, fileError)
+            falhas.push(`${arquivo.name}: ${fileError.message}`)
+          }
+        }
+        
+        // Mostrar resultado
+        if (sucessos > 0) {
+          let mensagem = `✅ ${sucessos} documento(s) adicionado(s) com sucesso!`
+          if (falhas.length > 0) {
+            mensagem += `\n\n❌ ${falhas.length} falha(s):\n${falhas.join('\n')}`
+          }
+          alert(mensagem)
+          
+          // Limpar formulário apenas se houve pelo menos um sucesso
+          this.documentosParaUpload = []
+          this.tipoDocumentoSelecionado = ''
+          this.observacoesDocumento = ''
+          
+          // Recarregar documentos do processo
+          try {
+            await this.carregarDocumentosProcesso(this.processoSelecionado.id)
+          } catch (reloadError) {
+            console.warn('Erro ao recarregar documentos:', reloadError)
+          }
+          
+          this.fecharModalAdicionarDoc()
+        } else {
+          alert(`❌ Nenhum documento foi adicionado.\n\nErros:\n${falhas.join('\n')}`)
+        }
+        
+      } catch (error) {
+        console.error('Erro geral no upload de documentos:', error)
+        alert('❌ Erro inesperado no upload: ' + error.message)
+      } finally {
+        this.processandoUpload = false
+      }
+    },
+    
+    formatarDataHora(data) {
+      if (!data) return 'N/A'
+      return new Date(data).toLocaleString('pt-BR')
     },
   }
 }
@@ -4256,6 +4824,425 @@ export default {
   .btn-workflow {
     width: 100%;
     text-align: center;
+  }
+}
+
+/* =====================================================
+   ESTILOS DOS MODAIS DE ADICIONAR DOCUMENTO E TRAMITAÇÃO
+   ===================================================== */
+
+.modal-adicionar-doc,
+.modal-tramitacao {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 16px 16px 0 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.btn-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+}
+
+.btn-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* ===== MODAL ADICIONAR DOCUMENTO ===== */
+.adicionar-documento-form {
+  padding: 2rem;
+}
+
+.info-processo {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-item strong {
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.upload-section {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.upload-section h4 {
+  color: #374151;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.upload-area {
+  border: 3px dashed #cbd5e0;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  background: #f8fafc;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.upload-area:hover {
+  border-color: #667eea;
+  background: #f0f4ff;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.upload-icon {
+  font-size: 3rem;
+  opacity: 0.7;
+}
+
+.upload-content p {
+  color: #4a5568;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.upload-content small {
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.btn-upload-doc {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.btn-upload-doc:hover {
+  transform: translateY(-2px);
+}
+
+.documentos-selecionados {
+  margin-top: 2rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.documentos-selecionados h5 {
+  color: #0c4a6e;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+
+.documento-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border: 1px solid #e0f2fe;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.doc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.doc-nome {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.doc-tamanho {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.btn-remover {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.btn-remover:hover {
+  background: #fef2f2;
+}
+
+.modal-actions {
+  background: #f8fafc;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #6b7280;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
+}
+
+/* ===== MODAL TRAMITAÇÃO ===== */
+.tramitacao-info {
+  padding: 2rem;
+}
+
+.processo-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row .label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-blue {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-green {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-yellow {
+  background: #fef3cd;
+  color: #92400e;
+}
+
+.status-red {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
+.status-gray {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.historico-container h4 {
+  color: #374151;
+  margin: 0 0 1.5rem 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sem-historico {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.linha-tempo {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.linha-tempo::before {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e5e7eb;
+}
+
+.evento-tramitacao {
+  position: relative;
+  padding: 1.5rem 0;
+  margin-left: 1rem;
+}
+
+.evento-tramitacao::before {
+  content: '';
+  position: absolute;
+  left: -1.75rem;
+  top: 1.75rem;
+  width: 12px;
+  height: 12px;
+  background: #667eea;
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #e5e7eb;
+}
+
+.evento-data {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.evento-status {
+  margin-bottom: 0.5rem;
+}
+
+.evento-descricao {
+  color: #374151;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.evento-responsavel {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .modal-adicionar-doc,
+  .modal-tramitacao {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .modal-header {
+    padding: 1rem;
+  }
+  
+  .adicionar-documento-form,
+  .tramitacao-info {
+    padding: 1rem;
+  }
+  
+  .info-processo {
+    grid-template-columns: 1fr;
+  }
+  
+  .upload-area {
+    padding: 2rem 1rem;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
   }
 }
 </style>

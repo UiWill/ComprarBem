@@ -466,7 +466,6 @@ export class ProcessosAdministrativosService {
         <div class="secao">
           <h3>IDENTIFICAÇÃO</h3>
           <p><strong>Número do Edital:</strong> ${dadosEdital.numero_edital}</p>
-          <p><strong>Ano:</strong> ${dadosEdital.ano_edital}</p>
           <p><strong>Data de Vinculação ao Processo:</strong> ${dataVinculacao}</p>
           ${dadosEdital.data_publicacao ? `<p><strong>Data de Publicação:</strong> ${new Date(dadosEdital.data_publicacao).toLocaleDateString('pt-BR')}</p>` : ''}
         </div>
@@ -481,6 +480,7 @@ export class ProcessosAdministrativosService {
         <div class="secao">
           <h3>DOCUMENTO ANEXADO</h3>
           <p>O edital completo com todos os anexos obrigatórios está disponível em formato PDF.</p>
+          ${dadosEdital.arquivo_url ? `<p><strong>Link do Arquivo:</strong> <a href="${dadosEdital.arquivo_url}" target="_blank" style="color: #1976d2; text-decoration: underline;">${dadosEdital.arquivo_url}</a></p>` : ''}
           ${dadosEdital.observacoes ? `<p><strong>Observações:</strong> ${dadosEdital.observacoes}</p>` : ''}
         </div>
 

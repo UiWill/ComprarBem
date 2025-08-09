@@ -41,7 +41,9 @@
           <div class="tipo-processo-escolha">
             <h4>Escolha o tipo de processo:</h4>
             <div class="tipos-opcoes">
+              <!-- Mostrar apenas Padronização se nenhum tipo foi escolhido, ou se Padronização foi escolhido -->
               <div 
+                v-if="!dadosProcesso.tipo_processo || dadosProcesso.tipo_processo === 'padronizacao'"
                 class="tipo-opcao" 
                 :class="{ selected: dadosProcesso.tipo_processo === 'padronizacao' }"
                 @click="selecionarTipo('padronizacao')"
@@ -49,22 +51,28 @@
                 <div class="tipo-icon">✅</div>
                 <div class="tipo-info">
                   <h5>Padronização</h5>
-                  <p>Incluir novos produtos no Catálogo Eletrônico</p>
-                  <div class="tipo-fluxo">
+                  <p>Incluir marcas de produtos no Catálogo Eletrônico</p>
+                  <div class="tipo-fluxo tipo-fluxo-verde">
                     <span class="fluxo-item">DFD</span>
                     <span class="fluxo-arrow">→</span>
                     <span class="fluxo-item">Edital</span>
                     <span class="fluxo-arrow">→</span>
-                    <span class="fluxo-item">Análise CPPM</span>
+                    <span class="fluxo-item">Relatório CPM</span>
                     <span class="fluxo-arrow">→</span>
-                    <span class="fluxo-item">CCL</span>
+                    <span class="fluxo-item">Ata CCL</span>
+                    <span class="fluxo-arrow">→</span>
+                    <span class="fluxo-item">Homologação</span>
                     <span class="fluxo-arrow">→</span>
                     <span class="fluxo-item">DCB</span>
+                    <span class="fluxo-arrow">→</span>
+                    <span class="fluxo-item">Catálogo</span>
                   </div>
                 </div>
               </div>
               
+              <!-- Mostrar apenas Despadronização se nenhum tipo foi escolhido, ou se Despadronização foi escolhido -->
               <div 
+                v-if="!dadosProcesso.tipo_processo || dadosProcesso.tipo_processo === 'despadronizacao'"
                 class="tipo-opcao" 
                 :class="{ selected: dadosProcesso.tipo_processo === 'despadronizacao' }"
                 @click="selecionarTipo('despadronizacao')"
@@ -72,15 +80,17 @@
                 <div class="tipo-icon">❌</div>
                 <div class="tipo-info">
                   <h5>Despadronização</h5>
-                  <p>Remover produtos inadequados do Catálogo</p>
-                  <div class="tipo-fluxo">
+                  <p>Excluir marcas de produtos do Catálogo Eletrônico</p>
+                  <div class="tipo-fluxo tipo-fluxo-vermelho">
                     <span class="fluxo-item">DFD</span>
                     <span class="fluxo-arrow">→</span>
-                    <span class="fluxo-item">Relatório</span>
+                    <span class="fluxo-item">Relatório CPM</span>
                     <span class="fluxo-arrow">→</span>
-                    <span class="fluxo-item">CCL</span>
+                    <span class="fluxo-item">Ata CCL</span>
                     <span class="fluxo-arrow">→</span>
-                    <span class="fluxo-item">Remoção</span>
+                    <span class="fluxo-item">Homologação</span>
+                    <span class="fluxo-arrow">→</span>
+                    <span class="fluxo-item">Catálogo</span>
                   </div>
                 </div>
               </div>
@@ -633,6 +643,11 @@ export default {
     modoEdicao: {
       type: Boolean,
       default: false
+    },
+    // Tipo de processo pré-selecionado (padronizacao ou despadronizacao)
+    tipoProcessoInicial: {
+      type: String,
+      default: null
     }
   },
   data() {
@@ -747,7 +762,16 @@ export default {
   },
   
   async mounted() {
-    // Tentar carregar progresso salvo primeiro
+    // Se estamos criando um NOVO processo (não está em modo edição), começar limpo
+    if (!this.modoEdicao) {
+      console.log('🆕 CRIANDO NOVO PROCESSO - Iniciando assistente limpo')
+      this.etapaAtual = 0
+      this.limparDados()
+      return
+    }
+    
+    // Se estamos EDITANDO um processo existente, tentar carregar progresso salvo
+    console.log('✏️ EDITANDO PROCESSO EXISTENTE - Carregando dados salvos')
     const processoCarregado = await this.carregarProcessoSalvo()
     
     // Se não conseguiu carregar progresso salvo E estamos em modo de edição, carregar dados do processo
@@ -2280,6 +2304,41 @@ export default {
       } finally {
         this.processando = false
       }
+    },
+    
+    limparDados() {
+      // Limpar todos os dados para começar um processo novo
+      this.dadosProcesso = {
+        tipo_processo: this.tipoProcessoInicial || '', // Usar tipo pré-selecionado se fornecido
+        numero_processo: '',
+        nome_orgao: '',
+        unidade_interessada: '',
+        data_autuacao: new Date().toISOString().split('T')[0],
+        observacoes: '',
+        numero_edital: '',
+        edital_vinculado: false,
+        data_vinculacao_edital: null
+      }
+      
+      this.dadosBasicos = {
+        nome_contato: '',
+        email_contato: '',
+        telefone_contato: '',
+        departamento_contato: ''
+      }
+      
+      this.dadosDFD = {
+        justificativa: '',
+        descricao_necessidade: '',
+        criterios_aceitacao: '',
+        observacoes_especiais: ''
+      }
+      
+      this.produtosSelecionados = []
+      this.documentosUpload = []
+      this.processoTemporario = null
+      
+      console.log('🧹 Dados limpos para novo processo. Tipo pré-selecionado:', this.tipoProcessoInicial)
     }
   }
 }
@@ -2491,6 +2550,28 @@ export default {
 
 .fluxo-arrow {
   color: #a0aec0;
+}
+
+/* Fluxo Verde - Padronização */
+.tipo-fluxo-verde .fluxo-item {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.tipo-fluxo-verde .fluxo-arrow {
+  color: #059669;
+}
+
+/* Fluxo Vermelho - Despadronização */
+.tipo-fluxo-vermelho .fluxo-item {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border: 1px solid #fca5a5;
+}
+
+.tipo-fluxo-vermelho .fluxo-arrow {
+  color: #dc2626;
 }
 
 .dados-basicos {
