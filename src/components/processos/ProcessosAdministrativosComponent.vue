@@ -2007,6 +2007,117 @@ export default {
         })
       })
 
+      // GARANTIR QUE EDITAL TENHA CONTEÚDO HTML COMPLETO
+      const editalExistente = documentosCompletos.find(doc => doc.tipo_documento === 'EDITAL')
+      if (editalExistente && !editalExistente.conteudo_html) {
+        console.log('🔧 Gerando conteúdo HTML para edital existente')
+        // Extrair número do edital do título
+        const numeroEdital = editalExistente.titulo ? 
+          (editalExistente.titulo.match(/\d+\/\d+/) ? editalExistente.titulo.match(/\d+\/\d+/)[0] : '001/2025') : 
+          '001/2025'
+          
+        editalExistente.conteudo_html = `
+          <div class="documento-header">
+            <h1>${processo.nome_orgao}</h1>
+            <h2>EDITAL DE PRÉ-QUALIFICAÇÃO DE BENS</h2>
+            <h3>Nº ${numeroEdital}</h3>
+          </div>
+          
+          <div class="documento-conteudo">
+            <h3>IDENTIFICAÇÃO</h3>
+            <p><strong>Número do Edital:</strong> ${numeroEdital}</p>
+            <p><strong>Ano:</strong> ${new Date().getFullYear()}</p>
+            <p><strong>Data de Vinculação ao Processo:</strong> ${editalExistente.data_autuacao ? new Date(editalExistente.data_autuacao).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}</p>
+            <p><strong>Data de Publicação:</strong> ${editalExistente.data_publicacao ? new Date(editalExistente.data_publicacao).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}</p>
+            
+            <h3>DOCUMENTO ANEXADO</h3>
+            <p>O edital completo com todos os anexos obrigatórios está disponível em formato PDF.</p>
+            ${editalExistente.arquivo_url ? `
+            <p><strong>Link do documento:</strong> 
+              <a href="${editalExistente.arquivo_url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
+                📄 Abrir Edital Completo (PDF)
+              </a>
+            </p>` : ''}
+            
+            <div style="margin-top: 3cm;">
+              <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
+              <div style="margin-top: 2cm; text-align: center;">
+                <div style="border-top: 1px solid #000; width: 300px; margin: 0 auto;">
+                  Responsável pela vinculação do edital
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+        console.log('✅ Conteúdo HTML do edital gerado com link para download')
+      }
+
+      // CRIAR PÁGINAS INDIVIDUAIS DE CADA PRODUTO (antes da página consolidada)
+      if (produtos && produtos.length > 0) {
+        for (const [index, produto] of produtos.entries()) {
+          // Buscar documentos específicos deste produto
+          const documentosProduto = documentosProdutoConsolidados.filter(doc => 
+            doc.produto.nome === produto.nome_produto || doc.produto.nome === produto.nome
+          )
+
+          // Criar página individual detalhada do produto
+          const paginaProduto = {
+            numero_folha: null, // Será numerado depois
+            tipo_documento: 'DOCUMENTACAO_PRODUTO',
+            nome_documento: `Documentação de Produto`,
+            titulo: `DOCUMENTAÇÃO DE PRODUTO`,
+            descricao: `Documentação técnica detalhada do produto ${produto.nome_produto || produto.nome}`,
+            data_autuacao: new Date(),
+            ordem_especial: 800 + index, // Para aparecer antes da consolidada
+            conteudo_html: `
+              <div class="documento-header">
+                <h1>${processo.nome_orgao}</h1>
+                <h2>DOCUMENTAÇÃO DE PRODUTO</h2>
+                <p>Processo nº ${processo.numero_processo}</p>
+              </div>
+              
+              <div class="documento-conteudo">
+                <h3>DADOS DO PRODUTO</h3>
+                <p><strong>Nome do Produto:</strong> ${produto.nome_produto || produto.nome}</p>
+                <p><strong>Marca:</strong> ${produto.marca || 'N/A'}</p>
+                <p><strong>Modelo:</strong> ${produto.modelo || 'N/A'}</p>
+                <p><strong>Categoria:</strong> ${produto.categoria || 'N/A'}</p>
+                <p><strong>Fabricante:</strong> ${produto.fabricante || produto.marca || 'N/A'}</p>
+                
+                <h3>ESPECIFICAÇÕES TÉCNICAS</h3>
+                <p><em>${produto.especificacoes_tecnicas || 'Especificações não informadas'}</em></p>
+                
+                <h3>DOCUMENTO ANEXO</h3>
+                <p><strong>Tipo de Documento:</strong> ${documentosProduto.length > 0 ? documentosProduto[0].documento.nome : 'undefined'}</p>
+                <p><strong>Descrição:</strong> Documento técnico do produto anexado ao processo</p>
+                <p><strong>Arquivo:</strong> ${documentosProduto.length > 0 ? '<span style="text-decoration: underline; color: #1976d2;">undefined</span>' : 'undefined'}</p>
+                
+                <h3>AVALIAÇÃO TÉCNICA</h3>
+                <p><strong>Status:</strong> ${produto.status || 'Pendente de avaliação'}</p>
+                <p><strong>Data de Inclusão:</strong> ${produto.created_at ? new Date(produto.created_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}</p>
+                
+                <div style="margin: 2cm 0; padding: 1cm; border: 2px solid #000;">
+                  <h3 style="text-align: center; margin-bottom: 1cm;">DECLARAÇÃO DE CONFORMIDADE</h3>
+                  <p style="text-align: justify; line-height: 1.5;">
+                    Declaro que o produto acima especificado atende aos requisitos técnicos estabelecidos no Edital de Pré-qualificação, 
+                    estando em conformidade com as normas aplicáveis e possuindo os padrões mínimos de qualidade exigidos para inclusão 
+                    no Catálogo Eletrônico de Bens Padronizados.
+                  </p>
+                  <div style="margin-top: 2cm; text-align: center;">
+                    <div style="border-top: 1px solid #000; width: 200px; margin: 0 auto;">
+                      Responsável Técnico
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `
+          }
+          
+          documentosCompletos.push(paginaProduto)
+          console.log(`✅ Criada página individual para produto: ${produto.nome_produto || produto.nome}`)
+        }
+      }
+
       // Se há documentos de produtos, criar uma única página consolidada
       if (documentosProdutoConsolidados.length > 0) {
         // Remover documentos individuais de produtos da lista
