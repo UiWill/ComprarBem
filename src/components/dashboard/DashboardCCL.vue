@@ -802,15 +802,20 @@ export default {
     }
   },
   created() {
-    this.obterTenantId().then(() => {
-      this.carregarDados(true)
-      this.carregarCategorias()
-      this.carregarAtasJulgamento()
-      this.carregarAtasEmElaboracao()
-      this.carregarHomologacoes()
-      this.carregarProcessosPendentesHomologacao()
-      this.carregarDCBsAtivas()
-      this.iniciarMonitoramentoPrazos()
+    this.obterTenantId().then((tenantId) => {
+      // Só carrega dados se obtivemos um tenant ID válido
+      if (tenantId) {
+        this.carregarDados(true)
+        this.carregarCategorias()
+        this.carregarAtasJulgamento()
+        this.carregarAtasEmElaboracao()
+        this.carregarHomologacoes()
+        this.carregarProcessosPendentesHomologacao()
+        this.carregarDCBsAtivas()
+        this.iniciarMonitoramentoPrazos()
+      } else {
+        console.warn('Não foi possível obter tenant ID no created()')
+      }
     })
   },
   watch: {
@@ -820,19 +825,22 @@ export default {
         if (newTenantId && newTenantId !== oldTenantId && !this.isLoadingData) {
           console.log('🔄 [DEBUG CCL] Tenant ID mudou, recarregando dados:', newTenantId)
           
-          // Usar debounce para evitar múltiplas chamadas
+          // Usar debounce mais longo para evitar múltiplas chamadas
           if (this.dataLoadTimeout) {
             clearTimeout(this.dataLoadTimeout)
           }
           
           this.dataLoadTimeout = setTimeout(() => {
-            this.isLoadingData = true
-            this.$nextTick(() => {
-              this.carregarDados().finally(() => {
-                this.isLoadingData = false
+            // Verificar novamente se não está carregando antes de iniciar
+            if (!this.isLoadingData) {
+              this.isLoadingData = true
+              this.$nextTick(() => {
+                this.carregarDados(true).finally(() => {
+                  this.isLoadingData = false
+                })
               })
-            })
-          }, 300) // Debounce de 300ms
+            }
+          }, 500) // Debounce aumentado para 500ms
         }
       },
       immediate: false
@@ -866,6 +874,11 @@ export default {
   methods: {
     async obterTenantId() {
       try {
+        // Se já temos o tenant_id, não precisa buscar novamente
+        if (this.currentTenantId) {
+          return this.currentTenantId
+        }
+        
         // Tenta obter o tenant_id do usuário logado
         const { data } = await supabase.auth.getSession()
         const user = data?.session?.user
@@ -875,29 +888,35 @@ export default {
           return
         }
         
+        let tenantId = null
+        
         // Primeiro tenta obter dos metadados
         if (user.user_metadata?.tenant_id) {
-          this.currentTenantId = user.user_metadata.tenant_id
-          return
-        }
-        
-        // Se não estiver nos metadados, tenta buscar na tabela usuarios
-        const { data: userData, error: userError } = await supabase
-          .from('usuarios')
-          .select('tenant_id')
-          .eq('email', user.email)
-          .single()
-        
-        if (userError) {
-          console.error('Erro ao buscar tenant_id:', userError)
-          return
-        }
-        
-        if (userData?.tenant_id) {
-          this.currentTenantId = userData.tenant_id
+          tenantId = user.user_metadata.tenant_id
         } else {
+          // Se não estiver nos metadados, tenta buscar na tabela usuarios
+          const { data: userData, error: userError } = await supabase
+            .from('usuarios')
+            .select('tenant_id')
+            .eq('email', user.email)
+            .single()
+          
+          if (userError) {
+            console.error('Erro ao buscar tenant_id:', userError)
+            return
+          }
+          
+          tenantId = userData?.tenant_id
+        }
+        
+        // Só atualiza se o valor mudou para evitar triggers desnecessários
+        if (tenantId && tenantId !== this.currentTenantId) {
+          this.currentTenantId = tenantId
+        } else if (!tenantId) {
           console.error('Tenant ID não encontrado para o usuário')
         }
+        
+        return tenantId
       } catch (error) {
         console.error('Erro ao obter tenant_id:', error)
       }
@@ -932,12 +951,16 @@ export default {
         
         if (!this.currentTenantId) {
           console.error('Tenant ID não disponível')
+          this.loading = false
+          this.isLoadingData = false
           return
         }
         
         // Verificar se já temos dados e não é um reload forçado
         if (!forceReload && this.processosPendentes.length > 0) {
           console.log('🔄 [DEBUG CCL] Dados já carregados, usando cache')
+          this.loading = false
+          this.isLoadingData = false
           return
         }
         
@@ -5428,11 +5451,8 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
     window.baixarDocumentacaoProduto = (produtoId) => this.baixarDocumentacaoProduto(produtoId)
     window.baixarDocumentacaoRecursoEspecifico = (recursoId) => this.baixarDocumentacaoRecursoEspecifico(recursoId)
     
-    // Garantir carregamento de dados caso o created() não tenha funcionado
-    if (this.currentTenantId && this.processosPendentes.length === 0) {
-      console.log('🔄 [DEBUG CCL MOUNTED] Carregando dados no mounted')
-      this.carregarDados(true)
-    }
+    // Não carregar dados automaticamente no mounted para evitar duplicação
+    // O carregamento será feito pelo created() e pelo watcher do currentTenantId
   }
 }
 </script>

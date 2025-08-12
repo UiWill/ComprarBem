@@ -991,8 +991,16 @@
                     <button @click="removerDocumento(index)" class="btn-remover">❌</button>
                   </div>
                 </div>
+                
+                <!-- Informação para órgão administrativo -->
+                <div v-if="isOrgaoAdministrativo()" class="info-orgao-admin">
+                  <div class="alert alert-info">
+                    <span>ℹ️</span>
+                    <strong>Documento Assinado:</strong> Este documento será automaticamente marcado como "Documento Assinado" pelo órgão administrativo.
+                  </div>
+                </div>
 
-                <div class="form-group">
+                <div class="form-group" v-if="!isOrgaoAdministrativo()">
                   <label for="tipoDocumento">Tipo do Documento:</label>
                   <select id="tipoDocumento" v-model="tipoDocumentoSelecionado">
                     <option value="">Selecione o tipo</option>
@@ -1012,7 +1020,7 @@
 
               <div class="modal-actions">
                 <button @click="fecharModalAdicionarDoc" class="btn-secondary">Cancelar</button>
-                <button @click="uploadDocumentos" :disabled="documentosParaUpload.length === 0 || !tipoDocumentoSelecionado || processandoUpload" class="btn-primary">
+                <button @click="uploadDocumentos" :disabled="documentosParaUpload.length === 0 || (!isOrgaoAdministrativo() && !tipoDocumentoSelecionado) || processandoUpload" class="btn-primary">
                   {{ processandoUpload ? 'Enviando...' : `📤 Adicionar ${documentosParaUpload.length} Documento${documentosParaUpload.length > 1 ? 's' : ''}` }}
                 </button>
               </div>
@@ -1435,6 +1443,14 @@ export default {
   },
   
   methods: {
+    // =====================================================
+    // MÉTODOS AUXILIARES
+    // =====================================================
+    
+    isOrgaoAdministrativo() {
+      return this.perfilUsuario?.toLowerCase() === 'orgao_administrativo'
+    },
+    
     // =====================================================
     // CARREGAMENTO DE DADOS
     // =====================================================
@@ -3607,7 +3623,9 @@ export default {
         return
       }
       
-      if (!this.tipoDocumentoSelecionado) {
+      // Para órgão administrativo, definir automaticamente como ASSINADO
+      // Para outros perfis, exigir seleção do tipo
+      if (!this.isOrgaoAdministrativo() && !this.tipoDocumentoSelecionado) {
         alert('Selecione o tipo do documento')
         return
       }
@@ -3666,16 +3684,19 @@ export default {
             const { numero, folha } = await NumeracaoDocumentosService.obterProximoNumero(this.processoSelecionado.id)
             console.log(`📋 Numeração gerada: ${folha} (número ${numero})`)
             
+            // Definir tipo do documento
+            const tipoDocumento = this.isOrgaoAdministrativo() ? 'ASSINADO' : this.tipoDocumentoSelecionado
+            
             // Inserir registro na tabela documentos_processo com retry
             const documentoData = {
               processo_id: this.processoSelecionado.id,
               tenant_id: await ProcessosAdministrativosService.getTenantId(),
               numero_sequencial: numero,
               folha_numero: folha,
-              tipo_documento: this.tipoDocumentoSelecionado,
+              tipo_documento: tipoDocumento,
               nome_documento: arquivo.name,
               titulo: arquivo.name,
-              descricao: this.observacoesDocumento || `Documento ${this.tipoDocumentoSelecionado.toLowerCase()} adicionado posteriormente`,
+              descricao: this.observacoesDocumento || `Documento ${tipoDocumento.toLowerCase()} adicionado pelo órgão administrativo`,
               arquivo_url: publicUrl,
               data_autuacao: new Date().toISOString(),
               assinado: false,
@@ -6713,6 +6734,31 @@ export default {
 
 .acao-requerida strong {
   color: #065f46;
+}
+
+/* Estilos para mensagem informativa do órgão administrativo */
+.info-orgao-admin {
+  margin: 1rem 0;
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.alert-info {
+  background-color: #e0f2fe;
+  border: 1px solid #0288d1;
+  color: #01579b;
+}
+
+.alert span {
+  font-size: 1rem;
+  opacity: 0.8;
 }
 
 </style>
