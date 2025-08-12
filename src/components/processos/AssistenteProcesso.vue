@@ -2292,11 +2292,12 @@ export default {
           await this.salvarDocumentosUpload()
         }
         
-        // Atualizar status do processo para "aguardando_aprovacao"
-        console.log('🔄 DEBUG: Atualizando status para aguardando_aprovacao')
+        // Atualizar status do processo baseado no tipo
+        const novoStatus = this.dadosProcesso.tipo_processo === 'despadronizacao' ? 'criado_cpm_desp' : 'criado_cpm'
+        console.log(`🔄 DEBUG: Atualizando status para ${novoStatus}`)
         await ProcessosAdministrativosService.atualizarProcesso(
           this.processoTemporario.id,
-          { status: 'aguardando_aprovacao' }
+          { status: novoStatus }
         )
         
         // Limpar dados salvos após finalização com sucesso

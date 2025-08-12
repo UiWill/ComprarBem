@@ -1669,9 +1669,9 @@ export default {
         return true
       }
       
-      // CPM pode enviar processos em rascunho/aguardando_aprovacao
-      if (perfilUsuario === 'cpm' && ['rascunho', 'aguardando_aprovacao'].includes(statusProcesso)) {
-        console.log('🎯 Resultado CPM:', '✅ MOSTRAR BOTÃO - CPM pode enviar rascunho/aguardando')
+      // CPM pode enviar processos em rascunho, criado_cpm, criado_cpm_desp ou aguardando_aprovacao (legado)
+      if (perfilUsuario === 'cpm' && ['rascunho', 'aguardando_aprovacao', 'criado_cpm', 'criado_cpm_desp'].includes(statusProcesso)) {
+        console.log('🎯 Resultado CPM:', '✅ MOSTRAR BOTÃO - CPM pode enviar rascunho/criado')
         return true
       }
       
@@ -3919,15 +3919,23 @@ export default {
     obterNomeStatus(status) {
       const nomes = {
         'rascunho': 'Rascunho',
+        'aguardando_aprovacao': 'Aguardando Aprovação',
         'criado_cpm': 'Criado pela CPM',
+        'criado_cpm_desp': 'Criado pela CPM',
         'aguardando_assinatura_orgao': 'Aguardando Assinatura do Órgão',
+        'aguardando_assinatura_orgao_desp': 'Aguardando Assinatura do Órgão',
         'assinado_admin': 'Assinado pelo Órgão Administrativo',
         'julgamento_ccl': 'Em Julgamento pela CCL',
         'aprovado_ccl': 'Aprovado pela CCL',
         'aprovado_juridico': 'Aprovado pela Assessoria Jurídica',
         'edital_publicado': 'Edital Publicado',
         'homologado': 'Processo Homologado',
+        'homologado_desp': 'Processo Homologado',
         'finalizado': 'Processo Finalizado',
+        'abertura_autorizada_desp': 'Abertura Autorizada',
+        'aviso_publicado': 'Aviso Publicado',
+        'com_recurso_desp': 'Com Recurso Administrativo',
+        'excluindo_marcas': 'Excluindo Marcas',
         
         // STATUS DE DEVOLUÇÃO
         'devolvido_pelo_orgao': 'Devolvido pelo Órgão Administrativo',
