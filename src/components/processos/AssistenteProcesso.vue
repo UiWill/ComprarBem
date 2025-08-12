@@ -2286,6 +2286,12 @@ export default {
         const produtosSalvos = await ProcessosAdministrativosService.listarProdutosProcesso(this.processoTemporario.id)
         console.log(`📋 DEBUG: Produtos encontrados no processo antes da finalização (${produtosSalvos.length}):`, produtosSalvos)
         
+        // 🆕 SALVAR DOCUMENTOS DE UPLOAD (apenas para despadronização)
+        if (this.dadosProcesso.tipo_processo === 'despadronizacao' && this.documentos.length > 0) {
+          console.log('📄 DEBUG: Salvando documentos de upload para despadronização...')
+          await this.salvarDocumentosUpload()
+        }
+        
         // Atualizar status do processo para "aguardando_aprovacao"
         console.log('🔄 DEBUG: Atualizando status para aguardando_aprovacao')
         await ProcessosAdministrativosService.atualizarProcesso(
@@ -2339,6 +2345,85 @@ export default {
       this.processoTemporario = null
       
       console.log('🧹 Dados limpos para novo processo. Tipo pré-selecionado:', this.tipoProcessoInicial)
+    },
+
+    async salvarDocumentosUpload() {
+      try {
+        console.log('📄 DEBUG: Salvando documentos de upload no banco...')
+        
+        const documentosParaSalvar = this.documentos.filter(doc => 
+          // Salvar apenas documentos que foram feitos upload pelo usuário
+          doc.arquivo && !doc.origem // documentos com arquivo blob e sem origem (não são do banco)
+        )
+        
+        console.log(`📄 DEBUG: ${documentosParaSalvar.length} documentos de upload para salvar`)
+        
+        for (const doc of documentosParaSalvar) {
+          console.log(`📤 Fazendo upload do arquivo: ${doc.nome}`)
+          
+          // 1. FAZER UPLOAD DO ARQUIVO FÍSICO no Supabase Storage
+          const nomeArquivo = `doc_${this.processoTemporario.id}_${Date.now()}_${doc.nome}`
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documentosprocessos')
+            .upload(nomeArquivo, doc.arquivo, {
+              cacheControl: '3600',
+              upsert: false
+            })
+          
+          if (uploadError) {
+            console.error('❌ Erro no upload do arquivo:', uploadError)
+            throw uploadError
+          }
+          
+          // 2. OBTER URL PÚBLICA DO ARQUIVO
+          const { data: { publicUrl } } = supabase.storage
+            .from('documentosprocessos')
+            .getPublicUrl(nomeArquivo)
+          
+          console.log(`✅ Arquivo enviado com sucesso: ${uploadData.path}`)
+          console.log(`🔗 URL gerada: ${publicUrl}`)
+          
+          // 3. OBTER PRÓXIMA NUMERAÇÃO (igual ao ProcessosAdministrativosComponent)
+          const NumeracaoDocumentosService = (await import('../../services/numeracaoDocumentosService')).default
+          const { numero, folha } = await NumeracaoDocumentosService.obterProximoNumero(this.processoTemporario.id)
+          console.log(`📋 Numeração gerada: ${folha} (número ${numero})`)
+          
+          // 4. SALVAR DIRETAMENTE NA TABELA documentos_processo (igual ao ProcessosAdministrativosComponent)
+          const ProcessosAdministrativosService = (await import('../../services/processosAdministrativosService')).default
+          const documentoData = {
+            processo_id: this.processoTemporario.id,
+            tenant_id: await ProcessosAdministrativosService.getTenantId(),
+            numero_sequencial: numero,
+            folha_numero: folha,
+            tipo_documento: 'DOCUMENTO_ADICIONAL',
+            nome_documento: doc.nome,
+            titulo: doc.nome,
+            descricao: `Documento adicional: ${doc.tipo}`,
+            arquivo_url: publicUrl,
+            data_autuacao: new Date().toISOString(),
+            assinado: false,
+            status: 'ativo'
+          }
+          
+          const { error: dbError } = await supabase
+            .from('documentos_processo')
+            .insert([documentoData])
+          
+          if (dbError) {
+            console.error('❌ Erro ao salvar documento no banco:', dbError)
+            throw dbError
+          } else {
+            console.log(`✅ Documento de upload salvo: ${folha}`)
+          }
+        }
+        
+        console.log('✅ Todos os documentos de upload foram salvos com sucesso')
+        
+      } catch (error) {
+        console.error('❌ Erro ao salvar documentos de upload:', error)
+        throw error
+      }
     }
   }
 }

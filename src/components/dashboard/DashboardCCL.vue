@@ -83,19 +83,15 @@
               <td class="processo-info">
                 <strong>{{ processo.numero_processo }}</strong>
                 <br>
-                <small>{{ processo.folha_rosto?.tipo_processo || 'Processo Administrativo' }}</small>
+                <small>{{ processo.tipo_processo || 'Processo Administrativo' }}</small>
               </td>
               <td>
-                <span class="tipo-badge" :class="getTipoProcessoClass(processo.folha_rosto?.tipo_processo)">
-                  {{ processo.folha_rosto?.tipo_processo || 'Padronização' }}
+                <span class="tipo-badge" :class="getTipoProcessoClass(processo.tipo_processo)">
+                  {{ processo.tipo_processo || 'Padronização' }}
                 </span>
               </td>
               <td class="produtos-processo">
-                <span v-if="processo.produtos_relacionados && processo.produtos_relacionados.length > 0" class="produtos-lista">
-                  {{ processo.produtos_relacionados.slice(0, 2).map(p => p.nome).join(', ') }}
-                  <span v-if="processo.produtos_relacionados.length > 2"> +{{ processo.produtos_relacionados.length - 2 }} mais</span>
-                </span>
-                <span v-else class="texto-cinza">Produtos vinculados</span>
+                <span class="texto-cinza">Produtos do processo</span>
               </td>
               <td>
                 <span class="status-badge" :class="getStatusClass(processo.status)">
@@ -112,7 +108,18 @@
                 <button @click="visualizarProcesso(processo)" class="btn-small btn-secondary">
                   📄 Ver Processo
                 </button>
-                <button @click="julgarProcessoAdministrativo(processo)" class="btn-small btn-primary">
+                <button 
+                  v-if="processo.status === 'assinado_admin'"
+                  @click="tramitarProcessoAdministrativo(processo)" 
+                  class="btn-small btn-success"
+                >
+                  🚀 Tramitar para CCL - Julgamento
+                </button>
+                <button 
+                  v-if="processo.status === 'julgamento_ccl'"
+                  @click="julgarProcessoAdministrativo(processo)" 
+                  class="btn-small btn-primary"
+                >
                   📋 Emitir Ata de Julgamento
                 </button>
               </td>
@@ -475,7 +482,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="processo in processosPendentesPaginados" :key="processo.id">
+                <tr v-for="processo in processosPendentesHomologacaoPaginados" :key="processo.id">
                   <td><strong>{{ processo.numeroAta }}</strong></td>
                   <td>{{ formatDate(processo.dataJulgamento) }}</td>
                   <td>
@@ -648,6 +655,8 @@
 
 <script>
 import { supabase } from '@/services/supabase'
+import TramitacaoProcessosService from '@/services/tramitacaoProcessosService'
+import ProcessosAdministrativosService from '@/services/processosAdministrativosService'
 
 export default {
   name: 'DashboardCCL',
@@ -668,6 +677,9 @@ export default {
       prazosVencidos: 0,
       prazosUrgentes: 0,
       autoCheckInterval: null,
+      // Controle de recarregamento excessivo
+      isLoadingData: false,
+      dataLoadTimeout: null,
       // Dados para Atas de Julgamento
       atasEmAndamento: 0,
       atasPublicadas: 0,
@@ -741,7 +753,7 @@ export default {
       return this.atasPublicadasRecentes.slice(inicio, fim)
     },
     
-    processosPendentesPaginados() {
+    processosPendentesHomologacaoPaginados() {
       const inicio = (this.paginacao.processosPendentes.paginaAtual - 1) * this.paginacao.processosPendentes.itensPorPagina
       const fim = inicio + this.paginacao.processosPendentes.itensPorPagina
       return this.processosPendentesHomologacao.slice(inicio, fim)
@@ -768,7 +780,19 @@ export default {
     processosPendentesPaginados() {
       const inicio = (this.paginacao.processosPendentes.paginaAtual - 1) * this.paginacao.processosPendentes.itensPorPagina
       const fim = inicio + this.paginacao.processosPendentes.itensPorPagina
-      return this.processosPendentes.slice(inicio, fim)
+      const resultado = this.processosPendentes.slice(inicio, fim)
+      
+      // LOG FINAL: Verificar se os dados chegam até o template
+      console.log('🖥️ [DEBUG CCL TEMPLATE] processosPendentesPaginados chamado')
+      console.log('🖥️ [DEBUG CCL TEMPLATE] this.processosPendentes.length:', this.processosPendentes?.length || 0)
+      console.log('🖥️ [DEBUG CCL TEMPLATE] resultado.length:', resultado?.length || 0)
+      if (resultado?.length > 0) {
+        resultado.forEach(proc => {
+          console.log(`🖥️ [DEBUG CCL TEMPLATE] Processo para template: ${proc.numero_processo} - Status: ${proc.status}`)
+        })
+      }
+      
+      return resultado
     },
     
     recursosAnalisePageinados() {
@@ -779,7 +803,7 @@ export default {
   },
   created() {
     this.obterTenantId().then(() => {
-      this.carregarDados()
+      this.carregarDados(true)
       this.carregarCategorias()
       this.carregarAtasJulgamento()
       this.carregarAtasEmElaboracao()
@@ -790,12 +814,42 @@ export default {
     })
   },
   watch: {
-    activeTab(newTab) {
-      // Recarregar dados específicos quando trocar de aba
-      if (newTab === 'homologacoes') {
-        console.log('Entrando na aba homologações - recarregando dados...')
-        this.carregarHomologacoes()
-        this.carregarProcessosPendentesHomologacao()
+    currentTenantId: {
+      handler(newTenantId, oldTenantId) {
+        // Evitar recarregamentos desnecessários
+        if (newTenantId && newTenantId !== oldTenantId && !this.isLoadingData) {
+          console.log('🔄 [DEBUG CCL] Tenant ID mudou, recarregando dados:', newTenantId)
+          
+          // Usar debounce para evitar múltiplas chamadas
+          if (this.dataLoadTimeout) {
+            clearTimeout(this.dataLoadTimeout)
+          }
+          
+          this.dataLoadTimeout = setTimeout(() => {
+            this.isLoadingData = true
+            this.$nextTick(() => {
+              this.carregarDados().finally(() => {
+                this.isLoadingData = false
+              })
+            })
+          }, 300) // Debounce de 300ms
+        }
+      },
+      immediate: false
+    },
+    activeTab(newTab, oldTab) {
+      // Evitar recarregamentos desnecessários ao trocar de aba
+      if (newTab !== oldTab && this.currentTenantId) {
+        if (newTab === 'homologacoes') {
+          console.log('Entrando na aba homologações - recarregando dados específicos...')
+          this.carregarHomologacoes()
+          this.carregarProcessosPendentesHomologacao()
+        }
+        // Evitar recarregar dados gerais desnecessariamente
+        else if (newTab === 'dashboard' && this.processosPendentes.length === 0) {
+          console.log('Voltando ao dashboard - recarregando apenas se necessário...')
+          this.carregarDados(true)
+        }
       }
     }
   },
@@ -803,6 +857,10 @@ export default {
     // Limpar interval ao destruir componente
     if (this.autoCheckInterval) {
       clearInterval(this.autoCheckInterval)
+    }
+    // Limpar timeout de debounce
+    if (this.dataLoadTimeout) {
+      clearTimeout(this.dataLoadTimeout)
     }
   },
   methods: {
@@ -861,31 +919,84 @@ export default {
       const categoria = this.categorias.find(cat => cat.id === categoriaId)
       return categoria ? categoria.nome : 'Categoria não encontrada'
     },
-    async carregarDados() {
+    async carregarDados(forceReload = false) {
       try {
+        // Evitar múltiplos carregamentos simultâneos
+        if (this.isLoadingData && !forceReload) {
+          console.log('🔄 [DEBUG CCL] Já carregando dados, ignorando chamada duplicada')
+          return
+        }
+        
         this.loading = true
+        this.isLoadingData = true
         
         if (!this.currentTenantId) {
           console.error('Tenant ID não disponível')
           return
         }
         
-        // Carregar processos administrativos finalizados pela CPM que aguardam julgamento da CCL
-        const { data: processosData, error: processosError } = await supabase
+        // Verificar se já temos dados e não é um reload forçado
+        if (!forceReload && this.processosPendentes.length > 0) {
+          console.log('🔄 [DEBUG CCL] Dados já carregados, usando cache')
+          return
+        }
+        
+        // DEBUG: Carregar TODOS os processos do tenant primeiro para debug
+        console.log('🔍 [DEBUG CCL] Iniciando busca de processos...')
+        console.log('🔍 [DEBUG CCL] Tenant ID:', this.currentTenantId)
+        
+        // Query direta para debug - buscar TODOS os processos do tenant
+        const { data: todosProcessosTenant, error: errorTodos } = await supabase
           .from('processos_administrativos')
-          .select(`
-            *,
-            folha_rosto,
-            produtos_relacionados
-          `)
+          .select('id, numero_processo, status, tipo_processo, tenant_id')
           .eq('tenant_id', this.currentTenantId)
-          .eq('status', 'assinado_orgao_admin') // Apenas processos já assinados pelo órgão administrativo
           .order('atualizado_em', { ascending: false })
-          .limit(20)
         
-        if (processosError) throw processosError
+        if (errorTodos) {
+          console.error('❌ [DEBUG CCL] Erro ao buscar todos os processos:', errorTodos)
+          throw errorTodos
+        }
         
-        this.processosPendentes = processosData || []
+        console.log('📊 [DEBUG CCL] TODOS os processos do tenant:', todosProcessosTenant?.length || 0)
+        todosProcessosTenant?.forEach(proc => {
+          console.log(`📋 [DEBUG CCL] Processo: ${proc.numero_processo} - Status: ${proc.status} - Tipo: ${proc.tipo_processo}`)
+        })
+        
+        // Agora filtrar apenas os que a CCL deve ver
+        const processosData = (todosProcessosTenant || []).filter(processo => 
+          ['assinado_admin', 'julgamento_ccl'].includes(processo.status)
+        )
+        
+        console.log('🎯 [DEBUG CCL] Processos FILTRADOS para CCL:', processosData.length)
+        processosData.forEach(proc => {
+          console.log(`✅ [DEBUG CCL] Processo para CCL: ${proc.numero_processo} - Status: ${proc.status}`)
+        })
+        
+        console.log('📊 CCL Dashboard - Processos encontrados:', processosData?.length || 0)
+        processosData?.forEach(processo => {
+          console.log(`📋 Processo ${processo.numero_processo} - Status: ${processo.status} - Tipo: ${processo.tipo_processo}`)
+        })
+        
+        // Buscar dados completos dos processos filtrados
+        if (processosData.length > 0) {
+          const idsProcessos = processosData.map(p => p.id)
+          const { data: processosCompletos, error: errorCompletos } = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .in('id', idsProcessos)
+            .eq('tenant_id', this.currentTenantId)
+          
+          if (errorCompletos) {
+            console.error('❌ [DEBUG CCL] Erro ao buscar dados completos:', errorCompletos)
+            this.processosPendentes = []
+          } else {
+            this.processosPendentes = Array.isArray(processosCompletos) ? processosCompletos : []
+            console.log('✅ [DEBUG CCL] Dados completos carregados:', this.processosPendentes.length)
+          }
+        } else {
+          console.log('⚠️ [DEBUG CCL] Nenhum processo filtrado encontrado')
+          this.processosPendentes = []
+        }
         
         // Carregar recursos do banco de dados
         await this.carregarRecursos()
@@ -902,8 +1013,10 @@ export default {
           this.contarPorStatus('homologado') // Processos homologados
         ])
         
-        this.pendentes = statsCounts[0] || this.processosPendentes.filter(p => p.status === 'assinado_orgao_admin').length
-        this.aprovados = statsCounts[1] || this.processosPendentes.filter(p => p.status === 'julgado_ccl').length
+        // Garantir que processosPendentes é um array antes de usar filter
+        const processosArray = Array.isArray(this.processosPendentes) ? this.processosPendentes : []
+        this.pendentes = statsCounts[0] || processosArray.filter(p => ['assinado_admin', 'julgamento_ccl'].includes(p.status)).length
+        this.aprovados = statsCounts[1] || processosArray.filter(p => p.status === 'julgado_ccl').length
         this.homologados = statsCounts[2]
         
         // Contar recursos em análise
@@ -912,10 +1025,13 @@ export default {
         // Atualizar paginação
         this.atualizarTotalPaginacao('processosPendentes', this.processosPendentes.length)
         this.atualizarTotalPaginacao('recursosAnalise', this.recursos.length)
+        
+        
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
       } finally {
         this.loading = false
+        this.isLoadingData = false
       }
     },
     async contarPorStatus(status) {
@@ -998,7 +1114,9 @@ export default {
     
     formatarStatusProcesso(status) {
       switch (status) {
-        case 'assinado_orgao_admin': return 'Pronto para Julgamento'
+        case 'assinado_admin': return 'Pronto para Julgamento'
+        case 'julgamento_ccl': return 'Em Julgamento pela CCL'
+        case 'aprovado_ccl': return 'Aprovado pela CCL'
         case 'ata_julgamento_ccl_aprovacao': return 'Ata de Julgamento Emitida - Recomenda Aprovação'
         case 'ata_julgamento_ccl_rejeicao': return 'Ata de Julgamento Emitida - Recomenda Rejeição'
         case 'diligencia_ccl': return 'Diligência CCL'
@@ -1026,22 +1144,14 @@ export default {
               <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <h4 style="margin: 0 0 10px 0;">📰 Informações do Processo</h4>
                 <p><strong>Número:</strong> ${processo.numero_processo}</p>
-                <p><strong>Tipo:</strong> ${processo.folha_rosto?.tipo_processo || 'Não informado'}</p>
+                <p><strong>Tipo:</strong> ${processo.tipo_processo || 'Não informado'}</p>
                 <p><strong>Status:</strong> ${this.formatarStatusProcesso(processo.status)}</p>
                 <p><strong>Data Finalização:</strong> ${this.formatDate(processo.atualizado_em)}</p>
               </div>
               
               <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <h4 style="margin: 0 0 10px 0;">📎 Produtos Relacionados</h4>
-                ${processo.produtos_relacionados && processo.produtos_relacionados.length > 0 ? 
-                  processo.produtos_relacionados.map(p => `
-                    <div style="border-bottom: 1px solid #bbdefb; padding: 8px 0;">
-                      <strong>${p.nome}</strong><br>
-                      <small>Marca: ${p.marca || 'Não informado'}</small>
-                    </div>
-                  `).join('') : 
-                  '<p style="color: #666; font-style: italic;">Nenhum produto relacionado</p>'
-                }
+                <p style="color: #666; font-style: italic;">Produtos vinculados ao processo administrativo</p>
               </div>
               
               <div style="background: #fff3e0; padding: 15px; border-radius: 8px;">
@@ -1064,31 +1174,95 @@ export default {
       }
     },
     
+    async tramitarProcessoAdministrativo(processo) {
+      try {
+        const confirmacao = confirm(
+          `⚖️ TRAMITAR PROCESSO PARA JULGAMENTO\n\n` +
+          `Processo: ${processo.numero_processo}\n` +
+          `Status atual: Assinado pelo Órgão Administrativo\n` +
+          `Próximo status: Em Julgamento pela CCL\n\n` +
+          `Confirma a tramitação?`
+        )
+
+        if (!confirmacao) return
+
+        console.log('🚀 Tramitando processo para julgamento CCL:', processo.id)
+        console.log('📊 Status atual do processo:', processo.status)
+        console.log('📊 Tipo do processo:', processo.tipo_processo)
+        
+        const resultado = await TramitacaoProcessosService.enviarProcesso(processo.id, 'Processo tramitado para julgamento da CCL')
+        console.log('📊 Resultado da tramitação:', resultado)
+        
+        if (resultado && resultado.sucesso) {
+          this.$swal({
+            title: '✅ Processo Tramitado!',
+            text: `O processo ${processo.numero_processo} foi tramitado para julgamento da CCL com sucesso.`,
+            icon: 'success'
+          })
+          
+          // Recarregar dados
+          await this.carregarDados(true)
+        } else {
+          throw new Error('Falha na tramitação do processo')
+        }
+        
+      } catch (error) {
+        console.error('Erro ao tramitar processo:', error)
+        this.$swal({
+          title: '❌ Erro na Tramitação',
+          text: `Erro ao tramitar processo: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+
     async julgarProcessoAdministrativo(processo) {
       try {
         const { value: julgamento } = await this.$swal({
           title: `📋 Emitir Ata de Julgamento - Processo ${processo.numero_processo}`,
           html: `
-            <div style="text-align: left; padding: 15px;">
+            <div style="text-align: left; padding: 15px; max-height: 70vh; overflow-y: auto;">
               <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 10px 0;">📄 Dados do Processo</h4>
                 <p><strong>Número:</strong> ${processo.numero_processo}</p>
-                <p><strong>Tipo:</strong> ${processo.folha_rosto?.tipo_processo || 'Não informado'}</p>
+                <p><strong>Tipo:</strong> ${processo.tipo_processo || 'Pré-qualificação de Bens'}</p>
+                <p><strong>Data de Autuação:</strong> ${this.formatDate(processo.criado_em)}</p>
               </div>
               
               <div style="margin-bottom: 15px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Recomendação da CCL para a Autoridade Competente:</label>
-                <select id="recomendacaoProcesso" class="swal2-select" style="width: 100%;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">
+                  📋 Recomendação da CCL para a Autoridade Competente:
+                  <span style="color: red;">*</span>
+                </label>
+                <select id="recomendacaoProcesso" class="swal2-select" style="width: 100%; padding: 8px;">
                   <option value="">Selecione a recomendação...</option>
-                  <option value="recomendar_aprovacao">📋 Recomendar Aprovação</option>
-                  <option value="recomendar_rejeicao">📋 Recomendar Rejeição</option>
-                  <option value="solicitar_diligencia">📋 Solicitar Diligência</option>
+                  <option value="recomendar_homologacao">✅ Recomendar Homologação</option>
+                  <option value="recomendar_indeferimento">❌ Recomendar Indeferimento</option>
+                  <option value="solicitar_diligencia">📄 Solicitar Diligência à CPM</option>
                 </select>
               </div>
               
               <div style="margin-bottom: 15px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Análise Técnica e Fundamentação:</label>
-                <textarea id="fundamentacaoProcesso" class="swal2-textarea" rows="6" placeholder="Descreva a análise técnica completa que será incluída na Ata de Julgamento..." style="width: 100%;"></textarea>
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">
+                  🔍 Fundamentação Legal:
+                  <span style="color: red;">*</span>
+                </label>
+                <textarea id="fundamentacaoLegal" class="swal2-textarea" rows="3" placeholder="Base legal da decisão (Ex: Art. 78, § 2º da Lei 14.133/2021 c/c Regulamento Interno...)" style="width: 100%; padding: 8px;"></textarea>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">
+                  📝 Análise Técnica da CCL:
+                  <span style="color: red;">*</span>
+                </label>
+                <textarea id="fundamentacaoProcesso" class="swal2-textarea" rows="6" placeholder="Descreva a análise técnica detalhada realizada pela CCL sobre o trabalho da CPM, incluindo a verificação da regularidade dos procedimentos, análise da documentação apresentada, e avaliação dos pareceres técnicos..." style="width: 100%; padding: 8px;"></textarea>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">
+                  💡 Considerações Adicionais:
+                </label>
+                <textarea id="consideracoesAdicionais" class="swal2-textarea" rows="3" placeholder="Observações adicionais da CCL (se houver)..." style="width: 100%; padding: 8px;"></textarea>
               </div>
               
               <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
@@ -1107,25 +1281,43 @@ export default {
               </div>
             </div>
           `,
-          width: '700px',
+          width: '90%',
+          maxWidth: '800px',
+          heightAuto: false,
+          customClass: {
+            container: 'swal2-container-modal',
+            popup: 'swal2-popup-modal'
+          },
           showCancelButton: true,
           confirmButtonText: '📋 Emitir Ata de Julgamento',
           cancelButtonText: '❌ Cancelar',
           preConfirm: () => {
             const recomendacao = document.getElementById('recomendacaoProcesso').value
             const fundamentacao = document.getElementById('fundamentacaoProcesso').value.trim()
+            const fundamentacaoLegal = document.getElementById('fundamentacaoLegal').value.trim()
+            const consideracoesAdicionais = document.getElementById('consideracoesAdicionais').value.trim()
             
             if (!recomendacao) {
               this.$swal.showValidationMessage('Selecione uma recomendação')
               return false
             }
             
-            if (!fundamentacao) {
-              this.$swal.showValidationMessage('A análise técnica e fundamentação são obrigatórias')
+            if (!fundamentacaoLegal) {
+              this.$swal.showValidationMessage('A fundamentação legal é obrigatória')
               return false
             }
             
-            return { recomendacao, fundamentacao }
+            if (!fundamentacao) {
+              this.$swal.showValidationMessage('A análise técnica da CCL é obrigatória')
+              return false
+            }
+            
+            return { 
+              recomendacao, 
+              fundamentacao, 
+              fundamentacaoLegal,
+              consideracoesAdicionais 
+            }
           }
         })
         
@@ -1134,11 +1326,11 @@ export default {
         // Definir novo status baseado na recomendação da CCL
         let novoStatus
         switch (julgamento.recomendacao) {
-          case 'recomendar_aprovacao':
-            novoStatus = 'ata_julgamento_ccl_aprovacao'
+          case 'recomendar_homologacao':
+            novoStatus = 'ata_julgamento_ccl_homologacao'
             break
-          case 'recomendar_rejeicao':
-            novoStatus = 'ata_julgamento_ccl_rejeicao'
+          case 'recomendar_indeferimento':
+            novoStatus = 'ata_julgamento_ccl_indeferimento'
             break
           case 'solicitar_diligencia':
             novoStatus = 'diligencia_ccl'
@@ -1152,6 +1344,8 @@ export default {
             status: novoStatus,
             ata_julgamento_ccl: julgamento.fundamentacao,
             recomendacao_ccl: julgamento.recomendacao,
+            fundamentacao_legal_ccl: julgamento.fundamentacaoLegal,
+            consideracoes_adicionais_ccl: julgamento.consideracoesAdicionais,
             ata_emitida_ccl_em: new Date().toISOString(),
             atualizado_em: new Date().toISOString()
           })
@@ -1160,7 +1354,7 @@ export default {
         if (error) throw error
         
         // Recarregar dados
-        await this.carregarDados()
+        await this.carregarDados(true)
         
         this.$swal({
           title: '📋 Ata de Julgamento Emitida!',
@@ -1278,7 +1472,7 @@ export default {
         // Por exemplo: status = 'ata_julgamento_emitida_ccl'
         
         // Recarregar dados
-        await this.carregarDados()
+        await this.carregarDados(true)
         
       } catch (error) {
         console.error('Erro ao emitir ata de julgamento:', error)
@@ -3288,7 +3482,7 @@ Exemplo:
         // 6. Recarregar dados da interface
         await this.carregarAtasJulgamento()
         await this.carregarAtasEmElaboracao()
-        await this.carregarDados() // Recarregar contadores
+        await this.carregarDados(true) // Recarregar contadores
 
         // 7. Mostrar sucesso e orientar o usuário
         this.$swal({
@@ -5233,11 +5427,49 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
     // Expor as funções no window para que possam ser chamadas pelos onclick dos SweetAlert
     window.baixarDocumentacaoProduto = (produtoId) => this.baixarDocumentacaoProduto(produtoId)
     window.baixarDocumentacaoRecursoEspecifico = (recursoId) => this.baixarDocumentacaoRecursoEspecifico(recursoId)
+    
+    // Garantir carregamento de dados caso o created() não tenha funcionado
+    if (this.currentTenantId && this.processosPendentes.length === 0) {
+      console.log('🔄 [DEBUG CCL MOUNTED] Carregando dados no mounted')
+      this.carregarDados(true)
+    }
   }
 }
 </script>
 
 <style scoped>
+/* Correções para os modais SweetAlert */
+:global(.swal2-container-modal) {
+  padding: 10px !important;
+}
+
+:global(.swal2-popup-modal) {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  padding: 20px !important;
+}
+
+:global(.swal2-content) {
+  max-height: 70vh !important;
+  overflow-y: auto !important;
+}
+
+:global(.swal2-html-container) {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Ajustes para campos do formulário */
+:global(.swal2-select), 
+:global(.swal2-textarea) {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+:global(.swal2-textarea) {
+  min-height: 100px !important;
+  resize: vertical !important;
+}
 .dashboard {
   padding: 20px;
 }

@@ -29,23 +29,15 @@ Todos os órgãos compartilham o mesmo **Tenant ID**, permitindo comunicação e
 **Acessos:**
 
 - Painel CCL
-- **Recebe processos administrativos finalizados** pela CPPM
+- **Recebe processos  pela 
 - **Emite julgamento e envia o processo para homologação ao Órgão Administrativo**
 - Após homologação, **retorna processo para CPPM** para emissão de DCB
 
 Painel CCL
 
-- **Receberá apenas processos administrativos finalizados**
+- **R
 
 ### **Atualização no Fluxo de Envio para a CCL**
-
-> Antes:
-> 
-> 
-> Assim que a CPPM aprovava um produto, ele já era encaminhado diretamente para a CCL.
-> 
-
-> Agora:
 > 
 > 
 > A **CCL só receberá o processo administrativo após sua finalização completa**. O novo fluxo é o seguinte:
@@ -56,7 +48,7 @@ Painel CCL
     - **Devolve com pendências** para correção.
 3. A CPPM recebe de volta o processo:
     - **Caso tenha pendência**, ela corrige e reenvia.
-    - **Caso esteja assinado**, o processo é considerado **finalizado**.
+    - **Caso esteja assinado**, o processo é considerado 
 4. **Somente após essa finalização e retorno do processo assinado à CPPM**, será habilitada no sistema a **opção de tramitação para a CCL**.
 
 📌 **Resumo:**
@@ -133,61 +125,4 @@ O sistema deverá disparar **alertas por e-mail** para os órgãos responsáveis
 
 O sistema deve permitir que processos administrativos sejam **compartilhados com usuários externos apenas em modo de leitura**, sem opção de assinatura ou edição. Isso pode ser usado, por exemplo, para consulta pública ou acompanhamento por terceiros autorizados.
 
----
-
-### 📋 **PENDÊNCIAS TÉCNICAS IDENTIFICADAS**
-
-#### **🔄 Ajustes no Fluxo Atual (CRÍTICO)**
-- [ ] **Corrigir condição para "Enviar para CCL"**: Só deve aparecer após processo estar assinado pelo Órgão Admin
-- [ ] **Atualizar status do fluxo**: Incluir estados intermediários para controle de quando CCL pode receber
-- [ ] **Ajustar assistente de processos**: Corrigir formulários de Padronização/Despadronização com scroll
-
-#### **📧 Sistema de Notificações Automáticas (ALTA)**
-- [ ] **Email quando processo é tramitado**: Notificar órgão responsável
-- [ ] **Alertas de pendências**: Lembretes automáticos de processos parados
-- [ ] **Confirmações de ação**: Notificar quando processo é assinado/homologado
-- [ ] **Template de emails**: Criar templates específicos por tipo de notificação
-
-#### **📄 Gestão de Documentos (ALTA)**
-- [ ] **Numeração sequencial**: Controle automático de numeração de folhas (Fl. 001, 002, etc.)
-- [ ] **Modelos de DFD**: Implementar os 3 modelos diferentes baseados nos arquivos .docx
-- [ ] **Inserção ordenada**: Documentos em ordem cronológica no processo
-- [ ] **Upload de documentos**: Interface para adicionar documentos ao processo
-
-#### **🏛️ Emissão de DCB (ALTA)**
-- [ ] **Geração automática**: Criar DCB após retorno da CCL homologada
-- [ ] **Template de DCB**: Baseado no processo e produtos aprovados
-- [ ] **Numeração de DCB**: Sistema de numeração única para DCBs
-
-#### **🔗 Funcionalidades Complementares (MÉDIA)**
-- [ ] **Compartilhamento público**: Links para visualização externa (somente leitura)
-- [ ] **Histórico de tramitação**: Timeline visual completa do processo
-- [ ] **Relatórios gerenciais**: Dashboard com métricas de processos por órgão
-- [ ] **Backup/Arquivamento**: Sistema de arquivamento de processos finalizados
-
-#### **✅ Funcionalidades Já Implementadas**
-- [x] **Sistema de 4 perfis**: CPM, CCL, Órgão Admin, Assessoria Jurídica
-- [x] **Navegação restrita**: Cada perfil vê apenas suas funcionalidades
-- [x] **Fluxo de 5 fases**: Conforme Lei 14.133/2021
-- [x] **Assinatura digital**: Por perfil com cargos automáticos
-- [x] **Controle de transições**: Validação de permissões por status
-- [x] **Interface de workflow**: Botões de ação dinâmicos por perfil
-- [x] **Registro de tramitação**: Log completo de movimentações
-
----
-
-### 🎯 **ROTEIRO PARA AMANHÃ**
-
-**PRIORIDADE MÁXIMA (Fazer primeiro):**
-1. 🔧 **Corrigir assistente de processos** (scroll e formulários)
-2. 🔄 **Ajustar fluxo CCL** (só receber processos assinados)
-3. 📧 **Implementar notificações básicas** (email de tramitação)
-
-**PRIORIDADE ALTA (Se der tempo):**
-4. 📄 **Modelos de DFD corretos**
-5. 🔢 **Numeração de documentos**
-6. 🏛️ **Geração de DCB**
-
-**Para a semana:**
-7. 🔗 **Compartilhamento externo**
-8. 📊 **Relatórios e métricas**
+--

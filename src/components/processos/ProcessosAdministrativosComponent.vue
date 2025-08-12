@@ -215,35 +215,11 @@
                 class="btn-action">
                 ✏️ Editar
               </button>
-              <button @click.stop="visualizarDocumentacao(processo)" class="btn-action">
-                📋 Docs
-              </button>
               <button @click.stop="gerarRelatorio(processo)" class="btn-action">
                 📄 PDF
               </button>
             </div>
             
-            <!-- Ações de Workflow baseadas no perfil do usuário -->
-            <div v-if="obterAcoesProcesso(processo).length > 0" class="workflow-actions">
-              <div class="workflow-header">
-                <span class="workflow-label">🔄 Ações Disponíveis</span>
-              </div>
-              <div class="workflow-buttons">
-                <button 
-                  v-for="acao in obterAcoesProcesso(processo)" 
-                  :key="acao"
-                  @click.stop="executarAcaoWorkflow(processo, acao)"
-                  class="btn-workflow"
-                  :class="{ 
-                    'aprovacao': acao.includes('aprovar') || acao.includes('homologar') || acao.includes('assinar'),
-                    'rejeicao': acao.includes('rejeitar'),
-                    'submissao': acao.includes('submeter')
-                  }"
-                >
-                  {{ obterLabelAcao(acao) }}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -329,31 +305,79 @@
               </div>
               
               <div class="processo-actions-panel">
-                <button @click="gerarRelatorio(processoSelecionado)" class="btn-primary btn-large">
-                  📄 Gerar Relatório PDF
-                </button>
-                
-                <!-- Botão para enviar para análise administrativa -->
-                <button 
-                  v-if="podeEnviarParaAnalise(processoSelecionado)" 
-                  @click="enviarParaAnaliseAdministrativa(processoSelecionado)" 
-                  class="btn-success btn-large"
-                >
-                  🚀 Enviar para Análise Administrativa
-                </button>
-                
-                <button @click="adicionarDocumento(processoSelecionado)" class="btn-secondary">
-                  📎 Adicionar Documento
-                </button>
-                <button 
-                  v-if="podeEditarProcesso(processoSelecionado)" 
-                  @click="editarProcesso(processoSelecionado)" 
-                  class="btn-secondary">
-                  ✏️ Editar Processo
-                </button>
-                <button @click="verTramitacao(processoSelecionado)" class="btn-secondary">
-                  📋 Ver Tramitação
-                </button>
+                <div class="actions-grid">
+                  <button @click="gerarRelatorio(processoSelecionado)" class="action-btn action-btn-primary">
+                    <span class="btn-icon">📄</span>
+                    <span class="btn-text">Gerar Relatório PDF</span>
+                  </button>
+                  
+                  <!-- Botão para enviar para análise administrativa (CPM apenas) -->
+                  <button 
+                    v-if="podeEnviarParaAnalise(processoSelecionado)" 
+                    @click="enviarParaAnaliseAdministrativa(processoSelecionado)" 
+                    class="action-btn action-btn-success"
+                  >
+                    <span class="btn-icon">🚀</span>
+                    <span class="btn-text">Enviar para Análise</span>
+                  </button>
+                  
+                  <!-- Botões específicos para Órgão Administrativo em processos aguardando assinatura -->
+                  <button 
+                    v-if="podeOrgaoAssinarDocumento(processoSelecionado)" 
+                    @click="assinarEEnviarProcesso(processoSelecionado)" 
+                    class="action-btn action-btn-success"
+                  >
+                    <span class="btn-icon">✍️</span>
+                    <span class="btn-text">Assinar e Enviar para CCL</span>
+                  </button>
+                  
+                  <button 
+                    v-if="podeDevolverParaCPM(processoSelecionado)" 
+                    @click="abrirModalDevolucao(processoSelecionado)" 
+                    class="action-btn action-btn-warning"
+                  >
+                    <span class="btn-icon">↩️</span>
+                    <span class="btn-text">Devolver para CPM</span>
+                  </button>
+                  
+                  <!-- Botão para tramitar processo assinado para CCL -->
+                  <button 
+                    v-if="podeTramitarParaCCL(processoSelecionado)" 
+                    @click="tramitarProcessoParaCCL(processoSelecionado)" 
+                    class="action-btn action-btn-success"
+                  >
+                    <span class="btn-icon">⚖️</span>
+                    <span class="btn-text">{{ obterTextoBotaoTramitacao(processoSelecionado) }}</span>
+                  </button>
+                  
+                  <button @click="verTramitacao(processoSelecionado)" class="action-btn action-btn-info">
+                    <span class="btn-icon">📋</span>
+                    <span class="btn-text">Ver Tramitação</span>
+                  </button>
+                  
+                  <!-- Botão para reenviar processo devolvido (CPM apenas) -->
+                  <button 
+                    v-if="podeReenviarProcesso(processoSelecionado)" 
+                    @click="reenviarProcessoDevolvido(processoSelecionado)" 
+                    class="action-btn action-btn-success"
+                  >
+                    <span class="btn-icon">🔄</span>
+                    <span class="btn-text">Reenviar Processo</span>
+                  </button>
+                  
+                  <button @click="adicionarDocumento(processoSelecionado)" class="action-btn action-btn-secondary">
+                    <span class="btn-icon">📎</span>
+                    <span class="btn-text">{{ obterTextoAdicionarDocumento() }}</span>
+                  </button>
+                  
+                  <button 
+                    v-if="podeEditarProcesso(processoSelecionado)" 
+                    @click="editarProcesso(processoSelecionado)" 
+                    class="action-btn action-btn-warning">
+                    <span class="btn-icon">✏️</span>
+                    <span class="btn-text">Editar Processo</span>
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -361,6 +385,31 @@
               <h4>🎯 Objeto do Processo</h4>
               <div class="objeto-container">
                 <p class="objeto-texto">{{ processoSelecionado.objeto }}</p>
+              </div>
+              
+              <!-- Seção de Motivo da Devolução (se houver) -->
+              <div v-if="processoFoiDevolvido(processoSelecionado)" class="devolucao-info">
+                <h4>⚠️ Motivo da Devolução</h4>
+                <div class="devolucao-container">
+                  <div class="devolucao-header">
+                    <span class="devolucao-status">🔴 {{ obterNomeStatus(processoSelecionado.status) }}</span>
+                    <span class="devolucao-data">{{ new Date(processoSelecionado.data_devolucao).toLocaleDateString('pt-BR') }}</span>
+                  </div>
+                  
+                  <div class="motivo-devolucao">
+                    <h5>📝 Motivo:</h5>
+                    <p class="motivo-texto">{{ processoSelecionado.motivo_devolucao || 'Motivo não informado' }}</p>
+                  </div>
+                  
+                  <div v-if="processoSelecionado.observacoes_devolucao" class="observacoes-devolucao">
+                    <h5>📝 Observações:</h5>
+                    <p class="observacoes-texto">{{ processoSelecionado.observacoes_devolucao }}</p>
+                  </div>
+                  
+                  <div class="acao-requerida">
+                    <p><strong>📝 Ação Requerida:</strong> Corrija os pontos mencionados e reenvie o processo.</p>
+                  </div>
+                </div>
               </div>
               
               <h4>📄 Documentos do Processo</h4>
@@ -998,6 +1047,27 @@
                 </div>
               </div>
 
+              <!-- Ações de Tramitação -->
+              <div v-if="acoesDisponiveis[processoSelecionado.id] && acoesDisponiveis[processoSelecionado.id].length > 0" class="tramitacao-actions-container">
+                <h4>🔄 Ações de Tramitação</h4>
+                <div class="workflow-buttons-modal">
+                  <button 
+                    v-for="acao in acoesDisponiveis[processoSelecionado.id]" 
+                    :key="acao.tipo"
+                    @click="executarAcaoTramitacao(processoSelecionado, acao)"
+                    class="btn-workflow-modal"
+                    :class="{ 
+                      'success': acao.cor === 'success',
+                      'warning': acao.cor === 'warning',
+                      'danger': acao.cor === 'danger'
+                    }"
+                    :title="acao.descricao"
+                  >
+                    {{ acao.label }}
+                  </button>
+                </div>
+              </div>
+
               <div class="historico-container">
                 <h4>📈 Linha do Tempo</h4>
                 <div v-if="historicoTramitacao.length === 0" class="sem-historico">
@@ -1022,6 +1092,160 @@
           </div>
         </div>
       </div>
+      
+      <!-- Modal de Confirmação de Tramitação -->
+      <div v-if="mostrarModalConfirmacaoTramitacao" class="modal-overlay" @click="fecharModalConfirmacaoTramitacao">
+      <div class="modal-confirmacao-tramitacao" @click.stop>
+        <div class="modal-header-tramitacao">
+          <div class="header-icon">
+            <span class="tramitacao-icon">{{ dadosConfirmacaoTramitacao.icone }}</span>
+          </div>
+          <div class="header-content">
+            <h3>{{ dadosConfirmacaoTramitacao.titulo }}</h3>
+            <p class="processo-numero">Processo: {{ dadosConfirmacaoTramitacao.numeroProcesso }}</p>
+          </div>
+          <button @click="fecharModalConfirmacaoTramitacao" class="btn-close-tramitacao">&times;</button>
+        </div>
+        
+        <div class="modal-body-tramitacao">
+          <div class="confirmacao-info">
+            <div class="status-flow">
+              <div class="status-atual">
+                <span class="status-label">Status Atual</span>
+                <span class="status-badge atual">{{ dadosConfirmacaoTramitacao.statusAtual }}</span>
+              </div>
+              <div class="flow-arrow">→</div>
+              <div class="status-proximo">
+                <span class="status-label">Próximo Status</span>
+                <span class="status-badge proximo">{{ dadosConfirmacaoTramitacao.proximoStatus }}</span>
+              </div>
+            </div>
+            
+            <div class="observacoes-section">
+              <label for="observacoesTramitacao" class="obs-label">
+                💭 Observações (opcional)
+              </label>
+              <textarea 
+                id="observacoesTramitacao"
+                v-model="observacoesTramitacao"
+                class="obs-textarea"
+                :placeholder="dadosConfirmacaoTramitacao.placeholderObservacoes"
+                rows="3"
+              ></textarea>
+            </div>
+            
+            <div class="tramitacao-aviso">
+              <div class="aviso-icon">ℹ️</div>
+              <div class="aviso-texto">
+                <p><strong>O que acontece após a tramitação:</strong></p>
+                <ul>
+                  <li>{{ dadosConfirmacaoTramitacao.consequencia1 }}</li>
+                  <li>{{ dadosConfirmacaoTramitacao.consequencia2 }}</li>
+                  <li>{{ dadosConfirmacaoTramitacao.consequencia3 }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer-tramitacao">
+          <button 
+            @click="fecharModalConfirmacaoTramitacao" 
+            class="btn-cancelar"
+          >
+            ❌ Cancelar
+          </button>
+          <button 
+            @click="confirmarTramitacao" 
+            class="btn-confirmar"
+            :disabled="processandoTramitacao"
+          >
+            <span v-if="!processandoTramitacao">
+              {{ dadosConfirmacaoTramitacao.icone }} {{ dadosConfirmacaoTramitacao.textoBotao }}
+            </span>
+            <span v-else>
+              ⏳ Processando...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal de Devolução para CPM -->
+    <div v-if="mostrarModalDevolucao" class="modal-overlay" @click="fecharModalDevolucao">
+      <div class="modal-devolucao" @click.stop>
+        <div class="modal-header-devolucao">
+          <div class="header-icon">
+            <span class="devolucao-icon">↩️</span>
+          </div>
+          <div class="header-content">
+            <h3>Devolver Processo para CPM</h3>
+            <p>{{ processoParaDevolucao?.numero_processo }}</p>
+          </div>
+          <button @click="fecharModalDevolucao" class="btn-close">&times;</button>
+        </div>
+        
+        <div class="modal-body-devolucao">
+          <div class="status-flow">
+            <div class="status-item status-atual">
+              <span class="status-badge">📋 {{ obterNomeStatus(processoParaDevolucao?.status) }}</span>
+              <span class="status-label">Status Atual</span>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="status-item status-destino">
+              <span class="status-badge blue">✅ Criado pela CPM</span>
+              <span class="status-label">Após Devolução</span>
+            </div>
+          </div>
+          
+          <div class="motivo-section">
+            <label for="motivoDevolucao" class="field-label">
+              <span class="label-icon">📝</span>
+              Motivo da Devolução *
+            </label>
+            <textarea 
+              id="motivoDevolucao"
+              v-model="motivoDevolucao" 
+              class="motivo-textarea"
+              placeholder="Descreva o motivo da devolução do processo..."
+              rows="4"
+              required
+            ></textarea>
+          </div>
+          
+          <div class="observacoes-section">
+            <label for="observacoesDevolucao" class="field-label">
+              <span class="label-icon">📝</span>
+              Observações Adicionais
+            </label>
+            <textarea 
+              id="observacoesDevolucao"
+              v-model="observacoesDevolucao" 
+              class="observacoes-textarea"
+              placeholder="Observações adicionais (opcional)..."
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+        
+        <div class="modal-footer-devolucao">
+          <button @click="fecharModalDevolucao" class="btn-cancel">
+            ❌ Cancelar
+          </button>
+          <button 
+            @click="confirmarDevolucao" 
+            class="btn-confirm-devolucao"
+            :disabled="!motivoDevolucao.trim() || processandoDevolucao"
+          >
+            <span v-if="!processandoDevolucao">
+              ↩️ Devolver para CPM
+            </span>
+            <span v-else>
+              ⏳ Devolvendo...
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
     
   </div>
@@ -1031,6 +1255,7 @@
 import ProcessosAdministrativosService from '../../services/processosAdministrativosService'
 import DocumentosAdministrativosService from '../../services/documentosAdministrativos'
 import NumeracaoDocumentosService from '../../services/numeracaoDocumentosService'
+import TramitacaoProcessosService from '../../services/tramitacaoProcessosService'
 import AssistenteProcesso from './AssistenteProcesso.vue'
 import ModalVincularEdital from './ModalVincularEdital.vue'
 import DocumentacaoProdutos from './DocumentacaoProdutos.vue'
@@ -1059,6 +1284,7 @@ export default {
       
       // Controle de fluxo
       perfilUsuario: '',
+      acoesDisponiveis: {}, // Ações de tramitação por processo
       
       // Modais
       mostrarAssistente: false,
@@ -1082,6 +1308,20 @@ export default {
       tipoDocumentoSelecionado: '',
       observacoesDocumento: '',
       processandoUpload: false,
+      
+      // Modal de confirmação de tramitação
+      mostrarModalConfirmacaoTramitacao: false,
+      dadosConfirmacaoTramitacao: {},
+      observacoesTramitacao: '',
+      processandoTramitacao: false,
+      callbackConfirmacao: null,
+      
+      // Modal de devolução
+      mostrarModalDevolucao: false,
+      processoParaDevolucao: null,
+      motivoDevolucao: '',
+      observacoesDevolucao: '',
+      processandoDevolucao: false,
     }
   },
 
@@ -1247,6 +1487,7 @@ export default {
           busca: this.termoBusca
         }
         this.processos = await ProcessosAdministrativosService.listarProcessos(filtros)
+        await this.carregarAcoesDisponiveis()
         this.filtrarProcessos()
       } catch (error) {
         console.error('Erro ao carregar processos:', error)
@@ -1398,18 +1639,133 @@ export default {
         processo: processo?.numero_processo || processo?.id,
         status: processo?.status,
         tipo: processo?.tipo_processo,
+        perfilUsuario: this.perfilUsuario,
         documentos: this.documentosProcesso?.length || 0,
         produtos: this.produtosProcesso?.length || 0
       })
       
-      // Status permitidos (considerando maiúsculo e minúsculo)
-      const statusPermitidos = ['rascunho', 'RASCUNHO', 'aguardando_aprovacao', 'AGUARDANDO_APROVACAO']
       const statusProcesso = processo?.status?.toLowerCase() || ''
-      const podeEnviar = ['rascunho', 'aguardando_aprovacao'].includes(statusProcesso)
+      const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
       
-      console.log('🎯 Resultado:', podeEnviar ? '✅ MOSTRAR BOTÃO' : '❌ OCULTAR BOTÃO')
+      // CPM pode enviar processos com status 'criado_cpm'
+      if (perfilUsuario === 'cpm' && statusProcesso === 'criado_cpm') {
+        console.log('🎯 Resultado CPM:', '✅ MOSTRAR BOTÃO - CPM pode enviar criado_cpm')
+        return true
+      }
       
-      return podeEnviar
+      // CPM pode enviar processos em rascunho/aguardando_aprovacao
+      if (perfilUsuario === 'cpm' && ['rascunho', 'aguardando_aprovacao'].includes(statusProcesso)) {
+        console.log('🎯 Resultado CPM:', '✅ MOSTRAR BOTÃO - CPM pode enviar rascunho/aguardando')
+        return true
+      }
+      
+      // Órgão Administrativo NÃO deve ver botão "Enviar para Análise" em processos criado_cpm
+      if (perfilUsuario === 'orgao_administrativo' && statusProcesso === 'criado_cpm') {
+        console.log('🎯 Resultado ORGAO:', '❌ OCULTAR BOTÃO - Órgão não pode enviar criado_cpm')
+        return false
+      }
+      
+      console.log('🎯 Resultado:', '❌ OCULTAR BOTÃO - Sem permissão')
+      return false
+    },
+    
+    // Função para verificar se deve mostrar botões específicos do Órgão Administrativo
+    podeOrgaoAssinarDocumento(processo) {
+      const statusProcesso = processo?.status?.toLowerCase() || ''
+      const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
+      
+      // Órgão Administrativo pode assinar documentos em status "aguardando_assinatura_orgao"
+      return perfilUsuario === 'orgao_administrativo' && statusProcesso === 'aguardando_assinatura_orgao'
+    },
+    
+    // Função para verificar se deve mostrar botão de devolver para CPM
+    podeDevolverParaCPM(processo) {
+      const statusProcesso = processo?.status?.toLowerCase() || ''
+      const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
+      
+      // Órgão Administrativo pode devolver em status "aguardando_assinatura_orgao"
+      return perfilUsuario === 'orgao_administrativo' && statusProcesso === 'aguardando_assinatura_orgao'
+    },
+    
+    // Função para obter o texto correto do botão Adicionar Documento
+    obterTextoAdicionarDocumento() {
+      const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
+      
+      if (perfilUsuario === 'orgao_administrativo') {
+        return 'Adicionar Documento Assinado'
+      }
+      
+      return 'Adicionar Documento'
+    },
+    
+    podeTramitarParaCCL(processo) {
+      console.log('🔍 DEBUG - Verificando botão tramitar para CCL:', {
+        processo: processo?.numero_processo || processo?.id,
+        status: processo?.status,
+        tipo: processo?.tipo_processo
+      })
+      
+      const statusProcesso = processo?.status?.toLowerCase() || ''
+      const podeTramitar = statusProcesso === 'assinado_admin'
+      
+      console.log('⚖️ Resultado tramitação CCL:', podeTramitar ? '✅ MOSTRAR BOTÃO' : '❌ OCULTAR BOTÃO')
+      
+      return podeTramitar
+    },
+    
+    obterTextoBotaoTramitacao(processo) {
+      if (!processo) return 'Tramitar Processo'
+      
+      return TramitacaoProcessosService.obterNomeBotaoTramitacao(processo.status, processo.tipo_processo)
+    },
+    
+    async tramitarProcessoParaCCL(processo) {
+      try {
+        const confirmacao = confirm(
+          `⚖️ TRAMITAR PROCESSO PARA CCL\n\n` +
+          `Processo: ${processo.numero_processo}\n` +
+          `Status atual: Assinado pelo Órgão\n` +
+          `Próximo status: Em Julgamento pela CCL\n\n` +
+          `Confirma a tramitação?`
+        )
+
+        if (!confirmacao) return
+
+        console.log('⚖️ Tramitando processo para CCL:', processo.id)
+        console.log('📊 Status atual do processo:', processo.status)
+        console.log('📊 Tipo do processo:', processo.tipo_processo)
+        
+        const resultado = await TramitacaoProcessosService.enviarProcesso(processo.id, 'Processo tramitado para julgamento da CCL')
+        console.log('📊 Resultado da tramitação:', resultado)
+        
+        if (resultado && resultado.sucesso) {
+          this.$swal({
+            title: '✅ Processo Tramitado!',
+            text: `O processo ${processo.numero_processo} foi tramitado para julgamento da CCL com sucesso.`,
+            icon: 'success'
+          })
+          
+          // Recarregar dados
+          await this.carregarProcessos()
+          
+          // Atualizar processo na lista local para refletir a mudança
+          const index = this.processos.findIndex(p => p.id === processo.id)
+          if (index !== -1) {
+            this.processos[index].status = resultado.statusNovo
+          }
+          
+        } else {
+          throw new Error('Falha na tramitação do processo')
+        }
+        
+      } catch (error) {
+        console.error('Erro ao tramitar processo:', error)
+        this.$swal({
+          title: '❌ Erro na Tramitação',
+          text: `Erro ao tramitar processo: ${error.message}`,
+          icon: 'error'
+        })
+      }
     },
     
     gerarHTMLRelatorio(processo, documentos, produtos) {
@@ -2878,44 +3234,65 @@ export default {
     },
     
     async enviarParaAnaliseAdministrativa(processo) {
-      try {
-        const confirmacao = confirm(
-          `🚀 ENVIAR PARA ANÁLISE ADMINISTRATIVA\n\n` +
-          `Tem certeza que deseja enviar o processo "${processo.numero_processo}" para análise administrativa?\n\n` +
-          `Após o envio, o processo não poderá mais ser editado até retornar para revisão.`
-        )
-        
-        if (!confirmacao) return
-        
-        console.log('Enviando processo para análise administrativa:', processo.id)
-        
-        // Atualizar status do processo
-        await ProcessosAdministrativosService.tramitarProcesso(
-          processo.id, 
-          'analise_administrativa',
-          'Processo enviado para análise administrativa'
-        )
-        
-        // Atualizar na lista local
-        const index = this.processos.findIndex(p => p.id === processo.id)
-        if (index !== -1) {
-          this.processos[index].status = 'analise_administrativa'
-        }
-        
-        // Atualizar processo selecionado se necessário
-        if (this.processoSelecionado && this.processoSelecionado.id === processo.id) {
-          this.processoSelecionado.status = 'analise_administrativa'
-        }
-        
-        alert('✅ Processo enviado para análise administrativa com sucesso!')
-        
-        // Recarregar dados
-        await this.carregarProcessos()
-        
-      } catch (error) {
-        console.error('Erro ao enviar processo para análise:', error)
-        alert(`❌ Erro ao enviar processo para análise: ${error.message}`)
+      // Configurar dados do modal de confirmação
+      this.dadosConfirmacaoTramitacao = {
+        icone: '🚀',
+        titulo: 'Enviar para Análise Administrativa',
+        numeroProcesso: processo.numero_processo,
+        statusAtual: 'Criado pela CPM',
+        proximoStatus: 'Aguardando Assinatura',
+        placeholderObservacoes: 'Ex: Processo revisado e aprovado pela equipe técnica...',
+        consequencia1: 'O processo será encaminhado para o órgão administrativo',
+        consequencia2: 'Você receberá uma notificação por email sobre o andamento',
+        consequencia3: 'O status será alterado para "Aguardando Assinatura"',
+        textoBotao: 'Enviar para Análise'
       }
+      
+      // Configurar callback para executar após confirmação
+      this.callbackConfirmacao = async () => {
+        try {
+          console.log('Enviando processo para análise administrativa:', processo.id)
+          
+          const observacoes = this.observacoesTramitacao || 'Processo enviado para análise administrativa'
+          
+          // Usar o novo sistema de tramitação
+          const resultado = await TramitacaoProcessosService.enviarProcesso(processo.id, observacoes)
+          
+          if (resultado && resultado.sucesso) {
+            console.log('✅ Processo enviado com sucesso:', resultado)
+          
+          // Atualizar na lista local
+          const index = this.processos.findIndex(p => p.id === processo.id)
+          if (index !== -1) {
+            this.processos[index].status = resultado.statusNovo
+          }
+          
+          // Atualizar processo selecionado se necessário
+          if (this.processoSelecionado && this.processoSelecionado.id === processo.id) {
+            this.processoSelecionado.status = resultado.statusNovo
+          }
+          
+            // Recarregar ações disponíveis
+            await this.carregarAcoesDisponiveis()
+            
+            // Mostrar notificação de sucesso
+            this.$toast?.success(`✅ Processo enviado com sucesso!\n\nStatus: ${resultado.statusAnterior} → ${resultado.statusNovo}`)
+            
+            // Recarregar dados
+            await this.carregarProcessos()
+          } else {
+            throw new Error('Falha na tramitação do processo')
+          }
+          
+        } catch (error) {
+          console.error('Erro ao enviar processo para análise:', error)
+          this.$toast?.error(`❌ Erro ao enviar processo: ${error.message}`) || alert(`❌ Erro: ${error.message}`)
+        }
+      }
+      
+      // Mostrar o modal de confirmação
+      this.observacoesTramitacao = ''
+      this.mostrarModalConfirmacaoTramitacao = true
     },
     
     adicionarDocumento(processo) {
@@ -3014,74 +3391,110 @@ export default {
     },
     
     // =====================================================
-    // GESTÃO DE FLUXO - AÇÕES DE WORKFLOW
+    // GESTÃO DE TRAMITAÇÃO DE PROCESSOS
     // =====================================================
     
-    obterAcoesProcesso(processo) {
-      if (!this.perfilUsuario) return []
-      return ProcessosAdministrativosService.obterAcoesDisponiveis(processo.status, this.perfilUsuario)
+    async carregarAcoesDisponiveis() {
+      try {
+        const acoes = {}
+        for (const processo of this.processos) {
+          acoes[processo.id] = await TramitacaoProcessosService.obterAcoesDisponiveis(processo)
+        }
+        this.acoesDisponiveis = acoes
+      } catch (error) {
+        console.error('Erro ao carregar ações disponíveis:', error)
+        this.acoesDisponiveis = {}
+      }
     },
     
-    async executarAcaoWorkflow(processo, acao) {
+    async executarAcaoTramitacao(processo, acao) {
       try {
-        const observacoes = prompt(`Observações para ${acao}:`) || ''
+        let observacoes = ''
+        let motivo = ''
+        
+        // Solicitar observações baseadas no tipo de ação
+        if (acao.tipo === 'ENVIAR') {
+          observacoes = prompt(`Observações para envio:`) || ''
+        } else if (acao.tipo === 'DEVOLVER') {
+          motivo = prompt(`Motivo da devolução (obrigatório):`)
+          if (!motivo || motivo.trim() === '') {
+            alert('Motivo é obrigatório para devolver um processo.')
+            return
+          }
+          observacoes = prompt(`Observações adicionais:`) || ''
+        } else if (acao.tipo === 'REJEITAR') {
+          motivo = prompt(`Motivo da rejeição (obrigatório):`)
+          if (!motivo || motivo.trim() === '') {
+            alert('Motivo é obrigatório para rejeitar um processo.')
+            return
+          }
+          observacoes = prompt(`Observações adicionais:`) || ''
+        }
+        
+        // Confirmar ação
+        const confirmacao = confirm(`Confirma ${acao.label.toLowerCase()}?\n\n${acao.descricao}`)
+        if (!confirmacao) return
         
         let resultado
         
-        switch (acao) {
-          case 'submeter_analise':
-            resultado = await ProcessosAdministrativosService.submeterParaAnalise(processo.id, observacoes)
+        switch (acao.tipo) {
+          case 'ENVIAR':
+            resultado = await TramitacaoProcessosService.enviarProcesso(processo.id, observacoes)
             break
-          case 'aprovar_cpm':
-            resultado = await ProcessosAdministrativosService.aprovarCPM(processo.id, observacoes)
+          case 'DEVOLVER':
+            resultado = await TramitacaoProcessosService.devolverProcesso(processo.id, motivo, observacoes)
             break
-          case 'rejeitar_cpm':
-            resultado = await ProcessosAdministrativosService.rejeitarCPM(processo.id, observacoes)
-            break
-          case 'assinar_admin':
-            resultado = await ProcessosAdministrativosService.assinarAdministrativo(processo.id, observacoes)
-            break
-          case 'rejeitar_admin':
-            resultado = await ProcessosAdministrativosService.rejeitarAdministrativo(processo.id, observacoes)
-            break
-          case 'enviar_ccl':
-            resultado = await ProcessosAdministrativosService.enviarParaCCL(processo.id, observacoes)
-            break
-          case 'aprovar_ccl':
-            resultado = await ProcessosAdministrativosService.aprovarCCL(processo.id, observacoes)
-            break
-          case 'rejeitar_ccl':
-            resultado = await ProcessosAdministrativosService.rejeitarCCL(processo.id, observacoes)
-            break
-          case 'aprovar_juridico':
-            resultado = await ProcessosAdministrativosService.aprovarJuridico(processo.id, observacoes)
-            break
-          case 'rejeitar_juridico':
-            resultado = await ProcessosAdministrativosService.rejeitarJuridico(processo.id, observacoes)
-            break
-          case 'homologar':
-            resultado = await ProcessosAdministrativosService.homologarProcesso(processo.id, observacoes)
-            break
-          case 'rejeitar_final':
-            resultado = await ProcessosAdministrativosService.rejeitarFinal(processo.id, observacoes)
+          case 'REJEITAR':
+            resultado = await TramitacaoProcessosService.rejeitarProcesso(processo.id, motivo, observacoes)
             break
           default:
-            throw new Error(`Ação não reconhecida: ${acao}`)
+            throw new Error(`Ação não implementada: ${acao.tipo}`)
         }
         
-        if (resultado) {
-          alert(`Ação executada com sucesso! Processo agora está: ${resultado.processo.status}`)
+        if (resultado && resultado.sucesso) {
+          const statusInfo = this.obterInfoStatus(resultado.statusNovo)
+          alert(`✅ Ação executada com sucesso!\n\nStatus anterior: ${resultado.statusAnterior}\nNovo status: ${resultado.statusNovo}`)
+          
+          // Recarregar lista de processos
           await this.carregarProcessos()
           
-          // Se há processo selecionado, atualizar
+          // Atualizar processo no modal se ele estiver aberto
           if (this.processoSelecionado && this.processoSelecionado.id === processo.id) {
-            this.processoSelecionado = resultado.processo
+            // Buscar o processo atualizado
+            const processoAtualizado = this.processos.find(p => p.id === processo.id)
+            if (processoAtualizado) {
+              this.processoSelecionado = processoAtualizado
+              // Recarregar ações disponíveis para o novo status
+              await this.carregarAcoesDisponiveis()
+            }
           }
         }
       } catch (error) {
         console.error('Erro ao executar ação:', error)
         alert(`Erro ao executar ação: ${error.message}`)
       }
+    },
+    
+    obterInfoStatus(status) {
+      const statusInfo = {
+        'criado_cpm': '🎯 Criado pela CPM',
+        'aprovado_cpm': '📋 Aprovado pela CPM',
+        'assinado_admin': '✅ Assinado pelo Órgão',
+        'julgamento_ccl': '⚖️ Julgamento CCL',
+        'aprovado_ccl': '💜 Aprovado pela CCL',
+        'aprovado_juridico': '⚖️ Aprovado Juridicamente',
+        'homologado': '✅ Com Homologação',
+        'finalizado': '🏆 Finalizado',
+        'criado_cpm_desp': '🎯 Criado pela CPM',
+        'submetido_autoridade_desp': '📋 Submetido à Autoridade',
+        'abertura_autorizada_desp': '✅ Abertura Autorizada',
+        'homologado_desp': '✅ Com Homologação',
+        'rejeitado_cpm': '❌ Rejeitado pela CPM',
+        'rejeitado_admin': '❌ Rejeitado pelo Órgão',
+        'rejeitado_ccl': '❌ Rejeitado pela CCL',
+        'rejeitado_juridico': '❌ Rejeitado Juridicamente'
+      }
+      return statusInfo[status] || status
     },
     
     obterLabelAcao(acao) {
@@ -3343,6 +3756,217 @@ export default {
     formatarDataHora(data) {
       if (!data) return 'N/A'
       return new Date(data).toLocaleString('pt-BR')
+    },
+    
+    // Métodos para o modal de confirmação de tramitação
+    fecharModalConfirmacaoTramitacao() {
+      this.mostrarModalConfirmacaoTramitacao = false
+      this.dadosConfirmacaoTramitacao = {}
+      this.observacoesTramitacao = ''
+      this.processandoTramitacao = false
+      this.callbackConfirmacao = null
+    },
+    
+    async confirmarTramitacao() {
+      if (!this.callbackConfirmacao) return
+      
+      this.processandoTramitacao = true
+      
+      try {
+        await this.callbackConfirmacao()
+        this.fecharModalConfirmacaoTramitacao()
+      } catch (error) {
+        console.error('Erro na tramitação:', error)
+        this.processandoTramitacao = false
+      }
+    },
+    
+    // =====================================================
+    // MÉTODOS PARA ÓRGÃO ADMINISTRATIVO
+    // =====================================================
+    
+    // Abrir modal de devolução
+    abrirModalDevolucao(processo) {
+      console.log('📝 Abrindo modal de devolução para processo:', processo.numero_processo)
+      this.processoParaDevolucao = processo
+      this.motivoDevolucao = ''
+      this.observacoesDevolucao = ''
+      this.processandoDevolucao = false
+      this.mostrarModalDevolucao = true
+    },
+    
+    // Fechar modal de devolução
+    fecharModalDevolucao() {
+      this.mostrarModalDevolucao = false
+      this.processoParaDevolucao = null
+      this.motivoDevolucao = ''
+      this.observacoesDevolucao = ''
+      this.processandoDevolucao = false
+    },
+    
+    // Confirmar devolução do processo
+    async confirmarDevolucao() {
+      if (!this.motivoDevolucao.trim()) {
+        alert('⚠️ Por favor, informe o motivo da devolução.')
+        return
+      }
+      
+      this.processandoDevolucao = true
+      
+      try {
+        console.log('🔄 Devolvendo processo:', this.processoParaDevolucao.numero_processo)
+        
+        const resultado = await TramitacaoProcessosService.devolverProcesso(
+          this.processoParaDevolucao.id,
+          this.motivoDevolucao,
+          this.observacoesDevolucao
+        )
+        
+        if (resultado.sucesso) {
+          console.log('✅ Processo devolvido com sucesso')
+          
+          // Mostrar mensagem de sucesso
+          alert(
+            `✅ PROCESSO DEVOLVIDO COM SUCESSO\n\n` +
+            `Processo: ${this.processoParaDevolucao.numero_processo}\n` +
+            `Status anterior: ${this.obterNomeStatus(resultado.statusAnterior)}\n` +
+            `Status atual: ${this.obterNomeStatus(resultado.statusNovo)}\n\n` +
+            `O processo foi devolvido para a CPM com o motivo informado.`
+          )
+          
+          // Recarregar processos e fechar modal
+          await this.carregarProcessos()
+          this.fecharModalDevolucao()
+          this.fecharVisualizacaoProcesso()
+        }
+        
+      } catch (error) {
+        console.error('❌ Erro ao devolver processo:', error)
+        alert(`❌ Erro ao devolver processo: ${error.message}`)
+      } finally {
+        this.processandoDevolucao = false
+      }
+    },
+    
+    // Assinar documento e enviar para CCL
+    async assinarEEnviarProcesso(processo) {
+      try {
+        console.log('✍️ Assinando e enviando processo para CCL:', processo.numero_processo)
+        
+        const confirmacao = confirm(
+          `✍️ ASSINAR E ENVIAR PROCESSO\n\n` +
+          `Processo: ${processo.numero_processo}\n` +
+          `Status atual: Aguardando Assinatura do Órgão\n` +
+          `Próximo status: Assinado pelo Órgão Administrativo\n\n` +
+          `Confirma a assinatura e envio para a CCL?`
+        )
+        
+        if (!confirmacao) return
+        
+        const resultado = await TramitacaoProcessosService.enviarProcesso(
+          processo.id,
+          'Documento assinado pelo Órgão Administrativo'
+        )
+        
+        if (resultado.sucesso) {
+          console.log('✅ Processo assinado e enviado com sucesso')
+          
+          alert(
+            `✅ PROCESSO ASSINADO E ENVIADO\n\n` +
+            `Processo: ${processo.numero_processo}\n` +
+            `Status anterior: ${this.obterNomeStatus(resultado.statusAnterior)}\n` +
+            `Status atual: ${this.obterNomeStatus(resultado.statusNovo)}\n\n` +
+            `O processo foi assinado e enviado para julgamento da CCL.`
+          )
+          
+          // Recarregar processos
+          await this.carregarProcessos()
+          this.fecharVisualizacaoProcesso()
+        }
+        
+      } catch (error) {
+        console.error('❌ Erro ao assinar e enviar processo:', error)
+        alert(`❌ Erro ao processar assinatura: ${error.message}`)
+      }
+    },
+    
+    // =====================================================
+    // MÉTODOS UTILITÁRIOS
+    // =====================================================
+    
+    // Obter nome legível do status
+    obterNomeStatus(status) {
+      const nomes = {
+        'rascunho': 'Rascunho',
+        'criado_cpm': 'Criado pela CPM',
+        'aguardando_assinatura_orgao': 'Aguardando Assinatura do Órgão',
+        'assinado_admin': 'Assinado pelo Órgão Administrativo',
+        'julgamento_ccl': 'Em Julgamento pela CCL',
+        'aprovado_ccl': 'Aprovado pela CCL',
+        'aprovado_juridico': 'Aprovado pela Assessoria Jurídica',
+        'edital_publicado': 'Edital Publicado',
+        'homologado': 'Processo Homologado',
+        'finalizado': 'Processo Finalizado',
+        
+        // STATUS DE DEVOLUÇÃO
+        'devolvido_pelo_orgao': 'Devolvido pelo Órgão Administrativo',
+        'devolvido_pela_ccl': 'Devolvido pela CCL',
+        'devolvido_pelo_juridico': 'Devolvido pela Assessoria Jurídica'
+      }
+      
+      return nomes[status?.toLowerCase()] || status || 'Status Desconhecido'
+    },
+    
+    // Verificar se processo foi devolvido
+    processoFoiDevolvido(processo) {
+      const statusDevolvido = ['devolvido_pelo_orgao', 'devolvido_pela_ccl', 'devolvido_pelo_juridico']
+      return statusDevolvido.includes(processo?.status?.toLowerCase())
+    },
+    
+    // Verificar se CPM pode reenviar processo devolvido
+    podeReenviarProcesso(processo) {
+      const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
+      return perfilUsuario === 'cpm' && this.processoFoiDevolvido(processo)
+    },
+    
+    // Reenviar processo devolvido
+    async reenviarProcessoDevolvido(processo) {
+      try {
+        const observacoes = prompt(
+          `🔄 REENVIAR PROCESSO APÓS CORREÇÕES\n\n` +
+          `Processo: ${processo.numero_processo}\n` +
+          `Status atual: ${this.obterNomeStatus(processo.status)}\n\n` +
+          `Informe observações sobre as correções realizadas (opcional):`
+        )
+        
+        if (observacoes === null) return // Usuário cancelou
+        
+        console.log('🔄 Reenviando processo devolvido:', processo.numero_processo)
+        
+        const resultado = await TramitacaoProcessosService.reenviarProcessoDevolvido(
+          processo.id,
+          observacoes || 'Processo reenviado após correções'
+        )
+        
+        if (resultado.sucesso) {
+          alert(
+            `✅ PROCESSO REENVIADO COM SUCESSO\n\n` +
+            `Processo: ${processo.numero_processo}\n` +
+            `Status anterior: ${this.obterNomeStatus(resultado.statusAnterior)}\n` +
+            `Status atual: ${this.obterNomeStatus(resultado.statusNovo)}\n` +
+            `Destinatário: ${resultado.destinatario}\n\n` +
+            `O processo foi reenviado após as correções.`
+          )
+          
+          // Recarregar processos
+          await this.carregarProcessos()
+          this.fecharVisualizacaoProcesso()
+        }
+        
+      } catch (error) {
+        console.error('❌ Erro ao reenviar processo:', error)
+        alert(`❌ Erro ao reenviar processo: ${error.message}`)
+      }
     },
   }
 }
@@ -3755,6 +4379,109 @@ export default {
   color: #6b7280;
 }
 
+.status-badge.pink {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.status-badge.purple {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.status-badge.orange {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.status-badge.cyan {
+  background: #cffafe;
+  color: #0891b2;
+}
+
+.status-badge.indigo {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.status-badge.amber {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+/* Ações de Tramitação no Modal */
+.tramitacao-actions-container {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.tramitacao-actions-container h4 {
+  margin: 0 0 1rem 0;
+  color: #2d3748;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.workflow-buttons-modal {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-workflow-modal {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  min-width: 140px;
+  text-align: center;
+}
+
+.btn-workflow-modal.success {
+  background: #dcfce7;
+  color: #166534;
+  border: 2px solid #16a34a;
+}
+
+.btn-workflow-modal.success:hover {
+  background: #16a34a;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+.btn-workflow-modal.warning {
+  background: #fed7aa;
+  color: #ea580c;
+  border: 2px solid #f97316;
+}
+
+.btn-workflow-modal.warning:hover {
+  background: #f97316;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+}
+
+.btn-workflow-modal.danger {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 2px solid #ef4444;
+}
+
+.btn-workflow-modal.danger:hover {
+  background: #ef4444;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
 .processo-info {
   margin-bottom: 1rem;
 }
@@ -4121,11 +4848,104 @@ export default {
   border-top: 2px solid #e2e8f0;
 }
 
-.btn-large {
-  width: 100%;
-  padding: 1rem;
-  font-size: 1rem;
-  margin-bottom: 0.75rem;
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.875rem 1.25rem;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  font-size: 1.2rem;
+  margin-right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.btn-text {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+/* Cores específicas para cada tipo de botão */
+.action-btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.action-btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.action-btn-info {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  color: white;
+}
+
+.action-btn-info:hover {
+  background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+}
+
+.action-btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.action-btn-success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.action-btn-secondary {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+}
+
+.action-btn-secondary:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+}
+
+.action-btn-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.action-btn-warning:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+@media (max-width: 768px) {
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .processo-content-panel {
@@ -5356,4 +6176,543 @@ export default {
     flex-direction: column;
   }
 }
+
+/* ===== MODAL DE CONFIRMAÇÃO DE TRAMITAÇÃO ===== */
+.modal-confirmacao-tramitacao {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: scale(0.9) translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header-tramitacao {
+  display: flex;
+  align-items: center;
+  padding: 2rem 2rem 1rem 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-bottom: 3px solid #e2e8f0;
+  position: relative;
+}
+
+.header-icon {
+  margin-right: 1rem;
+}
+
+.tramitacao-icon {
+  font-size: 3rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-8px);
+  }
+  60% {
+    transform: translateY(-4px);
+  }
+}
+
+.header-content {
+  flex: 1;
+}
+
+.header-content h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.processo-numero {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.btn-close-tramitacao {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #a0aec0;
+  transition: color 0.3s ease;
+  padding: 0.5rem;
+  border-radius: 50%;
+}
+
+.btn-close-tramitacao:hover {
+  color: #e53e3e;
+  background: #fed7d7;
+}
+
+.modal-body-tramitacao {
+  padding: 2rem;
+}
+
+.status-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f7fafc;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+}
+
+.status-atual, .status-proximo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.status-label {
+  font-size: 0.8rem;
+  color: #718096;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge.atual {
+  background: #bee3f8;
+  color: #2c5282;
+  padding: 0.75rem 1.25rem;
+  border-radius: 25px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.status-badge.proximo {
+  background: #c6f6d5;
+  color: #276749;
+  padding: 0.75rem 1.25rem;
+  border-radius: 25px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.flow-arrow {
+  font-size: 2rem;
+  color: #4299e1;
+  font-weight: bold;
+  margin: 0 1rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.observacoes-section {
+  margin-bottom: 2rem;
+}
+
+.obs-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.obs-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  resize: vertical;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  font-family: inherit;
+}
+
+.obs-textarea:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.obs-textarea::placeholder {
+  color: #a0aec0;
+  font-style: italic;
+}
+
+.tramitacao-aviso {
+  display: flex;
+  align-items: flex-start;
+  padding: 1.5rem;
+  background: #edf2f7;
+  border-radius: 12px;
+  border-left: 4px solid #4299e1;
+  margin-bottom: 2rem;
+}
+
+.aviso-icon {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  color: #4299e1;
+  flex-shrink: 0;
+}
+
+.aviso-texto {
+  flex: 1;
+}
+
+.aviso-texto p {
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.aviso-texto ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #4a5568;
+}
+
+.aviso-texto li {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.modal-footer-tramitacao {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding: 1.5rem 2rem 2rem 2rem;
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+}
+
+.btn-cancelar {
+  padding: 0.875rem 1.5rem;
+  background: #e2e8f0;
+  color: #4a5568;
+  border: 2px solid #cbd5e0;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.btn-cancelar:hover {
+  background: #cbd5e0;
+  border-color: #a0aec0;
+  transform: translateY(-1px);
+}
+
+.btn-confirmar {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  border: 2px solid #38a169;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.btn-confirmar:hover:not(:disabled) {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  border-color: #2f855a;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(56, 161, 105, 0.3);
+}
+
+.btn-confirmar:disabled {
+  background: #a0aec0;
+  border-color: #a0aec0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsividade para o modal */
+@media (max-width: 768px) {
+  .modal-confirmacao-tramitacao {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .modal-header-tramitacao {
+    padding: 1.5rem;
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .header-icon {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .status-flow {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .flow-arrow {
+    transform: rotate(90deg);
+    margin: 0.5rem 0;
+  }
+  
+  .modal-footer-tramitacao {
+    flex-direction: column;
+  }
+  
+  .btn-cancelar, .btn-confirmar {
+    width: 100%;
+  }
+}
+
+/* ===================================== */
+/* MODAL DE DEVOLUÇÃO */
+/* ===================================== */
+
+.modal-devolucao {
+  background: white;
+  border-radius: 16px;
+  width: 600px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  position: relative;
+  z-index: 1001;
+  animation: slideInUp 0.3s ease-out;
+}
+
+.modal-header-devolucao {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.devolucao-icon {
+  font-size: 2rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.modal-body-devolucao {
+  padding: 1.5rem;
+}
+
+.motivo-section, .observacoes-section {
+  margin-bottom: 1.5rem;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.label-icon {
+  font-size: 1.1rem;
+}
+
+.motivo-textarea, .observacoes-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.motivo-textarea:focus, .observacoes-textarea:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.motivo-textarea {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.modal-footer-devolucao {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
+}
+
+.btn-cancel {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid #6b7280;
+  background: white;
+  color: #6b7280;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #f3f4f6;
+  border-color: #4b5563;
+  color: #4b5563;
+}
+
+.btn-confirm-devolucao {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 180px;
+}
+
+.btn-confirm-devolucao:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-confirm-devolucao:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ===================================== */
+/* SEÇÃO DE DEVOLUÇÃO */
+/* ===================================== */
+
+.devolucao-info {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #fef3c7;
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    border-color: #f59e0b;
+  }
+  50% {
+    border-color: #d97706;
+  }
+}
+
+.devolucao-container {
+  margin-top: 0.75rem;
+}
+
+.devolucao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: #fed7aa;
+  border-radius: 8px;
+}
+
+.devolucao-status {
+  font-weight: 600;
+  color: #ea580c;
+  font-size: 0.9rem;
+}
+
+.devolucao-data {
+  font-size: 0.8rem;
+  color: #9a3412;
+  font-style: italic;
+}
+
+.motivo-devolucao, .observacoes-devolucao {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border-left: 4px solid #f59e0b;
+}
+
+.motivo-devolucao h5, .observacoes-devolucao h5 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.motivo-texto, .observacoes-texto {
+  margin: 0;
+  padding: 0.5rem;
+  background: #fffbeb;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #451a03;
+  border: 1px solid #fbbf24;
+}
+
+.acao-requerida {
+  padding: 0.75rem;
+  background: #ecfdf5;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.acao-requerida p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #047857;
+}
+
+.acao-requerida strong {
+  color: #065f46;
+}
+
 </style>

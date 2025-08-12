@@ -24,6 +24,9 @@
         <router-link to="/processos-administrativos" class="nav-item">
           <span>Processos</span>
           <span class="nav-subtitle">Administrativos</span>
+          <span v-if="processosPendentes > 0" class="notification-badge">
+            {{ processosPendentes }}
+          </span>
         </router-link>
       </nav>
       <!-- 👤 MENU DE PERFIL COM DROPDOWN -->
@@ -65,6 +68,11 @@
               <span>Configurar Email</span>
             </button>
             
+            <button @click="testarEmailJS" class="dropdown-item">
+              <span class="item-icon">🧪</span>
+              <span>Testar Email</span>
+            </button>
+            
             <hr class="dropdown-divider">
             
             <button @click="logout" class="dropdown-item logout-item">
@@ -87,7 +95,9 @@
 
 <script>
 import DashboardCPM from '@/components/dashboard/DashboardCPM.vue'
-import { supabase } from '@/services/supabase'
+import { supabase, getTenantId } from '@/services/supabase'
+import PerfilUsuarioService from '@/services/perfilUsuarioService'
+import EmailNotificationService from '@/services/emailNotificationService'
 
 export default {
   name: 'Dashboard',
@@ -100,12 +110,22 @@ export default {
       usuarioNome: 'Usuário',
       usuarioEmail: '',
       emailRemetente: 'cpm@suaorganizacao.com.br',
-      nomeRemetente: 'CPM - Comissão de Padronização de Materiais'
+      nomeRemetente: 'CPM - Comissão de Padronização de Materiais',
+      processosPendentes: 0,
+      intervalNotificacao: null
     }
   },
   async created() {
     await this.carregarDadosUsuario()
     this.carregarConfiguracoes()
+    await this.verificarProcessosPendentes()
+    this.iniciarMonitoramentoNotificacoes()
+  },
+  
+  beforeDestroy() {
+    if (this.intervalNotificacao) {
+      clearInterval(this.intervalNotificacao)
+    }
   },
   methods: {
     async carregarDadosUsuario() {
@@ -211,6 +231,121 @@ export default {
         console.error('Erro ao fazer logout:', error)
       }
       this.closeDropdown()
+    },
+
+    // 🔔 SISTEMA DE NOTIFICAÇÕES
+    async verificarProcessosPendentes() {
+      try {
+        const tenantId = await getTenantId()
+        const perfilUsuario = await PerfilUsuarioService.obterPerfilUsuarioAtual()
+        
+        if (!tenantId || !perfilUsuario) {
+          return
+        }
+
+        // Buscar processos que estão pendentes para o perfil do usuário atual
+        const statusPorPerfil = {
+          'cpm': ['aguardando_aprovacao', 'criado_cpm', 'rejeitado_admin', 'rejeitado_ccl', 'rejeitado_juridico'],
+          'orgao_administrativo': ['aguardando_assinatura_orgao', 'aguardando_assinatura_orgao_desp', 'aprovado_cpm', 'aprovado_ccl', 'aprovado_juridico'],
+          'ccl': ['assinado_admin', 'julgamento_ccl', 'abertura_autorizada_desp'],
+          'assessoria_juridica': ['assinado_admin', 'aprovado_ccl', 'com_recurso_desp']
+        }
+
+        const statusPendentes = statusPorPerfil[perfilUsuario.perfil_usuario] || []
+
+        if (statusPendentes.length === 0) {
+          return
+        }
+
+        const { data: processos, error } = await supabase
+          .from('processos_administrativos')
+          .select('id, status, numero_processo, tipo_processo')
+          .eq('tenant_id', tenantId)
+          .in('status', statusPendentes)
+
+        if (error) {
+          console.error('Erro ao verificar processos pendentes:', error)
+          return
+        }
+
+        this.processosPendentes = processos?.length || 0
+
+        console.log(`🔔 ${this.processosPendentes} processos pendentes para o perfil ${perfilUsuario.perfil_usuario}`)
+
+      } catch (error) {
+        console.error('Erro ao verificar processos pendentes:', error)
+      }
+    },
+
+    iniciarMonitoramentoNotificacoes() {
+      // Verificar a cada 30 segundos
+      this.intervalNotificacao = setInterval(() => {
+        this.verificarProcessosPendentes()
+      }, 30000)
+    },
+
+    // 🧪 TESTE DE EMAIL
+    async testarEmailJS() {
+      this.closeDropdown()
+      
+      try {
+        this.$swal({
+          title: '🧪 Testando EmailJS',
+          text: 'Enviando email de teste...',
+          allowOutsideClick: false,
+          didOpen: () => {
+            this.$swal.showLoading()
+          }
+        })
+
+        // Usar o serviço de email para enviar teste
+        const emailParams = {
+          numero_edital: 'TESTE-EMAIL',
+          email_empresa: this.usuarioEmail,
+          message: `
+            <h2>🧪 Email de Teste - Sistema Comprar Bem</h2>
+            <p>Este é um email de teste enviado em ${new Date().toLocaleString('pt-BR')}</p>
+            <p><strong>Usuário:</strong> ${this.usuarioNome}</p>
+            <p><strong>Email:</strong> ${this.usuarioEmail}</p>
+            <hr>
+            <p>Se você recebeu este email, o sistema de notificações está funcionando corretamente!</p>
+            <p><em>Sistema Comprar Bem - Notificações de Tramitação</em></p>
+          `,
+          name: this.usuarioNome,
+          email: 'comprarbemteste@gmail.com',
+          subject: '🧪 TESTE: Sistema de Email Funcionando - Comprar Bem',
+          status_participante: 'teste_sistema',
+          motivo_rejeicao: ''
+        }
+
+        await EmailNotificationService.enviarEmailsReais([{
+          destinatario: this.usuarioEmail,
+          nome: this.usuarioNome,
+          assunto: emailParams.subject,
+          conteudo: emailParams.message
+        }])
+
+        this.$swal({
+          title: '✅ Email Enviado!',
+          html: `
+            <p>Email de teste enviado com sucesso para:</p>
+            <p><strong>${this.usuarioEmail}</strong></p>
+            <br>
+            <p>Verifique sua caixa de entrada (e spam/lixo eletrônico)</p>
+          `,
+          icon: 'success',
+          confirmButtonText: 'OK'
+        })
+
+      } catch (error) {
+        console.error('Erro ao testar email:', error)
+        this.$swal({
+          title: '❌ Erro no Teste',
+          text: 'Falha ao enviar email de teste: ' + error.message,
+          icon: 'error',
+          confirmButtonText: 'OK'
+        })
+      }
     }
   }
 }
@@ -461,5 +596,33 @@ export default {
 .main-content {
   flex: 1;
   background-color: #f5f7fa;
+}
+
+/* 🔔 BADGE DE NOTIFICAÇÃO */
+.notification-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #e74c3c;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  animation: pulse 2s infinite;
+}
+
+.nav-item {
+  position: relative;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 </style> 

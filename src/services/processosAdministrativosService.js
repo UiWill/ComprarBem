@@ -753,6 +753,16 @@ export class ProcessosAdministrativosService {
       <div class="documento-dfd">
         <h1>DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - ${dadosDFD.modelo_usado?.toUpperCase() || 'MODELO PADRÃO'}</h1>
         
+        ${dadosDFD.nome_presidente ? `
+        <div class="secao">
+          <h2>DADOS DO DEMANDANTE</h2>
+          <p><strong>Nome do Presidente da CPPM:</strong> ${dadosDFD.nome_presidente}</p>
+          ${dadosDFD.matricula_presidente ? `<p><strong>Matrícula:</strong> ${dadosDFD.matricula_presidente}</p>` : ''}
+          ${dadosDFD.email_presidente ? `<p><strong>E-mail:</strong> ${dadosDFD.email_presidente}</p>` : ''}
+          ${dadosDFD.telefone_presidente ? `<p><strong>Telefone:</strong> ${dadosDFD.telefone_presidente}</p>` : ''}
+        </div>
+        ` : ''}
+        
         <div class="secao">
           <h2>JUSTIFICATIVA</h2>
           <p>${dadosDFD.justificativa}</p>
@@ -762,6 +772,36 @@ export class ProcessosAdministrativosService {
           <h2>DESCRIÇÃO DA NECESSIDADE</h2>
           <p>${dadosDFD.necessidade_descricao}</p>
         </div>
+
+        ${dadosDFD.produtos_especificacao ? `
+        <div class="secao">
+          <h2>PRODUTOS A SEREM PRÉ-QUALIFICADOS</h2>
+          <p><strong>Especificação dos Produtos/Serviços:</strong> ${dadosDFD.produtos_especificacao}</p>
+        </div>
+        ` : ''}
+
+        ${dadosDFD.quantidade_amostras || dadosDFD.previsao_aquisicoes ? `
+        <div class="secao">
+          <h2>QUANTIDADES E AMOSTRAGEM</h2>
+          ${dadosDFD.quantidade_amostras ? `<p><strong>Quantidade de Amostras para Análise:</strong> ${dadosDFD.quantidade_amostras}</p>` : ''}
+          ${dadosDFD.previsao_aquisicoes ? `<p><strong>Aquisições Previstas (12 meses):</strong> ${dadosDFD.previsao_aquisicoes}</p>` : ''}
+        </div>
+        ` : ''}
+
+        ${dadosDFD.especificacoes_tecnicas ? `
+        <div class="secao">
+          <h2>ESPECIFICAÇÕES TÉCNICAS DETALHADAS</h2>
+          <p><strong>Especificações Técnicas Obrigatórias:</strong> ${dadosDFD.especificacoes_tecnicas}</p>
+        </div>
+        ` : ''}
+
+        ${dadosDFD.ensaios_exigidos || dadosDFD.criterios_aceitacao ? `
+        <div class="secao">
+          <h2>CRITÉRIOS DE ACEITAÇÃO E ENSAIOS</h2>
+          ${dadosDFD.criterios_aceitacao ? `<p><strong>Critérios de Aceitação:</strong> ${dadosDFD.criterios_aceitacao}</p>` : ''}
+          ${dadosDFD.ensaios_exigidos ? `<p><strong>Ensaios e Testes Exigidos:</strong> ${dadosDFD.ensaios_exigidos}</p>` : ''}
+        </div>
+        ` : ''}
 
         ${dadosDFD.quantidade_estimada ? `
         <div class="secao">
@@ -774,6 +814,62 @@ export class ProcessosAdministrativosService {
         <div class="secao">
           <h2>PRAZO DE ENTREGA</h2>
           <p>${dadosDFD.prazo_entrega}</p>
+        </div>
+        ` : ''}
+
+        ${dadosDFD.local_entrega_amostras || dadosDFD.prazo_entrega_amostras ? `
+        <div class="secao">
+          <h2>CONDIÇÕES DE ENTREGA</h2>
+          ${dadosDFD.local_entrega_amostras ? `<p><strong>Local de Entrega das Amostras:</strong> ${dadosDFD.local_entrega_amostras}</p>` : ''}
+          ${dadosDFD.prazo_entrega_amostras ? `<p><strong>Prazo para Entrega das Amostras:</strong> ${dadosDFD.prazo_entrega_amostras} dias</p>` : ''}
+        </div>
+        ` : ''}
+
+        ${dadosDFD.produtos_despadronizar ? `
+        <div class="secao">
+          <h2>PRODUTOS A SEREM DESPADRONIZADOS</h2>
+          <p><strong>Identificação dos Produtos/Serviços:</strong> ${dadosDFD.produtos_despadronizar}</p>
+        </div>
+        ` : ''}
+
+        ${dadosDFD.fonte_rdm || dadosDFD.fonte_reclamacoes_usuarios || dadosDFD.fonte_sistema_comprar_bem || dadosDFD.fonte_analise_tecnica || dadosDFD.outras_fontes ? `
+        <div class="secao">
+          <h2>FONTE DAS INFORMAÇÕES</h2>
+          <p><strong>Origem das Reclamações/Problemas:</strong></p>
+          <ul>
+            ${dadosDFD.fonte_rdm ? `<li>✅ Relatórios RDM (Relatório de Desempenho de Material)</li>` : ''}
+            ${dadosDFD.fonte_reclamacoes_usuarios ? `<li>✅ Reclamações de usuários finais</li>` : ''}
+            ${dadosDFD.fonte_sistema_comprar_bem ? `<li>✅ Sistema "Reclame Aqui" do Comprar Bem</li>` : ''}
+            ${dadosDFD.fonte_analise_tecnica ? `<li>✅ Análise técnica da CPPM</li>` : ''}
+            ${dadosDFD.fonte_outras ? `<li>✅ Outros</li>` : ''}
+          </ul>
+          ${dadosDFD.outras_fontes ? `<p><strong>Outras Fontes:</strong> ${dadosDFD.outras_fontes}</p>` : ''}
+        </div>
+        ` : ''}
+
+        ${dadosDFD.descricao_problemas ? `
+        <div class="secao">
+          <h2>MOTIVAÇÕES PARA DESPADRONIZAÇÃO</h2>
+          <p><strong>Principais Problemas Identificados:</strong> ${dadosDFD.descricao_problemas}</p>
+          ${dadosDFD.frequencia_problemas ? `<p><strong>Frequência dos Problemas:</strong> ${dadosDFD.frequencia_problemas}</p>` : ''}
+          ${dadosDFD.impacto_problemas ? `<p><strong>Impacto dos Problemas:</strong> ${dadosDFD.impacto_problemas}</p>` : ''}
+        </div>
+        ` : ''}
+
+        ${dadosDFD.quantidade_adquirida || dadosDFD.prejuizo_estimado || dadosDFD.rdms_negativos ? `
+        <div class="secao">
+          <h2>DADOS QUANTITATIVOS</h2>
+          ${dadosDFD.quantidade_adquirida ? `<p><strong>Quantidade Adquirida (últimos 12 meses):</strong> ${dadosDFD.quantidade_adquirida}</p>` : ''}
+          ${dadosDFD.prejuizo_estimado ? `<p><strong>Prejuízo Estimado:</strong> R$ ${dadosDFD.prejuizo_estimado}</p>` : ''}
+          ${dadosDFD.rdms_negativos ? `<p><strong>Número de RDMs Negativos:</strong> ${dadosDFD.rdms_negativos}</p>` : ''}
+        </div>
+        ` : ''}
+
+        ${dadosDFD.parecer_tecnico || dadosDFD.alternativas_avaliadas ? `
+        <div class="secao">
+          <h2>ANÁLISE TÉCNICA</h2>
+          ${dadosDFD.parecer_tecnico ? `<p><strong>Parecer Técnico da CPPM:</strong> ${dadosDFD.parecer_tecnico}</p>` : ''}
+          ${dadosDFD.alternativas_avaliadas ? `<p><strong>Alternativas Avaliadas:</strong> ${dadosDFD.alternativas_avaliadas}</p>` : ''}
         </div>
         ` : ''}
 
@@ -1834,6 +1930,8 @@ export class ProcessosAdministrativosService {
       'rascunho': { label: 'Em Criação', cor: 'gray' },
       'em_criacao': { label: 'Em Criação', cor: 'gray' },
       'criado_cpm': { label: 'Criado pela CPM', cor: 'blue' },
+      'aguardando_assinatura_orgao': { label: 'Aguardando Assinatura', cor: 'orange' },
+      'aguardando_assinatura_orgao_desp': { label: 'Aguardando Assinatura', cor: 'orange' },
       'submetido_autoridade': { label: 'Submetido à Autoridade Competente', cor: 'yellow' },
       'abertura_autorizada': { label: 'Abertura Autorizada', cor: 'green' },
       'edital_chamamento': { label: 'Edital de Chamamento Público', cor: 'purple' },

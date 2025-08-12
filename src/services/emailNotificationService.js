@@ -1,6 +1,20 @@
 import { supabase, getTenantId } from './supabase'
+import emailjs from '@emailjs/browser'
+
+// Configuração EmailJS (usar as mesmas configs do emailService.js)
+const EMAILJS_CONFIG = {
+  serviceId: 'service_7sv1naw',
+  templateId: 'template_nyiw2ua', // Template geral existente
+  publicKey: 'DqGKMNJ87ch3qVxGv'
+}
+
+// Inicializar EmailJS
+emailjs.init(EMAILJS_CONFIG.publicKey)
 
 export class EmailNotificationService {
+  
+  // Controle para evitar envios duplicados
+  static ultimosEnvios = new Map()
   
   // =====================================================
   // CONFIGURAÇÃO DE TEMPLATES DE EMAIL
@@ -9,20 +23,44 @@ export class EmailNotificationService {
   static obterTemplateEmail(tipoNotificacao) {
     const templates = {
       'processo_tramitado': {
-        assunto: 'Processo #{numeroProcesso} foi tramitado para seu setor',
-        template: `
-          <h2>🏛️ Notificação de Tramitação de Processo</h2>
-          <p><strong>Processo:</strong> #{numeroProcesso}</p>
-          <p><strong>Tipo:</strong> #{tipoProcesso}</p>
-          <p><strong>Status Atual:</strong> #{statusAtual}</p>
-          <p><strong>Órgão:</strong> #{nomeOrgao}</p>
-          <hr>
-          <p><strong>Ação Necessária:</strong> #{acaoNecessaria}</p>
-          <p><strong>Observações:</strong> #{observacoes}</p>
-          <hr>
-          <p>Acesse o sistema para processar esta solicitação.</p>
-          <p><em>Sistema Comprar Bem - Processos Administrativos</em></p>
-        `
+        assunto: 'COMPRAR BEM: Processo #{numeroProcesso} requer sua atenção',
+        template: `PROCESSO ADMINISTRATIVO - AÇÃO NECESSÁRIA
+
+Olá,
+
+Você tem um processo administrativo que requer sua análise no sistema Comprar Bem.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 DETALHES DO PROCESSO:
+• Processo: #{numeroProcesso}
+• Tipo: #{tipoProcesso}
+• Status Atual: #{statusAtual}
+• Órgão: #{nomeOrgao}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ AÇÃO NECESSÁRIA:
+#{acaoNecessaria}
+
+📝 OBSERVAÇÕES:
+#{observacoes}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 COMO PROCEDER:
+1. Acesse o sistema Comprar Bem
+2. Vá para "Processos Administrativos"
+3. Localize o processo #{numeroProcesso}
+4. Execute a ação necessária
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sistema Comprar Bem
+Compras Públicas Inteligentes
+Data: #{dataAtual}
+
+Este é um email automático do sistema. Não responda a este email.`
       },
       'processo_pendente': {
         assunto: 'Lembrete: Processo #{numeroProcesso} aguarda sua análise',
@@ -59,6 +97,23 @@ export class EmailNotificationService {
           <p>O processo foi devolvido para correções. Acesse o sistema para mais detalhes.</p>
           <p><em>Sistema Comprar Bem - Processos Administrativos</em></p>
         `
+      },
+      'processo_devolvido': {
+        assunto: 'Processo #{numeroProcesso} foi devolvido para correção',
+        template: `
+          <h2>↩️ Processo Devolvido</h2>
+          <p>O processo <strong>#{numeroProcesso}</strong> foi devolvido para correção.</p>
+          <p><strong>Status:</strong> #{statusAtual}</p>
+          <p><strong>Tipo:</strong> #{tipoProcesso}</p>
+          <p><strong>Objeto:</strong> #{objeto}</p>
+          <hr>
+          <p><strong>Motivo da Devolução:</strong></p>
+          <p style="background-color: #fef3c7; padding: 10px; border-radius: 5px; border-left: 4px solid #f59e0b;">#{observacoes}</p>
+          <hr>
+          <p>📝 <strong>Ação Necessária:</strong> Corrija os pontos mencionados e reenvie o processo.</p>
+          <p>Por favor, acesse o sistema para visualizar os detalhes e fazer as correções necessárias.</p>
+          <p><em>Sistema Comprar Bem - Processos Administrativos</em></p>
+        `
       }
     }
 
@@ -73,16 +128,37 @@ export class EmailNotificationService {
     try {
       // Mapear status para perfis responsáveis
       const responsaveisPorStatus = {
-        'criado_cpm': ['cpm'], // CPM deve analisar
-        'aprovado_cpm': ['orgao_administrativo'], // Órgão deve assinar
-        'assinado_admin': ['assessoria_juridica', 'cpm'], // Jurídico pode aprovar, CPM pode enviar para CCL
+        // FLUXO PADRONIZAÇÃO
+        'rascunho': ['cpm'],
+        'aguardando_aprovacao': ['cpm'], // CPM deve aprovar processo finalizado
+        'criado_cpm': ['cpm'], // CPM pode enviar para órgão
+        'aguardando_assinatura_orgao': ['orgao_administrativo'], // Órgão deve assinar
+        'assinado_admin': ['ccl'], // CCL deve julgar
         'julgamento_ccl': ['ccl'], // CCL deve julgar
-        'aprovado_ccl': ['orgao_administrativo'], // Órgão deve homologar
+        'aprovado_ccl': ['assessoria_juridica'], // Jurídico deve aprovar
         'aprovado_juridico': ['orgao_administrativo'], // Órgão deve homologar
+        'edital_publicado': ['orgao_administrativo'], // Órgão gerencia publicação
+        'homologado': ['orgao_administrativo'], // Processo finalizado
+        
+        // FLUXO DESPADRONIZAÇÃO
+        'criado_cpm_desp': ['cpm'], // CPM pode enviar para órgão
+        'aguardando_assinatura_orgao_desp': ['orgao_administrativo'], // Órgão deve autorizar abertura
+        'abertura_autorizada_desp': ['ccl'], // CCL deve publicar aviso
+        'aviso_publicado': ['ccl'], // CCL gerencia processo
+        'com_recurso_desp': ['assessoria_juridica'], // Jurídico analisa recursos
+        'homologado_desp': ['orgao_administrativo'], // Órgão homologa
+        'excluindo_marcas': ['cpm'], // CPM exclui marcas
+        
+        // REJEIÇÕES (sempre volta para CPM corrigir)
         'rejeitado_cpm': ['cpm'], // CPM deve corrigir
         'rejeitado_admin': ['cpm'], // CPM deve corrigir
         'rejeitado_ccl': ['cpm'], // CPM deve corrigir
-        'rejeitado_juridico': ['cpm'] // CPM deve corrigir
+        'rejeitado_juridico': ['cpm'], // CPM deve corrigir
+        
+        // DEVOLUÇÕES (CPM deve corrigir e reenviar)
+        'devolvido_pelo_orgao': ['cpm'], // CPM deve corrigir e reenviar
+        'devolvido_pela_ccl': ['cpm'], // CPM deve corrigir e reenviar
+        'devolvido_pelo_juridico': ['cpm'] // CPM deve corrigir e reenviar
       }
 
       const perfisResponsaveis = responsaveisPorStatus[status] || []
@@ -91,13 +167,12 @@ export class EmailNotificationService {
         return []
       }
 
-      // Buscar usuários com os perfis responsáveis
+      // Buscar usuários com os perfis responsáveis na tabela usuarios
       const { data: usuarios, error } = await supabase
         .from('usuarios')
         .select('id, nome, email, perfil_usuario')
         .eq('tenant_id', tenantId)
         .in('perfil_usuario', perfisResponsaveis)
-        .eq('ativo', true)
         .not('email', 'is', null)
 
       if (error) {
@@ -118,6 +193,30 @@ export class EmailNotificationService {
 
   static async enviarNotificacaoTramitacao(processoId, statusAnterior, statusNovo, observacoes = '') {
     try {
+      console.log(`🔄 INICIANDO enviarNotificacaoTramitacao:`, { processoId, statusAnterior, statusNovo })
+      
+      // Verificar se não foi enviado recentemente (últimos 10 segundos)
+      const chave = `${processoId}-${statusAnterior}-${statusNovo}`
+      const agora = Date.now()
+      const ultimoEnvio = this.ultimosEnvios.get(chave)
+      
+      if (ultimoEnvio && (agora - ultimoEnvio) < 10000) {
+        console.log(`⚠️ DUPLICAÇÃO EVITADA: Email já enviado há ${agora - ultimoEnvio}ms`)
+        return false
+      }
+      
+      // Marcar este envio
+      this.ultimosEnvios.set(chave, agora)
+      
+      // Limpar entradas antigas (mais de 1 minuto)
+      if (this.ultimosEnvios.size > 100) {
+        for (const [key, timestamp] of this.ultimosEnvios.entries()) {
+          if (agora - timestamp > 60000) {
+            this.ultimosEnvios.delete(key)
+          }
+        }
+      }
+      
       const tenantId = await getTenantId()
       if (!tenantId) {
         throw new Error('Tenant não identificado')
@@ -150,6 +249,8 @@ export class EmailNotificationService {
         tipoNotificacao = 'processo_aprovado'
       } else if (statusNovo.includes('rejeitado')) {
         tipoNotificacao = 'processo_rejeitado'
+      } else if (statusNovo.includes('devolvido_')) {
+        tipoNotificacao = 'processo_devolvido'
       }
 
       // Obter template
@@ -162,7 +263,14 @@ export class EmailNotificationService {
         statusAtual: this.obterLabelStatus(statusNovo),
         nomeOrgao: processo.nome_orgao,
         observacoes: observacoes || 'Nenhuma observação',
-        acaoNecessaria: this.obterAcaoNecessaria(statusNovo)
+        acaoNecessaria: this.obterAcaoNecessaria(statusNovo),
+        dataAtual: new Date().toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit'
+        })
       }
 
       // Enviar para cada destinatário
@@ -190,11 +298,10 @@ export class EmailNotificationService {
         })
       }
 
-      // Aqui seria integrado com EmailJS ou outro serviço de email
-      console.log('Notificações preparadas:', envios)
+      // Enviar emails reais via EmailJS
+      console.log('📧 Enviando notificações REAIS via EmailJS:', envios.length, 'destinatários')
       
-      // Por enquanto, apenas simular o envio
-      await this.simularEnvioEmail(envios)
+      await this.enviarEmailsReais(envios)
 
       return true
     } catch (error) {
@@ -238,18 +345,31 @@ export class EmailNotificationService {
   static obterLabelStatus(status) {
     const labels = {
       'rascunho': 'Em Criação',
+      'aguardando_aprovacao': 'Aguardando Aprovação da CPM',
       'criado_cpm': 'Criado pela CPM',
+      'aguardando_assinatura_orgao': 'Aguardando Assinatura do Órgão',
+      'aguardando_assinatura_orgao_desp': 'Aguardando Autorização do Órgão (Despadronização)',
       'aprovado_cpm': 'Aprovado pela CPM',
-      'assinado_admin': 'Assinado pelo Órgão',
-      'julgamento_ccl': 'Julgamento CCL',
+      'assinado_admin': 'Assinado pelo Órgão Administrativo',
+      'julgamento_ccl': 'Em Julgamento pela CCL',
       'aprovado_ccl': 'Aprovado pela CCL',
-      'aprovado_juridico': 'Aprovado Juridicamente',
-      'homologado': 'Homologado',
+      'aprovado_juridico': 'Aprovado pela Assessoria Jurídica',
+      'abertura_autorizada_desp': 'Abertura Autorizada (Despadronização)',
+      'aviso_publicado': 'Aviso de Despadronização Publicado',
+      'com_recurso_desp': 'Com Recurso Administrativo (Despadronização)',
+      'homologado': 'Processo Homologado',
+      'homologado_desp': 'Despadronização Homologada',
+      'excluindo_marcas': 'Excluindo Marcas do Catálogo',
       'rejeitado_cpm': 'Rejeitado pela CPM',
       'rejeitado_admin': 'Rejeitado pelo Órgão',
       'rejeitado_ccl': 'Rejeitado pela CCL',
-      'rejeitado_juridico': 'Rejeitado Juridicamente',
-      'rejeitado_final': 'Rejeitado Final'
+      'rejeitado_juridico': 'Rejeitado pela Assessoria Jurídica',
+      'rejeitado_final': 'Rejeitado Final',
+      
+      // STATUS DE DEVOLUÇÃO
+      'devolvido_pelo_orgao': 'Devolvido pelo Órgão Administrativo',
+      'devolvido_pela_ccl': 'Devolvido pela CCL',
+      'devolvido_pelo_juridico': 'Devolvido pela Assessoria Jurídica'
     }
 
     return labels[status] || status
@@ -257,43 +377,227 @@ export class EmailNotificationService {
 
   static obterAcaoNecessaria(status) {
     const acoes = {
+      'aguardando_aprovacao': 'Analisar o processo e aprovar ou rejeitar',
       'criado_cpm': 'Analisar e aprovar ou rejeitar o processo',
-      'aprovado_cpm': 'Assinar ou rejeitar o processo administrativo',
-      'assinado_admin': 'Processo assinado - pode ser enviado para CCL ou análise jurídica',
-      'julgamento_ccl': 'Realizar julgamento técnico do processo',
-      'aprovado_ccl': 'Homologar o processo aprovado pela CCL',
-      'aprovado_juridico': 'Homologar o processo aprovado juridicamente',
-      'rejeitado_cpm': 'Corrigir os problemas apontados pela CPM',
-      'rejeitado_admin': 'Corrigir os problemas apontados pelo Órgão',
-      'rejeitado_ccl': 'Corrigir os problemas apontados pela CCL',
-      'rejeitado_juridico': 'Corrigir os problemas apontados pelo Jurídico'
+      'aguardando_assinatura_orgao': 'ASSINAR o processo administrativo para dar continuidade',
+      'aguardando_assinatura_orgao_desp': 'AUTORIZAR a abertura do processo de despadronização',
+      'aprovado_cpm': 'ASSINAR o processo para envio à CCL ou Jurídico',
+      'assinado_admin': 'Processo assinado - enviar para julgamento da CCL',
+      'julgamento_ccl': 'JULGAR o processo técnico (aprovar ou reprovar)',
+      'aprovado_ccl': 'HOMOLOGAR o processo aprovado pela CCL',
+      'aprovado_juridico': 'HOMOLOGAR o processo aprovado pelo Jurídico',
+      'abertura_autorizada_desp': 'Publicar aviso de despadronização',
+      'aviso_publicado': 'Aguardar prazo recursal ou prosseguir',
+      'com_recurso_desp': 'ANALISAR os recursos administrativos apresentados',
+      'homologado': 'Processo concluído - verificar documentação final',
+      'homologado_desp': 'Executar exclusão das marcas do catálogo',
+      'excluindo_marcas': 'Finalizar exclusão das marcas despadronizadas',
+      'rejeitado_cpm': 'CORRIGIR os problemas apontados pela CPM e reenviar',
+      'rejeitado_admin': 'CORRIGIR os problemas apontados pelo Órgão e reenviar',
+      'rejeitado_ccl': 'CORRIGIR os problemas apontados pela CCL e reenviar',
+      'rejeitado_juridico': 'CORRIGIR os problemas jurídicos apontados e reenviar'
     }
 
-    return acoes[status] || 'Consultar detalhes no sistema'
+    return acoes[status] || 'Consultar detalhes no sistema e tomar ação necessária'
   }
 
   // =====================================================
-  // SIMULAÇÃO DE ENVIO (SUBSTITUIR POR EMAILJS OU OUTRO)
+  // MÉTODOS DE TESTE E DEBUG
   // =====================================================
 
-  static async simularEnvioEmail(envios) {
-    // Por enquanto apenas log - aqui seria integrado EmailJS
-    console.log('🔔 NOTIFICAÇÕES DE EMAIL SIMULADAS:')
+  /**
+   * Testar busca de usuários por perfil
+   */
+  static async testarBuscaUsuariosPorPerfil(status = 'aprovado_cpm') {
+    try {
+      const tenantId = await getTenantId()
+      console.log('🔍 TESTE: Buscando usuários para status:', status)
+      console.log('🏢 Tenant ID:', tenantId)
+      
+      const destinatarios = await this.obterDestinatariosPorStatus(status, tenantId)
+      
+      console.log('👥 USUÁRIOS ENCONTRADOS:')
+      console.log('========================')
+      destinatarios.forEach(user => {
+        console.log(`📧 ${user.nome} (${user.email}) - Perfil: ${user.perfil_usuario}`)
+      })
+      
+      if (destinatarios.length === 0) {
+        console.log('⚠️ NENHUM USUÁRIO ENCONTRADO para o status:', status)
+        console.log('Verifique se existem usuários com os perfis necessários no tenant.')
+      }
+      
+      return destinatarios
+    } catch (error) {
+      console.error('❌ Erro no teste:', error)
+      return []
+    }
+  }
+
+  /**
+   * Listar todos os usuários do tenant atual
+   */
+  static async listarTodosUsuarios() {
+    try {
+      const tenantId = await getTenantId()
+      console.log('🔍 LISTANDO TODOS OS USUÁRIOS DO TENANT:', tenantId)
+      
+      const { data: usuarios, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('nome')
+      
+      if (error) {
+        console.error('Erro ao listar usuários:', error)
+        return []
+      }
+      
+      console.log('👥 USUÁRIOS NO SISTEMA:')
+      console.log('======================')
+      usuarios.forEach(user => {
+        console.log(`👤 ${user.nome} (${user.email || 'SEM EMAIL'}) - Perfil: ${user.perfil_usuario}`)
+      })
+      
+      return usuarios || []
+    } catch (error) {
+      console.error('Erro ao listar usuários:', error)
+      return []
+    }
+  }
+
+  /**
+   * TESTE COMPLETO DO SISTEMA DE TRAMITAÇÃO
+   * Execute este método no console do navegador para testar tudo
+   */
+  static async testarSistemaCompleto() {
+    try {
+      console.log('🚀 INICIANDO TESTE COMPLETO DO SISTEMA DE TRAMITAÇÃO')
+      console.log('='*60)
+      
+      // 1. Verificar usuarios no banco
+      console.log('\n1️⃣ VERIFICANDO USUÁRIOS NO BANCO...')
+      const usuarios = await this.listarTodosUsuarios()
+      
+      if (usuarios.length === 0) {
+        console.log('❌ NENHUM USUÁRIO ENCONTRADO!')
+        console.log('🔧 Verifique se existe ao menos um usuário com perfil_usuario preenchido')
+        return false
+      }
+      
+      // 2. Testar busca por perfil
+      console.log('\n2️⃣ TESTANDO BUSCA POR PERFIL...')
+      const destinatariosOrgao = await this.testarBuscaUsuariosPorPerfil('aprovado_cpm')
+      
+      if (destinatariosOrgao.length === 0) {
+        console.log('❌ NENHUM USUÁRIO COM PERFIL "orgao_administrativo" ENCONTRADO!')
+        console.log('🔧 Precisa ter ao menos um usuário com perfil_usuario = "orgao_administrativo"')
+        return false
+      }
+      
+      // 3. Testar template de email
+      console.log('\n3️⃣ TESTANDO GERAÇÃO DE TEMPLATE...')
+      const templateTeste = this.obterTemplateEmail('processo_tramitado')
+      console.log('✅ Template gerado com sucesso!')
+      
+      // 4. Simular tramitação completa
+      console.log('\n4️⃣ SIMULANDO TRAMITAÇÃO COMPLETA...')
+      const processoTeste = {
+        id: 'TESTE-001',
+        numero_processo: 'PROCESSO-TESTE-001',
+        tipo_processo: 'padronizacao',
+        nome_orgao: 'Ministério da Saúde - TESTE'
+      }
+      
+      const resultadoTeste = await this.enviarNotificacaoTramitacao(
+        processoTeste.id,
+        'criado_cpm',
+        'aprovado_cpm',
+        'Teste automatizado do sistema de tramitação'
+      )
+      
+      if (resultadoTeste) {
+        console.log('✅ TESTE COMPLETO REALIZADO COM SUCESSO!')
+        console.log('📧 Verifique os emails dos usuários com perfil "orgao_administrativo"')
+        console.log('🎉 O sistema de tramitação está funcionando!')
+      } else {
+        console.log('❌ FALHA NO TESTE DE ENVIO DE EMAIL')
+      }
+      
+      console.log('\n🏁 TESTE COMPLETO FINALIZADO!')
+      return resultadoTeste
+      
+    } catch (error) {
+      console.error('❌ ERRO NO TESTE COMPLETO:', error)
+      return false
+    }
+  }
+
+  // =====================================================
+  // ENVIO REAL DE EMAILS VIA EMAILJS
+  // =====================================================
+
+  static async enviarEmailsReais(envios) {
+    console.log('📧 ENVIANDO EMAILS REAIS VIA EMAILJS:')
     console.log('=====================================')
     
-    envios.forEach((envio, index) => {
-      console.log(`📧 Email ${index + 1}:`)
-      console.log(`Para: ${envio.destinatario} (${envio.nome})`)
-      console.log(`Assunto: ${envio.assunto}`)
-      console.log(`Conteúdo: ${envio.conteudo.substring(0, 100)}...`)
-      console.log('---')
-    })
-
-    // Simular delay de envio
-    await new Promise(resolve => setTimeout(resolve, 500))
+    let sucessos = 0
+    let erros = 0
     
-    console.log('✅ Todos os emails foram "enviados" com sucesso!')
-    return true
+    for (let i = 0; i < envios.length; i++) {
+      const envio = envios[i]
+      
+      try {
+        console.log(`📧 Enviando email ${i + 1}/${envios.length}:`)
+        console.log(`Para: ${envio.destinatario} (${envio.nome})`)
+        console.log(`Assunto: ${envio.assunto}`)
+        
+        // Preparar parâmetros para EmailJS
+        const emailParams = {
+          numero_edital: 'TRAMITACAO-PROCESSO',
+          email_empresa: envio.destinatario,
+          message: envio.conteudo,
+          name: envio.nome,
+          email: 'comprarbemteste@gmail.com',
+          subject: envio.assunto,
+          status_participante: 'tramitacao_processo',
+          motivo_rejeicao: ''
+        }
+        
+        // Enviar email via EmailJS
+        const result = await emailjs.send(
+          EMAILJS_CONFIG.serviceId,
+          EMAILJS_CONFIG.templateId,
+          emailParams,
+          EMAILJS_CONFIG.publicKey
+        )
+        
+        if (result.status === 200) {
+          sucessos++
+          console.log(`✅ Email enviado com sucesso para ${envio.nome}!`)
+        } else {
+          erros++
+          console.log(`❌ Falha no envio para ${envio.nome}. Status: ${result.status}`)
+        }
+        
+      } catch (error) {
+        erros++
+        console.error(`❌ Erro ao enviar para ${envio.nome}:`, error)
+      }
+      
+      // Aguardar 2 segundos entre envios para não sobrecarregar o EmailJS
+      if (i < envios.length - 1) {
+        console.log('⏳ Aguardando 2 segundos antes do próximo envio...')
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
+    }
+    
+    console.log('📊 RESULTADO DO ENVIO:')
+    console.log(`✅ Sucessos: ${sucessos}`)
+    console.log(`❌ Erros: ${erros}`)
+    console.log(`📧 Total: ${envios.length}`)
+    
+    return { sucessos, erros, total: envios.length }
   }
 
   // =====================================================
