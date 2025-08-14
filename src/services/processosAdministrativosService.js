@@ -505,7 +505,7 @@ export class ProcessosAdministrativosService {
         throw new Error('Usuário não autenticado ou sem tenant')
       }
 
-      // Buscar documentos diretamente da tabela documentos_processo
+      // Buscar TODOS os documentos - incluindo os adicionados com 📎 "Adicionar Documento"
       const { data: documentos, error } = await supabase
         .from('documentos_processo')
         .select('*')
@@ -518,7 +518,36 @@ export class ProcessosAdministrativosService {
         throw error
       }
 
-      console.log(`Encontrados ${documentos?.length || 0} documentos para o processo ${processoId}`)
+      console.log(`📋 Encontrados ${documentos?.length || 0} documentos para o processo ${processoId}`)
+      
+      // Buscar também documentos complementares se houver tabela específica
+      try {
+        const { data: documentosComplementares, error: errorComplementares } = await supabase
+          .from('documentos_complementares_processo')
+          .select('*')
+          .eq('processo_id', processoId)
+          .eq('tenant_id', tenantId)
+        
+        if (!errorComplementares && documentosComplementares?.length > 0) {
+          console.log(`📎 Encontrados ${documentosComplementares.length} documentos complementares`)
+          
+          // Adicionar documentos complementares à lista principal
+          const documentosFormatados = documentosComplementares.map(doc => ({
+            ...doc,
+            tipo_documento: 'DOCUMENTO_COMPLEMENTAR',
+            nome_documento: doc.nome_documento || doc.nome_arquivo || 'Documento Complementar',
+            titulo: doc.titulo || doc.nome_documento || doc.nome_arquivo || 'Documento Complementar',
+            descricao: doc.descricao || 'Documento complementar adicionado ao processo'
+          }))
+          
+          documentos.push(...documentosFormatados)
+        }
+      } catch (errorComp) {
+        // Não bloqueia se não existir tabela de documentos complementares
+        console.log('Tabela de documentos complementares não encontrada ou vazia')
+      }
+
+      console.log(`📄 Total de documentos encontrados: ${documentos?.length || 0}`)
       return documentos || []
     } catch (error) {
       console.error('Erro no serviço de documentos:', error)

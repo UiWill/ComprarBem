@@ -2,42 +2,44 @@
   <div class="dashboard">
     <h2>Painel Comissão de Contratação ou Licitação</h2>
     
-    <div class="tabs">
-      <div 
-        class="tab" 
+    <div class="tab-header">
+      <button 
+        class="tab-button" 
         :class="{ active: activeTab === 'dashboard' }" 
-        @click="activeTab = 'dashboard'"
+        @click="setActiveTab('dashboard')"
       >
-        Dashboard
+        📊 Dashboard
         <span v-if="notificacoes.filter(n => !n.lido).length > 0" class="tab-notification">
           {{ notificacoes.filter(n => !n.lido).length }}
         </span>
-      </div>
-      <div 
-        class="tab" 
+      </button>
+      <button 
+        class="tab-button" 
         :class="{ active: activeTab === 'atas' }" 
-        @click="activeTab = 'atas'"
+        @click="setActiveTab('atas')"
       >
-        Atas de Julgamento
-      </div>
-      <div 
-        class="tab" 
+        📋 Atas de Julgamento
+      </button>
+      <button 
+        class="tab-button" 
         :class="{ active: activeTab === 'homologacoes' }" 
-        @click="activeTab = 'homologacoes'"
+        @click="setActiveTab('homologacoes')"
       >
-        Homologações
-      </div>
+        ✅ Homologações
+      </button>
     </div>
     
-    <!-- Aba Dashboard -->
-    <div v-if="activeTab === 'dashboard'">
-      <div class="stats-container">
-        <div class="stat-card status-pendente-card">
-          <div class="stat-icon">⚖️</div>
-          <h3>Processos em Julgamento</h3>
-          <div class="stat-value">{{ pendentes }}</div>
-          <p class="stat-description">Aguardando decisão da CCL</p>
-        </div>
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content">
+      <!-- Aba Dashboard -->
+      <div v-show="activeTab === 'dashboard'" class="tab-pane">
+        <div class="stats-container">
+          <div class="stat-card status-pendente-card">
+            <div class="stat-icon">⚖️</div>
+            <h3>Processos em Julgamento</h3>
+            <div class="stat-value">{{ pendentes }}</div>
+            <p class="stat-description">Aguardando decisão da CCL</p>
+          </div>
         
         <div class="stat-card status-aprovado-card">
           <div class="stat-icon">✅</div>
@@ -59,22 +61,30 @@
         </div>
       </div>
       
-      <div class="dashboard-section">
-        <div class="section-header">
-          <h3>📋 Processos Administrativos Pendentes</h3>
-          <p class="section-description">
-            Processos administrativos finalizados pela CPM que aguardam julgamento pela Comissão de Contratação ou Licitação (CCL)
-          </p>
-        </div>
-        <table v-if="processosPendentes.length > 0">
+        <div class="dashboard-section">
+          <div class="section-header">
+            <h3>📋 Processos Aguardando Julgamento CCL</h3>
+            <p class="section-description">
+              Processos administrativos assinados pelo órgão competente que aguardam análise técnica e julgamento pela CCL
+            </p>
+            <div class="section-actions">
+              <button @click="carregarProcessosPendentes" class="btn-secondary">
+                🔄 Atualizar Lista
+              </button>
+              <button @click="gerarRelatorioProcessos" class="btn-secondary">
+                📊 Relatório
+              </button>
+            </div>
+          </div>
+        <table v-if="processosPendentesArray.length > 0">
           <thead>
             <tr>
               <th>Número do Processo</th>
-              <th>Tipo</th>
-              <th>Produto(s)</th>
-              <th>Status CPM</th>
-              <th>Data Finalização</th>
+              <th>Objeto</th>
+              <th>Órgão Solicitante</th>
+              <th>Data Assinatura</th>
               <th>Prazo CCL</th>
+              <th>Situação</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -82,59 +92,61 @@
             <tr v-for="processo in processosPendentesPaginados" :key="processo.id">
               <td class="processo-info">
                 <strong>{{ processo.numero_processo }}</strong>
-                <br>
-                <small>{{ processo.tipo_processo || 'Processo Administrativo' }}</small>
               </td>
-              <td>
-                <span class="tipo-badge" :class="getTipoProcessoClass(processo.tipo_processo)">
-                  {{ processo.tipo_processo || 'Padronização' }}
+              <td class="objeto-processo">
+                <span class="objeto-text" :title="processo.objeto || 'Objeto não informado'">
+                  {{ truncateText(processo.objeto || 'Objeto não informado', 80) }}
                 </span>
               </td>
-              <td class="produtos-processo">
-                <span class="texto-cinza">Produtos do processo</span>
+              <td class="orgao-info">
+                <span class="orgao-nome">{{ processo.orgao_responsavel || 'Órgão não informado' }}</span>
+              </td>
+              <td>{{ formatDate(processo.data_assinatura_orgao || processo.atualizado_em) }}</td>
+              <td>
+                <span class="prazo-badge" :class="getPrazoCCLClass(processo.data_assinatura_orgao || processo.atualizado_em)">
+                  {{ calcularPrazoCCL(processo.data_assinatura_orgao || processo.atualizado_em) }}
+                </span>
               </td>
               <td>
                 <span class="status-badge" :class="getStatusClass(processo.status)">
                   {{ formatarStatusProcesso(processo.status) }}
                 </span>
               </td>
-              <td>{{ formatDate(processo.atualizado_em) }}</td>
-              <td>
-                <span class="prazo-badge" :class="getPrazoClass(processo.atualizado_em)">
-                  {{ calcularPrazoRestante(processo.atualizado_em) }}
-                </span>
-              </td>
-              <td>
-                <button @click="visualizarProcesso(processo)" class="btn-small btn-secondary">
-                  📄 Ver Processo
-                </button>
-                <button 
-                  v-if="processo.status === 'assinado_admin'"
-                  @click="tramitarProcessoAdministrativo(processo)" 
-                  class="btn-small btn-success"
-                >
-                  🚀 Tramitar para CCL - Julgamento
-                </button>
-                <button 
-                  v-if="processo.status === 'julgamento_ccl'"
-                  @click="julgarProcessoAdministrativo(processo)" 
-                  class="btn-small btn-primary"
-                >
-                  📋 Emitir Ata de Julgamento
-                </button>
+              <td class="actions-cell">
+                <div class="action-buttons">
+                  <button @click="visualizarProcesso(processo)" class="btn-small btn-secondary" title="Ver detalhes do processo">
+                    👁️ Ver
+                  </button>
+                  <button 
+                    v-if="processo.status === 'julgamento_ccl'"
+                    @click="iniciarJulgamentoCCL(processo)" 
+                    class="btn-small btn-primary"
+                    title="Iniciar julgamento técnico CCL"
+                  >
+                    ⚖️ Julgar
+                  </button>
+                  <button 
+                    v-if="processo.status === 'julgamento_ccl'"
+                    @click="devolverProcesso(processo)" 
+                    class="btn-small btn-warning"
+                    title="Devolver processo para correções"
+                  >
+                    ↩️ Devolver
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
         
         <!-- Controles de Paginação para Processos Pendentes -->
-        <div v-if="processosPendentes.length > 0" class="pagination-controls">
+        <div v-if="processosPendentesArray.length > 0" class="pagination-controls">
           <button @click="paginaAnterior('processosPendentes')" :disabled="paginacao.processosPendentes.paginaAtual <= 1" class="pagination-btn">
             ← Anterior
           </button>
           <span class="pagination-info">
             Página {{ paginacao.processosPendentes.paginaAtual }} de {{ calcularTotalPaginas('processosPendentes') || 1 }}
-            ({{ processosPendentes.length }} itens)
+            ({{ processosPendentesArray.length }} itens)
           </span>
           <button @click="proximaPagina('processosPendentes')" :disabled="paginacao.processosPendentes.paginaAtual >= calcularTotalPaginas('processosPendentes')" class="pagination-btn">
             Próxima →
@@ -251,46 +263,50 @@
           <h4>Não há recursos em análise</h4>
           <p>Todas as decisões da CCL estão dentro do prazo recursal ou já foram julgadas.</p>
         </div>
+        </div>
       </div>
-    </div>
-    
-    <!-- Aba Atas de Julgamento -->
-    <div v-if="activeTab === 'atas'" class="atas-julgamento">
+      
+      <!-- Aba Atas de Julgamento -->
+      <div v-show="activeTab === 'atas'" class="atas-julgamento tab-pane">
       <div class="atas-header">
-        <h3>📋 Atas de Julgamento</h3>
+        <h3>📋 Atas de Julgamento CCL</h3>
         <p class="atas-description">
-          Gerenciamento de atas de julgamento da Comissão de Contratação ou Licitação (CCL) conforme art. 78, § 2º da Lei 14.133/2021
+          Acompanhe as atas de julgamento técnico emitidas pela CCL após análise dos processos de padronização
         </p>
+        <div class="alert-info" style="background: #e8f5e8; border: 1px solid #4caf50; padding: 12px; border-radius: 8px; margin: 15px 0;">
+          <strong>ℹ️ Como funciona:</strong> 
+          Após julgar um processo, a CCL emite uma ata oficial que documenta a decisão técnica tomada.
+        </div>
         <div class="atas-actions">
-          <button @click="criarNovaAta" class="btn-primary">
-            ➕ Criar Nova Ata
+          <button @click="carregarDados(true)" class="btn-secondary">
+            🔄 Atualizar Dados
           </button>
-          <button @click="visualizarHistorico" class="btn-secondary">
-            📊 Histórico Completo
+          <button @click="gerarRelatorioAtas" class="btn-secondary">
+            📊 Gerar Relatório
           </button>
         </div>
       </div>
 
       <div class="atas-stats">
         <div class="ata-stat-card">
-          <div class="ata-stat-icon">📋</div>
+          <div class="ata-stat-icon">✏️</div>
           <div class="ata-stat-info">
-            <h4>{{ atasEmAndamento }}</h4>
+            <h4>{{ atasEmElaboracao.length }}</h4>
             <p>Atas em Elaboração</p>
           </div>
         </div>
         <div class="ata-stat-card">
-          <div class="ata-stat-icon">✅</div>
+          <div class="ata-stat-icon">📋</div>
           <div class="ata-stat-info">
-            <h4>{{ atasPublicadas }}</h4>
+            <h4>{{ atasPublicadasRecentes.length }}</h4>
             <p>Atas Publicadas</p>
           </div>
         </div>
         <div class="ata-stat-card">
           <div class="ata-stat-icon">📄</div>
           <div class="ata-stat-info">
-            <h4>{{ processosPendentes }}</h4>
-            <p>Processos Pendentes</p>
+            <h4>{{ atasEmElaboracao.length + atasPublicadasRecentes.length }}</h4>
+            <p>Total de Atas CCL</p>
           </div>
         </div>
       </div>
@@ -298,94 +314,111 @@
       <div class="atas-content">
         <!-- Atas em Elaboração -->
         <div class="atas-section">
-          <h4>📝 Atas em Elaboração</h4>
-          <div v-if="atasEmElaboracao.length > 0" class="atas-grid">
-            <div v-for="ata in atasElaboracaoPaginadas" :key="ata.id" class="ata-card em-elaboracao">
-              <div class="ata-card-header">
-                <h5>{{ ata.numero }}</h5>
-                <span class="ata-status status-elaboracao">Em Elaboração</span>
-              </div>
-              <div class="ata-card-content">
-                <p><strong>Período:</strong> {{ ata.periodo }}</p>
-                <p><strong>Processos:</strong> {{ ata.totalProcessos }} processos</p>
-                <p><strong>Iniciado em:</strong> {{ formatDate(ata.dataInicio) }}</p>
-              </div>
-              <div class="ata-card-actions">
-                <button @click="editarAta(ata)" class="btn-small btn-primary">
-                  ✏️ Continuar Edição
-                </button>
-                <button @click="finalizarAta(ata)" class="btn-small btn-success">
-                  ✅ Finalizar
-                </button>
-              </div>
-            </div>
+          <div class="section-header">
+            <h4>✏️ Atas em Elaboração</h4>
+            <p class="section-description">Atas que estão sendo criadas após julgamentos recentes</p>
           </div>
           
-          <!-- Controles de Paginação para Atas em Elaboração -->
-          <div v-if="atasEmElaboracao.length > 0" class="pagination-controls">
-            <button @click="paginaAnterior('atasElaboracao')" :disabled="paginacao.atasElaboracao.paginaAtual <= 1" class="pagination-btn">
-              ← Anterior
-            </button>
-            <span class="pagination-info">
-              Página {{ paginacao.atasElaboracao.paginaAtual }} de {{ calcularTotalPaginas('atasElaboracao') || 1 }} 
-              ({{ atasEmElaboracao.length }} itens)
-            </span>
-            <button @click="proximaPagina('atasElaboracao')" :disabled="paginacao.atasElaboracao.paginaAtual >= calcularTotalPaginas('atasElaboracao')" class="pagination-btn">
-              Próxima →
-            </button>
-          </div>
-          
-          <div v-else class="empty-message">
-            <p>Não há atas em elaboração no momento.</p>
-          </div>
-        </div>
-
-        <!-- Atas Recentes -->
-        <div class="atas-section">
-          <h4>📋 Atas Publicadas Recentemente</h4>
-          <div class="atas-table-container">
-            <table v-if="atasPublicadasRecentes.length > 0" class="atas-table">
+          <div v-if="atasEmElaboracao.length > 0" class="atas-table-container">
+            <table class="atas-elaboracao-table">
               <thead>
                 <tr>
-                  <th>Número da Ata</th>
-                  <th>Data Publicação</th>
-                  <th>Período</th>
+                  <th>Ata</th>
+                  <th>Data Criação</th>
                   <th>Processos</th>
-                  <th>Status Recursal</th>
+                  <th>Status</th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="ata in atasPublicadasPaginadas" :key="ata.id">
+                <tr v-for="ata in atasEmElaboracao" :key="ata.id">
                   <td>
-                    <strong>{{ ata.numero }}</strong>
+                    <strong>{{ ata.numero_ata || `ATA-CCL-${String(ata.id).slice(-4)}` }}</strong>
                   </td>
-                  <td>{{ formatDate(ata.dataPublicacao) }}</td>
-                  <td>{{ ata.periodo }}</td>
-                  <td>
-                    <span class="badge-info">{{ ata.totalProcessos }} processos</span>
+                  <td>{{ formatDate(ata.data_inicio) }}</td>
+                  <td class="processos-cell">
+                    <span class="badge-info">{{ ata.processos_count || 0 }} processo(s)</span>
                   </td>
                   <td>
-                    <span class="status-badge" :class="getStatusRecursalClass(ata.statusRecursal)">
-                      {{ ata.statusRecursal }}
+                    <span class="status-badge status-elaboracao">
+                      ✏️ Em Elaboração
                     </span>
                   </td>
-                  <td>
-                    <button @click="visualizarAta(ata)" class="btn-small btn-secondary">
-                      👁️ Visualizar
-                    </button>
-                    <button @click="baixarPDF(ata)" class="btn-small btn-primary">
-                      📥 PDF
-                    </button>
-                    <button v-if="ata.statusRecursal === 'EM PRAZO'" 
-                            @click="gerenciarRecursos(ata)" 
-                            class="btn-small btn-warning">
-                      📄 Recursos
-                    </button>
+                  <td class="actions-cell">
+                    <div class="action-buttons">
+                      <button @click="editarAta(ata)" class="btn-small btn-primary" title="Continuar elaborando a ata">
+                        ✏️ Continuar
+                      </button>
+                      <button @click="visualizarAta(ata)" class="btn-small btn-secondary" title="Visualizar rascunho">
+                        👁️ Visualizar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+          
+          <div v-else class="empty-state">
+            <div class="empty-icon">✏️</div>
+            <h4>Nenhuma ata em elaboração</h4>
+            <p>Quando você julgar um processo, a ata será criada automaticamente e aparecerá aqui para elaboração final.</p>
+          </div>
+        </div>
+
+        <!-- Atas Publicadas -->
+        <div class="atas-section">
+          <div class="section-header">
+            <h4>📋 Atas Publicadas</h4>
+            <p class="section-description">Atas oficiais já finalizadas e publicadas</p>
+          </div>
+          
+          <div v-if="atasPublicadasRecentes.length > 0" class="atas-table-container">
+            <table class="atas-publicadas-table">
+              <thead>
+                <tr>
+                  <th>Ata</th>
+                  <th>Data Publicação</th>
+                  <th>Processos</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="ata in atasPublicadasRecentes" :key="ata.id">
+                  <td>
+                    <strong>{{ ata.numero || `ATA-${String(ata.id).slice(-4)}` }}</strong>
+                  </td>
+                  <td>{{ formatDate(ata.dataPublicacao) }}</td>
+                  <td class="processos-cell">
+                    <span class="badge-info">{{ ata.totalProcessos || 0 }} processo(s)</span>
+                  </td>
+                  <td>
+                    <span class="status-badge status-publicada">
+                      📋 Publicada
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <div class="action-buttons">
+                      <button @click="baixarAta(ata)" class="btn-small btn-primary" title="Baixar arquivo PDF da ata">
+                        📄 Baixar PDF
+                      </button>
+                      <button @click="visualizarAta(ata)" class="btn-small btn-secondary" title="Visualizar conteúdo da ata">
+                        👁️ Visualizar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div v-else class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h4>Nenhuma ata publicada ainda</h4>
+            <p>As atas aparecerão aqui depois de serem elaboradas e oficialmente publicadas.</p>
+          </div>
+        </div>
             
             <!-- Controles de Paginação para Atas Publicadas -->
             <div v-if="atasPublicadasRecentes.length > 0" class="pagination-controls">
@@ -407,14 +440,17 @@
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Aba Homologações -->
-    <div v-if="activeTab === 'homologacoes'" class="homologacoes">
+      
+      <!-- Aba Homologações -->
+      <div v-show="activeTab === 'homologacoes'" class="homologacoes tab-pane">
       <div class="homologacoes-header">
         <h3>📋 Homologações</h3>
+        <div class="alert-duvida" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px; margin: 10px 0;">
+          <strong>⚠️ DÚVIDA PENDENTE:</strong> Verificar se a responsabilidade por homologações deve ser da CCL ou da Autoridade Competente conforme fluxo legal. 
+          <br><small>Esta aba será ajustada após confirmação do cliente sobre o responsável correto.</small>
+        </div>
         <p class="homologacoes-description">
-          Gestão de atos de homologação pela autoridade competente
+          Gestão de atos de homologação (responsabilidade a confirmar: CCL ou Autoridade Competente)
         </p>
         <div class="homologacoes-actions">
           <button @click="consultarPendentes" class="btn-primary">
@@ -424,231 +460,14 @@
             📊 Relatório Geral
           </button>
         </div>
-      </div>
-
-      <div class="homologacoes-stats">
-        <div class="homo-stat-card pending">
-          <div class="homo-stat-icon">⏳</div>
-          <div class="homo-stat-info">
-            <h4>{{ homologacoesPendentes }}</h4>
-            <p>Aguardando Homologação</p>
-            <small>Atas julgadas pela CCL</small>
-          </div>
-        </div>
-        <div class="homo-stat-card approved">
-          <div class="homo-stat-icon">✅</div>
-          <div class="homo-stat-info">
-            <h4>{{ homologacoesAprovadas }}</h4>
-            <p>Homologadas</p>
-            <small>Este mês</small>
-          </div>
-        </div>
-        <div class="homo-stat-card rejected">
-          <div class="homo-stat-icon">❌</div>
-          <div class="homo-stat-info">
-            <h4>{{ homologacoesIndeferidas }}</h4>
-            <p>Indeferidas</p>
-            <small>Este mês</small>
-          </div>
-        </div>
-        <div class="homo-stat-card dcb">
-          <div class="homo-stat-icon">📜</div>
-          <div class="homo-stat-info">
-            <h4>{{ dcbsEmitidas }}</h4>
-            <p>DCBs Emitidas</p>
-            <small>Total ativo</small>
-          </div>
+      
+        <div class="empty-state">
+          <div class="empty-icon">⚖️</div>
+          <h4>Aba de Homologações</h4>
+          <p>Esta funcionalidade será implementada conforme definição do responsável correto.</p>
         </div>
       </div>
-
-      <div class="homologacoes-content">
-        <!-- Processos Pendentes de Homologação -->
-        <div class="homo-section">
-          <div class="homo-section-header">
-            <h4>⏳ Processos Aguardando Homologação</h4>
-            <span class="homo-count">{{ processosPendentesHomologacao.length }} processos</span>
-          </div>
-          <div v-if="processosPendentesHomologacao.length > 0" class="homo-table-container">
-            <table class="homo-table">
-              <thead>
-                <tr>
-                  <th>Número da Ata</th>
-                  <th>Data Julgamento</th>
-                  <th>Produtos</th>
-                  <th>Decisão CCL</th>
-                  <th>Recursos</th>
-                  <th>Prazo</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="processo in processosPendentesHomologacaoPaginados" :key="processo.id">
-                  <td><strong>{{ processo.numeroAta }}</strong></td>
-                  <td>{{ formatDate(processo.dataJulgamento) }}</td>
-                  <td>
-                    <span class="badge-info">{{ processo.totalProdutos }} produtos</span>
-                  </td>
-                  <td>
-                    <span class="status-badge status-aprovado">{{ processo.decisaoCCL }}</span>
-                  </td>
-                  <td>
-                    <span class="status-badge" :class="getRecursoStatusClass(processo.statusRecursos)">
-                      {{ processo.statusRecursos }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="prazo-badge" :class="getPrazoHomologacaoClass(processo.dataJulgamento)">
-                      {{ calcularPrazoHomologacao(processo.dataJulgamento) }}
-                    </span>
-                  </td>
-                  <td>
-                    <div class="acoes-linha">
-                      <template v-if="!processo.jaDecidido">
-                        <button @click="emitirAtaJulgamento(processo)" class="btn-small btn-primary">
-                          📋 Emitir Ata de Julgamento
-                        </button>
-                        <button @click="visualizarAta(processo)" class="btn-small btn-secondary">
-                          👁️ Ver Ata
-                        </button>
-                      </template>
-                      <template v-else>
-                        <span class="badge-success" v-if="processo.tipoDecisao === 'HOMOLOGADA'">
-                          ✅ Homologado
-                        </span>
-                        <span class="badge-danger" v-else-if="processo.tipoDecisao === 'INDEFERIDA'">
-                          ❌ Indeferido
-                        </span>
-                        <button @click="visualizarAta(processo)" class="btn-small btn-secondary">
-                          👁️ Ver Ata
-                        </button>
-                      </template>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            
-            <!-- Controles de Paginação para Processos Pendentes -->
-            <div v-if="processosPendentesHomologacao.length > 0" class="pagination-controls">
-              <button @click="paginaAnterior('processosPendentes')" :disabled="paginacao.processosPendentes.paginaAtual <= 1" class="pagination-btn">
-                ← Anterior
-              </button>
-              <span class="pagination-info">
-                Página {{ paginacao.processosPendentes.paginaAtual }} de {{ calcularTotalPaginas('processosPendentes') || 1 }}
-                ({{ processosPendentesHomologacao.length }} itens)
-              </span>
-              <button @click="proximaPagina('processosPendentes')" :disabled="paginacao.processosPendentes.paginaAtual >= calcularTotalPaginas('processosPendentes')" class="pagination-btn">
-                Próxima →
-              </button>
-            </div>
-          </div>
-          <div v-else class="empty-message">
-            <div class="empty-icon">⚖️</div>
-            <h4>Não há processos pendentes de homologação</h4>
-            <p>Todos os processos julgados pela CCL já foram homologados.</p>
-          </div>
-        </div>
-
-        <!-- Homologações Recentes -->
-        <div class="homo-section">
-          <div class="homo-section-header">
-            <h4>📋 Homologações Recentes</h4>
-            <button @click="verTodas" class="btn-link">Ver todas</button>
-          </div>
-          <div v-if="homologacoesRecentes.length > 0" class="homo-cards-grid">
-            <div v-for="homo in homologacoesRecentesPaginadas" :key="homo.id" class="homo-card">
-              <div class="homo-card-header">
-                <div class="homo-card-status" :class="homo.tipo">
-                  <span class="homo-status-icon">{{ homo.tipo === 'homologada' ? '✅' : '❌' }}</span>
-                  <span class="homo-status-text">{{ homo.tipo === 'homologada' ? 'HOMOLOGADA' : 'INDEFERIDA' }}</span>
-                </div>
-                <span class="homo-date">{{ formatDate(homo.dataHomologacao) }}</span>
-              </div>
-              <div class="homo-card-content">
-                <h5>{{ homo.numeroAta }}</h5>
-                <p><strong>Produtos:</strong> {{ homo.totalProdutos }}</p>
-                <p><strong>Autoridade:</strong> {{ homo.autoridade }}</p>
-                <p><strong>Motivo:</strong> {{ homo.motivo }}</p>
-              </div>
-              <div class="homo-card-actions">
-                <button @click="baixarPDFHomologacao(homo)" class="btn-small btn-primary">
-                  📥 PDF
-                </button>
-                <button @click="visualizarDCBs(homo)" class="btn-small btn-secondary">
-                  📜 DCBs
-                </button>
-                <button @click="notificarFornecedores(homo)" class="btn-small btn-info">
-                  📧 Notificar
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Controles de Paginação para Homologações Recentes -->
-          <div v-if="homologacoesRecentes.length > 0" class="pagination-controls">
-            <button @click="paginaAnterior('homologacoesRecentes')" :disabled="paginacao.homologacoesRecentes.paginaAtual <= 1" class="pagination-btn">
-              ← Anterior
-            </button>
-            <span class="pagination-info">
-              Página {{ paginacao.homologacoesRecentes.paginaAtual }} de {{ calcularTotalPaginas('homologacoesRecentes') || 1 }}
-              ({{ homologacoesRecentes.length }} itens)
-            </span>
-            <button @click="proximaPagina('homologacoesRecentes')" :disabled="paginacao.homologacoesRecentes.paginaAtual >= calcularTotalPaginas('homologacoesRecentes')" class="pagination-btn">
-              Próxima →
-            </button>
-          </div>
-          
-          <div v-else class="empty-message">
-            <p>Não há homologações recentes.</p>
-          </div>
-        </div>
-
-        <!-- Seção removida: DCBs são atribuição da CPM, não da CCL -->
-          <div v-if="dcbsAtivas.length > 0" class="dcb-grid">
-            <div v-for="dcb in dcbsAtivasPaginadas" :key="dcb.id" class="dcb-card">
-              <div class="dcb-header">
-                <span class="dcb-number">DCB {{ dcb.numero }}/{{ dcb.ano }}</span>
-                <span class="dcb-status" :class="getDCBStatusClass(dcb.status)">{{ dcb.status }}</span>
-              </div>
-              <div class="dcb-content">
-                <h6>{{ dcb.produto }}</h6>
-                <p><strong>Marca:</strong> {{ dcb.marca }}</p>
-                <p><strong>Validade:</strong> {{ formatDate(dcb.validade) }}</p>
-                <p><strong>Emitida em:</strong> {{ formatDate(dcb.dataEmissao) }}</p>
-              </div>
-              <div class="dcb-actions">
-                <button @click="visualizarDCB(dcb)" class="btn-small btn-primary">
-                  👁️ Visualizar
-                </button>
-                <button @click="renovarDCB(dcb)" class="btn-small btn-warning">
-                  🔄 Renovar
-                </button>
-                <button @click="cancelarDCB(dcb)" class="btn-small btn-danger">
-                  ❌ Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Controles de Paginação para DCBs Ativas -->
-          <div v-if="dcbsAtivas.length > 0" class="pagination-controls">
-            <button @click="paginaAnterior('dcbsAtivas')" :disabled="paginacao.dcbsAtivas.paginaAtual <= 1" class="pagination-btn">
-              ← Anterior
-            </button>
-            <span class="pagination-info">
-              Página {{ paginacao.dcbsAtivas.paginaAtual }} de {{ calcularTotalPaginas('dcbsAtivas') || 1 }}
-              ({{ dcbsAtivas.length }} itens)
-            </span>
-            <button @click="proximaPagina('dcbsAtivas')" :disabled="paginacao.dcbsAtivas.paginaAtual >= calcularTotalPaginas('dcbsAtivas')" class="pagination-btn">
-              Próxima →
-            </button>
-          </div>
-          
-          <div v-else class="empty-message">
-            <p>Não há DCBs ativas no momento.</p>
-          </div>
-        </div>
-      </div>
+    </div>
     </div>
   </div>
 </template>
@@ -663,7 +482,7 @@ export default {
   data() {
     return {
       activeTab: 'dashboard',
-      processosPendentes: [],
+      processosPendentesArray: [],
       atasRecentes: [],
       pendentes: 0,
       aprovados: 0,
@@ -780,11 +599,11 @@ export default {
     processosPendentesPaginados() {
       const inicio = (this.paginacao.processosPendentes.paginaAtual - 1) * this.paginacao.processosPendentes.itensPorPagina
       const fim = inicio + this.paginacao.processosPendentes.itensPorPagina
-      const resultado = this.processosPendentes.slice(inicio, fim)
+      const resultado = this.processosPendentesArray.slice(inicio, fim)
       
       // LOG FINAL: Verificar se os dados chegam até o template
       console.log('🖥️ [DEBUG CCL TEMPLATE] processosPendentesPaginados chamado')
-      console.log('🖥️ [DEBUG CCL TEMPLATE] this.processosPendentes.length:', this.processosPendentes?.length || 0)
+      console.log('🖥️ [DEBUG CCL TEMPLATE] this.processosPendentesArray.length:', this.processosPendentesArray?.length || 0)
       console.log('🖥️ [DEBUG CCL TEMPLATE] resultado.length:', resultado?.length || 0)
       if (resultado?.length > 0) {
         resultado.forEach(proc => {
@@ -811,6 +630,7 @@ export default {
         this.carregarAtasEmElaboracao()
         this.carregarHomologacoes()
         this.carregarProcessosPendentesHomologacao()
+        this.carregarHomologacoesRecentes()
         this.carregarDCBsAtivas()
         this.iniciarMonitoramentoPrazos()
       } else {
@@ -852,9 +672,14 @@ export default {
           console.log('Entrando na aba homologações - recarregando dados específicos...')
           this.carregarHomologacoes()
           this.carregarProcessosPendentesHomologacao()
+          this.carregarHomologacoesRecentes()
+        } else if (newTab === 'atas') {
+          console.log('Entrando na aba atas de julgamento - recarregando dados específicos...')
+          this.carregarAtasJulgamento()
+          this.carregarAtasEmElaboracao()
         }
         // Evitar recarregar dados gerais desnecessariamente
-        else if (newTab === 'dashboard' && this.processosPendentes.length === 0) {
+        else if (newTab === 'dashboard' && this.processosPendentesArray.length === 0) {
           console.log('Voltando ao dashboard - recarregando apenas se necessário...')
           this.carregarDados(true)
         }
@@ -872,6 +697,274 @@ export default {
     }
   },
   methods: {
+    setActiveTab(tab) {
+      this.activeTab = tab
+    },
+
+    truncateText(text, maxLength) {
+      if (!text) return ''
+      if (text.length <= maxLength) return text
+      return text.substring(0, maxLength) + '...'
+    },
+
+    // Métodos específicos para botões da interface
+    async carregarProcessosPendentes() {
+      console.log('🔄 Recarregando processos pendentes...')
+      await this.carregarDados(true)
+      this.$swal({
+        title: '✅ Sucesso!',
+        text: 'Lista de processos atualizada com sucesso!',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      })
+    },
+
+    gerarRelatorioProcessos() {
+      this.$swal({
+        title: '📊 Relatório de Processos CCL',
+        text: 'Esta funcionalidade gerará um relatório detalhado dos processos sob análise da CCL.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: '📄 Gerar PDF',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.$swal({
+            title: 'Em desenvolvimento',
+            text: 'A geração de relatórios será implementada em breve.',
+            icon: 'info'
+          })
+        }
+      })
+    },
+
+    gerarRelatorioAtas() {
+      this.$swal({
+        title: '📋 Relatório de Atas CCL',
+        text: 'Esta funcionalidade gerará um relatório das atas de julgamento emitidas pela CCL.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: '📄 Gerar PDF',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.$swal({
+            title: 'Em desenvolvimento',
+            text: 'A geração de relatórios de atas será implementada em breve.',
+            icon: 'info'
+          })
+        }
+      })
+    },
+
+    // Métodos específicos para Atas de Julgamento
+    editarAta(ata) {
+      this.$swal({
+        title: '✏️ Editar Ata de Julgamento',
+        text: `Editando ata ${ata.numero_ata || `ATA-CCL-${ata.id}`}`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: '📝 Abrir Editor',
+        cancelButtonText: 'Cancelar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.$swal({
+            title: 'Em desenvolvimento',
+            text: 'O editor de atas será implementado em breve.',
+            icon: 'info'
+          })
+        }
+      })
+    },
+
+    visualizarAta(ata) {
+      this.$swal({
+        title: '📄 Visualizar Ata',
+        html: `
+          <div style="text-align: left;">
+            <p><strong>Número:</strong> ${ata.numero_ata || `ATA-CCL-${ata.id}`}</p>
+            <p><strong>Data:</strong> ${this.formatDate(ata.data_publicacao || ata.data_inicio)}</p>
+            <p><strong>Status:</strong> ${ata.status || 'Em Elaboração'}</p>
+            <p><strong>Processos:</strong> ${ata.total_processos || ata.processos_count || 0}</p>
+            <p><strong>Observação:</strong> Visualização completa em desenvolvimento</p>
+          </div>
+        `,
+        icon: 'info',
+        confirmButtonText: 'Fechar'
+      })
+    },
+
+    async baixarAta(ata) {
+      try {
+        // Buscar o processo relacionado à ata
+        const { data: processo, error } = await supabase
+          .from('processos_administrativos')
+          .select('*')
+          .not('ata_emitida_ccl_em', 'is', null)
+          .eq('tenant_id', this.currentTenantId)
+          .order('ata_emitida_ccl_em', { ascending: false })
+          .limit(1)
+          .single()
+          
+        if (error || !processo) {
+          this.$swal({
+            title: '❌ Erro',
+            text: 'Não foi possível encontrar o processo relacionado à ata.',
+            icon: 'error'
+          })
+          return
+        }
+
+        this.$swal({
+          title: '📄 Gerar Relatório com Ata',
+          text: `Gerando relatório completo do processo ${processo.numero_processo} incluindo a Ata de Julgamento CCL...`,
+          icon: 'info',
+          showCancelButton: true,
+          confirmButtonText: '📄 Gerar PDF',
+          cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            // Usar o mesmo sistema de geração de PDF dos Processos Administrativos
+            await this.gerarRelatorioComAta(processo, ata)
+          }
+        })
+      } catch (error) {
+        console.error('Erro ao buscar processo da ata:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: 'Erro ao buscar dados do processo.',
+          icon: 'error'
+        })
+      }
+    },
+
+    async gerarRelatorioComAta(processo, ata) {
+      try {
+        console.log('📄 Gerando relatório com Ata CCL para processo:', processo.numero_processo)
+        
+        // Importar o componente ProcessosAdministrativosComponent dinamicamente
+        const ProcessosAdministrativosComponent = await import('../processos/ProcessosAdministrativosComponent.vue')
+        const componentInstance = ProcessosAdministrativosComponent.default
+        
+        // Usar o método de geração de relatório do ProcessosAdministrativosComponent
+        // Mas vamos adaptar para incluir a ata CCL
+        
+        // Buscar dados completos do processo
+        const processoCompleto = await this.obterProcessoCompleto(processo.id)
+        if (!processoCompleto) {
+          throw new Error('Processo não encontrado')
+        }
+        
+        // Buscar todos os documentos
+        const { default: ProcessosAdministrativosService } = await import('../../services/processosAdministrativosService')
+        let documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processo.id)
+        
+        // Buscar produtos se for padronização
+        let produtos = []
+        if (processoCompleto.tipo_processo === 'padronizacao') {
+          produtos = await ProcessosAdministrativosService.listarProdutosProcesso(processo.id)
+        }
+        
+        // ADICIONAR ATA CCL COMO NOVO DOCUMENTO (após DFD - Fl. 003)
+        documentos.push({
+          id: `ata_ccl_${ata.id}`,
+          tipo_documento: 'ATA_CCL',
+          nome_documento: 'Ata de Julgamento CCL',
+          titulo: 'ATA DE JULGAMENTO TÉCNICO - CCL',
+          descricao: 'Ata de Julgamento emitida pela Comissão Central de Licitação',
+          numero_sequencial: 3, // Após DFD (Fl. 002)
+          folha_numero: 'Fl. 003',
+          data_autuacao: ata.dataPublicacao || new Date(),
+          conteudo_html: this.gerarHTMLAtaCCL(processo, ata)
+        })
+        
+        // Renumerar documentos subsequentes
+        documentos.sort((a, b) => (a.numero_sequencial || 999) - (b.numero_sequencial || 999))
+        documentos.forEach((doc, index) => {
+          if (doc.tipo_documento !== 'ATA_CCL' && (doc.numero_sequencial || 999) >= 3) {
+            doc.numero_sequencial = (doc.numero_sequencial || 0) + 1
+            doc.folha_numero = `Fl. ${String(doc.numero_sequencial).padStart(3, '0')}`
+          }
+        })
+        
+        // Chamar o método de geração do componente de Processos Administrativos
+        // Isso vai gerar o PDF completo com todos os documentos incluindo nossa ata
+        const componentMethods = componentInstance.methods
+        if (componentMethods && componentMethods.gerarHTMLRelatorio) {
+          const htmlRelatorio = componentMethods.gerarHTMLRelatorio.call(this, processoCompleto, documentos, produtos)
+          
+          // Abrir em nova janela
+          const novaJanela = window.open('', '_blank')
+          novaJanela.document.write(htmlRelatorio)
+          novaJanela.document.close()
+          novaJanela.document.title = `Processo_${processoCompleto.numero_processo}_com_Ata_CCL.pdf`
+        }
+        
+      } catch (error) {
+        console.error('Erro ao gerar relatório com ata:', error)
+        this.$swal({
+          title: '❌ Erro ao Gerar Relatório',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+
+    gerarHTMLAtaCCL(processo, ata) {
+      return `
+        <div class="documento-header">
+          <h1>${processo.nome_orgao || 'Órgão Administrativo'}</h1>
+          <h2>ATA DE JULGAMENTO TÉCNICO - CCL</h2>
+          <p>Processo nº ${processo.numero_processo}</p>
+        </div>
+
+        <div class="documento-content">
+          <h3>IDENTIFICAÇÃO DO PROCESSO</h3>
+          <p><strong>Número do Processo:</strong> ${processo.numero_processo}</p>
+          <p><strong>Objeto:</strong> ${processo.objeto}</p>
+          <p><strong>Data do Julgamento CCL:</strong> ${this.formatDate(processo.data_julgamento_ccl || new Date())}</p>
+          
+          <h3>DECISÃO DA CCL</h3>
+          <p><strong>Decisão:</strong> APROVADO TECNICAMENTE</p>
+          <p><strong>Ata Número:</strong> ${ata.numero || 'N/A'}</p>
+          <p><strong>Data de Publicação:</strong> ${this.formatDate(ata.dataPublicacao || new Date())}</p>
+          
+          <h3>FUNDAMENTAÇÃO TÉCNICA</h3>
+          <div style="text-align: justify; margin: 20px 0;">
+            ${processo.ata_julgamento_ccl || 'Fundamentação técnica da decisão CCL.'}
+          </div>
+          
+          <h3>PRÓXIMOS PASSOS</h3>
+          <p>O processo segue para análise da Assessoria Jurídica conforme fluxo estabelecido.</p>
+          
+          <div style="margin-top: 40px; text-align: center;">
+            <p><strong>Comissão Central de Licitação - CCL</strong></p>
+            <p>Data: ${this.formatDate(new Date())}</p>
+          </div>
+        </div>
+      `
+    },
+
+    async obterProcessoCompleto(processoId) {
+      try {
+        const { default: ProcessosAdministrativosService } = await import('../../services/processosAdministrativosService')
+        return await ProcessosAdministrativosService.obterProcesso(processoId)
+      } catch (error) {
+        console.error('Erro ao obter processo completo:', error)
+        return null
+      }
+    },
+
+    getStatusRecursoClass(status) {
+      switch (status) {
+        case 'Em prazo recursal': return 'status-recurso-prazo'
+        case 'Sem recursos': return 'status-sem-recursos'
+        case 'Com recursos': return 'status-com-recursos'
+        default: return 'status-indefinido'
+      }
+    },
+    
     async obterTenantId() {
       try {
         // Se já temos o tenant_id, não precisa buscar novamente
@@ -957,7 +1050,7 @@ export default {
         }
         
         // Verificar se já temos dados e não é um reload forçado
-        if (!forceReload && this.processosPendentes.length > 0) {
+        if (!forceReload && this.processosPendentesArray.length > 0) {
           console.log('🔄 [DEBUG CCL] Dados já carregados, usando cache')
           this.loading = false
           this.isLoadingData = false
@@ -985,10 +1078,20 @@ export default {
           console.log(`📋 [DEBUG CCL] Processo: ${proc.numero_processo} - Status: ${proc.status} - Tipo: ${proc.tipo_processo}`)
         })
         
-        // Agora filtrar apenas os que a CCL deve ver
+        // Agora filtrar apenas os que a CCL deve ver (conforme TramitacaoProcessosService)
         const processosData = (todosProcessosTenant || []).filter(processo => 
           ['assinado_admin', 'julgamento_ccl'].includes(processo.status)
         )
+        
+        console.log('🎯 [DEBUG CCL] Status filtrados para CCL:', ['assinado_admin', 'julgamento_ccl'])
+        console.log('🎯 [DEBUG CCL] Processos que deveriam aparecer:')
+        todosProcessosTenant?.forEach(proc => {
+          if (['assinado_admin', 'julgamento_ccl'].includes(proc.status)) {
+            console.log(`✅ DEVE APARECER: ${proc.numero_processo} - Status: ${proc.status}`)
+          } else {
+            console.log(`❌ NÃO APARECE: ${proc.numero_processo} - Status: ${proc.status}`)
+          }
+        })
         
         console.log('🎯 [DEBUG CCL] Processos FILTRADOS para CCL:', processosData.length)
         processosData.forEach(proc => {
@@ -1011,14 +1114,14 @@ export default {
           
           if (errorCompletos) {
             console.error('❌ [DEBUG CCL] Erro ao buscar dados completos:', errorCompletos)
-            this.processosPendentes = []
+            this.processosPendentesArray = []
           } else {
-            this.processosPendentes = Array.isArray(processosCompletos) ? processosCompletos : []
-            console.log('✅ [DEBUG CCL] Dados completos carregados:', this.processosPendentes.length)
+            this.processosPendentesArray = Array.isArray(processosCompletos) ? processosCompletos : []
+            console.log('✅ [DEBUG CCL] Dados completos carregados:', this.processosPendentesArray.length)
           }
         } else {
           console.log('⚠️ [DEBUG CCL] Nenhum processo filtrado encontrado')
-          this.processosPendentes = []
+          this.processosPendentesArray = []
         }
         
         // Carregar recursos do banco de dados
@@ -1046,7 +1149,7 @@ export default {
         this.recursosEmAnalise = this.recursos.filter(r => r.status === 'EM ANÁLISE' || r.status === 'AGUARDANDO CPM').length
         
         // Atualizar paginação
-        this.atualizarTotalPaginacao('processosPendentes', this.processosPendentes.length)
+        this.atualizarTotalPaginacao('processosPendentes', this.processosPendentesArray.length)
         this.atualizarTotalPaginacao('recursosAnalise', this.recursos.length)
         
         
@@ -1160,41 +1263,53 @@ export default {
     
     async visualizarProcesso(processo) {
       try {
-        this.$swal({
-          title: `📄 Processo ${processo.numero_processo}`,
-          html: `
-            <div style="text-align: left; padding: 15px; max-height: 500px; overflow-y: auto;">
-              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <h4 style="margin: 0 0 10px 0;">📰 Informações do Processo</h4>
-                <p><strong>Número:</strong> ${processo.numero_processo}</p>
-                <p><strong>Tipo:</strong> ${processo.tipo_processo || 'Não informado'}</p>
-                <p><strong>Status:</strong> ${this.formatarStatusProcesso(processo.status)}</p>
-                <p><strong>Data Finalização:</strong> ${this.formatDate(processo.atualizado_em)}</p>
-              </div>
-              
-              <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <h4 style="margin: 0 0 10px 0;">📎 Produtos Relacionados</h4>
-                <p style="color: #666; font-style: italic;">Produtos vinculados ao processo administrativo</p>
-              </div>
-              
-              <div style="background: #fff3e0; padding: 15px; border-radius: 8px;">
-                <h4 style="margin: 0 0 10px 0;">⚖️ Próximos Passos</h4>
-                <p>Este processo foi finalizado pela CPM e está pronto para julgamento da CCL.</p>
-                <p>Utilize o botão "Julgar" para iniciar o processo de julgamento.</p>
-              </div>
-            </div>
-          `,
-          width: '700px',
-          confirmButtonText: '✔️ Fechar'
-        })
+        console.log('📄 Visualizando processo na CCL:', processo.id, processo.numero_processo)
+        
+        // Importar o componente dos Processos Administrativos para usar o método dele diretamente
+        const ProcessosAdministrativosComponent = await import('@/components/processos/ProcessosAdministrativosComponent.vue')
+        const processosComponent = ProcessosAdministrativosComponent.default
+        
+        // Usar diretamente o método gerarRelatorio dos Processos Administrativos
+        // Isso garante que o PDF seja EXATAMENTE IDÊNTICO, incluindo todos os documentos complementares
+        await processosComponent.methods.gerarRelatorio.call({
+          // Contexto mínimo necessário
+          formatarData: this.formatarData,
+          formatarStatus: this.formatarStatus,
+          ...processosComponent.methods
+        }, processo)
+        
       } catch (error) {
         console.error('Erro ao visualizar processo:', error)
-        this.$swal({
-          title: '❌ Erro',
-          text: 'Erro ao carregar detalhes do processo.',
-          icon: 'error'
-        })
+        alert(`Erro ao gerar relatório: ${error.message}`)
       }
+    },
+
+    // REMOVIDOS TODOS OS MÉTODOS DUPLICADOS - AGORA USA DIRETAMENTE DOS PROCESSOS ADMINISTRATIVOS
+
+    formatarData(data) {
+      if (!data) return 'N/A'
+      return new Date(data).toLocaleDateString('pt-BR')
+    },
+
+    formatarStatus(status) {
+      const statusMap = {
+        'criado_cpm': 'Criado pela CPM',
+        'aguardando_aprovacao': 'Aguardando Aprovação',
+        'aprovado_cpm': 'Aprovado pela CPM',
+        'rejeitado_cpm': 'Rejeitado pela CPM',
+        'aguardando_assinatura_orgao': 'Aguardando Assinatura do Órgão',
+        'assinado_admin': 'Assinado pelo Órgão Administrativo',
+        'rejeitado_admin': 'Rejeitado pelo Órgão Administrativo',
+        'julgamento_ccl': 'Em Julgamento pela CCL',
+        'aprovado_ccl': 'Aprovado pela CCL',
+        'rejeitado_ccl': 'Rejeitado pela CCL',
+        'aguardando_assinatura_juridico': 'Aguardando Assinatura Jurídica',
+        'aprovado_juridico': 'Aprovado pelo Jurídico',
+        'rejeitado_juridico': 'Rejeitado pelo Jurídico',
+        'finalizado': 'Processo Finalizado',
+        'cancelado': 'Processo Cancelado'
+      }
+      return statusMap[status] || status
     },
     
     async tramitarProcessoAdministrativo(processo) {
@@ -1505,6 +1620,259 @@ export default {
           icon: 'error'
         })
       }
+    },
+    
+    async julgarProcessoCCL(processo) {
+      try {
+        const { value: decisaoCCL } = await this.$swal({
+          title: `⚖️ Julgamento CCL - ${processo.numeroAta}`,
+          html: `
+            <div style="text-align: left; padding: 10px; max-width: 100%; box-sizing: border-box;">
+              <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 16px;">📄 Resumo do Processo</h4>
+                <p style="margin: 5px 0; word-wrap: break-word;"><strong>Ata:</strong> ${processo.numeroAta}</p>
+                <p style="margin: 5px 0;"><strong>Produtos:</strong> ${processo.totalProdutos}</p>
+                <p style="margin: 5px 0;"><strong>Data Julgamento CCL:</strong> ${this.formatDate(processo.dataJulgamento)}</p>
+                <p style="margin: 5px 0; word-wrap: break-word;"><strong>Recomendação da CCL:</strong> <span style="color: #2e7d32; font-weight: bold;">${processo.decisaoCCL}</span></p>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px;">Decisão da CCL:</label>
+                <select id="decisaoCCL" class="swal2-select" style="width: 100%; box-sizing: border-box;">
+                  <option value="">Selecione a decisão...</option>
+                  <option value="homologar">✅ APROVAR - Recomendar aprovação do processo</option>
+                  <option value="indeferir">❌ REJEITAR - Rejeitar o processo</option>
+                  <option value="diligencia">📄 DILIGÊNCIA - Solicitar correções/esclarecimentos</option>
+                </select>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px;">Parecer Técnico da CCL:</label>
+                <textarea id="parecerCCL" class="swal2-textarea" rows="5" 
+                  placeholder="Fundamente tecnicamente sua decisão..." 
+                  style="width: 100%; box-sizing: border-box; resize: vertical;"></textarea>
+              </div>
+              
+              <div style="background: #e3f2fd; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <h5 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px;">⚖️ Efeitos da Decisão:</h5>
+                <div style="font-size: 12px; line-height: 1.4;">
+                  <p style="margin: 3px 0;"><strong>✅ HOMOLOGAÇÃO:</strong> Processo aprovado, DCBs serão emitidas</p>
+                  <p style="margin: 3px 0;"><strong>❌ INDEFERIMENTO:</strong> Processo rejeitado, fornecedores notificados</p>
+                  <p style="margin: 3px 0;"><strong>📄 DILIGÊNCIA:</strong> Processo retorna para análise complementar</p>
+                </div>
+              </div>
+              
+              <div style="background: #fff3cd; padding: 8px; border-radius: 4px;">
+                <small style="font-size: 12px;"><strong>⚠️ Importante:</strong> Esta é a decisão final da Autoridade Competente sobre a recomendação técnica emitida pela CCL.</small>
+              </div>
+            </div>
+          `,
+          width: '750px',
+          maxWidth: '92vw',
+          showCancelButton: true,
+          confirmButtonText: '⚖️ Confirmar Julgamento',
+          cancelButtonText: '❌ Cancelar',
+          preConfirm: () => {
+            const decisao = document.getElementById('decisaoCCL').value
+            const parecer = document.getElementById('parecerCCL').value.trim()
+            
+            if (!decisao) {
+              this.$swal.showValidationMessage('Selecione uma decisão')
+              return false
+            }
+            
+            if (!parecer) {
+              this.$swal.showValidationMessage('O parecer técnico é obrigatório')
+              return false
+            }
+            
+            return { decisao, parecer }
+          }
+        })
+        
+        if (!decisaoCCL) return
+        
+        // Usar o serviço de tramitação para enviar para próxima etapa
+        const resultado = await TramitacaoProcessosService.enviarProcesso(
+          processo.id, 
+          `CCL julgou processo: ${decisaoCCL.decisao.toUpperCase()} - ${decisaoCCL.parecer}`
+        )
+        
+        if (!resultado || !resultado.sucesso) {
+          throw new Error('Falha na tramitação do processo')
+        }
+        
+        // Mostrar resultado da decisão
+        let tituloResultado, iconeResultado, corResultado, proximosPassos
+        
+        switch(decisaoCCL.decisao) {
+          case 'homologar':
+            tituloResultado = '✅ CCL Aprovou o Processo!'
+            iconeResultado = 'success'
+            corResultado = '#2e7d32'
+            proximosPassos = `
+              <li>Processo será enviado para Assessoria Jurídica</li>
+              <li>Análise jurídica será realizada</li>
+              <li>Após aprovação jurídica, edital será publicado</li>
+              <li>Autoridade Competente fará homologação final</li>
+            `
+            break
+          case 'indeferir':
+            tituloResultado = '❌ CCL Rejeitou o Processo'
+            iconeResultado = 'warning'
+            corResultado = '#d32f2f'
+            proximosPassos = `
+              <li>Processo será devolvido para CPM</li>
+              <li>CPM pode fazer correções e reenviar</li>
+              <li>Fornecedores serão notificados</li>
+              <li>Nova análise será necessária se aplicável</li>
+            `
+            break
+          case 'diligencia':
+            tituloResultado = '📄 CCL Solicitou Diligência'
+            iconeResultado = 'info'
+            corResultado = '#1976d2'
+            proximosPassos = `
+              <li>Processo será devolvido para CPM</li>
+              <li>CPM deve providenciar esclarecimentos</li>
+              <li>Após correções, retorna para nova análise CCL</li>
+              <li>Nova decisão será tomada pela CCL</li>
+            `
+            break
+        }
+        
+        await this.$swal({
+          title: tituloResultado,
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: ${corResultado};">Decisão Registrada</h4>
+                <p><strong>Processo:</strong> ${processo.numeroAta}</p>
+                <p><strong>Decisão:</strong> ${decisaoCCL.decisao.toUpperCase()}</p>
+                <p><strong>Data:</strong> ${this.formatDate(new Date())}</p>
+              </div>
+              
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 8px;">
+                <h5 style="margin: 0 0 10px 0; color: ${corResultado};">📋 Próximos Passos:</h5>
+                <ol style="margin: 0; padding-left: 20px; font-size: 13px;">
+                  ${proximosPassos}
+                </ol>
+              </div>
+            </div>
+          `,
+          icon: iconeResultado,
+          confirmButtonText: '✅ Entendido'
+        })
+        
+        // Recarregar os dados para atualizar as listas
+        await this.carregarDados(true)
+        
+        // Recarregar especificamente as seções de homologação
+        await this.carregarProcessosPendentesHomologacao()
+        await this.carregarHomologacoesRecentes()
+        
+        // Forçar atualização da interface
+        this.$forceUpdate()
+        
+      } catch (error) {
+        console.error('Erro ao processar decisão da autoridade:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: `Erro ao processar decisão: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+    
+    async carregarHomologacoesRecentes() {
+      try {
+        if (!this.currentTenantId) return
+        
+        // Buscar processos homologados, indeferidos ou em diligência pela autoridade
+        const { data: homologacoesData, error } = await supabase
+          .from('processos_administrativos')
+          .select(`
+            id,
+            numero_processo,
+            objeto,
+            status,
+            decisao_autoridade,
+            fundamentacao_autoridade,
+            data_decisao_autoridade,
+            criado_em
+          `)
+          .eq('tenant_id', this.currentTenantId)
+          .in('status', ['aprovado_ccl', 'aprovado_juridico', 'edital_publicado', 'homologado'])
+          .order('data_decisao_autoridade', { ascending: false })
+          .limit(10)
+        
+        if (error) {
+          console.error('Erro ao carregar homologações recentes:', error)
+          return
+        }
+        
+        // Mapear dados para o formato da interface
+        this.homologacoesRecentes = (homologacoesData || []).map(processo => {
+          return {
+            id: processo.id,
+            numeroAta: processo.numero_processo,
+            dataHomologacao: processo.data_decisao_autoridade,
+            totalProdutos: 1,
+            autoridade: 'Autoridade Competente',
+            motivo: processo.fundamentacao_autoridade || 'Decisão fundamentada',
+            tipo: processo.decisao_autoridade === 'homologar' ? 'homologada' : 
+                  processo.decisao_autoridade === 'indeferir' ? 'indeferida' : 'diligencia'
+          }
+        })
+        
+        // Atualizar contadores
+        this.homologacoesAprovadas = this.homologacoesRecentes.filter(h => h.tipo === 'homologada').length
+        this.homologacoesIndeferidas = this.homologacoesRecentes.filter(h => h.tipo === 'indeferida').length
+        
+        console.log('✅ Homologações recentes carregadas:', this.homologacoesRecentes.length)
+        
+      } catch (error) {
+        console.error('Erro ao carregar homologações recentes:', error)
+      }
+    },
+    
+    calcularPrazoCCL(dataAssinatura) {
+      if (!dataAssinatura) return 'Sem prazo'
+      
+      const hoje = new Date()
+      const dataAssinado = new Date(dataAssinatura)
+      const prazoFinal = this.adicionarDiasUteis(dataAssinado, 10) // 10 dias úteis para CCL
+      
+      if (hoje > prazoFinal) return 'Vencido'
+      
+      const diasUteisRestantes = this.calcularDiasUteisEntre(hoje, prazoFinal)
+      return diasUteisRestantes <= 0 ? 'Hoje' : `${diasUteisRestantes} dias úteis`
+    },
+    
+    getPrazoCCLClass(dataAssinatura) {
+      if (!dataAssinatura) return 'prazo-indefinido'
+      
+      const hoje = new Date()
+      const dataAssinado = new Date(dataAssinatura)
+      const prazoFinal = this.adicionarDiasUteis(dataAssinado, 10)
+      
+      if (hoje > prazoFinal) return 'prazo-vencido'
+      
+      const diasUteis = this.calcularDiasUteisEntre(hoje, prazoFinal)
+      if (diasUteis <= 2) return 'prazo-urgente'
+      if (diasUteis <= 5) return 'prazo-atencao'
+      return 'prazo-normal'
+    },
+    
+    getStatusClass(status) {
+      const statusMap = {
+        'AGUARDANDO AUTORIDADE': 'status-pendente',
+        'HOMOLOGADO': 'status-aprovado',
+        'INDEFERIDO': 'status-rejeitado',
+        'EM DILIGÊNCIA': 'status-diligencia',
+        'EM ANÁLISE': 'status-analise'
+      }
+      return statusMap[status] || 'status-padrao'
     },
     
     calcularPrazoRestante(dataAnalise) {
@@ -1973,6 +2341,23 @@ export default {
     },
     async visualizarAta(ata) {
       try {
+        // Verificar se é uma ata de homologação (tem numeroAta) ou uma ata publicada (tem numero)
+        const isHomologacao = ata.numeroAta !== undefined
+        
+        // Buscar dados da ata completa se for um processo de homologação
+        let ataCompleta = ata
+        if (isHomologacao) {
+          const { data: ataData, error: ataError } = await supabase
+            .from('atas_julgamento')
+            .select('*')
+            .eq('id', ata.id)
+            .eq('tenant_id', this.currentTenantId)
+            .single()
+            
+          if (ataError) throw ataError
+          ataCompleta = ataData
+        }
+        
         // Buscar produtos vinculados à ata
         const { data: produtos, error } = await supabase
           .from('produtos')
@@ -1996,17 +2381,25 @@ export default {
         const produtosAprovados = produtos?.filter(p => p.status === 'julgado_aprovado') || []
         const produtosReprovados = produtos?.filter(p => p.status === 'julgado_reprovado') || []
         
+        // Usar as propriedades corretas dependendo do tipo
+        const numero = isHomologacao ? ata.numeroAta : (ata.numero || ataCompleta.numero)
+        const periodo = isHomologacao ? ataCompleta.periodo : ata.periodo
+        const dataPublicacao = isHomologacao ? ata.dataJulgamento : ata.dataPublicacao
+        const status = isHomologacao ? ata.decisaoCCL : ata.statusRecursal
+        const totalProcessos = isHomologacao ? ata.totalProdutos : ata.totalProcessos
+        
         this.$swal({
-          title: `📋 Ata de Julgamento: ${ata.numero}`,
+          title: `📋 Ata de Julgamento: ${numero || 'N/A'}`,
           html: `
             <div style="text-align: left; padding: 15px; max-height: 500px; overflow-y: auto;">
               <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 15px 0; color: #495057;">📄 Informações da Ata</h4>
-                <p><strong>Número:</strong> ${ata.numero}</p>
-                <p><strong>Período:</strong> ${ata.periodo}</p>
-                <p><strong>Data Publicação:</strong> ${this.formatDate(ata.dataPublicacao)}</p>
-                <p><strong>Status:</strong> ${ata.statusRecursal}</p>
-                <p><strong>Total de Processos:</strong> ${ata.totalProcessos}</p>
+                <p><strong>Número:</strong> ${numero || 'N/A'}</p>
+                <p><strong>Período:</strong> ${periodo || 'N/A'}</p>
+                <p><strong>Data Publicação:</strong> ${this.formatDate(dataPublicacao) || 'N/A'}</p>
+                <p><strong>Status:</strong> ${status || 'N/A'}</p>
+                <p><strong>Total de Processos:</strong> ${totalProcessos || 0}</p>
+                ${isHomologacao ? `<p><strong>Tipo:</strong> Aguardando Homologação pela Autoridade Competente</p>` : ''}
               </div>
               
               <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
@@ -2124,7 +2517,7 @@ export default {
       try {
         if (!this.currentTenantId) return
         
-        // Carregar atas de julgamento publicadas do banco de dados
+        // Carregar atas de julgamento PUBLICADAS da tabela atas_julgamento
         const { data: atasData, error } = await supabase
           .from('atas_julgamento')
           .select(`
@@ -2142,7 +2535,7 @@ export default {
             criado_em
           `)
           .eq('tenant_id', this.currentTenantId)
-          .neq('status_ata', 'ELABORACAO') // Filtrar apenas atas publicadas
+          .in('status_ata', ['EM PRAZO', 'PRAZO_EXPIRADO', 'PUBLICADA']) // Atas publicadas (em prazo, prazo expirado ou finalizadas)
           .order('data_publicacao', { ascending: false })
           .limit(10) // Limitar às 10 mais recentes
         
@@ -2203,8 +2596,8 @@ export default {
             atualizado_em
           `)
           .eq('tenant_id', this.currentTenantId)
-          .eq('status_ata', 'ELABORACAO') // Filtrar apenas atas em elaboração
-          .order('data_inicio_elaboracao', { ascending: false })
+          .in('status_ata', ['ELABORACAO', 'EM_ELABORACAO']) // Filtrar apenas atas em elaboração
+          .order('data_inicio', { ascending: false })
         
         if (error) {
           console.error('Erro ao carregar atas em elaboração:', error)
@@ -2215,13 +2608,14 @@ export default {
         if (atasData && atasData.length > 0) {
           this.atasEmElaboracao = atasData.map(ata => ({
             id: ata.id,
+            numero_ata: ata.numero,
             numero: ata.numero,
             periodo: ata.periodo,
-            totalProcessos: ata.total_processos,
+            processos_count: ata.total_processos,
             status: 'elaboracao',
-            dataInicio: ata.data_inicio_elaboracao,
-            responsavel: ata.responsavel_elaboracao,
-            progresso: ata.progresso_elaboracao,
+            data_inicio: ata.data_inicio || ata.criado_em,
+            responsavel: ata.responsavel_elaboracao || 'CCL',
+            progresso: ata.progresso_elaboracao || 0,
             observacoes: ata.observacoes,
             criadoEm: ata.criado_em,
             atualizadoEm: ata.atualizado_em
@@ -2306,43 +2700,33 @@ export default {
       try {
         if (!this.currentTenantId) return
         
-        // Buscar todas as homologações existentes para verificar status
-        const { data: homologacoes, error: errorHomologacoes } = await supabase
-          .from('homologacoes')
-          .select('ata_julgamento_id, tipo_homologacao, data_homologacao')
-          .eq('tenant_id', this.currentTenantId)
-
-        const homologacoesMap = new Map()
-        if (homologacoes) {
-          homologacoes.forEach(h => {
-            homologacoesMap.set(h.ata_julgamento_id, {
-              tipo: h.tipo_homologacao,
-              data: h.data_homologacao
-            })
-          })
-        }
-
-        // Buscar atas de julgamento publicadas
-        const { data: atasData, error } = await supabase
-          .from('atas_julgamento')
+        // Buscar processos que foram julgados pela CCL e aguardam decisão da autoridade
+        const { data: processosData, error } = await supabase
+          .from('processos_administrativos')
           .select(`
             id,
-            numero,
-            data_publicacao,
-            total_processos,
-            status_ata,
-            observacoes
+            numero_processo,
+            objeto,
+            status,
+            ata_emitida_ccl_em,
+            ata_julgamento_ccl,
+            recomendacao_ccl,
+            fundamentacao_legal_ccl,
+            decisao_autoridade,
+            fundamentacao_autoridade,
+            data_decisao_autoridade,
+            criado_em,
+            atualizado_em
           `)
           .eq('tenant_id', this.currentTenantId)
-          .in('status_ata', ['EM PRAZO', 'PUBLICADA', 'PUBLICADA_EM_PRAZO', 'PUBLICADA_ENCERRADA'])
-          .order('data_publicacao', { ascending: true })
+          .in('status', ['julgamento_ccl', 'aprovado_ccl'])
+          .order('ata_emitida_ccl_em', { ascending: true })
         
-        console.log('Debug Homologações:')
+        console.log('Debug Processos Homologação:')
         console.log('- Tenant ID:', this.currentTenantId)
-        console.log('- Homologações existentes:', homologacoes?.length || 0)
         console.log('- Query error:', error)
-        console.log('- Atas encontradas:', atasData?.length || 0)
-        console.log('- Dados das atas:', atasData)
+        console.log('- Processos encontrados:', processosData?.length || 0)
+        console.log('- Dados dos processos:', processosData)
         
         if (error) {
           console.error('Erro ao carregar processos pendentes de homologação:', error)
@@ -2350,22 +2734,21 @@ export default {
         }
         
         // Mapear os dados para o formato usado no template
-        if (atasData && atasData.length > 0) {
-          this.processosPendentesHomologacao = atasData.map(ata => {
-            const homologacao = homologacoesMap.get(ata.id)
-            const jaDecidido = homologacao ? true : false
+        if (processosData && processosData.length > 0) {
+          this.processosPendentesHomologacao = processosData.map(processo => {
+            const jaDecidido = processo.status === 'aprovado_ccl'
             
             return {
-              id: ata.id,
-              numeroAta: ata.numero,
-              dataJulgamento: ata.data_publicacao,
-              totalProdutos: ata.total_processos,
-              decisaoCCL: this.mapearStatusParaDecisao(ata.status_ata),
-              statusRecursos: this.determinarStatusRecursos(ata.status_ata),
-              observacoes: ata.observacoes,
+              id: processo.id,
+              numeroAta: processo.numero_processo, 
+              dataJulgamento: processo.ata_emitida_ccl_em,
+              totalProdutos: 1, // Cada processo representa um conjunto de produtos
+              decisaoCCL: this.mapearRecomendacaoParaTexto(processo.recomendacao_ccl),
+              statusRecursos: this.determinarStatusRecursosProcesso(processo.status),
+              observacoes: processo.fundamentacao_legal_ccl,
               jaDecidido: jaDecidido,
-              tipoDecisao: homologacao?.tipo || null,
-              dataDecisao: homologacao?.data || null
+              tipoDecisao: jaDecidido ? this.mapearDecisaoAutoridade(processo.decisao_autoridade) : null,
+              dataDecisao: processo.data_decisao_autoridade
             }
           })
           
@@ -2419,6 +2802,47 @@ export default {
           return 'PRAZO VENCIDO'
         default:
           return 'SEM RECURSOS'
+      }
+    },
+    
+    mapearRecomendacaoParaTexto(recomendacao) {
+      switch (recomendacao) {
+        case 'recomendar_homologacao':
+          return 'HOMOLOGAÇÃO RECOMENDADA'
+        case 'recomendar_indeferimento':
+          return 'INDEFERIMENTO RECOMENDADO'
+        case 'solicitar_esclarecimentos':
+          return 'ESCLARECIMENTOS SOLICITADOS'
+        default:
+          return 'APROVADA'
+      }
+    },
+    
+    determinarStatusRecursosProcesso(status) {
+      switch (status) {
+        case 'julgado_ccl':
+          return 'AGUARDANDO AUTORIDADE'
+        case 'homologado_autoridade':
+          return 'HOMOLOGADO'
+        case 'indeferido_autoridade':
+          return 'INDEFERIDO'
+        case 'diligencia_autoridade':
+          return 'EM DILIGÊNCIA'
+        default:
+          return 'EM ANÁLISE'
+      }
+    },
+    
+    mapearDecisaoAutoridade(decisao) {
+      switch (decisao) {
+        case 'homologar':
+          return 'HOMOLOGADA'
+        case 'indeferir':
+          return 'INDEFERIDA'
+        case 'diligencia':
+          return 'DILIGÊNCIA SOLICITADA'
+        default:
+          return null
       }
     },
     
@@ -3353,50 +3777,54 @@ Exemplo:
     // Métodos para Atas de Julgamento
     async criarNovaAta() {
       try {
-        // 1. Buscar produtos julgados pendentes de inclusão em ata
-        const { data: produtosJulgados, error: errorProdutos } = await supabase
-          .from('produtos')
+        // 1. Buscar processos julgados que ainda não foram incluídos em ata consolidada
+        const { data: processosJulgados, error: errorProcessos } = await supabase
+          .from('processos_administrativos')
           .select(`
             id,
-            nome,
-            marca,
-            modelo,
-            fabricante,
-            categoria_id,
+            numero_processo,
+            objeto,
             status,
-            julgado_em,
-            adequacao_tecnica,
-            observacoes_ccl,
-            base_legal
+            ata_emitida_ccl_em,
+            ata_julgamento_ccl,
+            recomendacao_ccl,
+            fundamentacao_legal_ccl,
+            consideracoes_adicionais_ccl,
+            observacoes_ccl
           `)
           .eq('tenant_id', this.currentTenantId)
-          .in('status', ['julgado_aprovado', 'julgado_reprovado'])
-          .not('julgado_em', 'is', null) // Só produtos que foram efetivamente julgados
-          .is('ata_julgamento_id', null) // Só produtos que ainda não estão em uma ata
+          .in('status', ['ata_julgamento_ccl_homologacao', 'ata_julgamento_ccl_indeferimento', 'ata_julgamento_ccl_aprovacao', 'ata_julgamento_ccl_rejeicao'])
+          .not('ata_emitida_ccl_em', 'is', null) // Só processos que foram efetivamente julgados
 
-        if (errorProdutos) throw errorProdutos
+        if (errorProcessos) throw errorProcessos
 
-        // 2. Verificar se há produtos para incluir na ata
-        if (!produtosJulgados || produtosJulgados.length === 0) {
+        // 2. Verificar se há processos para incluir na ata
+        if (!processosJulgados || processosJulgados.length === 0) {
           this.$swal({
-            title: '⚠️ Nenhum Produto Disponível',
-            text: 'Não há produtos julgados disponíveis para incluir em uma nova ata. Realize julgamentos primeiro.',
+            title: '⚠️ Nenhum Processo Disponível',
+            text: 'Não há processos julgados disponíveis para incluir em uma nova ata. Realize julgamentos primeiro.',
             icon: 'warning'
           })
           return
         }
 
-        // 3. Mostrar prévia dos produtos e formulário de criação da ata
-        const produtosList = produtosJulgados.map(produto => `
-          <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 8px;">${produto.nome}</td>
-            <td style="padding: 8px;">${produto.marca}</td>
-            <td style="padding: 8px;">
-              <span class="status-badge ${produto.status === 'julgado_aprovado' ? 'status-aprovado' : 'status-reprovado'}">
-                ${produto.status === 'julgado_aprovado' ? 'Aprovado' : 'Reprovado'}
+        // 3. Função auxiliar para truncar texto
+        const truncateText = (text, maxLength = 80) => {
+          if (!text) return 'Processo de pré-qualificação'
+          return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+        }
+
+        // 4. Mostrar prévia dos processos e formulário de criação da ata
+        const processosList = processosJulgados.map(processo => `
+          <tr style="border-bottom: 1px solid #dee2e6; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+            <td style="padding: 12px 8px; font-weight: bold; color: #0d6efd; vertical-align: top;">${processo.numero_processo}</td>
+            <td style="padding: 12px 8px; word-wrap: break-word; line-height: 1.4; vertical-align: top;" title="${processo.objeto || 'Processo de pré-qualificação'}">${truncateText(processo.objeto, 120)}</td>
+            <td style="padding: 12px 8px; text-align: center; vertical-align: top;">
+              <span style="padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; color: white; background: ${processo.recomendacao_ccl === 'recomendar_homologacao' ? '#28a745' : '#dc3545'}; display: inline-block; white-space: nowrap;">
+                ${processo.recomendacao_ccl === 'recomendar_homologacao' ? '✅ Homologação' : '❌ Indeferimento'}
               </span>
             </td>
-            <td style="padding: 8px;">${this.formatDate(produto.julgado_em)}</td>
+            <td style="padding: 12px 8px; text-align: center; color: #6c757d; vertical-align: top; font-size: 12px;">${this.formatDate(processo.ata_emitida_ccl_em)}</td>
           </tr>
         `).join('')
 
@@ -3407,35 +3835,41 @@ Exemplo:
               <!-- Formulário da Ata -->
               <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 15px 0; color: #495057;">📄 Dados da Ata</h4>
-                <div style="margin-bottom: 15px;">
-                  <label style="display: block; font-weight: bold; margin-bottom: 5px;">Período de Referência:</label>
-                  <input id="periodoAta" class="swal2-input" type="text" placeholder="Ex: Janeiro 2025" value="${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}">
+                
+                <!-- Linha 1: Período e Número lado a lado -->
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                  <div style="flex: 1;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Período de Referência:</label>
+                    <input id="periodoAta" class="swal2-input" type="text" placeholder="Ex: Janeiro 2025" value="${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}" style="margin: 0; width: 100%;">
+                  </div>
+                  <div style="flex: 1;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Número da Ata:</label>
+                    <input id="numeroAta" class="swal2-input" type="text" placeholder="Ex: ATA-CCL-008/2025" value="ATA-CCL-${String(Math.floor(Math.random() * 900) + 100)}/${new Date().getFullYear()}" style="margin: 0; width: 100%;">
+                  </div>
                 </div>
-                <div style="margin-bottom: 15px;">
-                  <label style="display: block; font-weight: bold; margin-bottom: 5px;">Número da Ata:</label>
-                  <input id="numeroAta" class="swal2-input" type="text" placeholder="Ex: ATA-CCL-008/2025" value="ATA-CCL-${String(Math.floor(Math.random() * 900) + 100)}/${new Date().getFullYear()}">
-                </div>
-                <div style="margin-bottom: 15px;">
+                
+                <!-- Linha 2: Descrição -->
+                <div style="margin-bottom: 0;">
                   <label style="display: block; font-weight: bold; margin-bottom: 5px;">Descrição:</label>
-                  <textarea id="descricaoAta" class="swal2-textarea" placeholder="Descrição da ata de julgamento..." rows="3">Ata de julgamento da Comissão de Contratação ou Licitação referente aos processos de pré-qualificação de bens do período.</textarea>
+                  <textarea id="descricaoAta" class="swal2-textarea" placeholder="Descrição da ata de julgamento..." rows="3" style="margin: 0; width: 100%;">Ata de julgamento da Comissão de Contratação ou Licitação referente aos processos de pré-qualificação de bens do período.</textarea>
                 </div>
               </div>
 
-              <!-- Lista de Produtos -->
+              <!-- Lista de Processos -->
               <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px;">
-                <h4 style="margin: 0 0 15px 0; color: #495057;">📦 Produtos a serem incluídos (${produtosJulgados.length})</h4>
-                <div style="max-height: 300px; overflow-y: auto;">
-                  <table style="width: 100%; font-size: 12px;">
+                <h4 style="margin: 0 0 15px 0; color: #495057;">📋 Processos a serem incluídos (${processosJulgados.length})</h4>
+                <div style="max-height: 300px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 4px;">
+                  <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
                     <thead>
-                      <tr style="background: #f8f9fa;">
-                        <th style="padding: 8px; text-align: left;">Produto</th>
-                        <th style="padding: 8px; text-align: left;">Marca</th>
-                        <th style="padding: 8px; text-align: left;">Decisão</th>
-                        <th style="padding: 8px; text-align: left;">Data Julgamento</th>
+                      <tr style="background: #f8f9fa; position: sticky; top: 0;">
+                        <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: 600; width: 15%;">Processo</th>
+                        <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: 600; width: 50%;">Descrição</th>
+                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; width: 20%;">Recomendação</th>
+                        <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: 600; width: 15%;">Data Julgamento</th>
                       </tr>
                     </thead>
                     <tbody>
-                      ${produtosList}
+                      ${processosList}
                     </tbody>
                   </table>
                 </div>
@@ -3448,7 +3882,7 @@ Exemplo:
           `,
           width: '900px',
           showCancelButton: true,
-          confirmButtonText: '✅ Criar Ata com ' + produtosJulgados.length + ' Produtos',
+          confirmButtonText: '✅ Criar Ata com ' + processosJulgados.length + ' Processos',
           cancelButtonText: '❌ Cancelar',
           confirmButtonColor: '#28a745',
           preConfirm: () => {
@@ -3473,12 +3907,12 @@ Exemplo:
           numero: result.value.numero,
           periodo: result.value.periodo,
           descricao: result.value.descricao,
-          total_processos: produtosJulgados.length,
+          total_processos: processosJulgados.length,
           status_ata: 'ELABORACAO', // Status correto: ata vai para "Atas em Elaboração"
           data_inicio_elaboracao: new Date().toISOString(),
           responsavel_elaboracao: this.usuarioNome || 'CCL',
           progresso_elaboracao: 10, // Iniciada (10%)
-          conteudo_ata: this.gerarConteudoAtaInicial(produtosJulgados, result.value),
+          conteudo_ata: this.gerarConteudoAtaInicial(processosJulgados, result.value),
           criado_em: new Date().toISOString(),
           atualizado_em: new Date().toISOString()
         }
@@ -3498,7 +3932,7 @@ Exemplo:
             ata_julgamento_id: ataId,
             atualizado_em: new Date().toISOString()
           })
-          .in('id', produtosJulgados.map(p => p.id))
+          .in('id', processosJulgados.map(p => p.id))
 
         if (errorVinculo) throw errorVinculo
 
@@ -3514,7 +3948,7 @@ Exemplo:
             <div style="text-align: center; padding: 20px;">
               <h4>${result.value.numero}</h4>
               <p><strong>Período:</strong> ${result.value.periodo}</p>
-              <p><strong>Produtos incluídos:</strong> ${produtosJulgados.length}</p>
+              <p><strong>Processos incluídos:</strong> ${processosJulgados.length}</p>
               <hr>
               <p>🔄 <strong>Status:</strong> ELABORAÇÃO</p>
               <p>A ata foi criada e está disponível na seção <strong>"📝 Atas em Elaboração"</strong> para:</p>
@@ -3545,6 +3979,52 @@ Exemplo:
         })
       }
     },
+
+    async criarAtaAutomatica(processo, julgamento) {
+      try {
+        console.log('🏗️ Criando ata automática para processo aprovado:', processo.numero_processo)
+        
+        // Gerar número da ata baseado na data
+        const agora = new Date()
+        const ano = agora.getFullYear()
+        const mes = String(agora.getMonth() + 1).padStart(2, '0')
+        const dia = String(agora.getDate()).padStart(2, '0')
+        const numeroAta = `ATA-CCL-${ano}${mes}${dia}-${String(processo.id).slice(-4)}`
+        
+        // Criar registro na tabela atas_julgamento
+        const { data: novaAta, error } = await supabase
+          .from('atas_julgamento')
+          .insert({
+            tenant_id: this.currentTenantId,
+            numero: numeroAta,
+            data_inicio: agora.toISOString(),
+            data_publicacao: agora.toISOString(),
+            periodo: `${mes}/${ano}`,
+            total_processos: 1,
+            status_ata: 'EM_ELABORACAO',
+            conteudo_ata: `Ata de Julgamento CCL referente ao processo ${processo.numero_processo}\n\nDECISÃO: APROVADO\n\nFUNDAMENTAÇÃO: ${julgamento.fundamentacao}`,
+            observacoes: `Ata criada automaticamente após julgamento CCL do processo ${processo.numero_processo}`,
+            criado_em: agora.toISOString()
+          })
+          .select()
+          .single()
+        
+        if (error) {
+          console.error('Erro ao criar ata automática:', error)
+          return
+        }
+        
+        console.log('✅ Ata automática criada:', numeroAta)
+        
+        // Atualizar listas locais para mostrar a nova ata
+        await this.carregarAtasEmElaboracao()
+        await this.carregarAtasJulgamento()
+        
+      } catch (error) {
+        console.error('Erro ao criar ata automática:', error)
+      }
+    },
+
     async editarAta(ata) {
       try {
         // Buscar produtos vinculados à ata
@@ -5443,6 +5923,226 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
       if (this.paginacao[secao].paginaAtual > 1) {
         this.paginacao[secao].paginaAtual--
       }
+    },
+
+    // =====================================================
+    // NOVOS MÉTODOS PARA FLUXO CCL CORRETO
+    // =====================================================
+    async iniciarJulgamentoCCL(processo) {
+      try {
+        const { value: julgamento } = await this.$swal({
+          title: `⚖️ Julgamento Técnico CCL`,
+          html: `
+            <div style="text-align: left; padding: 10px; max-width: 100%; box-sizing: border-box;">
+              <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 16px;">📄 Dados do Processo</h4>
+                <p style="margin: 5px 0; word-wrap: break-word;"><strong>Número:</strong> ${processo.numero_processo}</p>
+                <p style="margin: 5px 0; word-wrap: break-word;"><strong>Objeto:</strong> ${processo.objeto || 'Não informado'}</p>
+                <p style="margin: 5px 0;"><strong>Status:</strong> ${this.formatarStatusProcesso(processo.status)}</p>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px;">Decisão Técnica da CCL:</label>
+                <select id="decisaoTecnica" class="swal2-select" style="width: 95%; box-sizing: border-box;">
+                  <option value="">Selecione a decisão...</option>
+                  <option value="aprovar">✅ APROVAR - Processo está tecnicamente adequado</option>
+                  <option value="devolver">↩️ DEVOLVER - Solicitar correções</option>
+                  <option value="rejeitar">❌ REJEITAR - Processo inadequado</option>
+                </select>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px;">Fundamentação Técnica:</label>
+                <textarea id="fundamentacaoTecnica" class="swal2-textarea" rows="4" 
+                  placeholder="Descreva a análise técnica realizada e fundamente sua decisão..." 
+                  style="width: 95%; box-sizing: border-box; resize: vertical;"></textarea>
+              </div>
+              
+              <div style="background: #e3f2fd; padding: 12px; border-radius: 8px;">
+                <h5 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px;">ℹ️ Próximos Passos:</h5>
+                <div style="font-size: 12px; line-height: 1.4;">
+                  <p style="margin: 3px 0;"><strong>✅ APROVAR:</strong> Processo vai para Assessoria Jurídica</p>
+                  <p style="margin: 3px 0;"><strong>↩️ DEVOLVER:</strong> Processo volta para CPM com observações</p>
+                  <p style="margin: 3px 0;"><strong>❌ REJEITAR:</strong> Processo é rejeitado definitivamente</p>
+                </div>
+              </div>
+            </div>
+          `,
+          width: '700px',
+          maxWidth: '90vw',
+          showCancelButton: true,
+          confirmButtonText: '⚖️ Confirmar Julgamento',
+          cancelButtonText: '❌ Cancelar',
+          preConfirm: () => {
+            const decisao = document.getElementById('decisaoTecnica').value
+            const fundamentacao = document.getElementById('fundamentacaoTecnica').value.trim()
+            
+            if (!decisao) {
+              this.$swal.showValidationMessage('Selecione uma decisão técnica')
+              return false
+            }
+            
+            if (!fundamentacao) {
+              this.$swal.showValidationMessage('A fundamentação técnica é obrigatória')
+              return false
+            }
+            
+            return { decisao, fundamentacao }
+          }
+        })
+        
+        if (!julgamento) return
+        
+        // Processar decisão usando TramitacaoProcessosService
+        let resultado
+        
+        switch(julgamento.decisao) {
+          case 'aprovar':
+            // Enviar para próxima etapa (aprovado_ccl -> Assessoria Jurídica)
+            resultado = await TramitacaoProcessosService.enviarProcesso(
+              processo.id, 
+              `CCL aprovou tecnicamente o processo: ${julgamento.fundamentacao}`
+            )
+            break
+            
+          case 'devolver':
+            // Devolver para CPM
+            resultado = await TramitacaoProcessosService.devolverProcesso(
+              processo.id,
+              'Solicitação de correções técnicas pela CCL',
+              julgamento.fundamentacao
+            )
+            break
+            
+          case 'rejeitar':
+            // Rejeitar processo
+            resultado = await TramitacaoProcessosService.rejeitarProcesso(
+              processo.id,
+              'Processo rejeitado tecnicamente pela CCL',
+              julgamento.fundamentacao
+            )
+            break
+        }
+        
+        if (!resultado || !resultado.sucesso) {
+          throw new Error('Falha na tramitação do processo')
+        }
+        
+        // Salvar dados específicos da CCL
+        const { error: updateError } = await supabase
+          .from('processos_administrativos')
+          .update({
+            ata_julgamento_ccl: julgamento.fundamentacao,
+            ata_emitida_ccl_em: new Date().toISOString(),
+            data_julgamento_ccl: new Date().toISOString()
+          })
+          .eq('id', processo.id)
+        
+        if (updateError) {
+          console.warn('Erro ao salvar dados CCL (processo foi tramitado):', updateError)
+        }
+
+        // Se foi aprovado, criar ata de julgamento automaticamente
+        if (julgamento.decisao === 'aprovar') {
+          await this.criarAtaAutomatica(processo, julgamento)
+        }
+        
+        // Mostrar resultado
+        const decisaoTexto = {
+          aprovar: 'aprovado',
+          devolver: 'devolvido para correções',
+          rejeitar: 'rejeitado'
+        }[julgamento.decisao]
+        
+        await this.$swal({
+          title: '✅ Julgamento Realizado!',
+          html: `
+            <p>Processo <strong>${processo.numero_processo}</strong> foi <strong>${decisaoTexto}</strong> pela CCL.</p>
+            <p><strong>Novo status:</strong> ${resultado.statusNovo}</p>
+            <p><strong>Próximo responsável:</strong> ${resultado.proximoResponsavel || 'Definido pelo sistema'}</p>
+          `,
+          icon: 'success'
+        })
+        
+        // Recarregar dados
+        await this.carregarDados(true)
+        
+      } catch (error) {
+        console.error('Erro no julgamento CCL:', error)
+        await this.$swal({
+          title: '❌ Erro no Julgamento',
+          text: error.message || 'Erro interno do sistema',
+          icon: 'error'
+        })
+      }
+    },
+
+    async devolverProcesso(processo) {
+      try {
+        const { value: motivo } = await this.$swal({
+          title: `↩️ Devolver Processo`,
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <p><strong>Processo:</strong> ${processo.numero_processo}</p>
+              <p><strong>Status atual:</strong> ${this.formatarStatusProcesso(processo.status)}</p>
+              
+              <div style="margin: 15px 0;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Motivo da devolução:</label>
+                <textarea id="motivoDevolucao" class="swal2-textarea" rows="4" 
+                  placeholder="Descreva os motivos pelos quais o processo está sendo devolvido..." 
+                  style="width: 100%;"></textarea>
+              </div>
+              
+              <div style="background: #fff3cd; padding: 10px; border-radius: 4px;">
+                <small><strong>⚠️ Atenção:</strong> O processo será devolvido para a CPM com status de devolução.</small>
+              </div>
+            </div>
+          `,
+          width: '600px',
+          showCancelButton: true,
+          confirmButtonText: '↩️ Confirmar Devolução',
+          cancelButtonText: '❌ Cancelar',
+          preConfirm: () => {
+            const motivo = document.getElementById('motivoDevolucao').value.trim()
+            if (!motivo) {
+              this.$swal.showValidationMessage('O motivo da devolução é obrigatório')
+              return false
+            }
+            return motivo
+          }
+        })
+        
+        if (!motivo) return
+        
+        const resultado = await TramitacaoProcessosService.devolverProcesso(
+          processo.id,
+          motivo,
+          `Processo devolvido pela CCL: ${motivo}`
+        )
+        
+        if (!resultado || !resultado.sucesso) {
+          throw new Error('Falha na devolução do processo')
+        }
+        
+        await this.$swal({
+          title: '✅ Processo Devolvido!',
+          html: `
+            <p>Processo <strong>${processo.numero_processo}</strong> foi devolvido para a CPM.</p>
+            <p><strong>Novo status:</strong> ${resultado.statusNovo}</p>
+          `,
+          icon: 'success'
+        })
+        
+        await this.carregarDados(true)
+        
+      } catch (error) {
+        console.error('Erro na devolução:', error)
+        await this.$swal({
+          title: '❌ Erro na Devolução',
+          text: error.message || 'Erro interno do sistema',
+          icon: 'error'
+        })
+      }
     }
   },
   
@@ -5458,74 +6158,98 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
 </script>
 
 <style scoped>
+/* Sistema de abas simplificado */
+.tab-content {
+  margin-top: 20px;
+}
+
+.tab-pane {
+  width: 100%;
+}
+
+.tab-header {
+  display: flex;
+  border-bottom: 2px solid #e9ecef;
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  padding: 16px 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 1.1rem;
+  min-height: 50px;
+}
+
+.tab-button.active {
+  border-bottom-color: #e74c3c;
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.tab-button:hover {
+  background-color: #f8f9fa;
+  color: #e74c3c;
+}
+
 /* Correções para os modais SweetAlert */
 :global(.swal2-container-modal) {
   padding: 10px !important;
 }
 
 :global(.swal2-popup-modal) {
+  max-width: 90vw !important;
   max-height: 90vh !important;
-  overflow-y: auto !important;
-  padding: 20px !important;
 }
 
-:global(.swal2-content) {
-  max-height: 70vh !important;
-  overflow-y: auto !important;
-}
-
-:global(.swal2-html-container) {
-  max-height: none !important;
-  overflow: visible !important;
-}
-
-/* Ajustes para campos do formulário */
-:global(.swal2-select), 
-:global(.swal2-textarea) {
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-:global(.swal2-textarea) {
-  min-height: 100px !important;
-  resize: vertical !important;
-}
+/* Estilo para as abas */
 .dashboard {
-  padding: 20px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.dashboard h2 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  font-weight: 600;
 }
 
 .tabs {
   display: flex;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 2px solid #e9ecef;
+  margin-bottom: 2rem;
 }
 
 .tab {
-  padding: 10px 20px;
+  padding: 1rem 2rem;
   cursor: pointer;
-  font-weight: 500;
   border-bottom: 3px solid transparent;
   transition: all 0.3s ease;
+  position: relative;
+  font-weight: 500;
 }
 
 .tab:hover {
-  background-color: #f5f5f5;
+  background-color: #f8f9fa;
 }
 
 .tab.active {
-  border-bottom: 3px solid #3498db;
-  color: #3498db;
-}
-
-.tab {
-  position: relative;
+  border-bottom-color: #e74c3c;
+  color: #e74c3c;
+  font-weight: 600;
 }
 
 .tab-notification {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  background: #e74c3c;
+  top: 5px;
+  right: 5px;
+  background: #dc3545;
   color: white;
   border-radius: 50%;
   width: 20px;
@@ -5535,752 +6259,316 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-.atas-julgamento,
-.homologacoes {
-  margin-top: 20px;
-}
-
-.info-card {
-  background: white;
-  border-radius: 8px;
-  padding: 25px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  position: relative;
-  overflow: hidden;
-}
-
-.info-card h3 {
-  color: #2c3e50;
-  margin-bottom: 15px;
-}
-
-.info-card p {
-  margin-bottom: 15px;
-  color: #555;
-}
-
-.info-card ul {
-  margin-left: 20px;
-  margin-bottom: 20px;
-}
-
-.info-card li {
-  margin-bottom: 8px;
-  color: #555;
-}
-
-.em-desenvolvimento {
-  position: relative;
-  margin-top: 20px;
-  padding: 8px 15px;
-  background-color: #f39c12;
-  color: white;
-  border-radius: 4px;
-  display: inline-block;
-  font-weight: bold;
-  text-transform: uppercase;
-  font-size: 12px;
-}
-
+/* Cards dos stats */
 .stats-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .stat-card {
   background: white;
+  padding: 2rem;
   border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  transition: transform 0.2s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  transform: translateY(-3px);
+}
+
+.stat-card h3 {
+  margin: 0 0 0.75rem 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .stat-icon {
   font-size: 2.5rem;
-  margin-bottom: 12px;
-  opacity: 0.8;
-}
-
-.stat-description {
-  color: #666;
-  font-size: 13px;
-  margin-top: 8px;
-  margin-bottom: 0;
-}
-
-.stat-card-alert {
-  border: 2px solid #e74c3c !important;
-  animation: borderPulse 2s infinite;
-}
-
-@keyframes borderPulse {
-  0%, 100% { border-color: #e74c3c; }
-  50% { border-color: #c0392b; }
-}
-
-.alert-badge {
-  display: block;
-  background: #e74c3c;
-  color: white;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  margin-top: 4px;
-  font-weight: normal;
-  text-transform: uppercase;
+  margin-bottom: 0.75rem;
 }
 
 .stat-value {
-  font-size: 32px;
+  font-size: 3rem;
   font-weight: bold;
-  text-align: center;
-  margin-top: 10px;
+  margin: 0.75rem 0;
 }
 
+.stat-description {
+  margin: 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+.status-pendente-card .stat-value {
+  color: #f39c12;
+}
+
+.status-aprovado-card .stat-value {
+  color: #27ae60;
+}
+
+.status-recurso-card .stat-value {
+  color: #3498db;
+}
+
+.stat-card-alert {
+  border-left: 4px solid #e74c3c;
+}
+
+.stat-card-alert .stat-value {
+  color: #e74c3c;
+}
+
+/* Seções do dashboard */
 .dashboard-section {
   background: white;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-}
-
-th, td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
-
-th {
-  background-color: #f5f5f5;
-}
-
-.btn-small {
-  padding: 5px 10px;
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 5px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  text-transform: uppercase;
-  font-weight: bold;
-}
-
-.status-aprovado {
-  background-color: #2ecc71;
-  color: white;
-}
-
-.status-pendente {
-  background-color: #f39c12;
-  color: white;
-}
-
-.status-reprovado {
-  background-color: #e74c3c;
-  color: white;
-}
-
-.status-aprovado-card {
-  border-top: 5px solid #2ecc71;
-}
-
-.status-pendente-card {
-  border-top: 5px solid #f39c12;
-}
-
-.status-reprovado-card {
-  border-top: 5px solid #e74c3c;
-}
-
-.status-recurso-card {
-  border-top: 5px solid #e67e22;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  margin-bottom: 2.5rem;
 }
 
 .section-header {
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
 }
 
 .section-header h3 {
-  margin-bottom: 8px;
+  margin: 0 0 0.75rem 0;
   color: #2c3e50;
-  font-size: 1.3rem;
+  font-size: 1.4rem;
+  font-weight: 600;
 }
 
 .section-description {
-  color: #666;
-  font-size: 14px;
   margin: 0;
+  color: #666;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.section-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Tabelas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.5rem;
+  font-size: 1rem;
+}
+
+th, td {
+  padding: 1.25rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  vertical-align: top;
+}
+
+th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+
+tr:hover {
+  background-color: #f8f9fa;
+}
+
+.processo-info {
+  font-size: 1rem;
   line-height: 1.4;
 }
 
-.produto-info {
-  max-width: 200px;
-}
-
-.produto-info strong {
+.processo-info strong {
+  font-size: 1.1rem;
   color: #2c3e50;
 }
 
-.produto-info small {
+.processo-id {
+  font-size: 0.9rem;
   color: #666;
-  font-size: 12px;
+  margin-top: 0.25rem;
 }
 
-.prazo-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: bold;
-  text-transform: uppercase;
+.objeto-processo {
+  max-width: 400px;
+  font-size: 1rem;
+  line-height: 1.4;
 }
 
-.prazo-normal {
-  background-color: #2ecc71;
-  color: white;
+.objeto-text {
+  color: #2c3e50;
+  cursor: help;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
-.prazo-atencao {
-  background-color: #f39c12;
-  color: white;
-}
-
-.prazo-urgente {
-  background-color: #e67e22;
-  color: white;
-}
-
-.prazo-vencido {
-  background-color: #e74c3c;
-  color: white;
-}
-
-.prazo-indefinido {
-  background-color: #95a5a6;
-  color: white;
-}
-
+/* Botões */
 .btn-primary {
   background-color: #3498db;
   color: white;
-  margin-right: 5px;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-height: 42px;
 }
 
 .btn-primary:hover {
   background-color: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .btn-secondary {
   background-color: #95a5a6;
   color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-height: 42px;
 }
 
 .btn-secondary:hover {
   background-color: #7f8c8d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
+.btn-warning {
+  background-color: #f39c12;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-height: 42px;
+}
+
+.btn-warning:hover {
+  background-color: #e67e22;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-small {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  min-height: 36px;
+}
+
+/* Estados vazios */
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
+  padding: 3rem 2rem;
   color: #666;
 }
 
 .empty-icon {
-  font-size: 3rem;
-  margin-bottom: 16px;
-  opacity: 0.6;
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.5;
 }
 
 .empty-state h4 {
-  margin-bottom: 8px;
+  margin: 0 0 1rem 0;
   color: #2c3e50;
+  font-size: 1.3rem;
+  font-weight: 600;
 }
 
 .empty-state p {
   margin: 0;
-  font-size: 14px;
-}
-
-/* Estilos para Atas de Julgamento */
-.atas-julgamento {
-  padding: 0;
-}
-
-.atas-header {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.atas-header h3 {
-  margin: 0 0 8px 0;
-  color: #2c3e50;
-  font-size: 1.4rem;
-}
-
-.atas-description {
-  color: #666;
-  margin: 0 0 20px 0;
-  line-height: 1.5;
-}
-
-.atas-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.atas-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.ata-stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: transform 0.2s ease;
-}
-
-.ata-stat-card:hover {
-  transform: translateY(-2px);
-}
-
-.ata-stat-icon {
-  font-size: 2rem;
-  opacity: 0.8;
-}
-
-.ata-stat-info h4 {
-  margin: 0 0 4px 0;
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-.ata-stat-info p {
-  margin: 0;
-  color: #666;
-  font-size: 14px;
-}
-
-.atas-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.atas-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.atas-section h4 {
-  margin: 0 0 20px 0;
-  color: #2c3e50;
-  font-size: 1.2rem;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f1f2f6;
-}
-
-.atas-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
-}
-
-.ata-card {
-  border: 1px solid #e1e8ed;
-  border-radius: 8px;
-  padding: 16px;
-  transition: all 0.2s ease;
-}
-
-.ata-card:hover {
-  border-color: #3498db;
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.1);
-}
-
-.ata-card.em-elaboracao {
-  border-left: 4px solid #f39c12;
-}
-
-.ata-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.ata-card-header h5 {
-  margin: 0;
-  color: #2c3e50;
   font-size: 1.1rem;
+  line-height: 1.4;
 }
 
-.ata-status {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.status-elaboracao {
-  background-color: #f39c12;
-  color: white;
-}
-
-.ata-card-content p {
-  margin: 0 0 8px 0;
-  color: #555;
-  font-size: 14px;
-}
-
-.ata-card-actions {
-  margin-top: 16px;
-  display: flex;
-  gap: 8px;
-}
-
-.btn-success {
-  background-color: #28a745;
-  color: white;
-}
-
-.btn-success:hover {
-  background-color: #218838;
-}
-
-.btn-warning {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.btn-warning:hover {
-  background-color: #e0a800;
-}
-
-.atas-table-container {
-  overflow-x: auto;
-}
-
-.atas-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
-}
-
-.atas-table th,
-.atas-table td {
-  padding: 12px 16px;
-  text-align: left;
-  border-bottom: 1px solid #e1e8ed;
-}
-
-.atas-table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.atas-table tr:hover {
-  background-color: #f8f9fa;
-}
-
-.badge-info {
-  background-color: #17a2b8;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.badge-success {
-  background-color: #28a745;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 15px;
-  font-size: 12px;
-  font-weight: bold;
-  display: inline-block;
-  margin: 2px 0;
-}
-
-.badge-danger {
-  background-color: #dc3545;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 15px;
-  font-size: 12px;
-  font-weight: bold;
-  display: inline-block;
-  margin: 2px 0;
-}
-
-.decisao-tomada {
-  text-align: center;
-  padding: 5px;
-}
-
-/* Estilos de Paginação */
+/* Paginação */
 .pagination-controls {
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: 15px;
-  margin: 20px 0;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  padding: 1.5rem;
 }
 
 .pagination-btn {
-  background: #007bff;
+  background-color: #3498db;
   color: white;
   border: none;
-  padding: 8px 16px;
+  padding: 0.75rem 1.5rem;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 1rem;
   font-weight: 500;
   transition: all 0.2s ease;
+  min-height: 42px;
 }
 
 .pagination-btn:hover:not(:disabled) {
-  background: #0056b3;
+  background-color: #2980b9;
   transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .pagination-btn:disabled {
-  background: #6c757d;
+  background-color: #bdc3c7;
   cursor: not-allowed;
-  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
 }
 
 .pagination-info {
-  font-size: 14px;
-  font-weight: 600;
-  color: #495057;
-  padding: 0 10px;
-}
-
-/* Estilos para as ações nas tabelas */
-.acoes-linha {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  min-width: 280px;
-  padding: 5px;
-}
-
-.status-em-prazo {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.status-encerrado {
-  background-color: #28a745;
-  color: white;
-}
-
-.status-com-recursos {
-  background-color: #dc3545;
-  color: white;
-}
-
-.status-indefinido {
-  background-color: #6c757d;
-  color: white;
-}
-
-.empty-message {
-  text-align: center;
-  padding: 40px 20px;
   color: #666;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
-.empty-message p {
-  margin: 0;
-  font-style: italic;
-}
-
-/* Estilos para Homologações */
-.homologacoes {
-  padding: 0;
-}
-
-.homologacoes-header {
+/* Alertas */
+.alertas-section {
   background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #e74c3c;
 }
 
-.homologacoes-header h3 {
-  margin: 0 0 8px 0;
-  color: #2c3e50;
-  font-size: 1.4rem;
-}
-
-.homologacoes-description {
-  color: #666;
-  margin: 0 0 20px 0;
-  line-height: 1.5;
-}
-
-.homologacoes-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.homologacoes-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.homo-stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+.alertas-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  transition: transform 0.2s ease;
-}
-
-.homo-stat-card:hover {
-  transform: translateY(-2px);
-}
-
-.homo-stat-card.pending {
-  border-left: 4px solid #f39c12;
-}
-
-.homo-stat-card.approved {
-  border-left: 4px solid #28a745;
-}
-
-.homo-stat-card.rejected {
-  border-left: 4px solid #dc3545;
-}
-
-.homo-stat-card.dcb {
-  border-left: 4px solid #6f42c1;
-}
-
-.homo-stat-icon {
-  font-size: 2rem;
-  opacity: 0.8;
-}
-
-.homo-stat-info h4 {
-  margin: 0 0 4px 0;
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-.homo-stat-info p {
-  margin: 0 0 2px 0;
-  color: #2c3e50;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.homo-stat-info small {
-  color: #666;
-  font-size: 12px;
-}
-
-.homologacoes-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.homo-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.homo-section-header {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f1f2f6;
+  margin-bottom: 1rem;
 }
 
-.homo-section-header h4 {
+.alertas-header h3 {
   margin: 0;
-  color: #2c3e50;
-  font-size: 1.2rem;
-}
-
-.homo-count {
-  background: #e3f2fd;
-  color: #1976d2;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: bold;
+  color: #e74c3c;
 }
 
 .btn-link {
@@ -6288,295 +6576,40 @@ th {
   border: none;
   color: #3498db;
   cursor: pointer;
-  font-size: 14px;
   text-decoration: underline;
+  font-size: 0.9rem;
 }
 
 .btn-link:hover {
   color: #2980b9;
 }
 
-.homo-table-container {
-  overflow-x: auto;
-}
-
-.homo-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
-}
-
-.homo-table th,
-.homo-table td {
-  padding: 12px 16px;
-  text-align: left;
-  border-bottom: 1px solid #e1e8ed;
-}
-
-.homo-table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #2c3e50;
-  font-size: 13px;
-}
-
-.homo-table tr:hover {
-  background-color: #f8f9fa;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  color: white;
-  margin-left: 5px;
-}
-
-.btn-danger:hover {
-  background-color: #c82333;
-}
-
-.btn-info {
-  background-color: #17a2b8;
-  color: white;
-  margin-left: 5px;
-}
-
-.btn-info:hover {
-  background-color: #138496;
-}
-
-.homo-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.homo-card {
-  border: 1px solid #e1e8ed;
-  border-radius: 12px;
-  padding: 20px;
-  transition: all 0.2s ease;
-}
-
-.homo-card:hover {
-  border-color: #3498db;
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.1);
-}
-
-.homo-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.homo-card-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.homo-card-status.homologada {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.homo-card-status.indeferida {
-  background-color: #f8d7da;
-  color: #721c24;
-}
-
-.homo-status-icon {
-  font-size: 14px;
-}
-
-.homo-date {
-  color: #666;
-  font-size: 12px;
-}
-
-.homo-card-content h5 {
-  margin: 0 0 12px 0;
-  color: #2c3e50;
-  font-size: 1.1rem;
-}
-
-.homo-card-content p {
-  margin: 0 0 8px 0;
-  color: #555;
-  font-size: 14px;
-}
-
-.homo-card-actions {
-  margin-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.dcb-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.dcb-card {
-  border: 1px solid #e1e8ed;
-  border-radius: 8px;
-  padding: 16px;
-  transition: all 0.2s ease;
-}
-
-.dcb-card:hover {
-  border-color: #6f42c1;
-  box-shadow: 0 4px 12px rgba(111, 66, 193, 0.1);
-}
-
-.dcb-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.dcb-number {
-  font-weight: bold;
-  color: #2c3e50;
-  font-size: 14px;
-}
-
-.dcb-status {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.dcb-ativa {
-  background-color: #28a745;
-  color: white;
-}
-
-.dcb-vencendo {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.dcb-vencida {
-  background-color: #dc3545;
-  color: white;
-}
-
-.dcb-cancelada {
-  background-color: #6c757d;
-  color: white;
-}
-
-.dcb-indefinida {
-  background-color: #e9ecef;
-  color: #495057;
-}
-
-.dcb-content h6 {
-  margin: 0 0 8px 0;
-  color: #2c3e50;
-  font-size: 1rem;
-}
-
-.dcb-content p {
-  margin: 0 0 6px 0;
-  color: #555;
-  font-size: 13px;
-}
-
-.dcb-actions {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* Estilos para Sistema de Alertas */
-.alertas-section {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ffa726 100%);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-  animation: pulseAlert 2s infinite;
-}
-
-@keyframes pulseAlert {
-  0%, 100% { box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3); }
-  50% { box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5); }
-}
-
-.alertas-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.alertas-header h3 {
-  margin: 0;
-  color: white;
-  font-size: 1.3rem;
-}
-
-.alertas-header .btn-link {
-  color: white;
-  text-decoration: underline;
-  opacity: 0.9;
-}
-
-.alertas-header .btn-link:hover {
-  opacity: 1;
-}
-
 .alertas-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 16px;
+  gap: 1rem;
 }
 
 .alerta-card {
-  background: white;
-  border-radius: 8px;
-  padding: 16px;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
 }
 
-.alerta-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+.alerta-card.critico {
+  background: #fff5f5;
+  border-color: #e74c3c;
 }
 
-.alerta-card.prazo-vencido,
-.alerta-card.julgamento-vencido,
-.alerta-card.homologacao-atrasada {
-  border-left: 4px solid #e74c3c;
-}
-
-.alerta-card.prazo-urgente,
-.alerta-card.julgamento-urgente,
-.alerta-card.homologacao-urgente {
-  border-left: 4px solid #f39c12;
+.alerta-card.aviso {
+  background: #fff8dc;
+  border-color: #f39c12;
 }
 
 .alerta-icon {
   font-size: 1.5rem;
-  flex-shrink: 0;
 }
 
 .alerta-content {
@@ -6584,79 +6617,342 @@ th {
 }
 
 .alerta-content h5 {
-  margin: 0 0 8px 0;
+  margin: 0 0 0.25rem 0;
   color: #2c3e50;
-  font-size: 1rem;
 }
 
 .alerta-content p {
-  margin: 0 0 8px 0;
-  color: #555;
-  font-size: 14px;
-  line-height: 1.4;
+  margin: 0 0 0.25rem 0;
+  color: #666;
 }
 
 .alerta-content small {
-  color: #666;
-  font-size: 12px;
+  color: #999;
+  font-size: 0.8rem;
 }
 
 .alerta-actions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 0.5rem;
 }
 
-/* Estilos para processos administrativos */
-.processo-info {
-  text-align: left;
+/* Atas específicos */
+.atas-julgamento {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.processo-info strong {
+.atas-header {
+  margin-bottom: 2rem;
+}
+
+.atas-header h3 {
+  margin: 0 0 0.5rem 0;
   color: #2c3e50;
-  font-size: 14px;
 }
 
-.processo-info small {
+.atas-description {
+  margin: 0 0 1rem 0;
   color: #666;
-  font-style: italic;
+  font-size: 0.95rem;
 }
 
-.tipo-badge {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
+.alert-info {
+  background: #e3f2fd;
+  border: 1px solid #2196f3;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+}
+
+.atas-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.atas-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.ata-stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-left: 4px solid #3498db;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ata-stat-icon {
+  font-size: 2rem;
+  color: #3498db;
+}
+
+.ata-stat-info h4 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #2c3e50;
   font-weight: 600;
-  text-transform: uppercase;
 }
 
-.tipo-padronizacao {
-  background-color: #e3f2fd;
-  color: #1976d2;
-}
-
-.tipo-despadronizacao {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.tipo-default {
-  background-color: #f5f5f5;
+.ata-stat-info p {
+  margin: 0;
   color: #666;
+  font-size: 0.9rem;
 }
 
-.produtos-processo {
-  max-width: 200px;
-  font-size: 13px;
+.atas-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
-.produtos-lista {
+.atas-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.atas-section .section-header h4 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+}
+
+.atas-table-container {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.processos-julgamento-table,
+.processos-julgados-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.processos-julgamento-table th,
+.processos-julgados-table th,
+.processos-julgamento-table td,
+.processos-julgados-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.processos-julgamento-table th,
+.processos-julgados-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
   color: #2c3e50;
 }
 
-.texto-cinza {
-  color: #999;
-  font-style: italic;
+.objeto-cell {
+  max-width: 300px;
+  word-wrap: break-word;
 }
-</style> 
+
+.status-julgamento {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.decisao-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.decisao-aprovado {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.responsavel-badge {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-elaboracao {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.decisao-rejeitado {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.decisoes-summary {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.processos-cell {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.status-recurso-prazo {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-sem-recursos {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-com-recursos {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-indefinido {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.atas-elaboracao-table,
+.atas-publicadas-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.atas-elaboracao-table th,
+.atas-publicadas-table th,
+.atas-elaboracao-table td,
+.atas-publicadas-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.atas-elaboracao-table th,
+.atas-publicadas-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Homologações específicos */
+.homologacoes {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.homologacoes-header h3 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+}
+
+.alert-duvida {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+}
+
+/* Processo específicos */
+.processo-numero {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.processo-id {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.objeto-processo {
+  max-width: 300px;
+}
+
+.objeto-text {
+  color: #2c3e50;
+  cursor: help;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.orgao-info {
+  max-width: 200px;
+}
+
+.orgao-nome {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* Responsivos */
+@media (max-width: 768px) {
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .tabs {
+    flex-direction: column;
+  }
+  
+  .tab {
+    padding: 0.75rem 1rem;
+  }
+  
+  .section-actions {
+    flex-direction: column;
+  }
+  
+  .pagination-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .alertas-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .alerta-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .alerta-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  table {
+    font-size: 0.8rem;
+  }
+  
+  th, td {
+    padding: 0.5rem;
+  }
+}
+</style>

@@ -515,6 +515,7 @@ export class TramitacaoProcessosService {
     }
   }
 
+
 }
 
 export default TramitacaoProcessosService

@@ -365,10 +365,21 @@
                     <span class="btn-text">Reenviar Processo</span>
                   </button>
                   
-                  <button @click="adicionarDocumento(processoSelecionado)" class="action-btn action-btn-secondary">
+                  <button 
+                    v-if="podeAdicionarDoc" 
+                    @click="adicionarDocumento(processoSelecionado)" 
+                    class="action-btn action-btn-secondary">
                     <span class="btn-icon">📎</span>
                     <span class="btn-text">{{ obterTextoAdicionarDocumento() }}</span>
                   </button>
+                  
+                  <div 
+                    v-else
+                    class="action-info"
+                    style="padding: 8px 12px; background: #f5f5f5; border-radius: 6px; color: #666; font-size: 0.9em; margin: 4px 0;">
+                    <span class="btn-icon" style="opacity: 0.5;">📎</span>
+                    <span>Apenas o perfil responsável pelo status atual pode adicionar documentos</span>
+                  </div>
                   
                   <button 
                     v-if="podeEditarProcesso(processoSelecionado)" 
@@ -1293,6 +1304,7 @@ export default {
       // Controle de fluxo
       perfilUsuario: '',
       acoesDisponiveis: {}, // Ações de tramitação por processo
+      podeAdicionarDoc: false, // Permissão para adicionar documento ao processo selecionado
       
       // Modais
       mostrarAssistente: false,
@@ -1648,6 +1660,18 @@ export default {
       // Só pode editar processos que estão em criação
       const statusProcesso = processo?.status?.toLowerCase() || ''
       return statusProcesso === 'em_criacao' || statusProcesso === 'rascunho'
+    },
+
+    async podeAdicionarDocumento(processo) {
+      try {
+        // Usar a lógica do TramitacaoProcessosService para verificar se o usuário pode tramitar
+        // Se pode tramitar, significa que é o responsável pelo status atual e pode adicionar documentos
+        const podeTrampitar = await TramitacaoProcessosService.podeUsuarioTramitar(processo)
+        return podeTrampitar
+      } catch (error) {
+        console.error('Erro ao verificar permissão de adicionar documento:', error)
+        return false
+      }
     },
     
     podeEnviarParaAnalise(processo) {
@@ -2129,7 +2153,7 @@ export default {
                 </thead>
                 <tbody>
                   ${documentos
-                    .filter(doc => doc.tipo_documento !== 'DFD' && doc.tipo_documento !== 'FOLHA_ROSTO')
+                    .filter(doc => doc.tipo_documento !== 'DFD' && doc.tipo_documento !== 'FOLHA_ROSTO' && doc.tipo_documento !== 'DOCUMENTACAO_PRODUTO' && doc.tipo_documento !== 'DOCUMENTACAO_PRODUTOS')
                     .map(doc => `
                     <tr>
                       <td style="text-align: center; font-weight: bold;">Fl. ${String(doc.numero_sequencial || 1).padStart(3, '0')}</td>
@@ -2151,7 +2175,7 @@ export default {
               </table>
               
               <div style="margin-top: 2cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm;">
-                <p><strong>Total de documentos:</strong> ${documentos.filter(d => d.tipo_documento !== 'DFD' && d.tipo_documento !== 'FOLHA_ROSTO').length} | <strong>Com arquivos:</strong> ${documentos.filter(d => d.arquivo_url && d.tipo_documento !== 'DFD' && d.tipo_documento !== 'FOLHA_ROSTO').length}</p>
+                <p><strong>Total de documentos:</strong> ${documentos.filter(d => d.tipo_documento !== 'DFD' && d.tipo_documento !== 'FOLHA_ROSTO' && d.tipo_documento !== 'DOCUMENTACAO_PRODUTO' && d.tipo_documento !== 'DOCUMENTACAO_PRODUTOS').length} | <strong>Com arquivos:</strong> ${documentos.filter(d => d.arquivo_url && d.tipo_documento !== 'DFD' && d.tipo_documento !== 'FOLHA_ROSTO' && d.tipo_documento !== 'DOCUMENTACAO_PRODUTO' && d.tipo_documento !== 'DOCUMENTACAO_PRODUTOS').length}</p>
                 ${produtos.length > 0 ? `<p><strong>Total de produtos:</strong> ${produtos.length}</p>` : ''}
                 <p style="color: #666; margin-top: 1cm;">Gerado em ${dataAtual} - Sistema Comprar Bem</p>
               </div>
@@ -2996,6 +3020,9 @@ export default {
         // Carregar histórico de tramitação
         await this.carregarHistoricoTramitacao(processo.id)
         
+        // Verificar se o usuário pode adicionar documentos ao processo
+        this.podeAdicionarDoc = await this.podeAdicionarDocumento(this.processoSelecionado)
+        
         console.log('Processo carregado com sucesso:', this.processoSelecionado)
         
       } catch (error) {
@@ -3036,6 +3063,7 @@ export default {
     fecharVisualizacaoProcesso() {
       this.processoSelecionado = null
       this.documentosProcesso = []
+      this.podeAdicionarDoc = false
     },
     
     // =====================================================

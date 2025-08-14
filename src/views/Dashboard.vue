@@ -122,7 +122,7 @@ export default {
     this.iniciarMonitoramentoNotificacoes()
   },
   
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.intervalNotificacao) {
       clearInterval(this.intervalNotificacao)
     }

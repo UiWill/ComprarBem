@@ -137,13 +137,18 @@ export default {
           this.usuarioNome = user.user_metadata?.nome || user.email.split('@')[0]
           
           // Verificar se é usuário CCL
-          const { data: usuario } = await supabase
+          const { data: usuario, error: errorUsuario } = await supabase
             .from('usuarios')
             .select('perfil_usuario')
             .eq('id', user.id)
             .single()
           
+          console.log('🔍 Dados do usuário CCL:', { usuario, errorUsuario, userId: user.id })
+          
           this.isUsuarioCCL = usuario?.perfil_usuario === 'ccl'
+          
+          
+          console.log('✅ IsUsuarioCCL:', this.isUsuarioCCL)
           
           if (this.isUsuarioCCL) {
             console.log('🔒 Usuário CCL logado - Navegação restrita')

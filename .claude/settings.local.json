@@ -21,8 +21,10 @@
       "Bash(npm run lint:*)",
       "Bash(cp:*)",
       "Bash(sed:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(rm:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }
