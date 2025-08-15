@@ -22,7 +22,15 @@
       "Bash(cp:*)",
       "Bash(sed:*)",
       "Bash(touch:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(echo \"-- Verificando se o script SQL está correto\nSELECT ''Script corrigido - sem referências a data_julgamento_ccl'' as status;\n\n-- Comentários removidos que causavam erro:\n-- As linhas 46 e 52 no comentário foram corrigidas para não referenciar data_julgamento_ccl\")",
+      "Bash(echo \"-- Comando para ver a estrutura da tabela processos_administrativos\nSELECT column_name, data_type, is_nullable, column_default\nFROM information_schema.columns \nWHERE table_name = ''processos_administrativos'' \nORDER BY ordinal_position;\")",
+      "Bash(echo \"-- Ver o campo ata_julgamento_ccl completo do processo 002/2025\nSELECT \n    numero_processo,\n    status,\n    ata_emitida_ccl_em,\n    LENGTH(ata_julgamento_ccl) as tamanho_texto,\n    ata_julgamento_ccl\nFROM processos_administrativos \nWHERE numero_processo = ''002/2025'';\")",
+      "Bash(echo \"-- Ver dados das atas existentes para verificar vinculação com processo\nSELECT \n    id,\n    numero,\n    processo_id,\n    numero_processo,\n    created_at,\n    data_publicacao\nFROM atas_julgamento \nWHERE numero LIKE ''%CCL%''\nORDER BY created_at DESC\nLIMIT 5;\")",
+      "Bash(echo \"-- Ver estrutura atual das atas para debug\nSELECT \n    id,\n    numero,\n    processo_id,\n    processos_incluidos,\n    numeros_processos,\n    total_processos,\n    status_ata,\n    created_at\nFROM atas_julgamento \nORDER BY created_at DESC\nLIMIT 3;\")",
+      "Bash(echo \"-- Ver estrutura da tabela produtos\nSELECT column_name, data_type, is_nullable, column_default\nFROM information_schema.columns \nWHERE table_name = ''produtos'' \nORDER BY ordinal_position;\")",
+      "Bash(echo \"-- 1. Ver dados completos da ata ATA-CCL-001-teste\nSELECT \n    id,\n    numero,\n    periodo,\n    descricao,\n    total_processos,\n    status_ata,\n    data_publicacao,\n    processo_id,\n    processos_incluidos,\n    numeros_processos,\n    conteudo_ata,\n    created_at\nFROM atas_julgamento \nWHERE numero LIKE ''%CCL-001-teste%''\nORDER BY created_at DESC;\")",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

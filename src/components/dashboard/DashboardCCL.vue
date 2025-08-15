@@ -67,14 +67,6 @@
             <p class="section-description">
               Processos administrativos assinados pelo órgão competente que aguardam análise técnica e julgamento pela CCL
             </p>
-            <div class="section-actions">
-              <button @click="carregarProcessosPendentes" class="btn-secondary">
-                🔄 Atualizar Lista
-              </button>
-              <button @click="gerarRelatorioProcessos" class="btn-secondary">
-                📊 Relatório
-              </button>
-            </div>
           </div>
         <table v-if="processosPendentesArray.length > 0">
           <thead>
@@ -117,6 +109,7 @@
                   <button @click="visualizarProcesso(processo)" class="btn-small btn-secondary" title="Ver detalhes do processo">
                     👁️ Ver
                   </button>
+                  <!-- Botões de julgamento apenas para processos em julgamento_ccl -->
                   <button 
                     v-if="processo.status === 'julgamento_ccl'"
                     @click="iniciarJulgamentoCCL(processo)" 
@@ -273,18 +266,6 @@
         <p class="atas-description">
           Acompanhe as atas de julgamento técnico emitidas pela CCL após análise dos processos de padronização
         </p>
-        <div class="alert-info" style="background: #e8f5e8; border: 1px solid #4caf50; padding: 12px; border-radius: 8px; margin: 15px 0;">
-          <strong>ℹ️ Como funciona:</strong> 
-          Após julgar um processo, a CCL emite uma ata oficial que documenta a decisão técnica tomada.
-        </div>
-        <div class="atas-actions">
-          <button @click="carregarDados(true)" class="btn-secondary">
-            🔄 Atualizar Dados
-          </button>
-          <button @click="gerarRelatorioAtas" class="btn-secondary">
-            📊 Gerar Relatório
-          </button>
-        </div>
       </div>
 
       <div class="atas-stats">
@@ -315,8 +296,15 @@
         <!-- Atas em Elaboração -->
         <div class="atas-section">
           <div class="section-header">
-            <h4>✏️ Atas em Elaboração</h4>
-            <p class="section-description">Atas que estão sendo criadas após julgamentos recentes</p>
+            <div class="section-title-container">
+              <div>
+                <h4>✏️ Atas em Elaboração</h4>
+                <p class="section-description">Atas que estão sendo criadas após julgamentos recentes</p>
+              </div>
+              <button @click="abrirModalCriarAta" class="btn-criar-nova-ata">
+                ➕ Criar Nova Ata
+              </button>
+            </div>
           </div>
           
           <div v-if="atasEmElaboracao.length > 0" class="atas-table-container">
@@ -349,6 +337,9 @@
                       <button @click="editarAta(ata)" class="btn-small btn-primary" title="Continuar elaborando a ata">
                         ✏️ Continuar
                       </button>
+                      <button @click="finalizarAtaElaboracao(ata)" class="btn-small btn-success" title="Finalizar e publicar ata">
+                        🎯 Finalizar
+                      </button>
                       <button @click="visualizarAta(ata)" class="btn-small btn-secondary" title="Visualizar rascunho">
                         👁️ Visualizar
                       </button>
@@ -362,9 +353,10 @@
           <div v-else class="empty-state">
             <div class="empty-icon">✏️</div>
             <h4>Nenhuma ata em elaboração</h4>
-            <p>Quando você julgar um processo, a ata será criada automaticamente e aparecerá aqui para elaboração final.</p>
+            <p>Use o botão "Criar Nova Ata" para criar atas selecionando os processos julgados.</p>
           </div>
         </div>
+
 
         <!-- Atas Publicadas -->
         <div class="atas-section">
@@ -440,6 +432,83 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal Criar Nova Ata -->
+      <div v-if="mostrarModalCriarAta" class="modal-overlay" @click="fecharModalCriarAta">
+        <div class="modal-criar-ata" @click.stop>
+          <div class="modal-header">
+            <h3>📝 Criar Nova Ata CCL</h3>
+            <button @click="fecharModalCriarAta" class="btn-fechar-modal">✖️</button>
+          </div>
+          
+          <div class="modal-body">
+            <div class="modal-instructions">
+              <p>Selecione os processos que devem ser incluídos na nova ata de julgamento:</p>
+            </div>
+            
+            <div class="processos-loading" v-if="carregandoProcessosModal">
+              <p>🔄 Carregando processos...</p>
+            </div>
+            
+            <div v-else-if="processosDisponiveis.length === 0" class="no-processos">
+              <div class="empty-icon">📋</div>
+              <h4>Nenhum processo disponível</h4>
+              <p>Não há processos aprovados pela CCL disponíveis para criação de ata.</p>
+            </div>
+            
+            <div v-else class="processos-container">
+              <div class="selection-controls-modal">
+                <button @click="selecionarTodosProcessosModal" class="btn-small btn-outline" 
+                        :disabled="processosSelecionadosModal.length === processosDisponiveis.length">
+                  ☑️ Selecionar Todos
+                </button>
+                <button @click="limparSelecaoProcessosModal" class="btn-small btn-outline" 
+                        :disabled="processosSelecionadosModal.length === 0">
+                  ❌ Limpar Seleção
+                </button>
+                <span class="selection-info">{{ processosSelecionadosModal.length }} de {{ processosDisponiveis.length }} selecionados</span>
+              </div>
+              
+              <div class="processos-list">
+                <div v-for="processo in processosDisponiveis" :key="processo.id" 
+                     class="processo-item" 
+                     :class="{ 'selecionado': processosSelecionadosModal.includes(processo.id) }"
+                     @click="toggleProcessoModal(processo.id)">
+                  <div class="processo-checkbox">
+                    <input type="checkbox" 
+                           :value="processo.id" 
+                           v-model="processosSelecionadosModal"
+                           @click.stop>
+                  </div>
+                  <div class="processo-details">
+                    <div class="processo-numero">
+                      <strong>{{ processo.numero_processo }}</strong>
+                    </div>
+                    <div class="processo-orgao">
+                      {{ processo.orgao_responsavel }}
+                    </div>
+                    <div class="processo-meta">
+                      <span class="data-julgamento">{{ formatDate(processo.ccl_data_julgamento) }}</span>
+                      <span class="produtos-count">{{ processo.produtos_aprovados || 0 }} produto(s)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button @click="fecharModalCriarAta" class="btn-secondary">
+              Cancelar
+            </button>
+            <button @click="confirmarCriacaoAta" 
+                    class="btn-primary" 
+                    :disabled="processosSelecionadosModal.length === 0">
+              📝 Criar Ata ({{ processosSelecionadosModal.length }} processo{{ processosSelecionadosModal.length !== 1 ? 's' : '' }})
+            </button>
+          </div>
+        </div>
+      </div>
       
       <!-- Aba Homologações -->
       <div v-show="activeTab === 'homologacoes'" class="homologacoes tab-pane">
@@ -505,6 +574,13 @@ export default {
       processosPendentes: 0,
       atasEmElaboracao: [],
       atasPublicadasRecentes: [],
+      processosProntosParaAta: [],
+      processosSelecionados: [], // IDs dos processos selecionados para criação de ata
+      // Modal Criar Nova Ata
+      mostrarModalCriarAta: false,
+      processosDisponiveis: [],
+      processosSelecionadosModal: [],
+      carregandoProcessosModal: false,
       // Dados para Homologações
       homologacoesPendentes: 0,
       homologacoesAprovadas: 0,
@@ -626,8 +702,7 @@ export default {
       if (tenantId) {
         this.carregarDados(true)
         this.carregarCategorias()
-        this.carregarAtasJulgamento()
-        this.carregarAtasEmElaboracao()
+        this.atualizarDadosAtas()
         this.carregarHomologacoes()
         this.carregarProcessosPendentesHomologacao()
         this.carregarHomologacoesRecentes()
@@ -675,8 +750,7 @@ export default {
           this.carregarHomologacoesRecentes()
         } else if (newTab === 'atas') {
           console.log('Entrando na aba atas de julgamento - recarregando dados específicos...')
-          this.carregarAtasJulgamento()
-          this.carregarAtasEmElaboracao()
+          this.atualizarDadosAtas()
         }
         // Evitar recarregar dados gerais desnecessariamente
         else if (newTab === 'dashboard' && this.processosPendentesArray.length === 0) {
@@ -700,6 +774,322 @@ export default {
     setActiveTab(tab) {
       this.activeTab = tab
     },
+
+    async atualizarDadosAtas() {
+      console.log('🔄 Atualizando dados das atas automaticamente...')
+      try {
+        await this.carregarAtasJulgamento()
+        await this.carregarAtasEmElaboracao()
+        await this.carregarProcessosProntosParaAta()
+        console.log('✅ Dados das atas atualizados automaticamente')
+        
+        // Forçar atualização da interface com Vue reactivity
+        this.$forceUpdate()
+        
+        console.log('📊 Atas em elaboração:', this.atasEmElaboracao.length)
+        console.log('📋 Atas publicadas:', this.atasPublicadasRecentes.length)
+        console.log('🎯 Processos prontos para ata:', this.processosProntosParaAta?.length || 0)
+      } catch (error) {
+        console.error('Erro na atualização automática:', error)
+      }
+    },
+
+    async carregarProcessosProntosParaAta() {
+      try {
+        console.log('📋 Carregando processos prontos para criação de ata...')
+        
+        const { data: processos, error } = await supabase
+          .from('processos_administrativos')
+          .select(`
+            id,
+            numero_processo,
+            objeto,
+            status,
+            nome_orgao,
+            ata_emitida_ccl_em,
+            ata_julgamento_ccl,
+            recomendacao_ccl,
+            tipo_processo,
+            criado_em
+          `)
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status', 'aprovado_ccl')
+          .is('incluido_em_ata', null) // Processos que ainda não foram incluídos em ata
+          .order('ata_emitida_ccl_em', { ascending: false })
+        
+        if (error) throw error
+        
+        this.processosProntosParaAta = processos || []
+        console.log('✅ Processos prontos para ata carregados:', this.processosProntosParaAta.length)
+        
+      } catch (error) {
+        console.error('❌ Erro ao carregar processos prontos para ata:', error)
+        this.processosProntosParaAta = []
+      }
+    },
+
+    // Métodos para o modal de criar nova ata
+    async abrirModalCriarAta() {
+      this.mostrarModalCriarAta = true
+      this.processosSelecionadosModal = []
+      await this.carregarProcessosDisponiveis()
+    },
+
+    fecharModalCriarAta() {
+      this.mostrarModalCriarAta = false
+      this.processosDisponiveis = []
+      this.processosSelecionadosModal = []
+      this.carregandoProcessosModal = false
+    },
+
+    async carregarProcessosDisponiveis() {
+      try {
+        this.carregandoProcessosModal = true
+        console.log('📋 Carregando processos disponíveis para criação de ata...')
+        
+        const { data: processos, error } = await supabase
+          .from('processos_administrativos')
+          .select(`
+            id,
+            numero_processo,
+            objeto,
+            status,
+            orgao_responsavel,
+            ata_emitida_ccl_em,
+            ata_julgamento_ccl,
+            recomendacao_ccl,
+            tipo_processo,
+            criado_em,
+            ccl_data_julgamento
+          `)
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status', 'aprovado_ccl')
+          .is('incluido_em_ata', null) // Processos que ainda não foram incluídos em ata
+          .order('ccl_data_julgamento', { ascending: false })
+        
+        if (error) throw error
+        
+        // Buscar contagem de produtos aprovados para cada processo
+        for (let processo of processos || []) {
+          const { count } = await supabase
+            .from('produtos')
+            .select('*', { count: 'exact', head: true })
+            .eq('numero_processo', processo.numero_processo)
+            .eq('ccl_status', 'aprovado')
+          
+          processo.produtos_aprovados = count || 0
+        }
+        
+        this.processosDisponiveis = processos || []
+        console.log('✅ Processos disponíveis carregados:', this.processosDisponiveis.length)
+        
+      } catch (error) {
+        console.error('❌ Erro ao carregar processos disponíveis:', error)
+        this.processosDisponiveis = []
+        this.$swal({
+          title: '❌ Erro',
+          text: 'Erro ao carregar processos disponíveis.',
+          icon: 'error'
+        })
+      } finally {
+        this.carregandoProcessosModal = false
+      }
+    },
+
+    selecionarTodosProcessosModal() {
+      this.processosSelecionadosModal = this.processosDisponiveis.map(p => p.id)
+    },
+
+    limparSelecaoProcessosModal() {
+      this.processosSelecionadosModal = []
+    },
+
+    toggleProcessoModal(processoId) {
+      const index = this.processosSelecionadosModal.indexOf(processoId)
+      if (index > -1) {
+        this.processosSelecionadosModal.splice(index, 1)
+      } else {
+        this.processosSelecionadosModal.push(processoId)
+      }
+    },
+
+    async confirmarCriacaoAta() {
+      if (this.processosSelecionadosModal.length === 0) {
+        this.$swal({
+          title: '⚠️ Atenção',
+          text: 'Selecione pelo menos um processo para criar a ata.',
+          icon: 'warning'
+        })
+        return
+      }
+
+      await this.criarNovaAta(this.processosSelecionadosModal, 'modal')
+      this.fecharModalCriarAta()
+    },
+
+    async criarNovaAta(processosIds, tipo) {
+      try {
+        console.log('📝 Criando nova ata CCL para processos:', processosIds)
+        
+        // Gerar número da ata
+        const numeroAta = await this.gerarNumeroAta()
+        
+        // Criar ata no banco
+        const { data: novaAta, error: errorAta } = await supabase
+          .from('atas_julgamento')
+          .insert([{
+            tenant_id: this.currentTenantId,
+            numero: numeroAta,
+            periodo: this.obterPeriodoAtual(),
+            descricao: `Ata de Julgamento CCL - ${processosIds.length === 1 ? 'Processo Individual' : 'Processos Múltiplos'}`,
+            total_processos: processosIds.length,
+            status_ata: 'elaboracao',
+            processos_incluidos: processosIds,
+            numeros_processos: await this.obterNumerosProcessos(processosIds),
+            conteudo_ata: await this.gerarConteudoAtaInicial(processosIds),
+            data_criacao: new Date().toISOString(),
+            criado_em: new Date().toISOString()
+          }])
+          .select()
+          .single()
+
+        if (errorAta) throw errorAta
+
+        // Marcar processos como incluídos em ata
+        const { error: errorUpdate } = await supabase
+          .from('processos_administrativos')
+          .update({ 
+            incluido_em_ata: novaAta.id,
+            data_inclusao_ata: new Date().toISOString()
+          })
+          .in('id', processosIds)
+
+        if (errorUpdate) throw errorUpdate
+
+        // Vincular produtos aprovados à ata
+        await this.vincularProdutosAta(novaAta.id, processosIds)
+
+        // Limpar seleção e recarregar dados
+        this.processosSelecionados = []
+        await this.atualizarDadosAtas()
+
+        this.$swal({
+          title: '✅ Ata Criada!',
+          text: `Ata ${numeroAta} criada com sucesso! Você pode encontrá-la na seção "Atas em Elaboração".`,
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false
+        })
+
+        console.log('✅ Ata criada com sucesso:', novaAta)
+
+      } catch (error) {
+        console.error('❌ Erro ao criar ata:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: 'Erro ao criar a ata. Tente novamente.',
+          icon: 'error'
+        })
+      }
+    },
+
+    async gerarNumeroAta() {
+      try {
+        // Buscar última ata do ano atual para gerar sequencial
+        const anoAtual = new Date().getFullYear()
+        const { data: ultimaAta } = await supabase
+          .from('atas_julgamento')
+          .select('numero')
+          .eq('tenant_id', this.currentTenantId)
+          .like('numero', `%CCL%${anoAtual}%`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        let proximoNumero = 1
+        if (ultimaAta && ultimaAta.length > 0) {
+          const numeroExistente = ultimaAta[0].numero
+          const match = numeroExistente.match(/CCL-(\d+)-(\d{4})/)
+          if (match) {
+            proximoNumero = parseInt(match[1]) + 1
+          }
+        }
+
+        return `ATA-CCL-${String(proximoNumero).padStart(3, '0')}-${anoAtual}`
+      } catch (error) {
+        console.error('Erro ao gerar número da ata:', error)
+        const timestamp = Date.now().toString().slice(-6)
+        return `ATA-CCL-${timestamp}-${new Date().getFullYear()}`
+      }
+    },
+
+    async obterNumerosProcessos(processosIds) {
+      try {
+        const { data: processos } = await supabase
+          .from('processos_administrativos')
+          .select('numero_processo')
+          .in('id', processosIds)
+
+        return processos?.map(p => p.numero_processo) || []
+      } catch (error) {
+        console.error('Erro ao obter números dos processos:', error)
+        return []
+      }
+    },
+
+    obterPeriodoAtual() {
+      const agora = new Date()
+      const mes = String(agora.getMonth() + 1).padStart(2, '0')
+      const ano = agora.getFullYear()
+      return `${mes}/${ano}`
+    },
+
+    async gerarConteudoAtaInicial(processosIds) {
+      try {
+        const numeros = await this.obterNumerosProcessos(processosIds)
+        return `Ata de Julgamento da Comissão Central de Licitação (CCL) referente aos processos: ${numeros.join(', ')}. Ata criada em ${new Date().toLocaleDateString('pt-BR')}.`
+      } catch (error) {
+        return 'Ata de Julgamento da Comissão Central de Licitação (CCL).'
+      }
+    },
+
+    async vincularProdutosAta(ataId, processosIds) {
+      try {
+        // Buscar produtos aprovados relacionados aos processos através do numero_processo
+        const { data: processos } = await supabase
+          .from('processos_administrativos')
+          .select('numero_processo')
+          .in('id', processosIds)
+
+        if (!processos || processos.length === 0) return
+
+        const numerosProcessos = processos.map(p => p.numero_processo)
+
+        // Buscar produtos aprovados relacionados aos números dos processos
+        const { data: produtos, error } = await supabase
+          .from('produtos')
+          .select('id')
+          .in('numero_processo', numerosProcessos)
+          .eq('ccl_status', 'aprovado')
+
+        if (error) throw error
+
+        if (produtos && produtos.length > 0) {
+          // Vincular produtos à ata
+          const { error: errorUpdate } = await supabase
+            .from('produtos')
+            .update({ ata_julgamento_id: ataId })
+            .in('id', produtos.map(p => p.id))
+
+          if (errorUpdate) throw errorUpdate
+          console.log(`✅ ${produtos.length} produtos vinculados à ata ${ataId}`)
+        }
+
+      } catch (error) {
+        console.error('Erro ao vincular produtos à ata:', error)
+        // Não bloqueia a criação da ata se produtos não podem ser vinculados
+      }
+    },
+
 
     truncateText(text, maxLength) {
       if (!text) return ''
@@ -778,39 +1168,217 @@ export default {
       })
     },
 
-    visualizarAta(ata) {
-      this.$swal({
-        title: '📄 Visualizar Ata',
-        html: `
-          <div style="text-align: left;">
-            <p><strong>Número:</strong> ${ata.numero_ata || `ATA-CCL-${ata.id}`}</p>
-            <p><strong>Data:</strong> ${this.formatDate(ata.data_publicacao || ata.data_inicio)}</p>
-            <p><strong>Status:</strong> ${ata.status || 'Em Elaboração'}</p>
-            <p><strong>Processos:</strong> ${ata.total_processos || ata.processos_count || 0}</p>
-            <p><strong>Observação:</strong> Visualização completa em desenvolvimento</p>
-          </div>
-        `,
-        icon: 'info',
-        confirmButtonText: 'Fechar'
-      })
+    async visualizarAta(ata) {
+      try {
+        // Para as atas reais baseadas em processos, usar os dados já carregados
+        let processo
+        
+        if (ata.processo_completo) {
+          // Usar diretamente os dados do processo que já estão carregados
+          console.log('👁️ Visualizando ata do processo:', ata.numero_processo)
+          processo = ata.processo_completo
+        } else if (ata.processo_id) {
+          // Fallback: buscar processo se não estiver carregado
+          console.log('🔗 Buscando processo específico da ata:', ata.processo_id)
+          const result = await supabase
+            .from('processos_administrativos')
+            .select('numero_processo, objeto, ata_julgamento_ccl, data_julgamento_ccl, id, tipo_processo, orgao_responsavel, nome_orgao')
+            .eq('id', ata.processo_id)
+            .eq('tenant_id', this.currentTenantId)
+            .single()
+          
+          if (result.error) throw result.error
+          processo = result.data
+        } else {
+          throw new Error('Ata sem vinculação específica com processo')
+        }
+          
+        let processoInfo = ''
+        if (processo) {
+          processoInfo = `
+            <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0;">
+              <h4>📄 Processo Relacionado</h4>
+              <p><strong>Número:</strong> ${processo.numero_processo}</p>
+              <p><strong>Objeto:</strong> ${(processo.objeto || '').substring(0, 100)}${processo.objeto && processo.objeto.length > 100 ? '...' : ''}</p>
+              <p><strong>Data Julgamento:</strong> ${this.formatDate(processo.data_julgamento_ccl)}</p>
+            </div>
+            <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin: 10px 0;">
+              <h4>⚖️ Fundamentação CCL</h4>
+              <p style="text-align: justify;">${processo.ata_julgamento_ccl || 'Não disponível'}</p>
+            </div>
+          `
+        }
+
+        this.$swal({
+          title: '📄 Informações da Ata',
+          html: `
+            <div style="text-align: left;">
+              <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                <h4>📋 Dados da Ata</h4>
+                <p><strong>Número:</strong> ${ata.numero || ata.numero_ata || `ATA-${String(ata.id).slice(-4)}`}</p>
+                <p><strong>Período:</strong> ${ata.periodo || 'N/A'}</p>
+                <p><strong>Data Publicação:</strong> ${this.formatDate(ata.dataPublicacao || ata.data_publicacao)}</p>
+                <p><strong>Status:</strong> ${ata.statusRecursal || ata.status_ata || 'EM PRAZO'}</p>
+                <p><strong>Total de Processos:</strong> ${ata.totalProcessos || ata.processos_count || 1}</p>
+              </div>
+              
+              ${processoInfo}
+              
+              <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px solid #c3e6cb;">
+                <h4 style="margin-top: 0; color: #155724;">✨ Novo: PDF com Ata CCL (Fl. 003)</h4>
+                <p style="margin-bottom: 10px; color: #155724;">Agora você pode gerar o relatório completo do processo com a Ata de Julgamento CCL incluída como Fl. 003!</p>
+                ${processo ? `
+                  <button onclick="window.gerarPDFComAta('${ata.id}', '${processo.id}')" 
+                          style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+                    📄 Gerar PDF Completo (com Ata)
+                  </button>
+                ` : ''}
+                <small style="display: block; margin-top: 8px; color: #6c757d;">
+                  O PDF incluirá: Folha de Rosto (Fl. 001) + DFD (Fl. 002) + <strong>Ata CCL (Fl. 003)</strong> + Demais documentos
+                </small>
+              </div>
+            </div>
+          `,
+          icon: 'info',
+          confirmButtonText: 'Fechar',
+          width: '700px',
+          didOpen: () => {
+            // Adicionar função global temporária para gerar PDF
+            window.gerarPDFComAta = async (ataId, processoId) => {
+              try {
+                this.$swal.close()
+                if (processo && ata) {
+                  await this.visualizarProcessoComAta(processo, ata)
+                }
+              } catch (error) {
+                console.error('Erro ao gerar PDF:', error)
+                this.$swal({
+                  title: '❌ Erro',
+                  text: 'Erro ao gerar PDF com ata.',
+                  icon: 'error'
+                })
+              }
+            }
+          },
+          willClose: () => {
+            // Limpar função global
+            delete window.gerarPDFComAta
+          }
+        })
+      } catch (error) {
+        console.error('Erro ao visualizar ata:', error)
+        // Fallback para visualização básica
+        this.$swal({
+          title: '📄 Visualizar Ata',
+          html: `
+            <div style="text-align: left;">
+              <p><strong>Número:</strong> ${ata.numero || ata.numero_ata || 'N/A'}</p>
+              <p><strong>Status:</strong> ${ata.status || 'Em Elaboração'}</p>
+              <p><strong>Observação:</strong> Use "📄 Baixar PDF" para ver detalhes completos</p>
+            </div>
+          `,
+          icon: 'info',
+          confirmButtonText: 'Fechar'
+        })
+      }
     },
 
     async baixarAta(ata) {
       try {
-        // Buscar o processo relacionado à ata
-        const { data: processo, error } = await supabase
-          .from('processos_administrativos')
-          .select('*')
-          .not('ata_emitida_ccl_em', 'is', null)
-          .eq('tenant_id', this.currentTenantId)
-          .order('ata_emitida_ccl_em', { ascending: false })
-          .limit(1)
-          .single()
+        console.log('📄 Gerando PDF para ata:', ata.numero)
+        
+        // Para atas publicadas, buscar processo(s) vinculado(s)
+        let processo = null
+        let processos = []
+        
+        if (ata.processo_id) {
+          // Ata de processo único
+          console.log('🔗 Buscando processo específico da ata:', ata.processo_id)
+          const result = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .eq('id', ata.processo_id)
+            .eq('tenant_id', this.currentTenantId)
+            .single()
           
-        if (error || !processo) {
+          if (!result.error) {
+            processo = result.data
+            processos = [processo]
+          }
+        } else if (ata.processos_incluidos && ata.processos_incluidos.length > 0) {
+          // Ata consolidada com múltiplos processos
+          console.log('🔗 Buscando processos consolidados da ata:', ata.processos_incluidos)
+          const result = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .in('id', ata.processos_incluidos)
+            .eq('tenant_id', this.currentTenantId)
+          
+          if (!result.error && result.data.length > 0) {
+            processos = result.data
+            processo = processos[0] // Usar o primeiro como referência principal
+          }
+        } else {
+          // Fallback: verificar se existem produtos vinculados à ata
+          console.log('🔍 Fallback: Verificando produtos vinculados à ata')
+          const { data: produtosAta, error: errorProdutos } = await supabase
+            .from('produtos')
+            .select('id, nome, marca, modelo')
+            .eq('ata_julgamento_id', ata.id)
+            .eq('tenant_id', this.currentTenantId)
+          
+          // Se há produtos vinculados à ata, usar estratégia de busca por número da ata
+          if (!errorProdutos && produtosAta && produtosAta.length > 0) {
+            console.log('✅ Encontrados', produtosAta.length, 'produtos vinculados à ata')
+            
+            // Tentar extrair número do processo do nome da ata
+            const numeroAtaMatch = ata.numero?.match(/(\d{3}\/\d{4})/);
+            if (numeroAtaMatch) {
+              const numeroProcesso = numeroAtaMatch[1];
+              console.log('🔍 Tentando buscar processo pelo número extraído da ata:', numeroProcesso);
+              
+              const result = await supabase
+                .from('processos_administrativos')
+                .select('*')
+                .eq('numero_processo', numeroProcesso)
+                .eq('tenant_id', this.currentTenantId)
+              
+              if (!result.error && result.data.length > 0) {
+                processos = result.data
+                processo = processos[0]
+                console.log('✅ Encontrado processo pelo número da ata:', processo.numero_processo)
+              }
+            }
+          }
+          
+          // Se ainda não encontrou, tentar buscar por processos aprovados na mesma data
+          if (!processo && ata.data_publicacao) {
+            console.log('🔍 Fallback 2: Buscando processos por data de publicação')
+            const dataIni = new Date(ata.data_publicacao)
+            dataIni.setHours(0, 0, 0, 0)
+            const dataFim = new Date(ata.data_publicacao)
+            dataFim.setHours(23, 59, 59, 999)
+            
+            const result = await supabase
+              .from('processos_administrativos')
+              .select('*')
+              .eq('tenant_id', this.currentTenantId)
+              .eq('status', 'aprovado_ccl')
+              .gte('ata_emitida_ccl_em', dataIni.toISOString())
+              .lte('ata_emitida_ccl_em', dataFim.toISOString())
+            
+            if (!result.error && result.data.length > 0) {
+              processos = result.data
+              processo = processos[0]
+              console.log('✅ Encontrados processos por data:', processos.map(p => p.numero_processo))
+            }
+          }
+        }
+        
+        if (!processo || processos.length === 0) {
           this.$swal({
             title: '❌ Erro',
-            text: 'Não foi possível encontrar o processo relacionado à ata.',
+            text: 'Não foi possível encontrar o(s) processo(s) relacionado(s) à ata. Verifique se a ata está corretamente vinculada aos processos.',
             icon: 'error'
           })
           return
@@ -818,7 +1386,7 @@ export default {
 
         this.$swal({
           title: '📄 Gerar Relatório com Ata',
-          text: `Gerando relatório completo do processo ${processo.numero_processo} incluindo a Ata de Julgamento CCL...`,
+          text: `Gerando relatório completo ${processos.length > 1 ? `dos ${processos.length} processos` : `do processo ${processo.numero_processo}`} incluindo a Ata de Julgamento CCL...`,
           icon: 'info',
           showCancelButton: true,
           confirmButtonText: '📄 Gerar PDF',
@@ -826,7 +1394,7 @@ export default {
         }).then(async (result) => {
           if (result.isConfirmed) {
             // Usar o mesmo sistema de geração de PDF dos Processos Administrativos
-            await this.gerarRelatorioComAta(processo, ata)
+            await this.gerarRelatorioComAta(processo, ata, processos)
           }
         })
       } catch (error) {
@@ -839,67 +1407,14 @@ export default {
       }
     },
 
-    async gerarRelatorioComAta(processo, ata) {
+    async gerarRelatorioComAta(processo, ata, processos = null) {
       try {
-        console.log('📄 Gerando relatório com Ata CCL para processo:', processo.numero_processo)
+        const processosParaRelatorio = processos || [processo]
+        console.log('📄 Gerando relatório com Ata CCL para processo(s):', processosParaRelatorio.map(p => p.numero_processo).join(', '))
         
-        // Importar o componente ProcessosAdministrativosComponent dinamicamente
-        const ProcessosAdministrativosComponent = await import('../processos/ProcessosAdministrativosComponent.vue')
-        const componentInstance = ProcessosAdministrativosComponent.default
-        
-        // Usar o método de geração de relatório do ProcessosAdministrativosComponent
-        // Mas vamos adaptar para incluir a ata CCL
-        
-        // Buscar dados completos do processo
-        const processoCompleto = await this.obterProcessoCompleto(processo.id)
-        if (!processoCompleto) {
-          throw new Error('Processo não encontrado')
-        }
-        
-        // Buscar todos os documentos
-        const { default: ProcessosAdministrativosService } = await import('../../services/processosAdministrativosService')
-        let documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processo.id)
-        
-        // Buscar produtos se for padronização
-        let produtos = []
-        if (processoCompleto.tipo_processo === 'padronizacao') {
-          produtos = await ProcessosAdministrativosService.listarProdutosProcesso(processo.id)
-        }
-        
-        // ADICIONAR ATA CCL COMO NOVO DOCUMENTO (após DFD - Fl. 003)
-        documentos.push({
-          id: `ata_ccl_${ata.id}`,
-          tipo_documento: 'ATA_CCL',
-          nome_documento: 'Ata de Julgamento CCL',
-          titulo: 'ATA DE JULGAMENTO TÉCNICO - CCL',
-          descricao: 'Ata de Julgamento emitida pela Comissão Central de Licitação',
-          numero_sequencial: 3, // Após DFD (Fl. 002)
-          folha_numero: 'Fl. 003',
-          data_autuacao: ata.dataPublicacao || new Date(),
-          conteudo_html: this.gerarHTMLAtaCCL(processo, ata)
-        })
-        
-        // Renumerar documentos subsequentes
-        documentos.sort((a, b) => (a.numero_sequencial || 999) - (b.numero_sequencial || 999))
-        documentos.forEach((doc, index) => {
-          if (doc.tipo_documento !== 'ATA_CCL' && (doc.numero_sequencial || 999) >= 3) {
-            doc.numero_sequencial = (doc.numero_sequencial || 0) + 1
-            doc.folha_numero = `Fl. ${String(doc.numero_sequencial).padStart(3, '0')}`
-          }
-        })
-        
-        // Chamar o método de geração do componente de Processos Administrativos
-        // Isso vai gerar o PDF completo com todos os documentos incluindo nossa ata
-        const componentMethods = componentInstance.methods
-        if (componentMethods && componentMethods.gerarHTMLRelatorio) {
-          const htmlRelatorio = componentMethods.gerarHTMLRelatorio.call(this, processoCompleto, documentos, produtos)
-          
-          // Abrir em nova janela
-          const novaJanela = window.open('', '_blank')
-          novaJanela.document.write(htmlRelatorio)
-          novaJanela.document.close()
-          novaJanela.document.title = `Processo_${processoCompleto.numero_processo}_com_Ata_CCL.pdf`
-        }
+        // Usar a mesma lógica do botão "Ver" que já funciona
+        // mas com uma página adicional da Ata CCL
+        this.visualizarProcessoComAta(processo, ata, processosParaRelatorio)
         
       } catch (error) {
         console.error('Erro ao gerar relatório com ata:', error)
@@ -909,6 +1424,415 @@ export default {
           icon: 'error'
         })
       }
+    },
+
+    async visualizarProcessoComAta(processo, ata) {
+      try {
+        console.log('📄 Gerando relatório completo com Ata CCL (Fl. 003):', processo.id, processo.numero_processo)
+        
+        // Importar o componente dos Processos Administrativos para usar seus dados
+        const ProcessosAdministrativosComponent = await import('@/components/processos/ProcessosAdministrativosComponent.vue')
+        const processosComponent = ProcessosAdministrativosComponent.default
+        const ProcessosAdministrativosService = await import('@/services/processosAdministrativosService')
+        
+        // Buscar dados completos do processo
+        const processoCompleto = await ProcessosAdministrativosService.default.obterProcesso(processo.id)
+        
+        // Buscar todos os documentos com conteúdo HTML
+        let documentos = await ProcessosAdministrativosService.default.listarDocumentosProcesso(processo.id)
+        
+        // Buscar produtos e seus documentos
+        let produtos = []
+        if (processoCompleto.tipo_processo === 'padronizacao') {
+          produtos = await ProcessosAdministrativosService.default.listarProdutosProcesso(processo.id)
+          
+          // Buscar documentos dos produtos para incluir no relatório
+          const tenantId = await ProcessosAdministrativosService.default.getTenantId()
+          const { data: documentosProdutos } = await supabase
+            .from('documentos_produtos_processo')
+            .select('*')
+            .eq('processo_id', processo.id)
+            .eq('tenant_id', tenantId)
+          
+          if (documentosProdutos && documentosProdutos.length > 0) {
+            // Adicionar documentos de produtos à lista de documentos
+            for (const docProduto of documentosProdutos) {
+              documentos.push({
+                id: `produto_${docProduto.id}`,
+                tipo_documento: 'DOCUMENTO_PRODUTO',
+                nome_documento: `${docProduto.nome_produto} - ${docProduto.nome_arquivo}`,
+                titulo: `${docProduto.nome_produto} - ${docProduto.nome_arquivo}`,
+                descricao: `Documento técnico do produto ${docProduto.nome_produto}`,
+                data_autuacao: docProduto.created_at,
+                arquivo_url: docProduto.url_arquivo,
+                nome_arquivo: docProduto.nome_arquivo
+              })
+            }
+          }
+        }
+        
+        // Buscar dados DFD se existir
+        let dadosDFD = null
+        try {
+          const { data: dfd } = await supabase
+            .from('dfd_processo')
+            .select('*')
+            .eq('processo_id', processo.id)
+            .single()
+          dadosDFD = dfd
+          console.log('✅ DFD carregado do banco:', dadosDFD)
+        } catch (error) {
+          console.log('⚠️ DFD não encontrado no banco, usando dados padrão')
+          dadosDFD = {
+            justificativa: 'Justificativa da necessidade conforme processo administrativo e demanda apresentada pelos setores solicitantes.',
+            descricao_necessidade: 'Descrição detalhada da necessidade identificada para padronização/despadronização dos produtos especificados.',
+            criterios_aceitacao: 'Critérios de aceitação e ensaios estabelecidos conforme normas técnicas aplicáveis.',
+            observacoes_especiais: 'Observações especiais e condições específicas do processo de avaliação.',
+            modelo_usado: 'MODELO_1'
+          }
+        }
+        
+        // Completar documentos do processo (Folha de Rosto = Fl. 001, DFD = Fl. 002)
+        const documentosCompletos = await processosComponent.methods.completarDocumentosProcesso.call({
+          // Contexto mínimo necessário
+          formatarData: this.formatarData,
+          formatarStatus: this.formatarStatus,
+          ...processosComponent.methods
+        }, processoCompleto, documentos, produtos, dadosDFD)
+        
+        // Adicionar a Ata de Julgamento CCL como Fl. 003
+        const ataDocumento = {
+          id: `ata_ccl_${ata.id}`,
+          tipo_documento: 'ATA_JULGAMENTO_CCL',
+          nome_documento: 'Ata de Julgamento CCL',
+          titulo: 'ATA DE JULGAMENTO TÉCNICO - CCL',
+          descricao: `Ata de julgamento da CCL para o processo ${processoCompleto.numero_processo}`,
+          data_autuacao: ata.data_publicacao || new Date().toISOString(),
+          numero_folha: 3,
+          conteudo_html: await this.gerarHTMLAtaCCLCompleta(processoCompleto, ata)
+        }
+        
+        // Inserir a ata após o DFD (Fl. 002) e antes dos demais documentos
+        const folhaRosto = documentosCompletos.find(doc => doc.numero_folha === 1)
+        const dfdDoc = documentosCompletos.find(doc => doc.numero_folha === 2)
+        const outrosDocumentos = documentosCompletos.filter(doc => !doc.numero_folha || doc.numero_folha > 2)
+        
+        // Renumerar outros documentos para começar em Fl. 004
+        let numeroFolha = 4
+        outrosDocumentos.forEach(doc => {
+          if (!doc.numero_folha || doc.numero_folha > 3) {
+            doc.numero_folha = numeroFolha++
+          }
+        })
+        
+        // Reorganizar documentos na ordem correta
+        const documentosComAta = [
+          folhaRosto,
+          dfdDoc,
+          ataDocumento,
+          ...outrosDocumentos
+        ].filter(Boolean)
+        
+        console.log('📄 Estrutura do PDF com Ata:', documentosComAta.map(d => ({
+          folha: d.numero_folha,
+          tipo: d.tipo_documento,
+          titulo: d.titulo
+        })))
+        
+        // Gerar HTML do relatório com a ata incluída
+        const htmlRelatorio = processosComponent.methods.gerarHTMLRelatorio.call({
+          formatarData: this.formatarData,
+          formatarStatus: this.formatarStatus
+        }, processoCompleto, documentosComAta, produtos)
+        
+        // Criar blob para visualização
+        const blob = new Blob([htmlRelatorio], { type: 'text/html' })
+        const url = URL.createObjectURL(blob)
+        
+        // Criar nome do arquivo PDF
+        const nomeArquivo = `Processo_${processoCompleto.numero_processo || processoCompleto.id}_com_Ata_CCL_${new Date().toISOString().split('T')[0]}.pdf`
+        
+        // Abrir em nova janela com funcionalidades de download
+        const novaJanela = window.open('', '_blank')
+        novaJanela.document.write(htmlRelatorio)
+        novaJanela.document.close()
+        
+        // Adicionar funcionalidade de download PDF à nova janela
+        setTimeout(() => {
+          if (novaJanela && !novaJanela.closed) {
+            // Criar elementos de download dinamicamente
+            const downloadControls = novaJanela.document.createElement('div')
+            downloadControls.id = 'download-controls'
+            downloadControls.style.cssText = `
+              position: fixed; 
+              top: 10px; 
+              right: 10px; 
+              background: #fff; 
+              border: 2px solid #dc3545; 
+              border-radius: 8px; 
+              padding: 15px; 
+              box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
+              z-index: 9999;
+              display: flex;
+              gap: 10px;
+              font-family: Arial, sans-serif;
+            `
+            
+            // Botão baixar PDF
+            const btnDownloadPDF = novaJanela.document.createElement('button')
+            btnDownloadPDF.innerHTML = '📄 Baixar PDF'
+            btnDownloadPDF.style.cssText = `
+              background: #dc3545; 
+              color: white; 
+              border: none; 
+              padding: 8px 15px; 
+              border-radius: 5px; 
+              cursor: pointer;
+              font-weight: bold;
+            `
+            btnDownloadPDF.onclick = () => {
+              // Esconder os controles temporariamente
+              downloadControls.style.display = 'none'
+              
+              // Usar a API de impressão do navegador
+              setTimeout(() => {
+                novaJanela.print()
+                // Mostrar controles novamente após impressão
+                setTimeout(() => {
+                  if (downloadControls) {
+                    downloadControls.style.display = 'flex'
+                  }
+                }, 1000)
+              }, 100)
+            }
+            
+            // Botão fechar
+            const btnFechar = novaJanela.document.createElement('button')
+            btnFechar.innerHTML = '❌ Fechar'
+            btnFechar.style.cssText = `
+              background: #6c757d; 
+              color: white; 
+              border: none; 
+              padding: 8px 15px; 
+              border-radius: 5px; 
+              cursor: pointer;
+              font-weight: bold;
+            `
+            btnFechar.onclick = () => novaJanela.close()
+            
+            downloadControls.appendChild(btnDownloadPDF)
+            downloadControls.appendChild(btnFechar)
+            novaJanela.document.body.appendChild(downloadControls)
+          }
+        }, 500)
+        
+        console.log('✅ Relatório com Ata CCL (Fl. 003) gerado com sucesso')
+        
+      } catch (error) {
+        console.error('❌ Erro ao gerar relatório com ata:', error)
+        this.$swal({
+          title: '❌ Erro ao Gerar Relatório',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+
+    async gerarHTMLAtaCCLCompleta(processo, ata) {
+      const dataAtual = new Date().toLocaleDateString('pt-BR')
+      const horaAtual = new Date().toLocaleTimeString('pt-BR')
+      
+      // Buscar produtos do processo
+      let htmlProdutos = `
+        <div style="padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; text-align: center;">
+          📋 Nenhum produto encontrado para este processo
+        </div>
+      `
+      
+      try {
+        const { data: produtos, error } = await supabase
+          .from('produtos')
+          .select('*')
+          .eq('processo_id', processo.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        if (!error && produtos && produtos.length > 0) {
+          htmlProdutos = `
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
+              <thead>
+                <tr style="background: #f8f9fa;">
+                  <th style="padding: 10px; border: 1px solid #ddd; text-align: left; font-weight: bold;">Produto</th>
+                  <th style="padding: 10px; border: 1px solid #ddd; text-align: left; font-weight: bold;">Marca/Modelo</th>
+                  <th style="padding: 10px; border: 1px solid #ddd; text-align: center; font-weight: bold;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${produtos.map(produto => `
+                  <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">${produto.nome || 'Produto não especificado'}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">${produto.marca || 'N/A'} ${produto.modelo || ''}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                      <span style="background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-size: 10pt;">
+                        ✅ APROVADO
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 5px; font-size: 10pt; color: #155724;">
+              <strong>📊 Resumo:</strong> ${produtos.length} produto(s) analisado(s) e aprovado(s) tecnicamente pela CCL
+            </div>
+          `
+        }
+      } catch (error) {
+        console.error('Erro ao buscar produtos para ata:', error)
+      }
+      
+      return `
+        <div class="documento-pagina">
+          <div class="folha-numero">Fl. 003</div>
+          
+          <div class="documento-header">
+            <div class="brasao-header" style="text-align: center; margin-bottom: 30px;">
+              <h1 style="font-size: 16pt; margin: 0; color: #1a1a1a;">${processo.nome_orgao || 'ÓRGÃO ADMINISTRATIVO'}</h1>
+              <h2 style="font-size: 14pt; margin: 5px 0 0 0; color: #333;">COMISSÃO CENTRAL DE LICITAÇÃO - CCL</h2>
+              <h3 style="font-size: 12pt; margin: 5px 0 0 0; color: #666;">Sistema de Pré-Qualificação de Bens - Lei 14.133/2021</h3>
+            </div>
+            
+            <div class="linha-decorativa" style="border-top: 2px solid #333; margin: 20px 0;"></div>
+            
+            <h2 style="text-align: center; font-size: 14pt; margin: 20px 0; text-transform: uppercase; font-weight: bold;">
+              ATA DE JULGAMENTO TÉCNICO - CCL
+            </h2>
+          </div>
+
+          <div class="documento-content" style="font-size: 11pt; line-height: 1.6;">
+            
+            <div class="secao-identificacao" style="margin-bottom: 25px;">
+              <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                1. IDENTIFICAÇÃO DO PROCESSO
+              </h3>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                <tr style="border-bottom: 1px solid #ddd;">
+                  <td style="padding: 8px; width: 30%; font-weight: bold; background: #f8f9fa;">Número do Processo:</td>
+                  <td style="padding: 8px;">${processo.numero_processo}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                  <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Órgão Solicitante:</td>
+                  <td style="padding: 8px;">${processo.orgao_responsavel || processo.nome_orgao || 'Não informado'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                  <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Tipo de Processo:</td>
+                  <td style="padding: 8px;">${processo.tipo_processo === 'padronizacao' ? 'Padronização' : 'Despadronização'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                  <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Data de Julgamento:</td>
+                  <td style="padding: 8px;">${this.formatDate(processo.data_julgamento_ccl || processo.ata_emitida_ccl_em || new Date())}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Ata CCL Número:</td>
+                  <td style="padding: 8px;">${ata.numero_ata || ata.numero || 'N/A'}</td>
+                </tr>
+              </table>
+            </div>
+            
+            <div class="secao-objeto" style="margin-bottom: 25px;">
+              <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                2. OBJETO DO PROCESSO
+              </h3>
+              <div style="text-align: justify; padding: 15px; background: #f9f9f9; border-left: 4px solid #007bff;">
+                ${processo.objeto || 'Objeto não especificado'}
+              </div>
+            </div>
+            
+            <div class="secao-decisao" style="margin-bottom: 25px;">
+              <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                3. DECISÃO DA CCL
+              </h3>
+              <div style="text-align: center; padding: 20px; background: #d4edda; border: 2px solid #28a745; border-radius: 8px; margin: 15px 0;">
+                <h4 style="font-size: 13pt; color: #155724; margin: 0; font-weight: bold;">
+                  ✅ PROCESSO APROVADO TECNICAMENTE
+                </h4>
+              </div>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #ddd;">
+                  <td style="padding: 8px; width: 30%; font-weight: bold; background: #f8f9fa;">Status Final:</td>
+                  <td style="padding: 8px; color: #28a745; font-weight: bold;">APROVADO CCL</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                  <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Data da Decisão:</td>
+                  <td style="padding: 8px;">${dataAtual} - ${horaAtual}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Próxima Etapa:</td>
+                  <td style="padding: 8px;">Assessoria Jurídica para análise legal</td>
+                </tr>
+              </table>
+            </div>
+            
+            <div class="secao-produtos" style="margin-bottom: 25px;">
+              <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                4. PRODUTOS ANALISADOS
+              </h3>
+              <div id="lista-produtos-ata" style="margin-bottom: 15px;">
+                ${htmlProdutos}
+              </div>
+            </div>
+            
+            <div class="secao-fundamentacao" style="margin-bottom: 25px;">
+              <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                5. FUNDAMENTAÇÃO TÉCNICA DA CCL
+              </h3>
+              <div style="text-align: justify; padding: 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;">
+                ${processo.ata_julgamento_ccl || processo.fundamentacao_tecnica_ccl || `
+                  A Comissão Central de Licitação, após análise técnica detalhada do processo administrativo, 
+                  considerando os aspectos técnicos, normativos e de conformidade, deliberou pela aprovação 
+                  do presente processo de ${processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização'}.
+                  <br><br>
+                  A decisão foi baseada na avaliação dos documentos apresentados, verificação da adequação 
+                  técnica dos produtos e conformidade com as especificações estabelecidas no processo administrativo.
+                  <br><br>
+                  O processo atende aos requisitos técnicos e normativos aplicáveis, estando apto para 
+                  prosseguimento na tramitação administrativa.
+                `}
+              </div>
+            </div>
+            
+            <div class="secao-proximos-passos" style="margin-bottom: 30px;">
+              <h3 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                6. ENCAMINHAMENTOS
+              </h3>
+              <ol style="margin: 0; padding-left: 20px;">
+                <li style="margin-bottom: 10px;"><strong>Assessoria Jurídica:</strong> Para análise da conformidade legal do processo</li>
+                <li style="margin-bottom: 10px;"><strong>Órgão Responsável:</strong> Para acompanhamento da tramitação</li>
+                <li style="margin-bottom: 10px;"><strong>CPM:</strong> Para controle e registro da decisão</li>
+                <li style="margin-bottom: 10px;"><strong>Sistema:</strong> Atualização automática do status do processo</li>
+              </ol>
+            </div>
+            
+            <div class="secao-assinaturas" style="margin-top: 40px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="text-align: center; padding: 30px 10px; border-top: 1px solid #000; width: 50%;">
+                    <strong>COMISSÃO CENTRAL DE LICITAÇÃO</strong><br>
+                    <small>Data: ${dataAtual}</small>
+                  </td>
+                  <td style="text-align: center; padding: 30px 10px; border-top: 1px solid #000; width: 50%;">
+                    <strong>SISTEMA COMPRAR BEM</strong><br>
+                    <small>Gerado automaticamente</small>
+                  </td>
+                </tr>
+              </table>
+            </div>
+            
+            <div class="rodape-ata" style="margin-top: 30px; font-size: 9pt; color: #666; text-align: center; border-top: 1px solid #ddd; padding-top: 15px;">
+              <p><strong>Sistema de Pré-Qualificação de Bens</strong> | Lei nº 14.133/2021 | Processo ${processo.numero_processo}</p>
+              <p>Documento gerado automaticamente em ${dataAtual} às ${horaAtual}</p>
+            </div>
+          </div>
+        </div>
+      `
     },
 
     gerarHTMLAtaCCL(processo, ata) {
@@ -1079,14 +2003,15 @@ export default {
         })
         
         // Agora filtrar apenas os que a CCL deve ver (conforme TramitacaoProcessosService)
+        // CCL só deve ver processos já tramitados para ela (julgamento_ccl)
         const processosData = (todosProcessosTenant || []).filter(processo => 
-          ['assinado_admin', 'julgamento_ccl'].includes(processo.status)
+          processo.status === 'julgamento_ccl'
         )
         
-        console.log('🎯 [DEBUG CCL] Status filtrados para CCL:', ['assinado_admin', 'julgamento_ccl'])
+        console.log('🎯 [DEBUG CCL] Status filtrados para CCL:', ['julgamento_ccl'])
         console.log('🎯 [DEBUG CCL] Processos que deveriam aparecer:')
         todosProcessosTenant?.forEach(proc => {
-          if (['assinado_admin', 'julgamento_ccl'].includes(proc.status)) {
+          if (proc.status === 'julgamento_ccl') {
             console.log(`✅ DEVE APARECER: ${proc.numero_processo} - Status: ${proc.status}`)
           } else {
             console.log(`❌ NÃO APARECE: ${proc.numero_processo} - Status: ${proc.status}`)
@@ -1141,7 +2066,7 @@ export default {
         
         // Garantir que processosPendentes é um array antes de usar filter
         const processosArray = Array.isArray(this.processosPendentes) ? this.processosPendentes : []
-        this.pendentes = statsCounts[0] || processosArray.filter(p => ['assinado_admin', 'julgamento_ccl'].includes(p.status)).length
+        this.pendentes = statsCounts[0] || processosArray.filter(p => p.status === 'julgamento_ccl').length
         this.aprovados = statsCounts[1] || processosArray.filter(p => p.status === 'julgado_ccl').length
         this.homologados = statsCounts[2]
         
@@ -2517,53 +3442,62 @@ export default {
       try {
         if (!this.currentTenantId) return
         
-        // Carregar atas de julgamento PUBLICADAS da tabela atas_julgamento
-        const { data: atasData, error } = await supabase
+        // Carregar atas PUBLICADAS da tabela atas_julgamento (status 'EM PRAZO', 'FINALIZADA', etc.)
+        const { data: atasPublicadas, error } = await supabase
           .from('atas_julgamento')
           .select(`
             id,
             numero,
-            data_publicacao,
             periodo,
-            total_processos,
+            descricao,
+            data_publicacao,
             status_ata,
+            total_processos,
             conteudo_ata,
-            arquivo_pdf_url,
-            data_inicio_prazo_recursal,
-            data_fim_prazo_recursal,
-            observacoes,
-            criado_em
+            processo_id,
+            numero_processo,
+            tipo_processo,
+            criado_em,
+            atualizado_em
           `)
           .eq('tenant_id', this.currentTenantId)
-          .in('status_ata', ['EM PRAZO', 'PRAZO_EXPIRADO', 'PUBLICADA']) // Atas publicadas (em prazo, prazo expirado ou finalizadas)
+          .in('status_ata', ['EM PRAZO', 'FINALIZADA', 'HOMOLOGADA']) // Atas publicadas
           .order('data_publicacao', { ascending: false })
           .limit(10) // Limitar às 10 mais recentes
         
         if (error) {
-          console.error('Erro ao carregar atas de julgamento:', error)
+          console.error('Erro ao carregar atas de julgamento reais:', error)
           return
         }
         
-        // Mapear os dados para o formato usado no template
-        if (atasData && atasData.length > 0) {
-          this.atasPublicadasRecentes = atasData.map(ata => ({
-            id: ata.id,
-            numero: ata.numero,
-            dataPublicacao: ata.data_publicacao,
-            periodo: ata.periodo,
-            totalProcessos: ata.total_processos,
-            statusRecursal: ata.status_ata,
-            conteudoAta: ata.conteudo_ata,
-            arquivoPdfUrl: ata.arquivo_pdf_url,
-            dataInicioPrazoRecursal: ata.data_inicio_prazo_recursal,
-            dataFimPrazoRecursal: ata.data_fim_prazo_recursal,
-            observacoes: ata.observacoes,
-            criadoEm: ata.criado_em
-          }))
+        // Mapear as atas publicadas da tabela atas_julgamento
+        if (atasPublicadas && atasPublicadas.length > 0) {
+          this.atasPublicadasRecentes = atasPublicadas.map(ata => {
+            const dataAta = new Date(ata.data_publicacao || ata.criado_em)
+            
+            return {
+              id: ata.id,
+              numero: ata.numero,
+              numero_processo: ata.numero_processo, // Campo específico para identificar o processo
+              dataPublicacao: ata.data_publicacao,
+              periodo: ata.periodo,
+              totalProcessos: ata.total_processos || 1,
+              statusRecursal: ata.status_ata, // Status real da ata (EM PRAZO, FINALIZADA, etc.)
+              conteudoAta: ata.conteudo_ata,
+              objeto: ata.descricao,
+              orgao: 'CCL', // Atas são sempre da CCL
+              tipo_processo: ata.tipo_processo,
+              data_julgamento: ata.data_publicacao,
+              // Dados para vinculação específica processo-ata
+              processo_id: ata.processo_id,
+              ata_completa: ata // Dados completos da ata
+            }
+          })
+          
           // Atualizar contador de atas publicadas
-          this.atasPublicadas = atasData.length
-          this.atualizarTotalPaginacao('atasPublicadas', atasData.length)
-          console.log('Atas de julgamento carregadas do banco:', atasData.length)
+          this.atasPublicadas = atasPublicadas.length
+          this.atualizarTotalPaginacao('atasPublicadas', atasPublicadas.length)
+          console.log('✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento):', atasPublicadas.length)
         } else {
           this.atasPublicadas = 0
           this.atualizarTotalPaginacao('atasPublicadas', 0)
@@ -2597,7 +3531,7 @@ export default {
           `)
           .eq('tenant_id', this.currentTenantId)
           .in('status_ata', ['ELABORACAO', 'EM_ELABORACAO']) // Filtrar apenas atas em elaboração
-          .order('data_inicio', { ascending: false })
+          .order('data_inicio_elaboracao', { ascending: false })
         
         if (error) {
           console.error('Erro ao carregar atas em elaboração:', error)
@@ -2613,7 +3547,7 @@ export default {
             periodo: ata.periodo,
             processos_count: ata.total_processos,
             status: 'elaboracao',
-            data_inicio: ata.data_inicio || ata.criado_em,
+            data_inicio: ata.data_inicio_elaboracao || ata.criado_em,
             responsavel: ata.responsavel_elaboracao || 'CCL',
             progresso: ata.progresso_elaboracao || 0,
             observacoes: ata.observacoes,
@@ -3914,7 +4848,12 @@ Exemplo:
           progresso_elaboracao: 10, // Iniciada (10%)
           conteudo_ata: this.gerarConteudoAtaInicial(processosJulgados, result.value),
           criado_em: new Date().toISOString(),
-          atualizado_em: new Date().toISOString()
+          atualizado_em: new Date().toISOString(),
+          // Para atas consolidadas, vamos armazenar o primeiro processo como referência
+          // e a lista de todos os processos para facilitar consultas
+          processo_id: processosJulgados.length === 1 ? processosJulgados[0].id : null,
+          processos_incluidos: processosJulgados.map(p => p.id),
+          numeros_processos: processosJulgados.map(p => p.numero_processo).join(', ')
         }
 
         const { data: novaAta, error: errorAta } = await supabase
@@ -3924,21 +4863,35 @@ Exemplo:
 
         if (errorAta) throw errorAta
 
-        // 5. Vincular produtos à ata criada
+        // 5. Buscar e vincular produtos dos processos julgados à ata criada
         const ataId = novaAta[0].id
-        const { error: errorVinculo } = await supabase
+        
+        // Buscar produtos dos processos julgados
+        const { data: produtosDoProcesso, error: errorBuscarProdutos } = await supabase
           .from('produtos')
-          .update({ 
-            ata_julgamento_id: ataId,
-            atualizado_em: new Date().toISOString()
-          })
-          .in('id', processosJulgados.map(p => p.id))
+          .select('id')
+          .in('processo_id', processosJulgados.map(p => p.id))
+          .eq('tenant_id', this.currentTenantId)
+        
+        if (errorBuscarProdutos) throw errorBuscarProdutos
+        
+        if (produtosDoProcesso && produtosDoProcesso.length > 0) {
+          const { error: errorVinculo } = await supabase
+            .from('produtos')
+            .update({ 
+              ata_julgamento_id: ataId,
+              atualizado_em: new Date().toISOString()
+            })
+            .in('id', produtosDoProcesso.map(p => p.id))
+          
+          if (errorVinculo) throw errorVinculo
+          console.log(`✅ ${produtosDoProcesso.length} produtos vinculados à ata ${ataId}`)
+        } else {
+          console.warn('⚠️ Nenhum produto encontrado para vincular à ata')
+        }
 
-        if (errorVinculo) throw errorVinculo
-
-        // 6. Recarregar dados da interface
-        await this.carregarAtasJulgamento()
-        await this.carregarAtasEmElaboracao()
+        // 6. Recarregar dados da interface automaticamente
+        await this.atualizarDadosAtas()
         await this.carregarDados(true) // Recarregar contadores
 
         // 7. Mostrar sucesso e orientar o usuário
@@ -3991,12 +4944,14 @@ Exemplo:
         const dia = String(agora.getDate()).padStart(2, '0')
         const numeroAta = `ATA-CCL-${ano}${mes}${dia}-${String(processo.id).slice(-4)}`
         
-        // Criar registro na tabela atas_julgamento
+        // Criar registro na tabela atas_julgamento com vinculação específica ao processo
         const { data: novaAta, error } = await supabase
           .from('atas_julgamento')
           .insert({
             tenant_id: this.currentTenantId,
             numero: numeroAta,
+            processo_id: processo.id, // MELHORIA: Vinculação específica ata-processo
+            numero_processo: processo.numero_processo, // Campo adicional para facilitar consultas
             data_inicio: agora.toISOString(),
             data_publicacao: agora.toISOString(),
             periodo: `${mes}/${ano}`,
@@ -4004,6 +4959,11 @@ Exemplo:
             status_ata: 'EM_ELABORACAO',
             conteudo_ata: `Ata de Julgamento CCL referente ao processo ${processo.numero_processo}\n\nDECISÃO: APROVADO\n\nFUNDAMENTAÇÃO: ${julgamento.fundamentacao}`,
             observacoes: `Ata criada automaticamente após julgamento CCL do processo ${processo.numero_processo}`,
+            tipo_processo: processo.tipo_processo, // Padronização ou despadronização
+            orgao_responsavel: processo.orgao_responsavel || processo.nome_orgao,
+            objeto_processo: processo.objeto,
+            decisao_ccl: 'APROVADO',
+            fundamentacao_ccl: julgamento.fundamentacao,
             criado_em: agora.toISOString()
           })
           .select()
@@ -4016,9 +4976,35 @@ Exemplo:
         
         console.log('✅ Ata automática criada:', numeroAta)
         
-        // Atualizar listas locais para mostrar a nova ata
-        await this.carregarAtasEmElaboracao()
-        await this.carregarAtasJulgamento()
+        // Vincular produtos do processo à ata criada
+        const ataId = novaAta.id
+        const { data: produtosDoProcesso, error: errorBuscarProdutos } = await supabase
+          .from('produtos')
+          .select('id, nome')
+          .eq('processo_id', processo.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        if (!errorBuscarProdutos && produtosDoProcesso && produtosDoProcesso.length > 0) {
+          const { error: errorVinculo } = await supabase
+            .from('produtos')
+            .update({ 
+              ata_julgamento_id: ataId,
+              status: 'julgado_aprovado', // Marcar como aprovado já que processo foi aprovado
+              atualizado_em: new Date().toISOString()
+            })
+            .in('id', produtosDoProcesso.map(p => p.id))
+          
+          if (!errorVinculo) {
+            console.log(`✅ ${produtosDoProcesso.length} produtos vinculados à ata automática ${ataId}`)
+          } else {
+            console.error('Erro ao vincular produtos:', errorVinculo)
+          }
+        } else {
+          console.warn('⚠️ Nenhum produto encontrado no processo para vincular à ata automática')
+        }
+        
+        // Atualizar listas automaticamente
+        await this.atualizarDadosAtas()
         
       } catch (error) {
         console.error('Erro ao criar ata automática:', error)
@@ -4171,6 +5157,93 @@ Exemplo:
         })
       }
     },
+
+    async finalizarAtaElaboracao(ata) {
+      try {
+        const result = await this.$swal({
+          title: '🎯 Finalizar Ata de Julgamento',
+          html: `
+            <div style="text-align: center; padding: 20px;">
+              <h4 style="color: #495057; margin-bottom: 15px;">📋 ${ata.numero_ata || ata.numero}</h4>
+              <p style="margin-bottom: 20px; color: #666;">
+                Ao finalizar, esta ata será <strong>oficialmente publicada</strong> e movida para "📋 Atas Publicadas".
+              </p>
+              <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                <strong>⚠️ Atenção:</strong><br>
+                Após a publicação, a ata não poderá mais ser editada.
+              </div>
+              <p style="color: #495057; margin-top: 15px;">
+                Confirma a <strong>finalização e publicação</strong> desta ata?
+              </p>
+            </div>
+          `,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: '🎯 Sim, Finalizar e Publicar',
+          cancelButtonText: '❌ Cancelar',
+          confirmButtonColor: '#28a745',
+          cancelButtonColor: '#dc3545'
+        })
+
+        if (!result.isConfirmed) return
+
+        const dataPublicacao = new Date()
+        const dataFimPrazoRecursal = new Date(dataPublicacao)
+        dataFimPrazoRecursal.setDate(dataFimPrazoRecursal.getDate() + 3) // 3 dias para recurso
+
+        // Atualizar status da ata para publicada
+        const { error } = await supabase
+          .from('atas_julgamento')
+          .update({
+            status_ata: 'EM PRAZO', // Status para ata publicada em prazo recursal
+            data_publicacao: dataPublicacao.toISOString(),
+            data_inicio_prazo_recursal: dataPublicacao.toISOString(),
+            data_fim_prazo_recursal: dataFimPrazoRecursal.toISOString(),
+            progresso_elaboracao: 100, // 100% completa
+            atualizado_em: new Date().toISOString()
+          })
+          .eq('id', ata.id)
+          .eq('tenant_id', this.currentTenantId)
+        
+        if (error) throw error
+        
+        // Recarregar dados automaticamente
+        await this.atualizarDadosAtas()
+        
+        this.$swal({
+          title: '🎉 Ata Finalizada e Publicada!',
+          html: `
+            <div style="text-align: center; padding: 20px;">
+              <h4>${ata.numero_ata || ata.numero}</h4>
+              <p>✅ Status atualizado para: <strong>EM PRAZO RECURSAL</strong></p>
+              <p>📅 Publicada em: <strong>${dataPublicacao.toLocaleDateString('pt-BR')}</strong></p>
+              <p>⏰ Prazo para recursos até: <strong>${dataFimPrazoRecursal.toLocaleDateString('pt-BR')}</strong></p>
+              <hr style="margin: 20px 0;">
+              <p style="color: #28a745; font-weight: bold;">
+                🎯 A ata foi movida para "📋 Atas Publicadas"
+              </p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: '📋 Ver Atas Publicadas',
+          showCancelButton: true,
+          cancelButtonText: '✅ OK'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Já está na aba de atas, dados já foram atualizados
+            console.log('✅ Ata finalizada e usuário pode ver atas publicadas')
+          }
+        })
+        
+      } catch (error) {
+        console.error('Erro ao finalizar ata:', error)
+        this.$swal({
+          title: '❌ Erro ao Finalizar Ata',
+          text: error.message || 'Erro interno do sistema',
+          icon: 'error'
+        })
+      }
+    },
     async finalizarAta(ata) {
       const result = await this.$swal({
         title: '✅ Finalizar Ata de Julgamento',
@@ -4223,9 +5296,8 @@ Exemplo:
         
         if (error) throw error
         
-        // Recarregar dados
-        await this.carregarAtasJulgamento()
-        await this.carregarAtasEmElaboracao()
+        // Recarregar dados automaticamente
+        await this.atualizarDadosAtas()
         await this.carregarDados()
         
         this.$swal({
@@ -4294,6 +5366,138 @@ Exemplo:
     },
     async baixarPDF(ata) {
       try {
+        console.log('📄 Gerando PDF para ata:', ata.numero)
+        console.log('🔍 DEBUG: Dados completos da ata:', JSON.stringify(ata, null, 2))
+        
+        // Para atas publicadas, buscar processo(s) vinculado(s)
+        let processo = null
+        let processos = []
+        
+        if (ata.processo_id) {
+          // Ata de processo único
+          console.log('🔗 Buscando processo específico da ata:', ata.processo_id)
+          const result = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .eq('id', ata.processo_id)
+            .eq('tenant_id', this.currentTenantId)
+            .single()
+          
+          if (!result.error) {
+            processo = result.data
+            processos = [processo]
+          }
+        } else if (ata.processos_incluidos && ata.processos_incluidos.length > 0) {
+          // Ata consolidada com múltiplos processos
+          console.log('🔗 Buscando processos consolidados da ata:', ata.processos_incluidos)
+          const result = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .in('id', ata.processos_incluidos)
+            .eq('tenant_id', this.currentTenantId)
+          
+          if (!result.error && result.data.length > 0) {
+            processos = result.data
+            processo = processos[0] // Usar o primeiro como referência principal
+          }
+        } else {
+          // Fallback: verificar se existem produtos vinculados à ata
+          console.log('🔍 Fallback: Verificando produtos vinculados à ata')
+          console.log('🔍 DEBUG: ata.id =', ata.id, 'tenant_id =', this.currentTenantId)
+          
+          const { data: produtosAta, error: errorProdutos } = await supabase
+            .from('produtos')
+            .select('id, nome, marca, modelo')
+            .eq('ata_julgamento_id', ata.id)
+            .eq('tenant_id', this.currentTenantId)
+          
+          console.log('🔍 DEBUG: Produtos encontrados:', produtosAta, 'Error:', errorProdutos)
+          
+          // Se há produtos vinculados à ata, usar estratégia de busca por número da ata
+          if (!errorProdutos && produtosAta && produtosAta.length > 0) {
+            console.log('✅ Encontrados', produtosAta.length, 'produtos vinculados à ata')
+            
+            // Tentar extrair número do processo do nome da ata
+            const numeroAtaMatch = ata.numero?.match(/(\d{3}\/\d{4})/);
+            if (numeroAtaMatch) {
+              const numeroProcesso = numeroAtaMatch[1];
+              console.log('🔍 Tentando buscar processo pelo número extraído da ata:', numeroProcesso);
+              
+              const result = await supabase
+                .from('processos_administrativos')
+                .select('*')
+                .eq('numero_processo', numeroProcesso)
+                .eq('tenant_id', this.currentTenantId)
+              
+              console.log('🔍 DEBUG: Resultado busca por número:', result.data, 'Error:', result.error)
+              
+              if (!result.error && result.data.length > 0) {
+                processos = result.data
+                processo = processos[0]
+                console.log('✅ Encontrado processo pelo número da ata:', processo.numero_processo)
+              }
+            }
+          }
+          
+          // Se ainda não encontrou, tentar buscar por processos aprovados na mesma data
+          if (!processo && ata.data_publicacao) {
+            console.log('🔍 Fallback 2: Buscando processos por data de publicação')
+            console.log('🔍 DEBUG: Data da ata:', ata.data_publicacao)
+            
+            const dataIni = new Date(ata.data_publicacao)
+            dataIni.setHours(0, 0, 0, 0)
+            const dataFim = new Date(ata.data_publicacao)
+            dataFim.setHours(23, 59, 59, 999)
+            
+            console.log('🔍 DEBUG: Range de data:', dataIni.toISOString(), 'até', dataFim.toISOString())
+            
+            const result = await supabase
+              .from('processos_administrativos')
+              .select('*')
+              .eq('tenant_id', this.currentTenantId)
+              .eq('status', 'aprovado_ccl')
+              .gte('ata_emitida_ccl_em', dataIni.toISOString())
+              .lte('ata_emitida_ccl_em', dataFim.toISOString())
+            
+            console.log('🔍 DEBUG: Processos por data:', result.data, 'Error:', result.error)
+            
+            if (!result.error && result.data.length > 0) {
+              processos = result.data
+              processo = processos[0]
+              console.log('✅ Encontrados processos por data:', processos.map(p => p.numero_processo))
+            }
+          }
+          
+          // Fallback 3: Buscar qualquer processo aprovado recente se ainda não encontrou
+          if (!processo) {
+            console.log('🔍 Fallback 3: Buscando qualquer processo aprovado recente')
+            const result = await supabase
+              .from('processos_administrativos')
+              .select('*')
+              .eq('tenant_id', this.currentTenantId)
+              .eq('status', 'aprovado_ccl')
+              .order('ata_emitida_ccl_em', { ascending: false })
+              .limit(5)
+            
+            console.log('🔍 DEBUG: Processos recentes:', result.data, 'Error:', result.error)
+            
+            if (!result.error && result.data.length > 0) {
+              processos = result.data
+              processo = processos[0]
+              console.log('✅ Usando processo recente como fallback:', processo.numero_processo)
+            }
+          }
+        }
+        
+        if (!processo || processos.length === 0) {
+          this.$swal({
+            title: '❌ Erro',
+            text: 'Não foi possível encontrar o(s) processo(s) relacionado(s) à ata. Verifique se a ata está corretamente vinculada aos processos.',
+            icon: 'error'
+          })
+          return
+        }
+        
         // Importar jsPDF
         const { jsPDF } = await import('jspdf')
         
@@ -4368,7 +5572,7 @@ Exemplo:
         
         doc.setFontSize(11)
         doc.setFont(undefined, 'normal')
-        doc.text(`Total de processos julgados: ${produtos?.length || 0}`, 35, yPosition)
+        doc.text(`Total de processos julgados: 1`, 35, yPosition)
         yPosition += 8
         doc.text(`Produtos aprovados: ${produtosAprovados.length}`, 35, yPosition)
         yPosition += 8
@@ -4467,7 +5671,34 @@ Exemplo:
           
           doc.setFontSize(10)
           doc.setFont(undefined, 'normal')
-          const conteudoLines = doc.splitTextToSize(ata.conteudoAta || ata.conteudo_ata, pageWidth - 70)
+          
+          // Gerar conteúdo adequado se não existir
+          let conteudoCompleto = ata.conteudoAta || ata.conteudo_ata
+          
+          if (!conteudoCompleto || conteudoCompleto.trim() === '' || conteudoCompleto === 'conteudo da ata') {
+            conteudoCompleto = `
+PROCESSO${processos.length > 1 ? 'S' : ''} Nº: ${processos.length > 1 ? processos.map(p => p.numero_processo).join(', ') : (processo?.numero_processo || 'Não informado')}
+
+OBJETO: Pré-qualificação de bens conforme Lei 14.133/2021
+
+DECISÃO DA CCL: APROVADO
+
+FUNDAMENTAÇÃO: A Comissão Central de Licitação, após análise técnica detalhada dos produtos apresentados, considerando os aspectos técnicos, normativos e de conformidade com as especificações estabelecidas, deliberou pela APROVAÇÃO dos produtos relacionados neste processo.
+
+${produtosAprovados.length > 0 ? `
+PRODUTOS APROVADOS (${produtosAprovados.length}):
+${produtosAprovados.map((p, i) => `${i+1}. ${p.nome} - ${p.marca} (${p.modelo})`).join('\n')}
+` : ''}
+
+Os produtos aprovados atendem aos requisitos técnicos e normativos aplicáveis, estando aptos para inclusão no catálogo eletrônico de bens padronizados.
+
+PRÓXIMOS PASSOS: Processo encaminhado à Assessoria Jurídica para análise da conformidade legal.
+
+Data do julgamento: ${this.formatDate(ata.dataPublicacao || ata.data_publicacao)}
+            `.trim()
+          }
+          
+          const conteudoLines = doc.splitTextToSize(conteudoCompleto, pageWidth - 70)
           doc.text(conteudoLines, 35, yPosition)
         }
         
@@ -6003,6 +7234,24 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
               processo.id, 
               `CCL aprovou tecnicamente o processo: ${julgamento.fundamentacao}`
             )
+            
+            // CORREÇÃO: Preencher campos específicos da CCL para processos aprovados
+            if (resultado && resultado.sucesso) {
+              const { error: updateError } = await supabase
+                .from('processos_administrativos')
+                .update({
+                  ata_julgamento_ccl: julgamento.fundamentacao,
+                  ata_emitida_ccl_em: new Date().toISOString(),
+                  data_julgamento_ccl: new Date().toISOString()
+                })
+                .eq('id', processo.id)
+              
+              if (updateError) {
+                console.warn('Erro ao salvar dados da ata CCL:', updateError)
+              } else {
+                console.log('✅ Campos ata_emitida_ccl_em e ata_julgamento_ccl preenchidos')
+              }
+            }
             break
             
           case 'devolver':
@@ -6042,9 +7291,9 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
           console.warn('Erro ao salvar dados CCL (processo foi tramitado):', updateError)
         }
 
-        // Se foi aprovado, criar ata de julgamento automaticamente
+        // Se foi aprovado, processo fica disponível para criação manual de ata
         if (julgamento.decisao === 'aprovar') {
-          await this.criarAtaAutomatica(processo, julgamento)
+          console.log('✅ Processo aprovado e disponível para criação de ata manual')
         }
         
         // Mostrar resultado
@@ -6064,8 +7313,9 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
           icon: 'success'
         })
         
-        // Recarregar dados
+        // Recarregar dados automaticamente após julgamento
         await this.carregarDados(true)
+        await this.atualizarDadosAtas()
         
       } catch (error) {
         console.error('Erro no julgamento CCL:', error)
@@ -6955,4 +8205,329 @@ tr:hover {
     padding: 0.5rem;
   }
 }
+
+/* Estilos para o header da seção com botão */
+.section-title-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.btn-criar-nova-ata {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-criar-nova-ata:hover {
+  background: #218838;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+/* Estilos para o Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-criar-ata {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.5rem;
+}
+
+.btn-fechar-modal {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.btn-fechar-modal:hover {
+  background: #c82333;
+  transform: scale(1.1);
+}
+
+.modal-body {
+  padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.modal-instructions {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  border-radius: 4px;
+}
+
+.modal-instructions p {
+  margin: 0;
+  color: #1565c0;
+  font-weight: 500;
+}
+
+.processos-loading {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.no-processos {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.no-processos .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.no-processos h4 {
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.selection-controls-modal {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.processos-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+}
+
+.processo-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #f8f9fa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.processo-item:hover {
+  background: #f8f9fa;
+}
+
+.processo-item.selecionado {
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+}
+
+.processo-item:last-child {
+  border-bottom: none;
+}
+
+.processo-checkbox {
+  margin-right: 1rem;
+}
+
+.processo-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.processo-details {
+  flex: 1;
+}
+
+.processo-numero {
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.processo-numero strong {
+  color: #2c3e50;
+}
+
+.processo-orgao {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.processo-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.data-julgamento {
+  color: #007bff;
+  font-weight: 500;
+}
+
+.produtos-count {
+  background: #28a745;
+  color: white;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.modal-footer {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.modal-footer .btn-secondary {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.modal-footer .btn-secondary:hover {
+  background: #5a6268;
+}
+
+.modal-footer .btn-primary {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.modal-footer .btn-primary:hover:not(:disabled) {
+  background: #218838;
+}
+
+.modal-footer .btn-primary:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+
+/* Responsividade para o modal e interface */
+@media (max-width: 768px) {
+  .section-title-container {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .btn-criar-nova-ata {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .modal-criar-ata {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 1rem;
+  }
+  
+  .modal-header h3 {
+    font-size: 1.2rem;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .selection-controls-modal {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  
+  .processos-list {
+    max-height: 300px;
+  }
+  
+  .processo-item {
+    padding: 0.75rem;
+  }
+  
+  .processo-meta {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .modal-footer {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .modal-footer button {
+    width: 100%;
+  }
+}
+
 </style>

@@ -50,7 +50,7 @@
         :class="{ active: activeTab === 'reclamacoes' }" 
         @click="activeTab = 'reclamacoes'"
       >
-        Reclame Aqui - Reclamações
+        Registros de Reclamações
         <span v-if="reclamacoesNaoRespondidas > 0" class="notification-badge">
           {{ reclamacoesNaoRespondidas }}
         </span>
@@ -1988,10 +1988,10 @@
       </div>
     </div>
 
-    <!-- Aba Reclame Aqui - Reclamações -->
+    <!-- Aba Registros de Reclamações -->
     <div v-if="activeTab === 'reclamacoes'" class="reclamacoes-section">
       <div class="section-header">
-        <h2>📢 Reclame Aqui - Reclamações</h2>
+        <h2>📢 Registros de Reclamações</h2>
         <p>Gerenciamento de reclamações públicas dos usuários</p>
       </div>
       
@@ -2026,17 +2026,6 @@
           </select>
         </div>
         <div class="filtro-group">
-          <label>🏷️ Categoria:</label>
-          <select v-model="filtroReclamacoes.categoria" @change="aplicarFiltrosReclamacoes">
-            <option value="">Todas</option>
-            <option value="Produto">📦 Produto</option>
-            <option value="Atendimento">👥 Atendimento</option>
-            <option value="Sistema">💻 Sistema</option>
-            <option value="Processo">📋 Processo</option>
-            <option value="Outro">❓ Outro</option>
-          </select>
-        </div>
-        <div class="filtro-group">
           <label>⚡ Prioridade:</label>
           <select v-model="filtroReclamacoes.prioridade" @change="aplicarFiltrosReclamacoes">
             <option value="">Todas</option>
@@ -2057,7 +2046,6 @@
         >
           <div class="reclamacao-header">
             <div class="reclamacao-info">
-              <h4>{{ reclamacao.titulo_reclamacao }}</h4>
               <div class="reclamacao-meta">
                 <span class="reclamante">👤 {{ reclamacao.nome_reclamante }}</span>
                 <span v-if="reclamacao.setor_reclamante" class="setor">🏢 {{ reclamacao.setor_reclamante }}</span>
@@ -2067,9 +2055,6 @@
             <div class="reclamacao-badges">
               <span class="status-badge" :class="getStatusClass(reclamacao.status)">
                 {{ getStatusText(reclamacao.status) }}
-              </span>
-              <span v-if="reclamacao.categoria" class="categoria-badge">
-                {{ reclamacao.categoria }}
               </span>
               <span class="prioridade-badge" :class="getPrioridadeClass(reclamacao.prioridade)">
                 {{ getPrioridadeText(reclamacao.prioridade) }}
@@ -2452,7 +2437,7 @@ export default {
        
 
        
-       // Dados para Reclamações do Reclame Aqui
+       // Dados para Registros de Reclamações
        reclamacoes: [],
        reclamacoesFiltradas: [],
        salvandoResposta: false,
@@ -2461,7 +2446,6 @@ export default {
        filtroReclamacoes: {
          busca: '',
          status: '',
-         categoria: '',
          prioridade: ''
        },
        
@@ -7173,15 +7157,13 @@ Verifique:
     aplicarFiltrosReclamacoes() {
       this.reclamacoesFiltradas = this.reclamacoes.filter(reclamacao => {
         const matchBusca = !this.filtroReclamacoes.busca ||
-          reclamacao.titulo_reclamacao.toLowerCase().includes(this.filtroReclamacoes.busca.toLowerCase()) ||
           reclamacao.nome_reclamante.toLowerCase().includes(this.filtroReclamacoes.busca.toLowerCase()) ||
           reclamacao.descricao_reclamacao.toLowerCase().includes(this.filtroReclamacoes.busca.toLowerCase())
         
         const matchStatus = !this.filtroReclamacoes.status || reclamacao.status === this.filtroReclamacoes.status
-        const matchCategoria = !this.filtroReclamacoes.categoria || reclamacao.categoria === this.filtroReclamacoes.categoria
         const matchPrioridade = !this.filtroReclamacoes.prioridade || reclamacao.prioridade === this.filtroReclamacoes.prioridade
         
-        return matchBusca && matchStatus && matchCategoria && matchPrioridade
+        return matchBusca && matchStatus && matchPrioridade
       })
     },
     

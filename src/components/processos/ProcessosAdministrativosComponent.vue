@@ -218,6 +218,15 @@
               <button @click.stop="gerarRelatorio(processo)" class="btn-action">
                 📄 PDF
               </button>
+              
+              <!-- Lembrete para tramitar para CCL quando assinado_admin (apenas para perfil administrativo) -->
+              <div v-if="processo.status === 'assinado_admin' && perfilUsuario?.toLowerCase() === 'orgao_administrativo'" class="tramitar-reminder">
+                <div class="reminder-icon">⚖️</div>
+                <div class="reminder-text">
+                  <strong>Pronto para CCL!</strong><br>
+                  <small>Clique em "Ver" → "Tramitar para CCL"</small>
+                </div>
+              </div>
             </div>
             
           </div>
@@ -1742,11 +1751,15 @@ export default {
       console.log('🔍 DEBUG - Verificando botão tramitar para CCL:', {
         processo: processo?.numero_processo || processo?.id,
         status: processo?.status,
-        tipo: processo?.tipo_processo
+        tipo: processo?.tipo_processo,
+        perfilUsuario: this.perfilUsuario
       })
       
       const statusProcesso = processo?.status?.toLowerCase() || ''
-      const podeTramitar = statusProcesso === 'assinado_admin'
+      const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
+      
+      // Só órgão administrativo pode tramitar para CCL processos assinados
+      const podeTramitar = statusProcesso === 'assinado_admin' && perfilUsuario === 'orgao_administrativo'
       
       console.log('⚖️ Resultado tramitação CCL:', podeTramitar ? '✅ MOSTRAR BOTÃO' : '❌ OCULTAR BOTÃO')
       
@@ -6795,6 +6808,79 @@ export default {
 .alert span {
   font-size: 1rem;
   opacity: 0.8;
+}
+
+/* Lembrete visual para tramitação CCL */
+.tramitar-reminder {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border: 2px solid #f39c12;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 3px 6px rgba(243, 156, 18, 0.2);
+  animation: pulse-reminder 2.5s infinite;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.reminder-icon {
+  font-size: 1.5rem;
+  color: #D35400;
+  flex-shrink: 0;
+}
+
+.reminder-text {
+  font-size: 0.9rem;
+  color: #8B4513;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.reminder-text strong {
+  color: #D35400;
+  font-size: 1rem;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.reminder-text small {
+  color: #A0522D;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+@keyframes pulse-reminder {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 3px 6px rgba(243, 156, 18, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 5px 12px rgba(243, 156, 18, 0.35);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 3px 6px rgba(243, 156, 18, 0.2);
+  }
+}
+
+/* Ajustar layout das ações para acomodar o lembrete */
+.processo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  margin-top: 1rem;
+  align-items: flex-start;
+}
+
+/* Fazer o lembrete ocupar toda a largura quando presente */
+.processo-actions .tramitar-reminder {
+  flex-basis: 100%;
+  order: 10; /* Coloca o lembrete no final */
 }
 
 </style>
