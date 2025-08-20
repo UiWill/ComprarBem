@@ -1,6 +1,18 @@
 <template>
   <div class="catalogo-container">
-    <h2>Catálogo Eletrônico de Bens Padronizados</h2>
+    <div class="catalogo-header">
+      <h2>Catálogo Eletrônico de Bens Padronizados</h2>
+      <div class="export-buttons">
+        <button @click="exportarCatalogoPDF" class="btn-exportar btn-resumido" :disabled="exportandoPDF">
+          <span v-if="exportandoPDF && tipoExportacao === 'resumido'" class="spinner-small"></span>
+          {{ (exportandoPDF && tipoExportacao === 'resumido') ? 'Gerando...' : '📄 Catálogo Legal' }}
+        </button>
+        <button @click="exportarCatalogoDetalhado" class="btn-exportar btn-detalhado" :disabled="exportandoPDF">
+          <span v-if="exportandoPDF && tipoExportacao === 'detalhado'" class="spinner-small"></span>
+          {{ (exportandoPDF && tipoExportacao === 'detalhado') ? 'Gerando...' : '📋 Catálogo Completo' }}
+        </button>
+      </div>
+    </div>
     
     <div class="search-filters">
       <div class="search-box">
@@ -484,7 +496,10 @@ export default {
         motivo: '',
         data_vigencia: '',
         arquivo: null
-      }
+      },
+      // Exportação de PDF
+      exportandoPDF: false,
+      tipoExportacao: null
     }
   },
   created() {
@@ -1153,6 +1168,611 @@ export default {
       } finally {
         this.salvandoDespadronizacao = false
       }
+    },
+    
+    // Exportar Catálogo em PDF conforme Lei 14.133/2021
+    async exportarCatalogoPDF() {
+      this.exportandoPDF = true
+      this.tipoExportacao = 'resumido'
+      
+      try {
+        // Obter dados do tenant/órgão
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('nome')
+          .eq('id', this.currentTenantId)
+          .single()
+        
+        const nomeOrgao = tenantData?.nome || 'Órgão Público'
+        
+        // Buscar todos os produtos padronizados e despadronizados
+        const { data: produtosPadronizados } = await supabase
+          .from('produtos')
+          .select('*')
+          .eq('tenant_id', this.currentTenantId)
+          .in('status', ['aprovado', 'julgado_aprovado', 'homologado'])
+          .order('nome')
+        
+        // Buscar produtos despadronizados
+        const { data: produtosDespadronizados } = await supabase
+          .from('produtos')
+          .select('*')
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status', 'despadronizado')
+          .order('nome')
+        
+        // Criar estrutura do PDF
+        const dadosCatalogo = {
+          orgao: nomeOrgao,
+          dataGeracao: new Date().toLocaleDateString('pt-BR'),
+          produtosPadronizados: produtosPadronizados || [],
+          produtosDespadronizados: produtosDespadronizados || []
+        }
+        
+        this.gerarPDFCatalogo(dadosCatalogo)
+        
+      } catch (error) {
+        console.error('Erro ao exportar catálogo:', error)
+        this.$swal({
+          icon: 'error',
+          title: 'Erro na Exportação',
+          text: 'Não foi possível gerar o catálogo em PDF. Tente novamente.'
+        })
+      } finally {
+        this.exportandoPDF = false
+        this.tipoExportacao = null
+      }
+    },
+    
+    gerarPDFCatalogo(dados) {
+      // Criar documento HTML para impressão
+      const htmlContent = this.criarHTMLCatalogo(dados)
+      
+      // Criar janela de impressão
+      const printWindow = window.open('', '_blank')
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+      
+      // Aguardar carregamento e imprimir
+      printWindow.onload = () => {
+        printWindow.print()
+        printWindow.close()
+      }
+    },
+    
+    criarHTMLCatalogo(dados) {
+      const totalItens = dados.produtosPadronizados.length + dados.produtosDespadronizados.length
+      
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Catálogo de Bens - ${dados.orgao}</title>
+          <style>
+            @page { 
+              margin: 20mm; 
+              size: A4;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              font-size: 12px;
+              line-height: 1.4;
+              color: #333;
+              margin: 0;
+              padding: 0;
+            }
+            .cabecalho {
+              text-align: center;
+              margin-bottom: 30px;
+              padding-bottom: 20px;
+              border-bottom: 2px solid #2c3e50;
+            }
+            .cabecalho h1 {
+              color: #2c3e50;
+              font-size: 20px;
+              margin: 0 0 10px 0;
+              font-weight: bold;
+            }
+            .cabecalho h2 {
+              color: #666;
+              font-size: 16px;
+              margin: 0 0 15px 0;
+              font-weight: normal;
+            }
+            .info-legal {
+              background-color: #f8f9fa;
+              padding: 15px;
+              border-left: 4px solid #007bff;
+              margin: 20px 0;
+              font-size: 11px;
+            }
+            .secao {
+              margin-bottom: 30px;
+            }
+            .secao h3 {
+              background-color: #2c3e50;
+              color: white;
+              padding: 10px;
+              margin: 0 0 15px 0;
+              font-size: 14px;
+              font-weight: bold;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 20px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: left;
+              vertical-align: top;
+            }
+            th {
+              background-color: #f8f9fa;
+              font-weight: bold;
+              font-size: 11px;
+            }
+            td {
+              font-size: 10px;
+            }
+            .status-padronizado {
+              color: #28a745;
+              font-weight: bold;
+            }
+            .status-despadronizado {
+              color: #dc3545;
+              font-weight: bold;
+            }
+            .rodape {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 1px solid #ddd;
+              text-align: center;
+              font-size: 10px;
+              color: #666;
+            }
+            .estatisticas {
+              display: flex;
+              justify-content: space-around;
+              margin: 20px 0;
+              background-color: #f8f9fa;
+              padding: 15px;
+              border-radius: 5px;
+            }
+            .estatistica {
+              text-align: center;
+            }
+            .estatistica .numero {
+              font-size: 18px;
+              font-weight: bold;
+              color: #2c3e50;
+            }
+            .estatistica .label {
+              font-size: 11px;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="cabecalho">
+            <h1>CATÁLOGO DE BENS PADRONIZADOS E DESPADRONIZADOS</h1>
+            <h2>${dados.orgao}</h2>
+            <p><strong>Data de Geração:</strong> ${dados.dataGeracao}</p>
+          </div>
+          
+          <div class="info-legal">
+            <strong>Base Legal:</strong> Catálogo elaborado em conformidade com o art. 15 da Lei nº 14.133/2021 
+            (Nova Lei de Licitações e Contratos Administrativos), que estabelece a obrigatoriedade de 
+            manutenção de catálogo de bens padronizados pelos órgãos públicos.
+          </div>
+          
+          <div class="estatisticas">
+            <div class="estatistica">
+              <div class="numero">${dados.produtosPadronizados.length}</div>
+              <div class="label">Bens Padronizados</div>
+            </div>
+            <div class="estatistica">
+              <div class="numero">${dados.produtosDespadronizados.length}</div>
+              <div class="label">Bens Despadronizados</div>
+            </div>
+            <div class="estatistica">
+              <div class="numero">${totalItens}</div>
+              <div class="label">Total de Itens</div>
+            </div>
+          </div>
+          
+          ${dados.produtosPadronizados.length > 0 ? `
+          <div class="secao">
+            <h3>📋 BENS PADRONIZADOS</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 15%">Código</th>
+                  <th style="width: 40%">Especificação</th>
+                  <th style="width: 20%">Marca</th>
+                  <th style="width: 15%">Modelo</th>
+                  <th style="width: 10%">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${dados.produtosPadronizados.map(produto => `
+                  <tr>
+                    <td><strong>${produto.codigo_material || produto.codigo || 'N/A'}</strong></td>
+                    <td>${produto.nome || 'N/A'}<br><small>${produto.descricao || ''}</small></td>
+                    <td>${produto.marca || 'N/A'}</td>
+                    <td>${produto.modelo || 'N/A'}</td>
+                    <td><span class="status-padronizado">PADRONIZADO</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          ` : ''}
+          
+          ${dados.produtosDespadronizados.length > 0 ? `
+          <div class="secao">
+            <h3>❌ BENS DESPADRONIZADOS</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 12%">Código</th>
+                  <th style="width: 30%">Especificação</th>
+                  <th style="width: 15%">Marca</th>
+                  <th style="width: 12%">Modelo</th>
+                  <th style="width: 10%">Status</th>
+                  <th style="width: 21%">Motivo da Despadronização</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${dados.produtosDespadronizados.map(produto => `
+                  <tr>
+                    <td><strong>${produto.codigo_material || produto.codigo || 'N/A'}</strong></td>
+                    <td>${produto.nome || 'N/A'}<br><small>${produto.descricao || ''}</small></td>
+                    <td>${produto.marca || 'N/A'}</td>
+                    <td>${produto.modelo || 'N/A'}</td>
+                    <td><span class="status-despadronizado">DESPADRONIZADO</span></td>
+                    <td><small>${produto.motivo_despadronizacao || 'Não informado'}</small></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          ` : ''}
+          
+          <div class="rodape">
+            <p><strong>Catálogo gerado automaticamente pelo Sistema Comprar Bem</strong></p>
+            <p>Este documento possui validade legal conforme Lei nº 14.133/2021</p>
+            <p>Data e hora de geração: ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+        </body>
+        </html>
+      `
+    },
+    
+    // Exportar Catálogo Detalhado com todas as informações
+    async exportarCatalogoDetalhado() {
+      this.exportandoPDF = true
+      this.tipoExportacao = 'detalhado'
+      
+      try {
+        // Obter dados do tenant/órgão
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('nome')
+          .eq('id', this.currentTenantId)
+          .single()
+        
+        const nomeOrgao = tenantData?.nome || 'Órgão Público'
+        
+        // Buscar todos os produtos com mais detalhes
+        const { data: produtosPadronizados } = await supabase
+          .from('produtos')
+          .select(`
+            *,
+            categorias:categoria_id(nome)
+          `)
+          .eq('tenant_id', this.currentTenantId)
+          .in('status', ['aprovado', 'julgado_aprovado', 'homologado'])
+          .order('nome')
+        
+        // Buscar produtos despadronizados com detalhes
+        const { data: produtosDespadronizados } = await supabase
+          .from('produtos')
+          .select(`
+            *,
+            categorias:categoria_id(nome)
+          `)
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status', 'despadronizado')
+          .order('nome')
+        
+        // Buscar marcas despadronizadas para detalhes adicionais
+        const { data: marcasDespadronizadas } = await supabase
+          .from('marcas_despadronizadas')
+          .select('*')
+          .eq('tenant_id', this.currentTenantId)
+          .eq('status_atual', 'ativa')
+        
+        // Criar estrutura do PDF detalhado
+        const dadosCatalogo = {
+          orgao: nomeOrgao,
+          dataGeracao: new Date().toLocaleDateString('pt-BR'),
+          produtosPadronizados: produtosPadronizados || [],
+          produtosDespadronizados: produtosDespadronizados || [],
+          marcasDespadronizadas: marcasDespadronizadas || []
+        }
+        
+        this.gerarPDFCatalogoDetalhado(dadosCatalogo)
+        
+      } catch (error) {
+        console.error('Erro ao exportar catálogo detalhado:', error)
+        this.$swal({
+          icon: 'error',
+          title: 'Erro na Exportação',
+          text: 'Não foi possível gerar o catálogo detalhado em PDF. Tente novamente.'
+        })
+      } finally {
+        this.exportandoPDF = false
+        this.tipoExportacao = null
+      }
+    },
+    
+    gerarPDFCatalogoDetalhado(dados) {
+      // Criar documento HTML para impressão
+      const htmlContent = this.criarHTMLCatalogoDetalhado(dados)
+      
+      // Criar janela de impressão
+      const printWindow = window.open('', '_blank')
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+      
+      // Aguardar carregamento e imprimir
+      printWindow.onload = () => {
+        printWindow.print()
+        printWindow.close()
+      }
+    },
+    
+    criarHTMLCatalogoDetalhado(dados) {
+      const totalItens = dados.produtosPadronizados.length + dados.produtosDespadronizados.length
+      
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Catálogo Completo de Bens - ${dados.orgao}</title>
+          <style>
+            @page { 
+              margin: 15mm; 
+              size: A4;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              font-size: 11px;
+              line-height: 1.3;
+              color: #333;
+              margin: 0;
+              padding: 0;
+            }
+            .cabecalho {
+              text-align: center;
+              margin-bottom: 25px;
+              padding-bottom: 15px;
+              border-bottom: 2px solid #2c3e50;
+            }
+            .cabecalho h1 {
+              color: #2c3e50;
+              font-size: 18px;
+              margin: 0 0 8px 0;
+              font-weight: bold;
+            }
+            .cabecalho h2 {
+              color: #666;
+              font-size: 14px;
+              margin: 0 0 10px 0;
+              font-weight: normal;
+            }
+            .info-legal {
+              background-color: #f8f9fa;
+              padding: 12px;
+              border-left: 4px solid #007bff;
+              margin: 15px 0;
+              font-size: 10px;
+            }
+            .secao {
+              margin-bottom: 25px;
+              page-break-inside: avoid;
+            }
+            .secao h3 {
+              background-color: #2c3e50;
+              color: white;
+              padding: 8px;
+              margin: 0 0 12px 0;
+              font-size: 13px;
+              font-weight: bold;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 15px;
+              font-size: 9px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 6px;
+              text-align: left;
+              vertical-align: top;
+            }
+            th {
+              background-color: #f8f9fa;
+              font-weight: bold;
+              font-size: 9px;
+            }
+            .status-padronizado {
+              color: #28a745;
+              font-weight: bold;
+            }
+            .status-despadronizado {
+              color: #dc3545;
+              font-weight: bold;
+            }
+            .rodape {
+              margin-top: 30px;
+              padding-top: 15px;
+              border-top: 1px solid #ddd;
+              text-align: center;
+              font-size: 9px;
+              color: #666;
+            }
+            .estatisticas {
+              display: flex;
+              justify-content: space-around;
+              margin: 15px 0;
+              background-color: #f8f9fa;
+              padding: 12px;
+              border-radius: 5px;
+            }
+            .estatistica {
+              text-align: center;
+            }
+            .estatistica .numero {
+              font-size: 16px;
+              font-weight: bold;
+              color: #2c3e50;
+            }
+            .estatistica .label {
+              font-size: 10px;
+              color: #666;
+            }
+            .detalhes-adicionais {
+              font-size: 8px;
+              color: #666;
+              background-color: #f9f9f9;
+              padding: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="cabecalho">
+            <h1>CATÁLOGO COMPLETO DE BENS PADRONIZADOS E DESPADRONIZADOS</h1>
+            <h2>${dados.orgao}</h2>
+            <p><strong>Data de Geração:</strong> ${dados.dataGeracao} | <strong>Tipo:</strong> Relatório Detalhado</p>
+          </div>
+          
+          <div class="info-legal">
+            <strong>Base Legal:</strong> Catálogo elaborado em conformidade com o art. 15 da Lei nº 14.133/2021. 
+            Este relatório contém informações detalhadas para gestão interna e controle administrativo.
+          </div>
+          
+          <div class="estatisticas">
+            <div class="estatistica">
+              <div class="numero">${dados.produtosPadronizados.length}</div>
+              <div class="label">Bens Padronizados</div>
+            </div>
+            <div class="estatistica">
+              <div class="numero">${dados.produtosDespadronizados.length}</div>
+              <div class="label">Bens Despadronizados</div>
+            </div>
+            <div class="estatistica">
+              <div class="numero">${totalItens}</div>
+              <div class="label">Total de Itens</div>
+            </div>
+          </div>
+          
+          ${dados.produtosPadronizados.length > 0 ? `
+          <div class="secao">
+            <h3>📋 BENS PADRONIZADOS - INFORMAÇÕES COMPLETAS</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 10%">Código</th>
+                  <th style="width: 25%">Especificação</th>
+                  <th style="width: 12%">Marca</th>
+                  <th style="width: 10%">Modelo</th>
+                  <th style="width: 12%">Fabricante</th>
+                  <th style="width: 8%">Categoria</th>
+                  <th style="width: 8%">Status</th>
+                  <th style="width: 15%">Detalhes Técnicos</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${dados.produtosPadronizados.map(produto => `
+                  <tr>
+                    <td><strong>${produto.codigo_material || produto.codigo || 'N/A'}</strong></td>
+                    <td>
+                      <strong>${produto.nome || 'N/A'}</strong>
+                      ${produto.descricao ? `<br><small>${produto.descricao}</small>` : ''}
+                    </td>
+                    <td>${produto.marca || 'N/A'}</td>
+                    <td>${produto.modelo || 'N/A'}</td>
+                    <td>${produto.fabricante || 'N/A'}</td>
+                    <td>${produto.categorias?.nome || 'N/A'}</td>
+                    <td><span class="status-padronizado">PADRONIZADO</span></td>
+                    <td class="detalhes-adicionais">
+                      ${produto.cnpj ? `<strong>CNPJ:</strong> ${produto.cnpj}<br>` : ''}
+                      ${produto.data_aprovacao ? `<strong>Aprovado:</strong> ${new Date(produto.data_aprovacao).toLocaleDateString('pt-BR')}<br>` : ''}
+                      ${produto.validade_dcb ? `<strong>DCB válido até:</strong> ${new Date(produto.validade_dcb).toLocaleDateString('pt-BR')}<br>` : ''}
+                      ${produto.edital_prequalificacao ? `<strong>Edital:</strong> ${produto.edital_prequalificacao}` : ''}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          ` : ''}
+          
+          ${dados.produtosDespadronizados.length > 0 ? `
+          <div class="secao">
+            <h3>❌ BENS DESPADRONIZADOS - INFORMAÇÕES COMPLETAS</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 10%">Código</th>
+                  <th style="width: 20%">Especificação</th>
+                  <th style="width: 12%">Marca</th>
+                  <th style="width: 10%">Modelo</th>
+                  <th style="width: 12%">Fabricante</th>
+                  <th style="width: 8%">Status</th>
+                  <th style="width: 15%">Motivo Despadronização</th>
+                  <th style="width: 13%">Detalhes Processo</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${dados.produtosDespadronizados.map(produto => `
+                  <tr>
+                    <td><strong>${produto.codigo_material || produto.codigo || 'N/A'}</strong></td>
+                    <td>
+                      <strong>${produto.nome || 'N/A'}</strong>
+                      ${produto.descricao ? `<br><small>${produto.descricao}</small>` : ''}
+                    </td>
+                    <td>${produto.marca || 'N/A'}</td>
+                    <td>${produto.modelo || 'N/A'}</td>
+                    <td>${produto.fabricante || 'N/A'}</td>
+                    <td><span class="status-despadronizado">DESPADRONIZADO</span></td>
+                    <td><small>${produto.motivo_despadronizacao || 'Não informado'}</small></td>
+                    <td class="detalhes-adicionais">
+                      ${produto.processo_cancelamento ? `<strong>Processo:</strong> ${produto.processo_cancelamento}<br>` : ''}
+                      ${produto.data_despadronizacao ? `<strong>Data:</strong> ${new Date(produto.data_despadronizacao).toLocaleDateString('pt-BR')}<br>` : ''}
+                      ${produto.cnpj ? `<strong>CNPJ:</strong> ${produto.cnpj}` : ''}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          ` : ''}
+          
+          <div class="rodape">
+            <p><strong>Catálogo Detalhado gerado automaticamente pelo Sistema Comprar Bem</strong></p>
+            <p>Este documento contém informações completas para gestão interna e controle administrativo</p>
+            <p>Data e hora de geração: ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+        </body>
+        </html>
+      `
     }
   },
   computed: {
@@ -1193,8 +1813,70 @@ export default {
   padding: 20px;
 }
 
-h2 {
+.catalogo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
+}
+
+.catalogo-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-exportar {
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-resumido {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-resumido:hover:not(:disabled) {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+}
+
+.btn-detalhado {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-detalhado:hover:not(:disabled) {
+  background-color: #218838;
+  transform: translateY(-1px);
+}
+
+.btn-exportar:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .search-filters {

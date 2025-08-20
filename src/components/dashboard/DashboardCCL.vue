@@ -91,7 +91,7 @@
                 </span>
               </td>
               <td class="orgao-info">
-                <span class="orgao-nome">{{ processo.orgao_responsavel || 'Órgão não informado' }}</span>
+                <span class="orgao-nome">{{ processo.nome_orgao || 'Órgão não informado' }}</span>
               </td>
               <td>{{ formatDate(processo.data_assinatura_orgao || processo.atualizado_em) }}</td>
               <td>
@@ -109,7 +109,7 @@
                   <button @click="visualizarProcesso(processo)" class="btn-small btn-secondary" title="Ver detalhes do processo">
                     👁️ Ver
                   </button>
-                  <!-- Botões de julgamento apenas para processos em julgamento_ccl -->
+                  <!-- Botões para processos em julgamento CCL -->
                   <button 
                     v-if="processo.status === 'julgamento_ccl'"
                     @click="iniciarJulgamentoCCL(processo)" 
@@ -120,6 +120,24 @@
                   </button>
                   <button 
                     v-if="processo.status === 'julgamento_ccl'"
+                    @click="devolverProcesso(processo)" 
+                    class="btn-small btn-warning"
+                    title="Devolver processo para correções"
+                  >
+                    ↩️ Devolver
+                  </button>
+                  
+                  <!-- Botões para processos com ata CCL emitida -->
+                  <button 
+                    v-if="processo.status === 'ata_ccl'"
+                    @click="tramitarAtaCCL(processo)" 
+                    class="btn-small btn-success"
+                    title="Enviar ata para publicação pelo órgão"
+                  >
+                    📋 Enviar Ata
+                  </button>
+                  <button 
+                    v-if="processo.status === 'ata_ccl'"
                     @click="devolverProcesso(processo)" 
                     class="btn-small btn-warning"
                     title="Devolver processo para correções"
@@ -485,11 +503,10 @@
                       <strong>{{ processo.numero_processo }}</strong>
                     </div>
                     <div class="processo-orgao">
-                      {{ processo.orgao_responsavel }}
+                      {{ processo.nome_orgao }}
                     </div>
                     <div class="processo-meta">
-                      <span class="data-julgamento">{{ formatDate(processo.ccl_data_julgamento) }}</span>
-                      <span class="produtos-count">{{ processo.produtos_aprovados || 0 }} produto(s)</span>
+                      <span class="data-julgamento">{{ formatDate(processo.ata_emitida_ccl_em) }}</span>
                     </div>
                   </div>
                 </div>
@@ -513,13 +530,12 @@
       <!-- Aba Homologações -->
       <div v-show="activeTab === 'homologacoes'" class="homologacoes tab-pane">
       <div class="homologacoes-header">
-        <h3>📋 Homologações</h3>
-        <div class="alert-duvida" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px; margin: 10px 0;">
-          <strong>⚠️ DÚVIDA PENDENTE:</strong> Verificar se a responsabilidade por homologações deve ser da CCL ou da Autoridade Competente conforme fluxo legal. 
-          <br><small>Esta aba será ajustada após confirmação do cliente sobre o responsável correto.</small>
+        <h3>📋 Homologações da Autoridade Competente</h3>
+        <div class="alert-info" style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 10px; border-radius: 5px; margin: 10px 0; color: #0c5460;">
+          <strong>ℹ️ RESPONSABILIDADE:</strong> As homologações são de competência exclusiva da <strong>Autoridade Competente</strong>, conforme especificado no fluxo legal. A CCL emite recomendações técnicas através das atas de julgamento.
         </div>
         <p class="homologacoes-description">
-          Gestão de atos de homologação (responsabilidade a confirmar: CCL ou Autoridade Competente)
+          Acompanhamento de processos aguardando decisão da Autoridade Competente e histórico de homologações
         </p>
         <div class="homologacoes-actions">
           <button @click="consultarPendentes" class="btn-primary">
@@ -529,14 +545,77 @@
             📊 Relatório Geral
           </button>
         </div>
-      
-        <div class="empty-state">
-          <div class="empty-icon">⚖️</div>
-          <h4>Aba de Homologações</h4>
-          <p>Esta funcionalidade será implementada conforme definição do responsável correto.</p>
+        
+        <!-- Cards de Estatísticas -->
+        <div class="stats-container" style="margin: 20px 0;">
+          <div class="stat-card">
+            <div class="stat-icon">⏳</div>
+            <h3>Pendentes</h3>
+            <div class="stat-value">{{ homologacoesPendentes }}</div>
+            <p class="stat-description">Aguardando decisão da Autoridade</p>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <h3>Homologadas</h3>
+            <div class="stat-value">{{ homologacoesAprovadas }}</div>
+            <p class="stat-description">Processos homologados</p>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <h3>Indeferidas</h3>
+            <div class="stat-value">{{ homologacoesIndeferidas }}</div>
+            <p class="stat-description">Processos indeferidos</p>
+          </div>
         </div>
+
+        <!-- Seção Processos Pendentes de Homologação -->
+        <div class="processos-pendentes-homologacao">
+          <div class="section-header">
+            <h4>⏳ Processos Aguardando Decisão da Autoridade</h4>
+            <p class="section-description">Processos julgados pela CCL aguardando homologação pela Autoridade Competente</p>
+          </div>
+          
+          <div v-if="processosPendentesHomologacao.length === 0" class="empty-state">
+            <div class="empty-icon">⚖️</div>
+            <h4>Nenhum processo pendente</h4>
+            <p>Não há processos aguardando decisão da Autoridade Competente no momento.</p>
+          </div>
+          
+          <div v-else class="processos-lista">
+            <div 
+              v-for="processo in processosPendentesHomologacaoPaginados" 
+              :key="processo.id" 
+              class="processo-card"
+              :class="{ 'processo-urgente': processo.prazoVencido }"
+            >
+              <div class="processo-info">
+                <div class="processo-header">
+                  <h5>{{ processo.numeroAta }}</h5>
+                  <span class="processo-tipo">{{ processo.tipoProcesso?.toUpperCase() }}</span>
+                </div>
+                <p class="processo-orgao">{{ processo.orgaoResponsavel }}</p>
+                <div class="processo-details">
+                  <span class="data-julgamento">📅 Julgado em: {{ formatDate(processo.dataJulgamento) }}</span>
+                  <span :class="getPrazoHomologacaoClass(processo.dataJulgamento)">
+                    ⏰ {{ calcularPrazoHomologacao(processo.dataJulgamento) }}
+                  </span>
+                </div>
+              </div>
+              <div class="processo-actions">
+                <button @click="visualizarProcessoHomologacao(processo)" class="btn-small btn-primary">
+                  👁️ Detalhes
+                </button>
+                <button @click="notificarAutoridade(processo)" class="btn-small btn-warning">
+                  📧 Notificar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção Homologações Recentes - Componente Separado -->
+        <HomologacoesCCL ref="homologacoesCCL" />
       </div>
-    </div>
     </div>
   </div>
 </template>
@@ -545,9 +624,13 @@
 import { supabase } from '@/services/supabase'
 import TramitacaoProcessosService from '@/services/tramitacaoProcessosService'
 import ProcessosAdministrativosService from '@/services/processosAdministrativosService'
+import HomologacoesCCL from './HomologacoesCCL.vue'
 
 export default {
   name: 'DashboardCCL',
+  components: {
+    HomologacoesCCL
+  },
   data() {
     return {
       activeTab: 'dashboard',
@@ -775,6 +858,28 @@ export default {
       this.activeTab = tab
     },
 
+    // Decisão da Autoridade - Versão Simples
+    decidirHomologacao(homologacao) {
+      this.$swal({
+        title: '⚖️ Decisão da Autoridade',
+        text: `Processo: ${homologacao.numeroAta}`,
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: '✅ Homologar',
+        denyButtonText: '❌ Indeferir',
+        cancelButtonText: '📄 Diligência'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.$swal('✅ Homologado!', `Processo ${homologacao.numeroAta} foi homologado`, 'success')
+        } else if (result.isDenied) {
+          this.$swal('❌ Indeferido!', `Processo ${homologacao.numeroAta} foi indeferido`, 'error')
+        } else if (result.isDismissed) {
+          this.$swal('📄 Diligência!', `Processo ${homologacao.numeroAta} mantido em diligência`, 'info')
+        }
+      })
+    },
+
     async atualizarDadosAtas() {
       console.log('🔄 Atualizando dados das atas automaticamente...')
       try {
@@ -813,8 +918,7 @@ export default {
             criado_em
           `)
           .eq('tenant_id', this.currentTenantId)
-          .eq('status', 'aprovado_ccl')
-          .is('incluido_em_ata', null) // Processos que ainda não foram incluídos em ata
+          .eq('status', 'ata_ccl') // Processos com ata emitida mas não publicados
           .order('ata_emitida_ccl_em', { ascending: false })
         
         if (error) throw error
@@ -846,6 +950,8 @@ export default {
       try {
         this.carregandoProcessosModal = true
         console.log('📋 Carregando processos disponíveis para criação de ata...')
+        console.log('🔍 Tenant ID:', this.currentTenantId)
+        console.log('🔍 Buscando processos com status: ata_ccl')
         
         const { data: processos, error } = await supabase
           .from('processos_administrativos')
@@ -854,34 +960,34 @@ export default {
             numero_processo,
             objeto,
             status,
-            orgao_responsavel,
+            nome_orgao,
             ata_emitida_ccl_em,
             ata_julgamento_ccl,
             recomendacao_ccl,
             tipo_processo,
             criado_em,
-            ccl_data_julgamento
+            ata_emitida_ccl_em
           `)
           .eq('tenant_id', this.currentTenantId)
-          .eq('status', 'aprovado_ccl')
-          .is('incluido_em_ata', null) // Processos que ainda não foram incluídos em ata
-          .order('ccl_data_julgamento', { ascending: false })
+          .eq('status', 'ata_ccl') // Processos com ata emitida mas não publicados
+          .order('ata_emitida_ccl_em', { ascending: false })
+        
+        console.log('🔍 Consulta resultado - Error:', error)
+        console.log('🔍 Consulta resultado - Dados:', processos)
+        console.log('🔍 Processos encontrados:', processos?.length || 0)
         
         if (error) throw error
         
-        // Buscar contagem de produtos aprovados para cada processo
-        for (let processo of processos || []) {
-          const { count } = await supabase
-            .from('produtos')
-            .select('*', { count: 'exact', head: true })
-            .eq('numero_processo', processo.numero_processo)
-            .eq('ccl_status', 'aprovado')
-          
-          processo.produtos_aprovados = count || 0
-        }
+        // Processos prontos para criação de ata (sem necessidade de contar produtos)
         
         this.processosDisponiveis = processos || []
         console.log('✅ Processos disponíveis carregados:', this.processosDisponiveis.length)
+        
+        if (processos && processos.length > 0) {
+          processos.forEach(p => {
+            console.log(`📋 Processo disponível: ${p.numero_processo} - Status: ${p.status}`)
+          })
+        }
         
       } catch (error) {
         console.error('❌ Erro ao carregar processos disponíveis:', error)
@@ -930,37 +1036,54 @@ export default {
     async criarNovaAta(processosIds, tipo) {
       try {
         console.log('📝 Criando nova ata CCL para processos:', processosIds)
+        console.log('🔍 Tipo de criação:', tipo)
+        console.log('🔍 Número de processos selecionados:', processosIds?.length)
+        console.log('🔍 Current Tenant ID:', this.currentTenantId)
+        
+        // Validar dados obrigatórios
+        if (!this.currentTenantId) {
+          throw new Error('Tenant ID não disponível')
+        }
+        
+        if (!processosIds || processosIds.length === 0) {
+          throw new Error('Nenhum processo selecionado')
+        }
         
         // Gerar número da ata
         const numeroAta = await this.gerarNumeroAta()
+        console.log('🔍 Número da ata gerado:', numeroAta)
+        
+        // Gerar conteúdo inicial
+        const conteudoAta = await this.gerarConteudoAtaInicial(processosIds)
+        console.log('🔍 Conteúdo da ata gerado:', conteudoAta.substring(0, 100) + '...')
+        
+        // Preparar dados para inserção
+        const dadosAta = {
+          tenant_id: this.currentTenantId,
+          numero: numeroAta,
+          periodo: this.obterPeriodoAtual(),
+          descricao: `Ata de Julgamento CCL - ${processosIds.length === 1 ? 'Processo Individual' : 'Processos Múltiplos'}`,
+          total_processos: processosIds.length,
+          status_ata: 'ELABORACAO',
+          conteudo_ata: conteudoAta
+        }
+        
+        console.log('🔍 Dados a serem inseridos:', dadosAta)
         
         // Criar ata no banco
         const { data: novaAta, error: errorAta } = await supabase
           .from('atas_julgamento')
-          .insert([{
-            tenant_id: this.currentTenantId,
-            numero: numeroAta,
-            periodo: this.obterPeriodoAtual(),
-            descricao: `Ata de Julgamento CCL - ${processosIds.length === 1 ? 'Processo Individual' : 'Processos Múltiplos'}`,
-            total_processos: processosIds.length,
-            status_ata: 'elaboracao',
-            processos_incluidos: processosIds,
-            numeros_processos: await this.obterNumerosProcessos(processosIds),
-            conteudo_ata: await this.gerarConteudoAtaInicial(processosIds),
-            data_criacao: new Date().toISOString(),
-            criado_em: new Date().toISOString()
-          }])
+          .insert([dadosAta])
           .select()
           .single()
 
         if (errorAta) throw errorAta
 
-        // Marcar processos como incluídos em ata
+        // Marcar processos como publicados (mudar status)
         const { error: errorUpdate } = await supabase
           .from('processos_administrativos')
           .update({ 
-            incluido_em_ata: novaAta.id,
-            data_inclusao_ata: new Date().toISOString()
+            status: 'publicacao_ata'
           })
           .in('id', processosIds)
 
@@ -985,9 +1108,21 @@ export default {
 
       } catch (error) {
         console.error('❌ Erro ao criar ata:', error)
+        
+        // Determinar mensagem de erro mais específica
+        let mensagemErro = 'Erro ao criar a ata. Tente novamente.'
+        
+        if (error.message) {
+          mensagemErro = error.message
+        } else if (error.details) {
+          mensagemErro = `Erro no banco de dados: ${error.details}`
+        } else if (error.hint) {
+          mensagemErro = `Dica: ${error.hint}`
+        }
+        
         this.$swal({
           title: '❌ Erro',
-          text: 'Erro ao criar a ata. Tente novamente.',
+          text: mensagemErro,
           icon: 'error'
         })
       }
@@ -995,26 +1130,58 @@ export default {
 
     async gerarNumeroAta() {
       try {
-        // Buscar última ata do ano atual para gerar sequencial
         const anoAtual = new Date().getFullYear()
-        const { data: ultimaAta } = await supabase
+        
+        // Buscar todas as atas do ano atual para este tenant
+        const { data: atasAno, error } = await supabase
           .from('atas_julgamento')
           .select('numero')
           .eq('tenant_id', this.currentTenantId)
           .like('numero', `%CCL%${anoAtual}%`)
-          .order('created_at', { ascending: false })
-          .limit(1)
+          .order('numero', { ascending: false })
 
+        if (error) throw error
+
+        console.log('🔍 Atas existentes do ano:', atasAno)
+
+        // Encontrar o próximo número disponível
         let proximoNumero = 1
-        if (ultimaAta && ultimaAta.length > 0) {
-          const numeroExistente = ultimaAta[0].numero
-          const match = numeroExistente.match(/CCL-(\d+)-(\d{4})/)
-          if (match) {
-            proximoNumero = parseInt(match[1]) + 1
+        if (atasAno && atasAno.length > 0) {
+          // Extrair números existentes e encontrar o maior
+          const numerosExistentes = atasAno
+            .map(ata => {
+              const match = ata.numero.match(/CCL-(\d+)-(\d{4})/)
+              return match ? parseInt(match[1]) : 0
+            })
+            .filter(num => num > 0)
+            .sort((a, b) => b - a)
+
+          console.log('🔍 Números existentes:', numerosExistentes)
+          
+          if (numerosExistentes.length > 0) {
+            proximoNumero = numerosExistentes[0] + 1
           }
         }
 
-        return `ATA-CCL-${String(proximoNumero).padStart(3, '0')}-${anoAtual}`
+        const numeroGerado = `ATA-CCL-${String(proximoNumero).padStart(3, '0')}-${anoAtual}`
+        console.log('🔍 Número gerado:', numeroGerado)
+
+        // Verificar se o número já existe (dupla verificação)
+        const { data: verificacao } = await supabase
+          .from('atas_julgamento')
+          .select('id')
+          .eq('numero', numeroGerado)
+          .limit(1)
+
+        if (verificacao && verificacao.length > 0) {
+          // Se já existe, usar timestamp como fallback
+          const timestamp = Date.now().toString().slice(-6)
+          const numeroFallback = `ATA-CCL-${timestamp}-${anoAtual}`
+          console.log('⚠️ Número duplicado detectado, usando fallback:', numeroFallback)
+          return numeroFallback
+        }
+
+        return numeroGerado
       } catch (error) {
         console.error('Erro ao gerar número da ata:', error)
         const timestamp = Date.now().toString().slice(-6)
@@ -1054,34 +1221,47 @@ export default {
 
     async vincularProdutosAta(ataId, processosIds) {
       try {
-        // Buscar produtos aprovados relacionados aos processos através do numero_processo
-        const { data: processos } = await supabase
-          .from('processos_administrativos')
-          .select('numero_processo')
-          .in('id', processosIds)
-
-        if (!processos || processos.length === 0) return
-
-        const numerosProcessos = processos.map(p => p.numero_processo)
-
-        // Buscar produtos aprovados relacionados aos números dos processos
+        console.log('🔗 Iniciando vinculação de produtos à ata:', ataId)
+        console.log('🔍 Processos:', processosIds)
+        
+        // Buscar produtos que tenham ccl_status = 'aprovado' e ainda não estejam vinculados a uma ata
+        // Como não há ligação direta processo->produto, vamos buscar produtos aprovados recentemente
         const { data: produtos, error } = await supabase
           .from('produtos')
-          .select('id')
-          .in('numero_processo', numerosProcessos)
+          .select('id, nome, marca, modelo, ccl_status, ccl_data_julgamento')
+          .eq('tenant_id', this.currentTenantId)
           .eq('ccl_status', 'aprovado')
+          .is('ata_julgamento_id', null) // Produtos ainda não vinculados a nenhuma ata
+          .order('ccl_data_julgamento', { ascending: false })
+          .limit(50) // Limitar busca
 
-        if (error) throw error
+        if (error) {
+          console.error('Erro ao buscar produtos:', error)
+          return // Não bloqueia a criação da ata
+        }
+
+        console.log('🔍 Produtos aprovados encontrados:', produtos?.length || 0)
 
         if (produtos && produtos.length > 0) {
-          // Vincular produtos à ata
+          // Por enquanto, vamos vincular todos os produtos aprovados não vinculados
+          // TODO: Implementar lógica mais específica se necessário
           const { error: errorUpdate } = await supabase
             .from('produtos')
             .update({ ata_julgamento_id: ataId })
             .in('id', produtos.map(p => p.id))
+            .eq('tenant_id', this.currentTenantId)
 
-          if (errorUpdate) throw errorUpdate
+          if (errorUpdate) {
+            console.error('Erro ao atualizar produtos:', errorUpdate)
+            return // Não bloqueia a criação da ata
+          }
+          
           console.log(`✅ ${produtos.length} produtos vinculados à ata ${ataId}`)
+          produtos.forEach(produto => {
+            console.log(`  - ${produto.nome} (${produto.marca}/${produto.modelo})`)
+          })
+        } else {
+          console.log('ℹ️ Nenhum produto aprovado disponível para vincular à ata')
         }
 
       } catch (error) {
@@ -1182,7 +1362,7 @@ export default {
           console.log('🔗 Buscando processo específico da ata:', ata.processo_id)
           const result = await supabase
             .from('processos_administrativos')
-            .select('numero_processo, objeto, ata_julgamento_ccl, data_julgamento_ccl, id, tipo_processo, orgao_responsavel, nome_orgao')
+            .select('numero_processo, objeto, ata_julgamento_ccl, id, tipo_processo, nome_orgao')
             .eq('id', ata.processo_id)
             .eq('tenant_id', this.currentTenantId)
             .single()
@@ -1200,7 +1380,7 @@ export default {
               <h4>📄 Processo Relacionado</h4>
               <p><strong>Número:</strong> ${processo.numero_processo}</p>
               <p><strong>Objeto:</strong> ${(processo.objeto || '').substring(0, 100)}${processo.objeto && processo.objeto.length > 100 ? '...' : ''}</p>
-              <p><strong>Data Julgamento:</strong> ${this.formatDate(processo.data_julgamento_ccl)}</p>
+              <p><strong>Data Julgamento:</strong> ${this.formatDate(processo.ata_emitida_ccl_em)}</p>
             </div>
             <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin: 10px 0;">
               <h4>⚖️ Fundamentação CCL</h4>
@@ -1720,7 +1900,7 @@ export default {
                 </tr>
                 <tr style="border-bottom: 1px solid #ddd;">
                   <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Órgão Solicitante:</td>
-                  <td style="padding: 8px;">${processo.orgao_responsavel || processo.nome_orgao || 'Não informado'}</td>
+                  <td style="padding: 8px;">${processo.nome_orgao || 'Não informado'}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #ddd;">
                   <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Tipo de Processo:</td>
@@ -1728,7 +1908,7 @@ export default {
                 </tr>
                 <tr style="border-bottom: 1px solid #ddd;">
                   <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Data de Julgamento:</td>
-                  <td style="padding: 8px;">${this.formatDate(processo.data_julgamento_ccl || processo.ata_emitida_ccl_em || new Date())}</td>
+                  <td style="padding: 8px;">${this.formatDate(processo.ata_emitida_ccl_em || new Date())}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px; font-weight: bold; background: #f8f9fa;">Ata CCL Número:</td>
@@ -1847,7 +2027,7 @@ export default {
           <h3>IDENTIFICAÇÃO DO PROCESSO</h3>
           <p><strong>Número do Processo:</strong> ${processo.numero_processo}</p>
           <p><strong>Objeto:</strong> ${processo.objeto}</p>
-          <p><strong>Data do Julgamento CCL:</strong> ${this.formatDate(processo.data_julgamento_ccl || new Date())}</p>
+          <p><strong>Data do Julgamento CCL:</strong> ${this.formatDate(processo.ata_emitida_ccl_em || new Date())}</p>
           
           <h3>DECISÃO DA CCL</h3>
           <p><strong>Decisão:</strong> APROVADO TECNICAMENTE</p>
@@ -2167,6 +2347,7 @@ export default {
       switch (status) {
         case 'assinado_admin': return 'Pronto para Julgamento'
         case 'julgamento_ccl': return 'Em Julgamento pela CCL'
+        case 'ata_ccl': return 'Ata de Julgamento CCL'
         case 'aprovado_ccl': return 'Aprovado pela CCL'
         case 'ata_julgamento_ccl_aprovacao': return 'Ata de Julgamento Emitida - Recomenda Aprovação'
         case 'ata_julgamento_ccl_rejeicao': return 'Ata de Julgamento Emitida - Recomenda Rejeição'
@@ -2214,27 +2395,6 @@ export default {
     formatarData(data) {
       if (!data) return 'N/A'
       return new Date(data).toLocaleDateString('pt-BR')
-    },
-
-    formatarStatus(status) {
-      const statusMap = {
-        'criado_cpm': 'Criado pela CPM',
-        'aguardando_aprovacao': 'Aguardando Aprovação',
-        'aprovado_cpm': 'Aprovado pela CPM',
-        'rejeitado_cpm': 'Rejeitado pela CPM',
-        'aguardando_assinatura_orgao': 'Aguardando Assinatura do Órgão',
-        'assinado_admin': 'Assinado pelo Órgão Administrativo',
-        'rejeitado_admin': 'Rejeitado pelo Órgão Administrativo',
-        'julgamento_ccl': 'Em Julgamento pela CCL',
-        'aprovado_ccl': 'Aprovado pela CCL',
-        'rejeitado_ccl': 'Rejeitado pela CCL',
-        'aguardando_assinatura_juridico': 'Aguardando Assinatura Jurídica',
-        'aprovado_juridico': 'Aprovado pelo Jurídico',
-        'rejeitado_juridico': 'Rejeitado pelo Jurídico',
-        'finalizado': 'Processo Finalizado',
-        'cancelado': 'Processo Cancelado'
-      }
-      return statusMap[status] || status
     },
     
     async tramitarProcessoAdministrativo(processo) {
@@ -2400,6 +2560,11 @@ export default {
             break
         }
         
+        console.log('🔍 DEBUG JULGAMENTO:')
+        console.log('- Recomendação escolhida:', julgamento.recomendacao)
+        console.log('- Novo status definido:', novoStatus)
+        console.log('- ID do processo:', processo.id)
+        
         // Atualizar processo no banco
         const { error } = await supabase
           .from('processos_administrativos')
@@ -2415,6 +2580,17 @@ export default {
           .eq('id', processo.id)
         
         if (error) throw error
+        
+        console.log('✅ Status atualizado no banco para:', novoStatus)
+        
+        // Verificar se realmente foi salvo
+        const { data: verificacao } = await supabase
+          .from('processos_administrativos')
+          .select('status, numero_processo')
+          .eq('id', processo.id)
+          .single()
+        
+        console.log('🔍 Status verificado no banco:', verificacao)
         
         // Recarregar dados
         await this.carregarDados(true)
@@ -2789,7 +2965,7 @@ export default {
       return 'prazo-normal'
     },
     
-    getStatusClass(status) {
+    getRecursoStatusClass(status) {
       const statusMap = {
         'AGUARDANDO AUTORIDADE': 'status-pendente',
         'HOMOLOGADO': 'status-aprovado',
@@ -3264,130 +3440,6 @@ export default {
         icon: 'info'
       })
     },
-    async visualizarAta(ata) {
-      try {
-        // Verificar se é uma ata de homologação (tem numeroAta) ou uma ata publicada (tem numero)
-        const isHomologacao = ata.numeroAta !== undefined
-        
-        // Buscar dados da ata completa se for um processo de homologação
-        let ataCompleta = ata
-        if (isHomologacao) {
-          const { data: ataData, error: ataError } = await supabase
-            .from('atas_julgamento')
-            .select('*')
-            .eq('id', ata.id)
-            .eq('tenant_id', this.currentTenantId)
-            .single()
-            
-          if (ataError) throw ataError
-          ataCompleta = ataData
-        }
-        
-        // Buscar produtos vinculados à ata
-        const { data: produtos, error } = await supabase
-          .from('produtos')
-          .select(`
-            id,
-            nome,
-            marca,
-            modelo,
-            fabricante,
-            status,
-            julgado_em,
-            adequacao_tecnica,
-            observacoes_ccl,
-            base_legal
-          `)
-          .eq('ata_julgamento_id', ata.id)
-          .eq('tenant_id', this.currentTenantId)
-        
-        if (error) throw error
-        
-        const produtosAprovados = produtos?.filter(p => p.status === 'julgado_aprovado') || []
-        const produtosReprovados = produtos?.filter(p => p.status === 'julgado_reprovado') || []
-        
-        // Usar as propriedades corretas dependendo do tipo
-        const numero = isHomologacao ? ata.numeroAta : (ata.numero || ataCompleta.numero)
-        const periodo = isHomologacao ? ataCompleta.periodo : ata.periodo
-        const dataPublicacao = isHomologacao ? ata.dataJulgamento : ata.dataPublicacao
-        const status = isHomologacao ? ata.decisaoCCL : ata.statusRecursal
-        const totalProcessos = isHomologacao ? ata.totalProdutos : ata.totalProcessos
-        
-        this.$swal({
-          title: `📋 Ata de Julgamento: ${numero || 'N/A'}`,
-          html: `
-            <div style="text-align: left; padding: 15px; max-height: 500px; overflow-y: auto;">
-              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 15px 0; color: #495057;">📄 Informações da Ata</h4>
-                <p><strong>Número:</strong> ${numero || 'N/A'}</p>
-                <p><strong>Período:</strong> ${periodo || 'N/A'}</p>
-                <p><strong>Data Publicação:</strong> ${this.formatDate(dataPublicacao) || 'N/A'}</p>
-                <p><strong>Status:</strong> ${status || 'N/A'}</p>
-                <p><strong>Total de Processos:</strong> ${totalProcessos || 0}</p>
-                ${isHomologacao ? `<p><strong>Tipo:</strong> Aguardando Homologação pela Autoridade Competente</p>` : ''}
-              </div>
-              
-              <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <h5 style="color: #2d5a2d; margin: 0 0 10px 0;">✅ Produtos Aprovados (${produtosAprovados.length})</h5>
-                ${produtosAprovados.length > 0 ? 
-                  produtosAprovados.map(p => `
-                    <div style="border-bottom: 1px solid #c8e6c8; padding: 8px 0;">
-                      <strong>${p.nome}</strong> - ${p.marca}<br>
-                      <small>Julgado em: ${this.formatDate(p.julgado_em)}</small>
-                    </div>
-                  `).join('') : 
-                  '<p style="color: #666; font-style: italic;">Nenhum produto aprovado</p>'
-                }
-              </div>
-              
-              <div style="background: #fce8e8; padding: 15px; border-radius: 8px;">
-                <h5 style="color: #5a2d2d; margin: 0 0 10px 0;">❌ Produtos Reprovados (${produtosReprovados.length})</h5>
-                ${produtosReprovados.length > 0 ? 
-                  produtosReprovados.map(p => `
-                    <div style="border-bottom: 1px solid #f5c6c6; padding: 8px 0;">
-                      <strong>${p.nome}</strong> - ${p.marca}<br>
-                      <small>Julgado em: ${this.formatDate(p.julgado_em)}</small>
-                    </div>
-                  `).join('') : 
-                  '<p style="color: #666; font-style: italic;">Nenhum produto reprovado</p>'
-                }
-              </div>
-              
-              ${ata.conteudoAta ? `
-                <div style="background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                  <h5>📝 Conteúdo da Ata</h5>
-                  <pre style="white-space: pre-wrap; font-family: Arial; font-size: 12px;">${ata.conteudoAta}</pre>
-                </div>
-              ` : ''}
-            </div>
-          `,
-          width: '800px',
-          showCancelButton: true,
-          confirmButtonText: '📥 Baixar PDF',
-          cancelButtonText: '❌ Fechar'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            this.baixarPDF(ata)
-          }
-        })
-        
-      } catch (error) {
-        console.error('Erro ao visualizar ata:', error)
-        this.$swal({
-          title: '❌ Erro ao Carregar Ata',
-          text: `Erro: ${error.message}`,
-          icon: 'error'
-        })
-      }
-    },
-    getRecursoStatusClass(status) {
-      switch (status) {
-        case 'EM ANÁLISE': return 'status-pendente'
-        case 'DEFERIDO': return 'status-aprovado'
-        case 'INDEFERIDO': return 'status-reprovado'
-        default: return ''
-      }
-    },
     async carregarRecursos() {
       try {
         if (!this.currentTenantId) return
@@ -3454,11 +3506,7 @@ export default {
             status_ata,
             total_processos,
             conteudo_ata,
-            processo_id,
-            numero_processo,
-            tipo_processo,
-            criado_em,
-            atualizado_em
+            processo_id
           `)
           .eq('tenant_id', this.currentTenantId)
           .in('status_ata', ['EM PRAZO', 'FINALIZADA', 'HOMOLOGADA']) // Atas publicadas
@@ -3522,16 +3570,11 @@ export default {
             periodo,
             total_processos,
             status_ata,
-            data_inicio_elaboracao,
-            responsavel_elaboracao,
-            progresso_elaboracao,
-            observacoes,
-            criado_em,
-            atualizado_em
+            observacoes
           `)
           .eq('tenant_id', this.currentTenantId)
           .in('status_ata', ['ELABORACAO', 'EM_ELABORACAO']) // Filtrar apenas atas em elaboração
-          .order('data_inicio_elaboracao', { ascending: false })
+          .order('id', { ascending: false })
         
         if (error) {
           console.error('Erro ao carregar atas em elaboração:', error)
@@ -3653,7 +3696,7 @@ export default {
             atualizado_em
           `)
           .eq('tenant_id', this.currentTenantId)
-          .in('status', ['julgamento_ccl', 'aprovado_ccl'])
+          .in('status', ['ata_julgamento_ccl_homologacao', 'homologado'])
           .order('ata_emitida_ccl_em', { ascending: true })
         
         console.log('Debug Processos Homologação:')
@@ -3670,7 +3713,7 @@ export default {
         // Mapear os dados para o formato usado no template
         if (processosData && processosData.length > 0) {
           this.processosPendentesHomologacao = processosData.map(processo => {
-            const jaDecidido = processo.status === 'aprovado_ccl'
+            const jaDecidido = processo.status === 'homologado' && processo.decisao_autoridade
             
             return {
               id: processo.id,
@@ -4709,7 +4752,7 @@ Exemplo:
     },
     
     // Métodos para Atas de Julgamento
-    async criarNovaAta() {
+    async criarNovaAtaAutomatica() {
       try {
         // 1. Buscar processos julgados que ainda não foram incluídos em ata consolidada
         const { data: processosJulgados, error: errorProcessos } = await supabase
@@ -4727,7 +4770,7 @@ Exemplo:
             observacoes_ccl
           `)
           .eq('tenant_id', this.currentTenantId)
-          .in('status', ['ata_julgamento_ccl_homologacao', 'ata_julgamento_ccl_indeferimento', 'ata_julgamento_ccl_aprovacao', 'ata_julgamento_ccl_rejeicao'])
+          .in('status', ['ata_ccl', 'ata_julgamento_ccl_homologacao', 'ata_julgamento_ccl_indeferimento', 'ata_julgamento_ccl_aprovacao', 'ata_julgamento_ccl_rejeicao'])
           .not('ata_emitida_ccl_em', 'is', null) // Só processos que foram efetivamente julgados
 
         if (errorProcessos) throw errorProcessos
@@ -4842,18 +4885,8 @@ Exemplo:
           periodo: result.value.periodo,
           descricao: result.value.descricao,
           total_processos: processosJulgados.length,
-          status_ata: 'ELABORACAO', // Status correto: ata vai para "Atas em Elaboração"
-          data_inicio_elaboracao: new Date().toISOString(),
-          responsavel_elaboracao: this.usuarioNome || 'CCL',
-          progresso_elaboracao: 10, // Iniciada (10%)
-          conteudo_ata: this.gerarConteudoAtaInicial(processosJulgados, result.value),
-          criado_em: new Date().toISOString(),
-          atualizado_em: new Date().toISOString(),
-          // Para atas consolidadas, vamos armazenar o primeiro processo como referência
-          // e a lista de todos os processos para facilitar consultas
-          processo_id: processosJulgados.length === 1 ? processosJulgados[0].id : null,
-          processos_incluidos: processosJulgados.map(p => p.id),
-          numeros_processos: processosJulgados.map(p => p.numero_processo).join(', ')
+          status_ata: 'ELABORACAO',
+          conteudo_ata: this.gerarConteudoAtaComProdutos(processosJulgados, result.value)
         }
 
         const { data: novaAta, error: errorAta } = await supabase
@@ -4958,13 +4991,7 @@ Exemplo:
             total_processos: 1,
             status_ata: 'EM_ELABORACAO',
             conteudo_ata: `Ata de Julgamento CCL referente ao processo ${processo.numero_processo}\n\nDECISÃO: APROVADO\n\nFUNDAMENTAÇÃO: ${julgamento.fundamentacao}`,
-            observacoes: `Ata criada automaticamente após julgamento CCL do processo ${processo.numero_processo}`,
-            tipo_processo: processo.tipo_processo, // Padronização ou despadronização
-            orgao_responsavel: processo.orgao_responsavel || processo.nome_orgao,
-            objeto_processo: processo.objeto,
-            decisao_ccl: 'APROVADO',
-            fundamentacao_ccl: julgamento.fundamentacao,
-            criado_em: agora.toISOString()
+            observacoes: `Ata criada automaticamente após julgamento CCL do processo ${processo.numero_processo}`
           })
           .select()
           .single()
@@ -5008,153 +5035,6 @@ Exemplo:
         
       } catch (error) {
         console.error('Erro ao criar ata automática:', error)
-      }
-    },
-
-    async editarAta(ata) {
-      try {
-        // Buscar produtos vinculados à ata
-        const { data: produtos, error } = await supabase
-          .from('produtos')
-          .select(`
-            id,
-            nome,
-            marca,
-            modelo,
-            fabricante,
-            status,
-            julgado_em,
-            adequacao_tecnica,
-            observacoes_ccl,
-            base_legal
-          `)
-          .eq('ata_julgamento_id', ata.id)
-          .eq('tenant_id', this.currentTenantId)
-          .order('nome')
-        
-        if (error) throw error
-        
-        const produtosAprovados = produtos?.filter(p => p.status === 'julgado_aprovado') || []
-        const produtosReprovados = produtos?.filter(p => p.status === 'julgado_reprovado') || []
-        
-        const result = await this.$swal({
-          title: '✏️ Editor de Ata de Julgamento',
-          html: `
-            <div style="text-align: left; padding: 15px; max-height: 600px; overflow-y: auto;">
-              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 15px 0; color: #495057;">📋 Informações da Ata</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                  <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Número da Ata:</label>
-                    <input id="numeroAta" class="swal2-input" type="text" value="${ata.numero}" style="margin: 0;">
-                  </div>
-                  <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Período:</label>
-                    <input id="periodoAta" class="swal2-input" type="text" value="${ata.periodo}" style="margin: 0;">
-                  </div>
-                </div>
-                <div style="margin-top: 15px;">
-                  <label style="display: block; font-weight: bold; margin-bottom: 5px;">Descrição:</label>
-                  <textarea id="descricaoAta" class="swal2-textarea" rows="2" style="margin: 0; width: 100%; max-width: 100%; resize: vertical;">${ata.descricao || ''}</textarea>
-                </div>
-              </div>
-              
-              <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                <h4 style="margin: 0 0 15px 0; color: #495057;">📝 Conteúdo da Ata</h4>
-                <textarea id="conteudoAta" class="swal2-textarea" rows="12" placeholder="Digite ou edite o conteúdo completo da ata..." style="margin: 0; font-family: 'Courier New', monospace; font-size: 12px; width: 100%; max-width: 100%; resize: vertical;">${ata.conteudoAta || ''}</textarea>
-                <small style="color: #666; margin-top: 5px; display: block;">💡 Use este campo para redigir o conteúdo oficial da ata que será publicado</small>
-              </div>
-              
-              <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <h5 style="color: #2d5a2d; margin: 0 0 10px 0;">✅ Produtos Aprovados (${produtosAprovados.length})</h5>
-                ${produtosAprovados.length > 0 ? 
-                  produtosAprovados.map(p => `
-                    <div style="border-bottom: 1px solid #c8e6c8; padding: 5px 0; font-size: 12px;">
-                      <strong>${p.nome}</strong> - ${p.marca} (${p.modelo})
-                    </div>
-                  `).join('') : 
-                  '<p style="color: #666; font-style: italic;">Nenhum produto aprovado</p>'
-                }
-              </div>
-              
-              <div style="background: #fce8e8; padding: 15px; border-radius: 8px;">
-                <h5 style="color: #5a2d2d; margin: 0 0 10px 0;">❌ Produtos Reprovados (${produtosReprovados.length})</h5>
-                ${produtosReprovados.length > 0 ? 
-                  produtosReprovados.map(p => `
-                    <div style="border-bottom: 1px solid #f5c6c6; padding: 5px 0; font-size: 12px;">
-                      <strong>${p.nome}</strong> - ${p.marca} (${p.modelo})
-                    </div>
-                  `).join('') : 
-                  '<p style="color: #666; font-style: italic;">Nenhum produto reprovado</p>'
-                }
-              </div>
-            </div>
-          `,
-          width: '1100px',
-          showCancelButton: true,
-          confirmButtonText: '💾 Salvar Alterações',
-          cancelButtonText: '❌ Cancelar',
-          confirmButtonColor: '#28a745',
-          preConfirm: () => {
-            const numero = document.getElementById('numeroAta').value.trim()
-            const periodo = document.getElementById('periodoAta').value.trim()
-            const descricao = document.getElementById('descricaoAta').value.trim()
-            const conteudo = document.getElementById('conteudoAta').value.trim()
-            
-            if (!numero || !periodo) {
-              this.$swal.showValidationMessage('Número da ata e período são obrigatórios')
-              return false
-            }
-            
-            return { numero, periodo, descricao, conteudo }
-          }
-        })
-        
-        if (!result.isConfirmed) return
-        
-        // Atualizar a ata no banco de dados
-        const { error: updateError } = await supabase
-          .from('atas_julgamento')
-          .update({
-            numero: result.value.numero,
-            periodo: result.value.periodo,
-            descricao: result.value.descricao,
-            conteudo_ata: result.value.conteudo,
-            progresso_elaboracao: result.value.conteudo ? 50 : 10, // Atualizar progresso baseado no conteúdo
-            atualizado_em: new Date().toISOString()
-          })
-          .eq('id', ata.id)
-          .eq('tenant_id', this.currentTenantId)
-        
-        if (updateError) throw updateError
-        
-        // Recarregar dados
-        await this.carregarAtasEmElaboracao()
-        
-        this.$swal({
-          title: '✅ Ata Atualizada!',
-          html: `
-            <div style="text-align: center; padding: 20px;">
-              <h4>📋 ${result.value.numero}</h4>
-              <p><strong>Período:</strong> ${result.value.periodo}</p>
-              <p>✏️ <strong>Status:</strong> Alterações salvas com sucesso</p>
-              <hr>
-              <p>A ata continua em elaboração e pode ser editada até a publicação oficial.</p>
-              <div style="background: #d4edda; padding: 10px; border-radius: 4px; margin-top: 15px;">
-                <small><strong>📝 Próximos passos:</strong> Continue editando ou clique em "Finalizar" quando estiver pronta para publicação.</small>
-              </div>
-            </div>
-          `,
-          icon: 'success'
-        })
-        
-      } catch (error) {
-        console.error('Erro ao editar ata:', error)
-        this.$swal({
-          title: '❌ Erro ao Editar Ata',
-          text: `Erro: ${error.message}`,
-          icon: 'error'
-        })
       }
     },
 
@@ -6568,16 +6448,16 @@ Data do julgamento: ${this.formatDate(ata.dataPublicacao || ata.data_publicacao)
         icon: 'info'
       })
     },
-    // Função auxiliar para gerar conteúdo inicial da ata
-    gerarConteudoAtaInicial(produtos, dadosAta) {
+    // Função auxiliar para gerar conteúdo inicial da ata com produtos
+    gerarConteudoAtaComProdutos(produtos, dadosAta) {
       const produtosAprovados = produtos.filter(p => p.status === 'julgado_aprovado')
       const produtosReprovados = produtos.filter(p => p.status === 'julgado_reprovado')
       
       return `
 ATA DE JULGAMENTO DA COMISSÃO DE CONTRATAÇÃO OU LICITAÇÃO (CCL)
 
-Número: ${dadosAta.numero}
-Período: ${dadosAta.periodo}
+Número: ${dadosAta?.numero || 'A ser definido'}
+Período: ${dadosAta?.periodo || this.obterPeriodoAtual()}
 Data de Elaboração: ${new Date().toLocaleDateString('pt-BR')}
 
 RESUMO:
@@ -7176,7 +7056,8 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
                 <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px;">Decisão Técnica da CCL:</label>
                 <select id="decisaoTecnica" class="swal2-select" style="width: 95%; box-sizing: border-box;">
                   <option value="">Selecione a decisão...</option>
-                  <option value="aprovar">✅ APROVAR - Processo está tecnicamente adequado</option>
+                  <option value="aprovar">✅ APROVAR - Enviar para Atas de Julgamento (fluxo normal)</option>
+                  <option value="aprovar_homologacao_direta">⚡ HOMOLOGAR DIRETAMENTE - Enviar para Homologações (decisão direta da CCL)</option>
                   <option value="devolver">↩️ DEVOLVER - Solicitar correções</option>
                   <option value="rejeitar">❌ REJEITAR - Processo inadequado</option>
                 </select>
@@ -7192,7 +7073,8 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
               <div style="background: #e3f2fd; padding: 12px; border-radius: 8px;">
                 <h5 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px;">ℹ️ Próximos Passos:</h5>
                 <div style="font-size: 12px; line-height: 1.4;">
-                  <p style="margin: 3px 0;"><strong>✅ APROVAR:</strong> Processo vai para Assessoria Jurídica</p>
+                  <p style="margin: 3px 0;"><strong>✅ APROVAR:</strong> Processo vai para elaboração de ata CCL</p>
+                  <p style="margin: 3px 0;"><strong>✅ APROVAR + HOMOLOGAÇÃO:</strong> Processo vai direto para homologação</p>
                   <p style="margin: 3px 0;"><strong>↩️ DEVOLVER:</strong> Processo volta para CPM com observações</p>
                   <p style="margin: 3px 0;"><strong>❌ REJEITAR:</strong> Processo é rejeitado definitivamente</p>
                 </div>
@@ -7224,25 +7106,61 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
         
         if (!julgamento) return
         
+        console.log('🔍 [DEBUG] Decisão selecionada:', julgamento.decisao)
+        console.log('🔍 [DEBUG] Fundamentação:', julgamento.fundamentacao)
+        
         // Processar decisão usando TramitacaoProcessosService
         let resultado
         
         switch(julgamento.decisao) {
           case 'aprovar':
-            // Enviar para próxima etapa (aprovado_ccl -> Assessoria Jurídica)
-            resultado = await TramitacaoProcessosService.enviarProcesso(
-              processo.id, 
-              `CCL aprovou tecnicamente o processo: ${julgamento.fundamentacao}`
+            console.log('🔍 [DEBUG] Executando caso APROVAR - enviando para ata_ccl')
+            // Enviar para ata_ccl (fica na CCL para emitir ata)
+            resultado = await TramitacaoProcessosService.enviarProcessoFlexivel(
+              processo.id,
+              'ata_ccl', 
+              'GERAR_ATA_CCL',
+              `CCL aprovou tecnicamente - gerando ata de julgamento: ${julgamento.fundamentacao}`
             )
+            console.log('🔍 [DEBUG] Resultado da tramitação APROVAR:', resultado)
             
-            // CORREÇÃO: Preencher campos específicos da CCL para processos aprovados
+            // Preencher campos específicos da CCL para aprovação normal
             if (resultado && resultado.sucesso) {
               const { error: updateError } = await supabase
                 .from('processos_administrativos')
                 .update({
                   ata_julgamento_ccl: julgamento.fundamentacao,
                   ata_emitida_ccl_em: new Date().toISOString(),
-                  data_julgamento_ccl: new Date().toISOString()
+                  recomendacao_ccl: 'recomendar_homologacao'
+                })
+                .eq('id', processo.id)
+              
+              if (updateError) {
+                console.warn('Erro ao salvar dados da ata CCL:', updateError)
+              } else {
+                console.log('✅ Campos ata_ccl preenchidos para aprovação normal')
+              }
+            }
+            break
+            
+          case 'aprovar_homologacao_direta':
+            console.log('🔍 [DEBUG] Executando caso APROVAR_HOMOLOGACAO_DIRETA - enviando para homologações')
+            // Enviar para homologações com status correto
+            resultado = await TramitacaoProcessosService.enviarProcessoFlexivel(
+              processo.id,
+              'ata_julgamento_ccl_homologacao',
+              'HOMOLOGACAO_DIRETA_CCL',
+              `CCL aprovou para homologação direta: ${julgamento.fundamentacao}`
+            )
+            console.log('🔍 [DEBUG] Resultado da tramitação HOMOLOGACAO_DIRETA:', resultado)
+            
+            // CORREÇÃO: Preencher campos específicos da CCL para processos aprovados
+            if (resultado && resultado.sucesso) {
+              const { error: updateError } = await supabase
+                .from('processos_administrativos')
+                .update({
+                  ata_julgamento_ccl: `CCL aprovou para homologação direta: ${julgamento.fundamentacao}`,
+                  ata_emitida_ccl_em: new Date().toISOString()
                 })
                 .eq('id', processo.id)
               
@@ -7283,7 +7201,6 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
           .update({
             ata_julgamento_ccl: julgamento.fundamentacao,
             ata_emitida_ccl_em: new Date().toISOString(),
-            data_julgamento_ccl: new Date().toISOString()
           })
           .eq('id', processo.id)
         
@@ -7316,6 +7233,11 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
         // Recarregar dados automaticamente após julgamento
         await this.carregarDados(true)
         await this.atualizarDadosAtas()
+        
+        // Recarregar homologações se o processo foi para homologação direta
+        if (julgamento.decisao === 'aprovar_homologacao_direta' && this.$refs.homologacoesCCL) {
+          await this.$refs.homologacoesCCL.carregarHomologacoes()
+        }
         
       } catch (error) {
         console.error('Erro no julgamento CCL:', error)
@@ -7390,6 +7312,209 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
         await this.$swal({
           title: '❌ Erro na Devolução',
           text: error.message || 'Erro interno do sistema',
+          icon: 'error'
+        })
+      }
+    },
+    
+    /**
+     * Tramitar ata CCL para próxima etapa (publicação pelo órgão)
+     */
+    async tramitarAtaCCL(processo) {
+      try {
+        const { value: confirmacao } = await this.$swal({
+          title: `📋 Enviar Ata para Publicação`,
+          html: `
+            <div style="text-align: left; padding: 15px;">
+              <p><strong>Processo:</strong> ${processo.numero_processo}</p>
+              <p><strong>Status atual:</strong> ${this.formatarStatusProcesso(processo.status)}</p>
+              
+              <div style="margin: 15px 0;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Observações (opcional):</label>
+                <textarea id="observacoesAta" class="swal2-textarea" rows="3" 
+                  placeholder="Observações sobre a ata de julgamento..." 
+                  style="width: 100%;"></textarea>
+              </div>
+              
+              <div style="background: #d1ecf1; padding: 10px; border-radius: 4px;">
+                <small><strong>📢 Próximo passo:</strong> O processo será enviado para o Órgão Administrativo publicar a ata e abrir prazo recursal.</small>
+              </div>
+            </div>
+          `,
+          width: '600px',
+          showCancelButton: true,
+          confirmButtonText: '📋 Enviar para Publicação',
+          cancelButtonText: '❌ Cancelar',
+          preConfirm: () => {
+            const observacoes = document.getElementById('observacoesAta').value.trim()
+            return observacoes || 'Ata de julgamento CCL concluída, enviada para publicação.'
+          }
+        })
+        
+        if (confirmacao === undefined) return
+        
+        // Usar TramitacaoProcessosService para enviar para próxima etapa (publicação direta da CCL)
+        const resultado = await TramitacaoProcessosService.enviarProcessoFlexivel(
+          processo.id,
+          'publicacao_ata',
+          'PUBLICAR_DIRETA',
+          confirmacao
+        )
+        
+        if (!resultado || !resultado.sucesso) {
+          throw new Error('Falha na tramitação da ata')
+        }
+        
+        await this.$swal({
+          title: '✅ Ata Enviada!',
+          html: `
+            <p>Ata do processo <strong>${processo.numero_processo}</strong> foi enviada para publicação.</p>
+            <p><strong>Novo status:</strong> ${resultado.statusNovo}</p>
+            <p><strong>Responsável:</strong> Órgão Administrativo</p>
+          `,
+          icon: 'success'
+        })
+        
+        await this.carregarDados(true)
+        
+      } catch (error) {
+        console.error('Erro ao tramitar ata:', error)
+        await this.$swal({
+          title: '❌ Erro na Tramitação',
+          text: error.message || 'Erro interno do sistema',
+          icon: 'error'
+        })
+      }
+    }
+  },
+
+  // =====================================================
+  // MÉTODOS ESPECÍFICOS PARA HOMOLOGAÇÕES
+  // =====================================================
+
+  // Visualizar detalhes do processo aguardando homologação
+  async visualizarProcessoHomologacao(processo) {
+    try {
+      const { data: processoCompleto, error } = await supabase
+        .from('processos_administrativos')
+        .select(`
+          *,
+          produtos:produtos(*)
+        `)
+        .eq('id', processo.id)
+        .single()
+
+      if (error) throw error
+
+      this.$swal({
+        title: `📋 Processo: ${processo.numeroAta}`,
+        html: `
+          <div style="text-align: left; padding: 15px;">
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+              <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📄 Informações do Processo</h4>
+              <p><strong>Tipo:</strong> ${processoCompleto.tipo_processo?.toUpperCase()}</p>
+              <p><strong>Órgão:</strong> ${processoCompleto.nome_orgao}</p>
+              <p><strong>Status:</strong> Aguardando Homologação da Autoridade</p>
+              <p><strong>Data do Julgamento CCL:</strong> ${this.formatDate(processoCompleto.ata_emitida_ccl_em)}</p>
+            </div>
+            
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+              <h4 style="margin: 0 0 10px 0; color: #2c3e50;">⚖️ Recomendação da CCL</h4>
+              <p><strong>Decisão:</strong> ${processoCompleto.recomendacao_ccl === 'recomendar_homologacao' ? '✅ HOMOLOGAÇÃO RECOMENDADA' : '❌ INDEFERIMENTO RECOMENDADO'}</p>
+              <div style="background: white; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                <strong>Fundamentação:</strong><br>
+                ${processoCompleto.ata_julgamento_ccl || 'Fundamentação não disponível'}
+              </div>
+            </div>
+            
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px;">
+              <h4 style="margin: 0 0 10px 0; color: #856404;">⏰ Prazo para Homologação</h4>
+              <p><strong>Status:</strong> ${this.calcularPrazoHomologacao(processoCompleto.ata_emitida_ccl_em)}</p>
+              <p><small>A Autoridade Competente tem 15 dias úteis para decidir sobre a homologação.</small></p>
+            </div>
+          </div>
+        `,
+        width: 700,
+        showCancelButton: true,
+        confirmButtonText: '📧 Notificar Autoridade',
+        cancelButtonText: '✅ OK',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.notificarAutoridade(processo)
+        }
+      })
+
+    } catch (error) {
+      console.error('Erro ao visualizar processo:', error)
+      this.$swal({
+        title: '❌ Erro',
+        text: 'Erro ao carregar dados do processo.',
+        icon: 'error'
+      })
+    }
+  },
+
+  // Notificar autoridade sobre processo pendente
+  async notificarAutoridade(processo) {
+    const { value: tipoNotificacao } = await this.$swal({
+      title: '📧 Notificar Autoridade Competente',
+      html: `
+        <div style="text-align: left; padding: 15px;">
+          <p><strong>Processo:</strong> ${processo.numeroAta}</p>
+          <p><strong>Julgado em:</strong> ${this.formatDate(processo.dataJulgamento)}</p>
+          <p><strong>Prazo:</strong> ${this.calcularPrazoHomologacao(processo.dataJulgamento)}</p>
+          <hr>
+          <label style="display: block; font-weight: bold; margin-bottom: 10px;">Tipo de Notificação:</label>
+          <select id="tipoNotificacao" class="swal2-input" style="margin-bottom: 15px;">
+            <option value="lembrete">📅 Lembrete de Prazo</option>
+            <option value="urgente">⚠️ Urgente - Prazo Vencendo</option>
+            <option value="atrasado">🚨 Processo em Atraso</option>
+            <option value="solicitacao">📋 Solicitação de Decisão</option>
+          </select>
+          <label style="display: block; font-weight: bold; margin-bottom: 5px;">Observações (opcional):</label>
+          <textarea id="observacoes" class="swal2-textarea" placeholder="Informações adicionais sobre a notificação..."></textarea>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: '📧 Enviar Notificação',
+      cancelButtonText: '❌ Cancelar',
+      preConfirm: () => {
+        const tipo = document.getElementById('tipoNotificacao').value
+        const observacoes = document.getElementById('observacoes').value
+        return { tipo, observacoes }
+      }
+    })
+
+    if (tipoNotificacao) {
+      try {
+        // Simular envio de notificação
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        this.$swal({
+          title: '✅ Notificação Enviada!',
+          html: `
+            <div style="text-align: center; padding: 15px;">
+              <p>A notificação foi enviada com sucesso para a Autoridade Competente.</p>
+              <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                <strong>Tipo:</strong> ${tipoNotificacao.tipo === 'lembrete' ? '📅 Lembrete de Prazo' :
+                                         tipoNotificacao.tipo === 'urgente' ? '⚠️ Urgente' :
+                                         tipoNotificacao.tipo === 'atrasado' ? '🚨 Processo em Atraso' :
+                                         '📋 Solicitação de Decisão'}<br>
+                <strong>Processo:</strong> ${processo.numeroAta}
+              </div>
+              <p><small>A autoridade receberá o aviso por email e no sistema.</small></p>
+            </div>
+          `,
+          icon: 'success',
+          timer: 3000
+        })
+
+      } catch (error) {
+        console.error('Erro ao enviar notificação:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: 'Erro ao enviar notificação. Tente novamente.',
           icon: 'error'
         })
       }
@@ -7683,6 +7808,25 @@ tr:hover {
 
 .btn-primary:hover {
   background-color: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-success {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-height: 42px;
+}
+
+.btn-success:hover {
+  background-color: #229954;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
@@ -8116,12 +8260,243 @@ tr:hover {
   color: #2c3e50;
 }
 
-.alert-duvida {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  padding: 10px;
-  border-radius: 5px;
-  margin: 10px 0;
+.homologacoes-description {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.homologacoes-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.alert-info {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  color: #0c5460;
+}
+
+/* Processos Pendentes de Homologação */
+.processos-pendentes-homologacao,
+.homologacoes-recentes {
+  margin: 20px 0;
+}
+
+.section-header {
+  margin-bottom: 15px;
+}
+
+.section-header h4 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+}
+
+.section-description {
+  color: #666;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.processos-lista,
+.homologacoes-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.processo-card,
+.homologacao-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s;
+}
+
+.processo-card:hover,
+.homologacao-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.processo-card.processo-urgente {
+  border-left: 4px solid #dc3545;
+  background: #fff5f5;
+}
+
+.processo-info,
+.homologacao-info {
+  flex: 1;
+}
+
+.processo-header,
+.homologacao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.processo-header h5,
+.homologacao-header h5 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.processo-tipo {
+  background: #e9ecef;
+  color: #495057;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.homologacao-status {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+}
+
+.status-homologada {
+  background: #28a745;
+}
+
+.status-indeferida {
+  background: #dc3545;
+}
+
+.status-diligencia {
+  background: #ffc107;
+  color: #212529;
+}
+
+.processo-orgao {
+  color: #666;
+  margin: 5px 0;
+  font-size: 0.9rem;
+}
+
+.processo-details,
+.homologacao-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 8px;
+}
+
+.processo-details span,
+.homologacao-details p {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+}
+
+.data-julgamento {
+  color: #17a2b8;
+}
+
+.prazo-normal {
+  color: #28a745;
+}
+
+.prazo-urgente {
+  color: #ffc107;
+}
+
+.prazo-vencido {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.processo-actions,
+.homologacao-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.btn-small.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-small.btn-primary:hover {
+  background: #0056b3;
+}
+
+.btn-small.btn-warning {
+  background: #ffc107;
+  color: #212529;
+}
+
+.btn-small.btn-warning:hover {
+  background: #e0a800;
+}
+
+.btn-small.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-small.btn-secondary:hover {
+  background: #545b62;
+}
+
+.btn-small.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-small.btn-success:hover {
+  background: #1e7e34;
+}
+
+/* Responsividade para Homologações */
+@media (max-width: 768px) {
+  .processo-card,
+  .homologacao-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .processo-details,
+  .homologacao-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .processo-actions,
+  .homologacao-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .homologacoes-actions {
+    flex-direction: column;
+  }
 }
 
 /* Processo específicos */

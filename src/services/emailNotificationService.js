@@ -99,21 +99,46 @@ Este é um email automático do sistema. Não responda a este email.`
         `
       },
       'processo_devolvido': {
-        assunto: 'Processo #{numeroProcesso} foi devolvido para correção',
-        template: `
-          <h2>↩️ Processo Devolvido</h2>
-          <p>O processo <strong>#{numeroProcesso}</strong> foi devolvido para correção.</p>
-          <p><strong>Status:</strong> #{statusAtual}</p>
-          <p><strong>Tipo:</strong> #{tipoProcesso}</p>
-          <p><strong>Objeto:</strong> #{objeto}</p>
-          <hr>
-          <p><strong>Motivo da Devolução:</strong></p>
-          <p style="background-color: #fef3c7; padding: 10px; border-radius: 5px; border-left: 4px solid #f59e0b;">#{observacoes}</p>
-          <hr>
-          <p>📝 <strong>Ação Necessária:</strong> Corrija os pontos mencionados e reenvie o processo.</p>
-          <p>Por favor, acesse o sistema para visualizar os detalhes e fazer as correções necessárias.</p>
-          <p><em>Sistema Comprar Bem - Processos Administrativos</em></p>
-        `
+        assunto: 'COMPRAR BEM: Processo #{numeroProcesso} foi devolvido para correção',
+        template: `PROCESSO ADMINISTRATIVO - DEVOLVIDO PARA CORREÇÃO
+
+Olá,
+
+O processo administrativo #{numeroProcesso} foi devolvido para correção no sistema Comprar Bem.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 DETALHES DO PROCESSO:
+• Processo: #{numeroProcesso}
+• Tipo: #{tipoProcesso}
+• Status Atual: #{statusAtual}
+• Órgão: #{nomeOrgao}
+• Objeto: #{objeto}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+↩️ MOTIVO DA DEVOLUÇÃO:
+#{observacoes}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 AÇÃO NECESSÁRIA:
+Corrija os pontos mencionados no motivo da devolução e reenvie o processo.
+
+🔗 COMO PROCEDER:
+1. Acesse o sistema Comprar Bem
+2. Vá para "Processos Administrativos"
+3. Localize o processo #{numeroProcesso}
+4. Faça as correções necessárias
+5. Reenvie o processo para análise
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sistema Comprar Bem
+Compras Públicas Inteligentes
+Data: #{dataAtual}
+
+Este é um email automático do sistema. Não responda a este email.`
       }
     }
 
@@ -158,7 +183,27 @@ Este é um email automático do sistema. Não responda a este email.`
         // DEVOLUÇÕES (CPM deve corrigir e reenviar)
         'devolvido_pelo_orgao': ['cpm'], // CPM deve corrigir e reenviar
         'devolvido_pela_ccl': ['cpm'], // CPM deve corrigir e reenviar
-        'devolvido_pelo_juridico': ['cpm'] // CPM deve corrigir e reenviar
+        'devolvido_pelo_juridico': ['cpm'], // CPM deve corrigir e reenviar
+        
+        // NOVOS STATUS PADRONIZAÇÃO - Conforme cliente
+        'em_criacao': ['cpm'],
+        'submetido_autoridade': ['orgao_administrativo'], // Órgão deve autorizar
+        'abertura_autorizada': ['cpm'], // CPM prepara edital
+        'edital_chamamento': ['assessoria_juridica'], // Jurídico analisa edital
+        'analise_juridica': ['assessoria_juridica'], // Jurídico analisa
+        'com_impugnacao': ['assessoria_juridica'], // Jurídico analisa impugnações
+        'recebendo_amostras': ['cpm'], // CPM recebe amostras
+        'avaliacao_cpm': ['cpm'], // CPM avalia e faz relatório
+        'ata_ccl': ['ccl'], // CCL emite ata
+        'publicacao_ata': ['orgao_administrativo'], // Órgão publica ata
+        'com_recurso': ['assessoria_juridica'], // Jurídico analisa recursos
+        'expedindo_dcbs': ['cpm'], // CPM expede DCBs
+        'incluindo_marcas': ['cpm'], // CPM inclui no catálogo
+        
+        // NOVOS STATUS DESPADRONIZAÇÃO - Conforme cliente
+        'em_criacao_desp': ['cpm'],
+        'submetido_autoridade_desp': ['orgao_administrativo'], // Órgão deve autorizar
+        'aviso_publicado_desp': ['cpm'] // CPM gerencia processo
       }
 
       const perfisResponsaveis = responsaveisPorStatus[status] || []
@@ -261,7 +306,8 @@ Este é um email automático do sistema. Não responda a este email.`
         numeroProcesso: processo.numero_processo || 'Sem número',
         tipoProcesso: processo.tipo_processo === 'padronizacao' ? 'Padronização' : 'Despadronização',
         statusAtual: this.obterLabelStatus(statusNovo),
-        nomeOrgao: processo.nome_orgao,
+        nomeOrgao: processo.nome_orgao || 'Órgão Público',
+        objeto: processo.objeto || processo.descricao || 'Objeto não informado',
         observacoes: observacoes || 'Nenhuma observação',
         acaoNecessaria: this.obterAcaoNecessaria(statusNovo),
         dataAtual: new Date().toLocaleString('pt-BR', { 
@@ -344,32 +390,54 @@ Este é um email automático do sistema. Não responda a este email.`
 
   static obterLabelStatus(status) {
     const labels = {
-      'rascunho': 'Em Criação',
-      'aguardando_aprovacao': 'Aguardando Aprovação da CPM',
+      // STATUS PADRONIZAÇÃO - Novos conforme cliente
+      'em_criacao': 'Em Criação',
       'criado_cpm': 'Criado pela CPM',
-      'aguardando_assinatura_orgao': 'Aguardando Assinatura do Órgão',
-      'aguardando_assinatura_orgao_desp': 'Aguardando Autorização do Órgão (Despadronização)',
-      'aprovado_cpm': 'Aprovado pela CPM',
-      'assinado_admin': 'Assinado pelo Órgão Administrativo',
-      'julgamento_ccl': 'Em Julgamento pela CCL',
-      'aprovado_ccl': 'Aprovado pela CCL',
-      'aprovado_juridico': 'Aprovado pela Assessoria Jurídica',
-      'abertura_autorizada_desp': 'Abertura Autorizada (Despadronização)',
-      'aviso_publicado': 'Aviso de Despadronização Publicado',
-      'com_recurso_desp': 'Com Recurso Administrativo (Despadronização)',
-      'homologado': 'Processo Homologado',
-      'homologado_desp': 'Despadronização Homologada',
+      'submetido_autoridade': 'Submetido à Autoridade Competente',
+      'abertura_autorizada': 'Abertura Autorizada',
+      'edital_chamamento': 'Edital de Chamamento Público',
+      'analise_juridica': 'Em Análise Jurídica',
+      'edital_publicado': 'Com Edital Publicado',
+      'com_impugnacao': 'Com Impugnação ao Edital',
+      'recebendo_amostras': 'Recebendo Amostras e Documentação',
+      'avaliacao_cpm': 'Com Avaliação e Relatório da CPM',
+      'julgamento_ccl': 'Submetido ao Julgamento da CCL',
+      'ata_ccl': 'Ata de Julgamento da CCL',
+      'publicacao_ata': 'Publicação da Ata e Prazo Recursal',
+      'com_recurso': 'Com Recurso Administrativo',
+      'homologado': 'Com Homologação',
+      'expedindo_dcbs': 'Expedindo as DCBs',
+      'incluindo_marcas': 'Incluindo Marcas no Catálogo',
+      
+      // STATUS DESPADRONIZAÇÃO - Novos conforme cliente
+      'em_criacao_desp': 'Em Criação',
+      'criado_cpm_desp': 'Criado pela CPM',
+      'submetido_autoridade_desp': 'Submetido à Autoridade Competente',
+      'abertura_autorizada_desp': 'Abertura Autorizada',
+      'aviso_publicado_desp': 'Com Aviso Publicado',
+      'com_recurso_desp': 'Com Recurso Administrativo',
+      'homologado_desp': 'Com Homologação',
       'excluindo_marcas': 'Excluindo Marcas do Catálogo',
-      'rejeitado_cpm': 'Rejeitado pela CPM',
-      'rejeitado_admin': 'Rejeitado pelo Órgão',
-      'rejeitado_ccl': 'Rejeitado pela CCL',
-      'rejeitado_juridico': 'Rejeitado pela Assessoria Jurídica',
-      'rejeitado_final': 'Rejeitado Final',
       
       // STATUS DE DEVOLUÇÃO
       'devolvido_pelo_orgao': 'Devolvido pelo Órgão Administrativo',
       'devolvido_pela_ccl': 'Devolvido pela CCL',
-      'devolvido_pelo_juridico': 'Devolvido pela Assessoria Jurídica'
+      'devolvido_pelo_juridico': 'Devolvido pela Assessoria Jurídica',
+      
+      // STATUS LEGADOS (compatibilidade)
+      'rascunho': 'Em Criação',
+      'aguardando_aprovacao': 'Aguardando Aprovação da CPM',
+      'aguardando_assinatura_orgao': 'Submetido à Autoridade Competente',
+      'assinado_admin': 'Abertura Autorizada',
+      'aprovado_ccl': 'Ata de Julgamento da CCL',
+      'aprovado_juridico': 'Em Análise Jurídica',
+      'aguardando_assinatura_orgao_desp': 'Submetido à Autoridade Competente',
+      'aviso_publicado': 'Com Aviso Publicado',
+      'rejeitado_cpm': 'Rejeitado pela CPM',
+      'rejeitado_admin': 'Rejeitado pelo Órgão',
+      'rejeitado_ccl': 'Rejeitado pela CCL',
+      'rejeitado_juridico': 'Rejeitado pela Assessoria Jurídica',
+      'rejeitado_final': 'Rejeitado Final'
     }
 
     return labels[status] || status

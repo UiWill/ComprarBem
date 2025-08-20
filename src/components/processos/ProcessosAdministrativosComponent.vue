@@ -45,39 +45,34 @@
             <select v-model="filtroStatus" @change="filtrarProcessos">
               <option value="">Todos os status</option>
               
-              <!-- STATUS PADRONIZAÇÃO (VERDE) - Sequência lógica do cliente -->
+              <!-- STATUS PADRONIZAÇÃO (VERDE) - Sequência lógica conforme cliente -->
               <optgroup label="🟢 PADRONIZAÇÃO">
-                <option value="rascunho">📝 Em Criação</option>
+                <option value="em_criacao">📝 Em Criação</option>
                 <option value="criado_cpm">🎯 Criado pela CPM</option>
-                <option value="aprovado_cpm">📋 Aprovado pela CPM</option>
-                <option value="assinado_admin">✅ Assinado pelo Órgão</option>
-                <option value="julgamento_ccl">⚖️ Julgamento CCL</option>
-                <option value="aprovado_ccl">💜 Aprovado pela CCL</option>
-                <option value="aprovado_juridico">⚖️ Aprovado Juridicamente</option>
+                <option value="submetido_autoridade">📋 Submetido à Autoridade Competente</option>
+                <option value="abertura_autorizada">✅ Abertura Autorizada</option>
+                <option value="edital_chamamento">📢 Edital de Chamamento Público</option>
+                <option value="analise_juridica">⚖️ Em Análise Jurídica</option>
                 <option value="edital_publicado">📃 Com Edital Publicado</option>
+                <option value="com_impugnacao">❓ Com Impugnação ao Edital</option>
+                <option value="recebendo_amostras">📦 Recebendo Amostras e Documentação</option>
+                <option value="avaliacao_cpm">🔍 Com Avaliação e Relatório da CPM</option>
+                <option value="julgamento_ccl">⚖️ Submetido ao Julgamento da CCL</option>
+                <option value="ata_ccl">📋 Ata de Julgamento da CCL</option>
+                <option value="publicacao_ata">📰 Publicação da Ata e Prazo Recursal</option>
+                <option value="com_recurso">📝 Com Recurso Administrativo</option>
                 <option value="homologado">✅ Com Homologação</option>
-                <option value="finalizado">🏆 Finalizado</option>
-                
-                <!-- Status de Rejeição -->
-                <option value="rejeitado_cpm">❌ Rejeitado pela CPM</option>
-                <option value="rejeitado_admin">❌ Rejeitado pelo Órgão</option>
-                <option value="rejeitado_ccl">❌ Rejeitado pela CCL</option>
-                <option value="rejeitado_juridico">❌ Rejeitado Juridicamente</option>
-                <option value="rejeitado_final">❌ Rejeitado Final</option>
-                
-                <!-- Status Antigos (Compatibilidade) -->
-                <option value="aguardando_aprovacao">🔄 Aguardando Aprovação (Legado)</option>
-                <option value="iniciado">🆕 Iniciado (Legado)</option>
-                <option value="analise_cppm">🔍 Análise CPPM (Legado)</option>
+                <option value="expedindo_dcbs">📄 Expedindo as DCBs</option>
+                <option value="incluindo_marcas">➕ Incluindo Marcas no Catálogo</option>
               </optgroup>
               
-              <!-- STATUS DESPADRONIZAÇÃO (VERMELHO) - Sequência lógica do cliente -->
+              <!-- STATUS DESPADRONIZAÇÃO (VERMELHO) - Sequência lógica conforme cliente -->
               <optgroup label="🔴 DESPADRONIZAÇÃO">
                 <option value="em_criacao_desp">📝 Em Criação</option>
                 <option value="criado_cpm_desp">🎯 Criado pela CPM</option>
                 <option value="submetido_autoridade_desp">📋 Submetido à Autoridade Competente</option>
                 <option value="abertura_autorizada_desp">✅ Abertura Autorizada</option>
-                <option value="aviso_publicado">📢 Com Aviso Publicado</option>
+                <option value="aviso_publicado_desp">📢 Com Aviso Publicado</option>
                 <option value="com_recurso_desp">📝 Com Recurso Administrativo</option>
                 <option value="homologado_desp">✅ Com Homologação</option>
                 <option value="excluindo_marcas">❌ Excluindo Marcas do Catálogo</option>
@@ -357,6 +352,25 @@
                   >
                     <span class="btn-icon">⚖️</span>
                     <span class="btn-text">{{ obterTextoBotaoTramitacao(processoSelecionado) }}</span>
+                  </button>
+                  
+                  <!-- Botões de Tramitação Geral -->
+                  <button 
+                    v-if="temAcaoTramitacaoEnviar(processoSelecionado)" 
+                    @click="enviarParaProximaEtapa(processoSelecionado)" 
+                    class="action-btn action-btn-success"
+                  >
+                    <span class="btn-icon">🚀</span>
+                    <span class="btn-text">Enviar para Próxima Etapa</span>
+                  </button>
+                  
+                  <button 
+                    v-if="temAcaoTramitacaoDevolver(processoSelecionado)" 
+                    @click="abrirModalDevolucaoGenerica(processoSelecionado)" 
+                    class="action-btn action-btn-warning"
+                  >
+                    <span class="btn-icon">↩️</span>
+                    <span class="btn-text">Devolver para Correção</span>
                   </button>
                   
                   <button @click="verTramitacao(processoSelecionado)" class="action-btn action-btn-info">
@@ -1017,6 +1031,20 @@
                   <div class="alert alert-info">
                     <span>ℹ️</span>
                     <strong>Documento Assinado:</strong> Este documento será automaticamente marcado como "Documento Assinado" pelo órgão administrativo.
+                  </div>
+                  
+                  <!-- Botão para gerar documento de assinatura -->
+                  <div class="gerar-assinatura-section">
+                    <h5>📝 Documento de Assinatura</h5>
+                    <p>Precisa do modelo de documento para assinar? Gere o documento padrão:</p>
+                    <button 
+                      @click="gerarDocumentoAssinaturaParaDownload(processoSelecionado)" 
+                      class="btn-gerar-assinatura"
+                      type="button"
+                    >
+                      🖊️ Gerar Documento de Assinatura
+                    </button>
+                    <small>Este documento contém os campos obrigatórios para sua assinatura.</small>
                   </div>
                 </div>
 
@@ -1746,6 +1774,62 @@ export default {
       
       return 'Adicionar Documento'
     },
+
+    // Verificar se tem ação de enviar disponível para este processo
+    temAcaoTramitacaoEnviar(processo) {
+      if (!processo?.id || !this.acoesDisponiveis[processo.id]) {
+        console.log(`🔍 DEBUG - temAcaoTramitacaoEnviar: FALSO para ${processo?.numero_processo} - sem ações disponíveis`)
+        return false
+      }
+      
+      const acoes = this.acoesDisponiveis[processo.id]
+      // Verificar tanto ações ENVIAR quanto ENVIAR_FLEXIVEL
+      const temEnviar = acoes.some(acao => acao.tipo === 'ENVIAR' || acao.tipo === 'ENVIAR_FLEXIVEL')
+      console.log(`🔍 DEBUG - temAcaoTramitacaoEnviar: ${temEnviar ? 'VERDADEIRO' : 'FALSO'} para ${processo.numero_processo}`)
+      console.log(`🔍 DEBUG - Ações disponíveis:`, acoes)
+      console.log(`🔍 DEBUG - Tipos de ações encontradas:`, acoes.map(a => a.tipo))
+      return temEnviar
+    },
+
+    // Verificar se tem ação de devolver disponível para este processo
+    temAcaoTramitacaoDevolver(processo) {
+      if (!processo?.id || !this.acoesDisponiveis[processo.id]) {
+        return false
+      }
+      
+      const acoes = this.acoesDisponiveis[processo.id]
+      return acoes.some(acao => acao.tipo === 'DEVOLVER')
+    },
+
+    // Executar ação de enviar para próxima etapa
+    async enviarParaProximaEtapa(processo) {
+      if (!this.temAcaoTramitacaoEnviar(processo)) {
+        return
+      }
+
+      const acoes = this.acoesDisponiveis[processo.id]
+      // Buscar tanto ações ENVIAR quanto ENVIAR_FLEXIVEL, priorizando ENVIAR
+      let acaoEnviar = acoes.find(acao => acao.tipo === 'ENVIAR')
+      if (!acaoEnviar) {
+        acaoEnviar = acoes.find(acao => acao.tipo === 'ENVIAR_FLEXIVEL')
+      }
+      
+      console.log(`🚀 DEBUG - enviarParaProximaEtapa: ação encontrada:`, acaoEnviar)
+      
+      if (acaoEnviar) {
+        await this.executarAcaoTramitacao(processo, acaoEnviar)
+      }
+    },
+
+    // Abrir modal de devolução genérica
+    abrirModalDevolucaoGenerica(processo) {
+      if (!this.temAcaoTramitacaoDevolver(processo)) {
+        return
+      }
+
+      // Usar a modal de devolução existente
+      this.abrirModalDevolucao(processo)
+    },
     
     podeTramitarParaCCL(processo) {
       console.log('🔍 DEBUG - Verificando botão tramitar para CCL:', {
@@ -2166,7 +2250,7 @@ export default {
                 </thead>
                 <tbody>
                   ${documentos
-                    .filter(doc => doc.tipo_documento !== 'DFD' && doc.tipo_documento !== 'FOLHA_ROSTO' && doc.tipo_documento !== 'DOCUMENTACAO_PRODUTO' && doc.tipo_documento !== 'DOCUMENTACAO_PRODUTOS')
+                    .filter(doc => doc.tipo_documento !== 'FOLHA_ROSTO' && doc.tipo_documento !== 'DFD' && doc.arquivo_url && doc.arquivo_url !== 'undefined')
                     .map(doc => `
                     <tr>
                       <td style="text-align: center; font-weight: bold;">Fl. ${String(doc.numero_sequencial || 1).padStart(3, '0')}</td>
@@ -2188,7 +2272,7 @@ export default {
               </table>
               
               <div style="margin-top: 2cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm;">
-                <p><strong>Total de documentos:</strong> ${documentos.filter(d => d.tipo_documento !== 'DFD' && d.tipo_documento !== 'FOLHA_ROSTO' && d.tipo_documento !== 'DOCUMENTACAO_PRODUTO' && d.tipo_documento !== 'DOCUMENTACAO_PRODUTOS').length} | <strong>Com arquivos:</strong> ${documentos.filter(d => d.arquivo_url && d.tipo_documento !== 'DFD' && d.tipo_documento !== 'FOLHA_ROSTO' && d.tipo_documento !== 'DOCUMENTACAO_PRODUTO' && d.tipo_documento !== 'DOCUMENTACAO_PRODUTOS').length}</p>
+                <p><strong>Total de documentos:</strong> ${documentos.filter(d => d.tipo_documento !== 'FOLHA_ROSTO' && d.tipo_documento !== 'DFD' && d.arquivo_url && d.arquivo_url !== 'undefined').length}</p>
                 ${produtos.length > 0 ? `<p><strong>Total de produtos:</strong> ${produtos.length}</p>` : ''}
                 <p style="color: #666; margin-top: 1cm;">Gerado em ${dataAtual} - Sistema Comprar Bem</p>
               </div>
@@ -2233,10 +2317,9 @@ export default {
                 </tbody>
               </table>
               
-              <div class="assinatura">
-                <div class="linha-assinatura"></div>
-                <p><strong>Equipe Técnica Responsável</strong></p>
-                <p>${processo.nome_orgao}</p>
+              <div style="margin-top: 2cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm; color: #666;">
+                <p><strong>Relatório gerado automaticamente pelo Sistema Comprar Bem</strong></p>
+                <p>Processo nº ${processo.numero_processo} - ${new Date().toLocaleDateString('pt-BR')}</p>
               </div>
             </div>
           </div>
@@ -2244,6 +2327,248 @@ export default {
         </body>
         </html>
       `
+    },
+
+    // =====================================================
+    // GERAÇÃO DE DOCUMENTO DE ASSINATURA SEPARADO
+    // =====================================================
+    
+    gerarDocumentoAssinatura(processo) {
+      const dataAtual = new Date().toLocaleDateString('pt-BR')
+      const horaAtual = new Date().toLocaleTimeString('pt-BR')
+      
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Declaração de Conformidade - Processo ${processo.numero_processo}</title>
+          <style>
+            @page {
+              margin: 3cm 2cm;
+              size: A4;
+            }
+            
+            body { 
+              font-family: 'Times New Roman', serif; 
+              font-size: 12pt;
+              line-height: 1.6;
+              color: #000;
+              margin: 0;
+              padding: 0;
+              background: white;
+            }
+            
+            .folha-declaracao {
+              width: 100%;
+              height: 29.7cm;
+              padding: 2cm;
+              background: white;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
+            }
+            
+            .cabecalho {
+              text-align: center;
+              margin-bottom: 3cm;
+            }
+            
+            .cabecalho h1 {
+              font-size: 16pt;
+              font-weight: bold;
+              margin-bottom: 0.5cm;
+              text-transform: uppercase;
+            }
+            
+            .cabecalho h2 {
+              font-size: 14pt;
+              font-weight: bold;
+              margin-bottom: 0.3cm;
+              text-transform: uppercase;
+            }
+            
+            .numero-processo {
+              font-size: 12pt;
+              font-weight: bold;
+              color: #333;
+              margin-top: 0.5cm;
+            }
+            
+            .quadro-declaracao {
+              border: 2px solid #000;
+              padding: 2.5cm;
+              margin: 1cm auto;
+              width: 15cm;
+              min-height: 10cm;
+              background: white;
+            }
+            
+            .titulo-declaracao {
+              text-align: center;
+              font-size: 16pt;
+              font-weight: bold;
+              margin-bottom: 2cm;
+              text-transform: uppercase;
+            }
+            
+            .texto-declaracao {
+              text-align: justify;
+              line-height: 1.8;
+              margin-bottom: 3cm;
+              font-size: 12pt;
+            }
+            
+            .area-assinatura {
+              margin-top: 3cm;
+              text-align: center;
+            }
+            
+            .data-local {
+              margin-bottom: 2cm;
+              text-align: right;
+            }
+            
+            .linha-assinatura {
+              border-top: 1px solid #000;
+              width: 8cm;
+              margin: 2cm auto 0.5cm auto;
+            }
+            
+            .texto-responsavel {
+              font-size: 12pt;
+              font-weight: bold;
+              text-transform: uppercase;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="folha-declaracao">
+            <div class="cabecalho">
+              <h1>${processo.nome_orgao}</h1>
+              <h2>Declaração de Conformidade</h2>
+              <p class="numero-processo">Processo nº ${processo.numero_processo}</p>
+            </div>
+            
+            <div class="quadro-declaracao">
+              <div class="titulo-declaracao">DECLARAÇÃO DE CONFORMIDADE</div>
+              
+              <div class="texto-declaracao">
+                <p>Declaro que o produto acima especificado atende aos requisitos técnicos estabelecidos no Edital de Pré-qualificação, estando em conformidade com as normas aplicáveis e possuindo os padrões mínimos de qualidade exigidos para inclusão no Catálogo Eletrônico de Bens Padronizados.</p>
+              </div>
+              
+              <div class="area-assinatura">
+                <div class="data-local">
+                  _________________, ${dataAtual}
+                </div>
+                
+                <div class="linha-assinatura"></div>
+                
+                <div class="texto-responsavel">
+                  <p>Responsável Técnico</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    },
+    
+    // Método para gerar e baixar documento de assinatura
+    async gerarDocumentoAssinaturaParaDownload(processo) {
+      try {
+        console.log('🖊️ Gerando documento de assinatura para processo:', processo.numero_processo)
+        
+        // Gerar HTML do documento de assinatura
+        const htmlAssinatura = this.gerarDocumentoAssinatura(processo)
+        
+        // Criar nome do arquivo
+        const nomeArquivo = `Declaracao_Conformidade_${processo.numero_processo}_${new Date().toISOString().split('T')[0]}.pdf`
+        
+        // Abrir em nova janela com funcionalidades de download
+        const novaJanela = window.open('', '_blank')
+        novaJanela.document.write(htmlAssinatura)
+        novaJanela.document.close()
+        
+        // Adicionar funcionalidade de download PDF à nova janela
+        setTimeout(() => {
+          if (novaJanela && !novaJanela.closed) {
+            // Criar elementos de download dinamicamente
+            const downloadControls = novaJanela.document.createElement('div')
+            downloadControls.style.cssText = `
+              position: fixed; 
+              top: 10px; 
+              right: 10px; 
+              background: #fff; 
+              border: 2px solid #28a745; 
+              border-radius: 8px; 
+              padding: 15px; 
+              box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
+              z-index: 9999;
+              font-family: Arial, sans-serif;
+            `
+            
+            // Botão baixar PDF
+            const btnDownloadPDF = novaJanela.document.createElement('button')
+            btnDownloadPDF.innerHTML = '📋 Baixar Declaração de Conformidade'
+            btnDownloadPDF.style.cssText = `
+              background: #28a745; 
+              color: white; 
+              border: none; 
+              padding: 10px 20px; 
+              border-radius: 5px; 
+              cursor: pointer;
+              font-weight: bold;
+              font-size: 14px;
+            `
+            btnDownloadPDF.onclick = () => {
+              // Esconder os controles temporariamente
+              downloadControls.style.display = 'none'
+              
+              // Aguardar um pouco e then imprimir
+              setTimeout(() => {
+                novaJanela.print()
+                downloadControls.style.display = 'block'
+              }, 500)
+            }
+            
+            downloadControls.appendChild(btnDownloadPDF)
+            novaJanela.document.body.appendChild(downloadControls)
+            
+            // Focar na nova janela
+            novaJanela.focus()
+          }
+        }, 1000)
+        
+        this.$swal({
+          title: '📋 Declaração de Conformidade Gerada',
+          html: `
+            <p><strong>Declaração de Conformidade criada com sucesso!</strong></p>
+            <p>📄 Arquivo: <code>${nomeArquivo}</code></p>
+            <br>
+            <p>📝 <strong>Instruções:</strong></p>
+            <ul style="text-align: left; margin: 0 auto; display: inline-block;">
+              <li>Baixe o documento usando o botão verde</li>
+              <li>Imprima, assine como Responsável Técnico</li>
+              <li>Digitalize o documento assinado</li>
+              <li>Use "Adicionar Documento Assinado" para anexar</li>
+            </ul>
+          `,
+          icon: 'success',
+          confirmButtonText: '✅ Entendi',
+          confirmButtonColor: '#28a745'
+        })
+        
+      } catch (error) {
+        console.error('❌ Erro ao gerar documento de assinatura:', error)
+        this.$swal({
+          title: '❌ Erro na Geração',
+          text: `Erro ao gerar documento de assinatura: ${error.message}`,
+          icon: 'error'
+        })
+      }
     },
 
     async completarDocumentosProcesso(processo, documentosExistentes, produtos, dadosDFD) {
@@ -2384,10 +2709,13 @@ export default {
               
             if (documentosProduto?.documentos_adicionados && documentosProduto.documentos_adicionados.length > 0) {
               for (const doc of documentosProduto.documentos_adicionados) {
-                documentosProdutoConsolidados.push({
-                  produto: produto,
-                  documento: doc
-                })
+                // Apenas adicionar se o documento tiver dados válidos
+                if (doc && doc.nome && doc.nome !== 'undefined' && doc.url && doc.url !== 'undefined') {
+                  documentosProdutoConsolidados.push({
+                    produto: produto,
+                    documento: doc
+                  })
+                }
               }
             }
           } catch (error) {
@@ -2399,21 +2727,23 @@ export default {
       // Adicionar documentos da nova tabela dedicada (documentos_produtos_processo)
       const documentosProcessoProdutos = documentosCompletos.filter(doc => doc.tipo_documento === 'DOCUMENTO_PRODUTO')
       documentosProcessoProdutos.forEach(doc => {
-        // Extrair informações do documento formatado
-        documentosProdutoConsolidados.push({
-          documento: {
-            nome: doc.nome_arquivo || 'Documento',
-            url: doc.arquivo_url
-          },
-          produto: {
-            nome: doc.nome_produto || doc.titulo.split(' - ')[0] || 'Produto',
-            marca: doc.marca || 'N/A',
-            modelo: doc.modelo || 'N/A',
-            categoria: doc.categoria || 'N/A',
-            fabricante: doc.fabricante || 'N/A',
-            created_at: doc.data_autuacao
-          }
-        })
+        // Extrair informações do documento formatado - apenas se tiver dados válidos
+        if (doc.arquivo_url && doc.arquivo_url !== 'undefined' && doc.nome_arquivo && doc.nome_arquivo !== 'undefined') {
+          documentosProdutoConsolidados.push({
+            documento: {
+              nome: doc.nome_arquivo,
+              url: doc.arquivo_url
+            },
+            produto: {
+              nome: doc.nome_produto || doc.titulo?.split(' - ')[0] || 'Produto',
+              marca: doc.marca || 'N/A',
+              modelo: doc.modelo || 'N/A',
+              categoria: doc.categoria || 'N/A',
+              fabricante: doc.fabricante || 'N/A',
+              created_at: doc.data_autuacao
+            }
+          })
+        }
       })
 
       // GARANTIR QUE EDITAL TENHA CONTEÚDO HTML COMPLETO
@@ -2496,28 +2826,11 @@ export default {
                 <h3>ESPECIFICAÇÕES TÉCNICAS</h3>
                 <p><em>${produto.especificacoes_tecnicas || 'Especificações não informadas'}</em></p>
                 
-                <h3>DOCUMENTO ANEXO</h3>
-                <p><strong>Tipo de Documento:</strong> ${documentosProduto.length > 0 ? documentosProduto[0].documento.nome : 'undefined'}</p>
-                <p><strong>Descrição:</strong> Documento técnico do produto anexado ao processo</p>
-                <p><strong>Arquivo:</strong> ${documentosProduto.length > 0 ? '<span style="text-decoration: underline; color: #1976d2;">undefined</span>' : 'undefined'}</p>
                 
                 <h3>AVALIAÇÃO TÉCNICA</h3>
                 <p><strong>Status:</strong> ${produto.status || 'Pendente de avaliação'}</p>
                 <p><strong>Data de Inclusão:</strong> ${produto.created_at ? new Date(produto.created_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}</p>
                 
-                <div style="margin: 2cm 0; padding: 1cm; border: 2px solid #000;">
-                  <h3 style="text-align: center; margin-bottom: 1cm;">DECLARAÇÃO DE CONFORMIDADE</h3>
-                  <p style="text-align: justify; line-height: 1.5;">
-                    Declaro que o produto acima especificado atende aos requisitos técnicos estabelecidos no Edital de Pré-qualificação, 
-                    estando em conformidade com as normas aplicáveis e possuindo os padrões mínimos de qualidade exigidos para inclusão 
-                    no Catálogo Eletrônico de Bens Padronizados.
-                  </p>
-                  <div style="margin-top: 2cm; text-align: center;">
-                    <div style="border-top: 1px solid #000; width: 200px; margin: 0 auto;">
-                      Responsável Técnico
-                    </div>
-                  </div>
-                </div>
               </div>
             `
           }
@@ -2527,7 +2840,16 @@ export default {
         }
       }
 
-      // Se há documentos de produtos, criar uma única página consolidada
+      // Filtrar documentos válidos antes de criar a página consolidada
+      documentosProdutoConsolidados = documentosProdutoConsolidados.filter(item => {
+        return item.documento && 
+               item.documento.nome && 
+               item.documento.nome !== 'undefined' && 
+               item.documento.url && 
+               item.documento.url !== 'undefined'
+      })
+      
+      // Se há documentos de produtos válidos, criar uma única página consolidada
       if (documentosProdutoConsolidados.length > 0) {
         // Remover documentos individuais de produtos da lista
         documentosCompletos = documentosCompletos.filter(doc => doc.tipo_documento !== 'DOCUMENTO_PRODUTO')
@@ -2553,9 +2875,11 @@ export default {
               <h3>RELAÇÃO DE DOCUMENTOS DE PRODUTOS</h3>
               <p>Os seguintes documentos técnicos estão anexados aos produtos deste processo:</p>
               
-              ${documentosProdutoConsolidados.map((item, index) => `
+              ${documentosProdutoConsolidados
+                .filter(item => item.documento && item.documento.nome && item.documento.nome !== 'undefined' && item.documento.url && item.documento.url !== 'undefined')
+                .map((item, index) => `
                 <div style="margin: 1cm 0; padding: 0.5cm; border-left: 3px solid #1976d2;">
-                  <p><strong>${index + 1}. ${item.produto.nome}</strong></p>
+                  <p><strong>${index + 1}. ${item.produto.nome || 'Produto'}</strong></p>
                   <p><strong>Documento:</strong> ${item.documento.nome}</p>
                   <p><strong>Link:</strong> 
                     <a href="${item.documento.url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
@@ -2623,6 +2947,12 @@ export default {
       let proximoNumero = 1
       
       documentosCompletos.forEach((doc, index) => {
+        // Gerar conteúdo HTML para documentos ASSINADOS (para integrar como página)
+        if (doc.tipo_documento === 'ASSINADO' && !doc.conteudo_html) {
+          console.log('🖊️ Gerando conteúdo HTML para documento ASSINADO:', doc.nome_documento)
+          doc.conteudo_html = this.gerarHTMLDocumentoAssinado(processo, doc)
+        }
+        
         // Atribuir numeração sequencial
         doc.numero_sequencial = proximoNumero++
         doc.numero_folha = doc.numero_sequencial
@@ -2638,9 +2968,86 @@ export default {
         if (a.tipo_documento === 'DFD') return b.tipo_documento === 'FOLHA_ROSTO' ? 1 : -1
         if (b.tipo_documento === 'DFD') return a.tipo_documento === 'FOLHA_ROSTO' ? -1 : 1
         
+        // Documentos ASSINADOS sempre por último (página final do processo)
+        if (a.tipo_documento === 'ASSINADO' && b.tipo_documento !== 'ASSINADO') return 1
+        if (b.tipo_documento === 'ASSINADO' && a.tipo_documento !== 'ASSINADO') return -1
+        
+        // Entre documentos ASSINADOS, manter ordem cronológica (mais recente por último)
+        if (a.tipo_documento === 'ASSINADO' && b.tipo_documento === 'ASSINADO') {
+          return new Date(a.data_autuacao || 0) - new Date(b.data_autuacao || 0)
+        }
+        
         // Demais documentos por número
         return (a.numero_folha || 999) - (b.numero_folha || 999)
       })
+    },
+
+    // =====================================================
+    // GERAÇÃO DE HTML PARA DOCUMENTO ASSINADO INTEGRADO
+    // =====================================================
+    
+    gerarHTMLDocumentoAssinado(processo, documento) {
+      const dataAssinatura = new Date(documento.data_autuacao).toLocaleDateString('pt-BR')
+      
+      return `
+        <div class="documento-header">
+          <h1>${processo.nome_orgao}</h1>
+          <h2>DOCUMENTO ASSINADO PELA AUTORIDADE COMPETENTE</h2>
+          <p>Processo nº ${processo.numero_processo}</p>
+        </div>
+        
+        <div class="documento-conteudo">
+          <div class="caixa-bordered" style="margin: 2cm auto; padding: 1.5cm; border: 2px solid #000;">
+            <h3 style="text-align: center; margin-bottom: 1.5cm; font-size: 14pt;">DECLARAÇÃO DE RESPONSABILIDADE</h3>
+            
+            <div class="campo" style="margin-bottom: 1cm;">
+              <p><strong>Tipo de Processo:</strong> ${processo.tipo_processo === 'padronizacao' ? 'Padronização de Produtos' : 'Despadronização de Produtos'}</p>
+            </div>
+            
+            <div class="campo" style="margin-bottom: 1cm;">
+              <p><strong>Status do Processo:</strong> ${this.formatarStatus(processo.status)}</p>
+            </div>
+            
+            <div class="campo" style="margin-bottom: 1cm;">
+              <p><strong>Unidade Interessada:</strong> ${processo.unidade_interessada || 'Não informado'}</p>
+            </div>
+            
+            <div class="campo" style="margin-bottom: 1.5cm;">
+              <p><strong>Data de Autuação:</strong> ${this.formatarData(processo.data_autuacao)}</p>
+            </div>
+            
+            <p style="text-align: justify; margin-bottom: 1.5cm; line-height: 1.8;">Eu, na qualidade de <strong>AUTORIDADE COMPETENTE</strong> do órgão acima identificado, declaro que:</p>
+            
+            <ul style="margin: 1.5cm 0; line-height: 1.8; text-align: justify;">
+              <li>Analisei toda a documentação que compõe o presente processo administrativo;</li>
+              <li>Verifico que o processo está devidamente instruído e em conformidade com as normas aplicáveis;</li>
+              <li>As informações e documentos apresentados são verdadeiros e estão em conformidade com a legislação vigente;</li>
+              <li>Assumo a responsabilidade pelos atos administrativos decorrentes desta assinatura.</li>
+            </ul>
+            
+            <div style="margin-top: 2cm; text-align: center;">
+              <p style="margin-bottom: 1cm;"><strong>PROCESSO DEVIDAMENTE ASSINADO</strong></p>
+              <p style="margin-bottom: 0.5cm;"><strong>Data da Assinatura:</strong> ${dataAssinatura}</p>
+              
+              <div style="border-top: 2px solid #000; width: 10cm; margin: 2cm auto 0.5cm auto;"></div>
+              <p><strong>AUTORIDADE COMPETENTE</strong></p>
+              <p>${processo.nome_orgao}</p>
+            </div>
+          </div>
+          
+          <div style="margin-top: 1.5cm; padding: 1cm; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+            <h4 style="margin: 0 0 0.5cm 0; color: #495057;">Informações do Documento Assinado</h4>
+            <p style="margin: 0.3cm 0;"><strong>Nome do Arquivo:</strong> ${documento.nome_documento}</p>
+            <p style="margin: 0.3cm 0;"><strong>Data de Anexação:</strong> ${dataAssinatura}</p>
+            <p style="margin: 0.3cm 0;"><strong>Observações:</strong> ${documento.descricao || 'Documento assinado pela autoridade competente'}</p>
+          </div>
+          
+          <div style="margin-top: 2cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm; color: #666;">
+            <p><strong>Sistema Comprar Bem</strong> - Página Final do Processo</p>
+            <p>Documento integrado automaticamente - Processo nº ${processo.numero_processo}</p>
+          </div>
+        </div>
+      `
     },
 
     gerarHTMLFolhaRosto(processo) {
@@ -2697,20 +3104,22 @@ export default {
       const formatarBooleano = (valor) => valor ? 'SIM' : 'NÃO'
 
       let htmlConteudo = `
-        <div class="documento-header" style="text-align: center; margin-bottom: 1.5cm;">
-          <h1 style="font-size: 16pt; font-weight: bold; margin: 10px 0;">${tituloCompleto}</h1>
+        <div class="documento-header" style="text-align: center; margin-bottom: 1cm;">
+          <h1 style="font-size: 16pt; font-weight: bold; margin: 0.5cm 0; page-break-inside: avoid;">${processo.nome_orgao}</h1>
+          <h2 style="font-size: 14pt; font-weight: bold; margin: 0.3cm 0; page-break-inside: avoid;">${tituloCompleto}</h2>
+          <p style="font-size: 12pt; margin: 0.3cm 0;">Processo nº ${processo.numero_processo}</p>
         </div>
         
-        <div class="documento-conteudo" style="text-align: justify; line-height: 1.6; font-size: 12pt; word-wrap: break-word; overflow-wrap: break-word;">
+        <div class="documento-conteudo" style="text-align: justify; line-height: 1.7; font-size: 12pt; word-wrap: break-word; overflow-wrap: break-word; page-break-inside: avoid;">
           
-          <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">JUSTIFICATIVA</h2>
-          <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.justificativa || 'Justificativa da necessidade conforme processo administrativo.'}</p>
+          <h3 style="margin: 0.8cm 0 0.4cm 0; font-size: 13pt; text-transform: uppercase; page-break-after: avoid;">1. JUSTIFICATIVA</h3>
+          <p style="text-indent: 1.5cm; margin-bottom: 0.6cm; page-break-inside: avoid;">${dadosDFD?.justificativa || 'Justificativa da necessidade conforme processo administrativo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' de produtos.'}</p>
           
-          <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">DESCRIÇÃO DA NECESSIDADE</h2>
-          <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.descricao_necessidade || 'Descrição detalhada da necessidade identificada.'}</p>
+          <h3 style="margin: 0.8cm 0 0.4cm 0; font-size: 13pt; text-transform: uppercase; page-break-after: avoid;">2. DESCRIÇÃO DA NECESSIDADE</h3>
+          <p style="text-indent: 1.5cm; margin-bottom: 0.6cm; page-break-inside: avoid;">${dadosDFD?.descricao_necessidade || 'Descrição detalhada da necessidade identificada para o processo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' dos produtos especificados.'}</p>
           
-          <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">CRITÉRIOS DE ACEITAÇÃO</h2>
-          <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.criterios_aceitacao || 'Critérios de aceitação conforme normas técnicas aplicáveis.'}</p>
+          <h3 style="margin: 0.8cm 0 0.4cm 0; font-size: 13pt; text-transform: uppercase; page-break-after: avoid;">3. CRITÉRIOS DE ACEITAÇÃO</h3>
+          <p style="text-indent: 1.5cm; margin-bottom: 0.6cm; page-break-inside: avoid;">${dadosDFD?.criterios_aceitacao || 'Critérios de aceitação conforme normas técnicas aplicáveis e especificações definidas para o processo.'}</p>
           
           <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">OBSERVAÇÕES ESPECIAIS</h2>
           <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.observacoes_especiais || 'Observações especiais do processo.'}</p>`
@@ -2749,20 +3158,20 @@ export default {
       if (processo.tipo_processo === 'padronizacao') {
         if (dadosDFD?.produtos_especificacao) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">2. ESPECIFICAÇÃO DOS PRODUTOS:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.produtos_especificacao}</p>`
+            <h3 style="margin-top: 1cm; font-size: 13pt; page-break-after: avoid;">4. ESPECIFICAÇÃO DOS PRODUTOS</h3>
+            <p style="text-indent: 1.5cm; margin-bottom: 0.6cm; page-break-inside: avoid;">${dadosDFD.produtos_especificacao}</p>`
         }
 
         if (dadosDFD?.quantidade_amostras) {
           htmlConteudo += `
-            <h3 style="margin-top: 1cm; font-size: 13pt;">2.1. Quantidades de Amostras:</h3>
-            <p style="text-indent: 1.5cm;">${dadosDFD.quantidade_amostras} unidades</p>`
+            <h4 style="margin-top: 0.8cm; font-size: 12pt; page-break-after: avoid;">4.1. Quantidades de Amostras</h4>
+            <p style="text-indent: 1.5cm; margin-bottom: 0.4cm;">${dadosDFD.quantidade_amostras} unidades</p>`
         }
 
         if (dadosDFD?.previsao_aquisicoes) {
           htmlConteudo += `
-            <h3 style="margin-top: 1cm; font-size: 13pt;">2.2. Previsão de Aquisições:</h3>
-            <p style="text-indent: 1.5cm;">${dadosDFD.previsao_aquisicoes} unidades</p>`
+            <h4 style="margin-top: 0.8cm; font-size: 12pt; page-break-after: avoid;">4.2. Previsão de Aquisições</h4>
+            <p style="text-indent: 1.5cm; margin-bottom: 0.4cm;">${dadosDFD.previsao_aquisicoes} unidades</p>`
         }
 
         if (dadosDFD?.especificacoes_tecnicas) {
@@ -2914,16 +3323,17 @@ export default {
 
       // Conclusão
       htmlConteudo += `
-          <p style="margin-top: 2cm; text-align: justify;">
-            Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.
-          </p>
-          
-          <p style="margin-top: 1cm;">Em ${new Date().toLocaleDateString('pt-BR')}.</p>
-          
-          <div style="margin-top: 2cm; text-align: center;">
-            <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-            <div style="border-top: 1px solid #000; width: 400px; margin: 1.5cm auto 0.5cm auto;"></div>
-            <p><strong>Presidente da CPPM</strong></p>
+          <div style="margin-top: 1.5cm; page-break-inside: avoid;">
+            <p style="text-align: justify; margin-bottom: 1cm;">Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.</p>
+            
+            <p style="margin-bottom: 1.5cm;">Em ${new Date().toLocaleDateString('pt-BR')}.</p>
+            
+            <div style="text-align: center; margin-top: 2cm;">
+              <p style="margin-bottom: 0.5cm;"><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+              <div style="border-top: 1px solid #000; width: 8cm; margin: 1cm auto 0.3cm auto;"></div>
+              <p><strong>Equipe Técnica Responsável</strong></p>
+              <p>${processo.nome_orgao}</p>
+            </div>
           </div>
         </div>
       `
@@ -3048,6 +3458,17 @@ export default {
       console.log('🔍 DEBUG - Visualizando processo:', processo.numero_processo, 'Status:', `"${processo.status}"`)
       console.log('🔍 DEBUG - Processo completo:', processo)
       console.log('🔍 DEBUG - Comparação:', processo.status === 'em_criacao', processo.status, typeof processo.status)
+      
+      // Debug específico para status de autoridade
+      if (processo.status && processo.status.includes('submetido')) {
+        console.log('🚨 DEBUG ESPECÍFICO - Status contém "submetido":', {
+          statusOriginal: processo.status,
+          statusTrimmed: processo.status.trim(),
+          statusLength: processo.status.length,
+          statusBytes: Array.from(processo.status).map(c => c.charCodeAt(0)),
+          isExactMatch: processo.status === 'submetido_autoridade'
+        })
+      }
       
       // Se o processo está em criação (status = rascunho), abrir Assistente para continuar editando
       if (processo.status === 'rascunho' || processo.status === 'em_criacao') {
@@ -3453,11 +3874,26 @@ export default {
     
     async carregarAcoesDisponiveis() {
       try {
+        console.log('🔄 DEBUG - Carregando ações disponíveis para', this.processos.length, 'processos')
         const acoes = {}
         for (const processo of this.processos) {
-          acoes[processo.id] = await TramitacaoProcessosService.obterAcoesDisponiveis(processo)
+          const acoesProcesso = await TramitacaoProcessosService.obterAcoesDisponiveis(processo)
+          acoes[processo.id] = acoesProcesso
+          console.log(`🔍 DEBUG - Processo ${processo.numero_processo} (${processo.status}):`, acoesProcesso)
+          
+          // Log específico para status submetido_autoridade
+          if (processo.status === 'submetido_autoridade') {
+            console.log(`🚨 ATENÇÃO - Processo ${processo.numero_processo} com status "submetido_autoridade" tem ${acoesProcesso.length} ações`)
+            acoesProcesso.forEach((acao, index) => {
+              console.log(`  Ação ${index + 1}:`, acao)
+            })
+          }
         }
         this.acoesDisponiveis = acoes
+        console.log('🔄 DEBUG - Ações disponíveis carregadas:', acoes)
+        
+        // Forçar atualização da reatividade Vue
+        this.$forceUpdate()
       } catch (error) {
         console.error('Erro ao carregar ações disponíveis:', error)
         this.acoesDisponiveis = {}
@@ -3472,6 +3908,8 @@ export default {
         // Solicitar observações baseadas no tipo de ação
         if (acao.tipo === 'ENVIAR') {
           observacoes = prompt(`Observações para envio:`) || ''
+        } else if (acao.tipo === 'ENVIAR_FLEXIVEL') {
+          observacoes = prompt(`Observações para ${acao.descricao}:`) || ''
         } else if (acao.tipo === 'DEVOLVER') {
           motivo = prompt(`Motivo da devolução (obrigatório):`)
           if (!motivo || motivo.trim() === '') {
@@ -3497,6 +3935,14 @@ export default {
         switch (acao.tipo) {
           case 'ENVIAR':
             resultado = await TramitacaoProcessosService.enviarProcesso(processo.id, observacoes)
+            break
+          case 'ENVIAR_FLEXIVEL':
+            resultado = await TramitacaoProcessosService.enviarProcessoFlexivel(
+              processo.id, 
+              acao.statusDestino, 
+              acao.tipoFlexivel, 
+              observacoes
+            )
             break
           case 'DEVOLVER':
             resultado = await TramitacaoProcessosService.devolverProcesso(processo.id, motivo, observacoes)
@@ -3721,12 +4167,24 @@ export default {
             
             console.log(`🔗 URL gerada: ${publicUrl}`)
             
-            // Obter próxima numeração sequencial usando o serviço
-            const { numero, folha } = await NumeracaoDocumentosService.obterProximoNumero(this.processoSelecionado.id)
-            console.log(`📋 Numeração gerada: ${folha} (número ${numero})`)
-            
             // Definir tipo do documento
             const tipoDocumento = this.isOrgaoAdministrativo() ? 'ASSINADO' : this.tipoDocumentoSelecionado
+            
+            // Obter próxima numeração sequencial usando o serviço
+            // Para documentos ASSINADOS, usar numeração especial para garantir que fiquem no final
+            let numero, folha
+            if (tipoDocumento === 'ASSINADO') {
+              // Documentos assinados recebem numeração alta para ficarem no final
+              const timestamp = Date.now()
+              numero = 9000 + (timestamp % 1000) // Número alto mas único
+              folha = `AS-${String(timestamp % 100).padStart(2, '0')}` // Folha especial
+              console.log(`🖊️ Documento ASSINADO - Numeração especial: ${folha} (número ${numero})`)
+            } else {
+              const result = await NumeracaoDocumentosService.obterProximoNumero(this.processoSelecionado.id)
+              numero = result.numero
+              folha = result.folha
+              console.log(`📋 Numeração normal gerada: ${folha} (número ${numero})`)
+            }
             
             // Inserir registro na tabela documentos_processo com retry
             const documentoData = {
@@ -6808,6 +7266,59 @@ export default {
 .alert span {
   font-size: 1rem;
   opacity: 0.8;
+}
+
+.gerar-assinatura-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.gerar-assinatura-section h5 {
+  margin: 0 0 0.5rem 0;
+  color: #495057;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gerar-assinatura-section p {
+  margin: 0 0 1rem 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.btn-gerar-assinatura {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.btn-gerar-assinatura:hover {
+  background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+}
+
+.btn-gerar-assinatura:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.gerar-assinatura-section small {
+  color: #6c757d;
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
 /* Lembrete visual para tramitação CCL */

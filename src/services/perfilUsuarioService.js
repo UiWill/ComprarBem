@@ -71,6 +71,8 @@ export class PerfilUsuarioService {
         throw error
       }
 
+      console.log('🔍 DEBUG - Perfil do usuário atual retornado:', data)
+
       return data
     } catch (error) {
       console.error('Erro no serviço de perfil:', error)

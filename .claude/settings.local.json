@@ -30,7 +30,10 @@
       "Bash(echo \"-- Ver estrutura atual das atas para debug\nSELECT \n    id,\n    numero,\n    processo_id,\n    processos_incluidos,\n    numeros_processos,\n    total_processos,\n    status_ata,\n    created_at\nFROM atas_julgamento \nORDER BY created_at DESC\nLIMIT 3;\")",
       "Bash(echo \"-- Ver estrutura da tabela produtos\nSELECT column_name, data_type, is_nullable, column_default\nFROM information_schema.columns \nWHERE table_name = ''produtos'' \nORDER BY ordinal_position;\")",
       "Bash(echo \"-- 1. Ver dados completos da ata ATA-CCL-001-teste\nSELECT \n    id,\n    numero,\n    periodo,\n    descricao,\n    total_processos,\n    status_ata,\n    data_publicacao,\n    processo_id,\n    processos_incluidos,\n    numeros_processos,\n    conteudo_ata,\n    created_at\nFROM atas_julgamento \nWHERE numero LIKE ''%CCL-001-teste%''\nORDER BY created_at DESC;\")",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "WebFetch(domain:compras.mg.gov.br)",
+      "Bash(awk:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
