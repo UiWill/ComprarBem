@@ -7,13 +7,13 @@ Configurar domínio próprio para envio de emails de notificações automáticas
 - ✅ **Resend configurado** com API Key
 - ✅ **Edge Function funcionando** 
 - ✅ **GitHub Actions funcionando**
-- ❌ **Domínio próprio** - PENDENTE (comprarbem.com.br)
+- 🟡 **Domínio próprio** - EM PROCESSAMENTO (comprarbem.tec.br)
 
 ## 🚀 PRÓXIMOS PASSOS
 
 ### 1. COMPRAR DOMÍNIO
-- **Domínio**: `comprarbem.com.br`
-- **Onde comprar**: Registro.br, Hostinger, GoDaddy, etc.
+- **Domínio**: `comprarbem.tec.br` ✅ COMPRADO
+- **Status**: Pedido #30053191 - Aguardando processamento
 
 ### 2. CONFIGURAR DNS NO RESEND
 Após comprar o domínio, seguir estes passos:
@@ -21,7 +21,7 @@ Após comprar o domínio, seguir estes passos:
 #### 2.1 Adicionar domínio no Resend
 1. Acesse: https://resend.com/domains
 2. Clique em **"Add Domain"**
-3. Digite: `comprarbem.com.br`
+3. Digite: `comprarbem.tec.br`
 4. Selecione região: **São Paulo**
 
 #### 2.2 Copiar registros DNS
@@ -67,8 +67,8 @@ Arquivo: `EDGE_FUNCTION_DOMINIO_FINAL.ts` (será criado)
 
 ### Verificar propagação DNS
 ```bash
-nslookup -q=MX send.comprarbem.com.br
-nslookup -q=TXT send.comprarbem.com.br
+nslookup -q=MX send.comprarbem.tec.br
+nslookup -q=TXT send.comprarbem.tec.br
 ```
 
 ### Testar Edge Function

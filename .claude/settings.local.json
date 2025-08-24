@@ -33,7 +33,9 @@
       "Bash(echo:*)",
       "WebFetch(domain:compras.mg.gov.br)",
       "Bash(awk:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebSearch",
+      "Bash(nslookup:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

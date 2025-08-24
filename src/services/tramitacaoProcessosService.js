@@ -122,12 +122,17 @@ export class TramitacaoProcessosService {
       const { error: errorUpdate } = await supabase
         .from('processos_administrativos')
         .update({
-          status: proximoStatus,
-          data_ultima_tramitacao: new Date().toISOString()
+          status: proximoStatus
         })
         .eq('id', processoId)
       
       if (errorUpdate) throw errorUpdate
+      
+      // ✨ LÓGICA ESPECIAL: Inclusão automática no catálogo
+      if (proximoStatus === 'incluindo_marcas') {
+        console.log('🎯 Status "incluindo_marcas" detectado - incluindo produtos no catálogo automaticamente')
+        await this.incluirProdutosNoCatalogo(processoId)
+      }
       
       // Registrar histórico de tramitação
       await this.registrarTramitacao(processoId, processo.status, proximoStatus, 'ENVIADO', observacoes)
@@ -170,12 +175,17 @@ export class TramitacaoProcessosService {
       const { error: errorUpdate } = await supabase
         .from('processos_administrativos')
         .update({
-          status: statusDestino,
-          data_ultima_tramitacao: new Date().toISOString()
+          status: statusDestino
         })
         .eq('id', processoId)
       
       if (errorUpdate) throw errorUpdate
+      
+      // ✨ LÓGICA ESPECIAL: Inclusão automática no catálogo
+      if (statusDestino === 'incluindo_marcas') {
+        console.log('🎯 Status "incluindo_marcas" detectado no envio flexível - incluindo produtos no catálogo automaticamente')
+        await this.incluirProdutosNoCatalogo(processoId)
+      }
       
       // Registrar histórico de tramitação
       await this.registrarTramitacao(
@@ -257,7 +267,6 @@ export class TramitacaoProcessosService {
         .from('processos_administrativos')
         .update({
           status: statusDevolucao,
-          data_ultima_tramitacao: new Date().toISOString(),
           motivo_devolucao: motivoCompleto,
           observacoes_devolucao: observacoes,
           devolvido_por: perfilUsuario.perfil_usuario,
@@ -331,7 +340,6 @@ export class TramitacaoProcessosService {
         .from('processos_administrativos')
         .update({
           status: novoStatus,
-          data_ultima_tramitacao: new Date().toISOString(),
           motivo_devolucao: null,
           observacoes_devolucao: null,
           devolvido_por: null,
@@ -414,8 +422,7 @@ export class TramitacaoProcessosService {
       const { error: errorUpdate } = await supabase
         .from('processos_administrativos')
         .update({
-          status: statusRejeicao,
-          data_ultima_tramitacao: new Date().toISOString()
+          status: statusRejeicao
         })
         .eq('id', processoId)
       
@@ -773,6 +780,219 @@ export class TramitacaoProcessosService {
       }
     } catch (error) {
       console.warn('Erro ao registrar histórico:', error)
+    }
+  }
+
+  /**
+   * Incluir produtos do processo no catálogo (público e de marcas)
+   * Chamado automaticamente quando o status muda para 'incluindo_marcas'
+   */
+  static async incluirProdutosNoCatalogo(processoId) {
+    try {
+      console.log('🎯 Iniciando inclusão de produtos no catálogo para processo:', processoId)
+      
+      const tenantId = await getTenantId()
+      
+      // 1. Buscar todos os produtos do processo (assumindo que se chegou até aqui, já foram aprovados)
+      const { data: produtosProcesso, error: errorProdutos } = await supabase
+        .from('produtos_prequalificacao')
+        .select('*')
+        .eq('processo_id', processoId)
+        .eq('tenant_id', tenantId)
+      
+      if (errorProdutos) throw errorProdutos
+      
+      if (!produtosProcesso || produtosProcesso.length === 0) {
+        console.log('⚠️ Nenhum produto encontrado no processo')
+        return
+      }
+      
+      // Filtrar produtos aprovados se o campo existir
+      const produtosAprovados = produtosProcesso.filter(produto => {
+        // Se tem campo aprovado_em, considera aprovado
+        if (produto.aprovado_em) return true
+        // Se não tem campo de aprovação, considera que todos estão aprovados no final do processo
+        return true
+      })
+      
+      console.log(`📦 Encontrados ${produtosAprovados.length} produtos para inclusão no catálogo`)
+      
+      let produtosIncluidos = 0
+      
+      for (const produtoPrequalificacao of produtosAprovados) {
+        // Na tabela produtos_prequalificacao, o campo pode ser 'produto_id' ou outro
+        const produtoId = produtoPrequalificacao.produto_id || produtoPrequalificacao.id
+        
+        if (!produtoId) {
+          console.warn(`⚠️ ID do produto não encontrado na pré-qualificação ${produtoPrequalificacao.id}`)
+          console.log('Dados da pré-qualificação:', produtoPrequalificacao)
+          continue
+        }
+        
+        try {
+          // 2. Se produto_id existe, buscar na tabela produtos
+          if (produtoPrequalificacao.produto_id) {
+            const { data: produto, error: errorBuscarProduto } = await supabase
+              .from('produtos')
+              .select('id, nome, tenant_id')
+              .eq('id', produtoPrequalificacao.produto_id)
+              .eq('tenant_id', tenantId)
+              .single()
+            
+            if (errorBuscarProduto || !produto) {
+              console.warn(`⚠️ Produto ${produtoPrequalificacao.produto_id} não encontrado na tabela produtos`)
+            } else {
+              // 3. Atualizar status do produto para "homologado"
+              const { error: errorAtualizarProduto } = await supabase
+                .from('produtos')
+                .update({
+                  status: 'homologado'
+                })
+                .eq('id', produto.id)
+                .eq('tenant_id', tenantId)
+              
+              if (errorAtualizarProduto) {
+                console.error(`❌ Erro ao homologar produto ${produto.id}:`, errorAtualizarProduto)
+              } else {
+                produtosIncluidos++
+                console.log(`✅ Produto homologado: ${produto.nome}`)
+              }
+            }
+          } else {
+            // Verificar se já existe produto com as mesmas características para evitar duplicatas
+            const nomeProduto = produtoPrequalificacao.nome_produto || 'Produto sem nome'
+            const marca = produtoPrequalificacao.marca || ''
+            const modelo = produtoPrequalificacao.modelo || ''
+            const fabricante = produtoPrequalificacao.fabricante || ''
+            
+            const { data: produtoExistente, error: errorBuscar } = await supabase
+              .from('produtos')
+              .select('id, nome, status')
+              .eq('tenant_id', tenantId)
+              .eq('nome', nomeProduto)
+              .eq('marca', marca)
+              .eq('modelo', modelo)
+              .eq('fabricante', fabricante)
+              .maybeSingle()
+            
+            if (errorBuscar && errorBuscar.code !== 'PGRST116') {
+              console.error(`❌ Erro ao verificar produto existente:`, errorBuscar)
+            } else if (produtoExistente) {
+              console.log(`⚠️ Produto já existe no catálogo: ${produtoExistente.nome}`)
+              // Apenas atualizar status se necessário
+              if (produtoExistente.status !== 'homologado') {
+                const { error: errorAtualizar } = await supabase
+                  .from('produtos')
+                  .update({ status: 'homologado' })
+                  .eq('id', produtoExistente.id)
+                
+                if (!errorAtualizar) {
+                  produtosIncluidos++
+                  console.log(`✅ Status do produto atualizado para homologado: ${produtoExistente.nome}`)
+                }
+              } else {
+                console.log(`ℹ️ Produto já está homologado: ${produtoExistente.nome}`)
+              }
+            } else {
+              // Verificar se existe produto aprovado com DCB para copiar informações
+              const { data: produtoComDCB, error: errorDCB } = await supabase
+                .from('produtos')
+                .select('numero_dcb, validade_dcb')
+                .eq('tenant_id', tenantId)
+                .eq('nome', nomeProduto)
+                .eq('marca', marca)
+                .eq('modelo', modelo)
+                .eq('fabricante', fabricante)
+                .eq('status', 'aprovado')
+                .not('numero_dcb', 'is', null)
+                .maybeSingle()
+              
+              // Criar novo produto no catálogo apenas se não existir
+              const novoProduto = {
+                nome: nomeProduto,
+                marca: marca,
+                modelo: modelo,
+                fabricante: fabricante,
+                cnpj: produtoPrequalificacao.cnpj_fornecedor || produtoPrequalificacao.cnpj || '00.000.000/0000-00',
+                status: 'homologado',
+                tenant_id: tenantId
+              }
+              
+              // Se encontrou produto com DCB, copiar as informações
+              if (produtoComDCB) {
+                novoProduto.numero_dcb = produtoComDCB.numero_dcb
+                novoProduto.validade_dcb = produtoComDCB.validade_dcb
+                console.log(`📋 DCB copiado para produto homologado: ${produtoComDCB.numero_dcb}`)
+              }
+              
+              const { error: errorCriarProduto } = await supabase
+                .from('produtos')
+                .insert([novoProduto])
+              
+              if (errorCriarProduto) {
+                console.error(`❌ Erro ao criar produto no catálogo:`, errorCriarProduto)
+              } else {
+                produtosIncluidos++
+                const dcbInfo = novoProduto.numero_dcb ? ` (com DCB ${novoProduto.numero_dcb})` : ''
+                console.log(`✅ Novo produto criado no catálogo: ${novoProduto.nome}${dcbInfo}`)
+              }
+            }
+          }
+          
+        } catch (error) {
+          console.error(`❌ Erro ao processar produto:`, error)
+        }
+      }
+      
+      console.log(`🎉 Inclusão no catálogo concluída:`)
+      console.log(`   📦 Produtos homologados: ${produtosIncluidos}`)
+      
+      // 3. Registrar log da operação
+      await this.registrarTramitacao(
+        processoId, 
+        'expedindo_dcbs', 
+        'incluindo_marcas', 
+        'INCLUSAO_CATALOGO', 
+        `${produtosIncluidos} produtos homologados e incluídos automaticamente no catálogo`
+      )
+      
+    } catch (error) {
+      console.error('❌ Erro ao incluir produtos no catálogo:', error)
+      throw new Error(`Falha na inclusão automática no catálogo: ${error.message}`)
+    }
+  }
+
+  /**
+   * 🔧 MÉTODO TEMPORÁRIO: Processar manualmente inclusão no catálogo para processos já tramitados
+   * Usar apenas para corrigir processo 001/2025 que já foi tramitado mas não teve inclusão automática
+   */
+  static async processarInclusaoManual(processoId) {
+    try {
+      console.log('🔧 PROCESSAMENTO MANUAL - Incluindo produtos no catálogo para processo:', processoId)
+      
+      // Verificar se processo está em incluindo_marcas
+      const { data: processo, error: errorProcesso } = await supabase
+        .from('processos_administrativos')
+        .select('*')
+        .eq('id', processoId)
+        .single()
+      
+      if (errorProcesso) throw errorProcesso
+      
+      if (processo.status !== 'incluindo_marcas') {
+        throw new Error(`Processo deve estar em "incluindo_marcas". Status atual: ${processo.status}`)
+      }
+      
+      console.log(`✅ Processo ${processo.numero_processo} confirmado em status "incluindo_marcas"`)
+      
+      // Executar inclusão no catálogo
+      await this.incluirProdutosNoCatalogo(processoId)
+      
+      console.log('🎉 Processamento manual concluído com sucesso!')
+      
+    } catch (error) {
+      console.error('❌ Erro no processamento manual:', error)
+      throw error
     }
   }
 

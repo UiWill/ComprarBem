@@ -1,5 +1,5 @@
 // 🚀 Edge Function FINAL para Sistema de Notificações Automáticas
-// VERSÃO PARA USAR COM DOMÍNIO PRÓPRIO: comprarbem.com.br
+// VERSÃO PARA USAR COM DOMÍNIO PRÓPRIO: comprarbem.tec.br
 // Executa verificações automáticas de lembretes e novos produtos
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'jsr:@supabase/supabase-js@2'
@@ -22,7 +22,7 @@ async function enviarEmailViaResend(emailData: any) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Sistema Comprar Bem <notificacoes@comprarbem.com.br>',
+        from: 'Sistema Comprar Bem <notificacoes@comprarbem.tec.br>',
         to: [emailData.destinatario],
         subject: emailData.assunto,
         html: emailData.conteudo || `
@@ -115,7 +115,7 @@ function gerarHTMLLembrete(dados: any) {
       </div>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="https://comprarbem.com.br/rdm" class="cta-button">
+        <a href="https://comprarbem.tec.br/rdm" class="cta-button">
           📝 Acessar Dashboard e Avaliar Agora
         </a>
       </div>
@@ -124,7 +124,7 @@ function gerarHTMLLembrete(dados: any) {
     <div class="footer">
       Sistema Comprar Bem - Compras Públicas Inteligentes<br>
       Este é um lembrete automático enviado via Supabase Edge Functions.<br>
-      <a href="mailto:suporte@comprarbem.com.br">suporte@comprarbem.com.br</a>
+      <a href="mailto:suporte@comprarbem.tec.br">suporte@comprarbem.tec.br</a>
     </div>
   </div>
 </body>
@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
               <h2>🎉 Novo Produto Disponível</h2>
               <p><strong>Produto:</strong> ${produto.nome_produto}</p>
               <p>Um novo produto foi adicionado ao sistema e está aguardando sua avaliação.</p>
-              <p><a href="https://comprarbem.com.br/dashboard" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Sistema</a></p>
+              <p><a href="https://comprarbem.tec.br/dashboard" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Sistema</a></p>
               <hr>
               <p><small>Sistema Comprar Bem - Compras Públicas Inteligentes</small></p>
             `

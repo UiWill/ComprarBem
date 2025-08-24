@@ -413,8 +413,12 @@
                       <button @click="baixarAta(ata)" class="btn-small btn-primary" title="Baixar arquivo PDF da ata">
                         📄 Baixar PDF
                       </button>
-                      <button @click="visualizarAta(ata)" class="btn-small btn-secondary" title="Visualizar conteúdo da ata">
-                        👁️ Visualizar
+                      <button 
+                        v-if="podeExibirBotaoTramitar(ata)"
+                        @click="tramitarProcessoAta(ata)" 
+                        class="btn-small btn-success" 
+                        title="Continuar tramitação do processo">
+                        ⚖️ Tramitar
                       </button>
                     </div>
                   </td>
@@ -529,91 +533,10 @@
       
       <!-- Aba Homologações -->
       <div v-show="activeTab === 'homologacoes'" class="homologacoes tab-pane">
-      <div class="homologacoes-header">
-        <h3>📋 Homologações da Autoridade Competente</h3>
-        <div class="alert-info" style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 10px; border-radius: 5px; margin: 10px 0; color: #0c5460;">
-          <strong>ℹ️ RESPONSABILIDADE:</strong> As homologações são de competência exclusiva da <strong>Autoridade Competente</strong>, conforme especificado no fluxo legal. A CCL emite recomendações técnicas através das atas de julgamento.
-        </div>
-        <p class="homologacoes-description">
-          Acompanhamento de processos aguardando decisão da Autoridade Competente e histórico de homologações
-        </p>
-        <div class="homologacoes-actions">
-          <button @click="consultarPendentes" class="btn-primary">
-            📋 Processos Pendentes
-          </button>
-          <button @click="relatorioHomologacoes" class="btn-secondary">
-            📊 Relatório Geral
-          </button>
-        </div>
+      <div class="homologacoes-header" style="margin-bottom: 30px;">
         
-        <!-- Cards de Estatísticas -->
-        <div class="stats-container" style="margin: 20px 0;">
-          <div class="stat-card">
-            <div class="stat-icon">⏳</div>
-            <h3>Pendentes</h3>
-            <div class="stat-value">{{ homologacoesPendentes }}</div>
-            <p class="stat-description">Aguardando decisão da Autoridade</p>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">✅</div>
-            <h3>Homologadas</h3>
-            <div class="stat-value">{{ homologacoesAprovadas }}</div>
-            <p class="stat-description">Processos homologados</p>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">❌</div>
-            <h3>Indeferidas</h3>
-            <div class="stat-value">{{ homologacoesIndeferidas }}</div>
-            <p class="stat-description">Processos indeferidos</p>
-          </div>
-        </div>
 
-        <!-- Seção Processos Pendentes de Homologação -->
-        <div class="processos-pendentes-homologacao">
-          <div class="section-header">
-            <h4>⏳ Processos Aguardando Decisão da Autoridade</h4>
-            <p class="section-description">Processos julgados pela CCL aguardando homologação pela Autoridade Competente</p>
-          </div>
-          
-          <div v-if="processosPendentesHomologacao.length === 0" class="empty-state">
-            <div class="empty-icon">⚖️</div>
-            <h4>Nenhum processo pendente</h4>
-            <p>Não há processos aguardando decisão da Autoridade Competente no momento.</p>
-          </div>
-          
-          <div v-else class="processos-lista">
-            <div 
-              v-for="processo in processosPendentesHomologacaoPaginados" 
-              :key="processo.id" 
-              class="processo-card"
-              :class="{ 'processo-urgente': processo.prazoVencido }"
-            >
-              <div class="processo-info">
-                <div class="processo-header">
-                  <h5>{{ processo.numeroAta }}</h5>
-                  <span class="processo-tipo">{{ processo.tipoProcesso?.toUpperCase() }}</span>
-                </div>
-                <p class="processo-orgao">{{ processo.orgaoResponsavel }}</p>
-                <div class="processo-details">
-                  <span class="data-julgamento">📅 Julgado em: {{ formatDate(processo.dataJulgamento) }}</span>
-                  <span :class="getPrazoHomologacaoClass(processo.dataJulgamento)">
-                    ⏰ {{ calcularPrazoHomologacao(processo.dataJulgamento) }}
-                  </span>
-                </div>
-              </div>
-              <div class="processo-actions">
-                <button @click="visualizarProcessoHomologacao(processo)" class="btn-small btn-primary">
-                  👁️ Detalhes
-                </button>
-                <button @click="notificarAutoridade(processo)" class="btn-small btn-warning">
-                  📧 Notificar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Seção Homologações Recentes - Componente Separado -->
+        <!-- Seção Homologações e Decisões - Componente Unificado -->
         <HomologacoesCCL ref="homologacoesCCL" />
       </div>
     </div>
@@ -624,6 +547,7 @@
 import { supabase } from '@/services/supabase'
 import TramitacaoProcessosService from '@/services/tramitacaoProcessosService'
 import ProcessosAdministrativosService from '@/services/processosAdministrativosService'
+import EmailNotificationService from '@/services/emailNotificationService'
 import HomologacoesCCL from './HomologacoesCCL.vue'
 
 export default {
@@ -856,6 +780,25 @@ export default {
   methods: {
     setActiveTab(tab) {
       this.activeTab = tab
+    },
+
+    podeExibirBotaoTramitar(ata) {
+      // Verificar diferentes estruturas possíveis dos dados
+      let statusProcesso = null
+      
+      if (ata.ata_completa?.processos_administrativos) {
+        if (Array.isArray(ata.ata_completa.processos_administrativos)) {
+          // Se é array, pegar o primeiro
+          statusProcesso = ata.ata_completa.processos_administrativos[0]?.status
+        } else {
+          // Se é objeto direto
+          statusProcesso = ata.ata_completa.processos_administrativos.status
+        }
+      }
+      
+      const podeTrarmitar = statusProcesso && ['ata_ccl', 'publicacao_ata'].includes(statusProcesso)
+      
+      return podeTrarmitar
     },
 
     // Decisão da Autoridade - Versão Simples
@@ -1329,48 +1272,190 @@ export default {
     },
 
     // Métodos específicos para Atas de Julgamento
-    editarAta(ata) {
-      this.$swal({
-        title: '✏️ Editar Ata de Julgamento',
-        text: `Editando ata ${ata.numero_ata || `ATA-CCL-${ata.id}`}`,
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonText: '📝 Abrir Editor',
-        cancelButtonText: 'Cancelar'
-      }).then((result) => {
-        if (result.isConfirmed) {
+    async editarAta(ata) {
+      try {
+        // Carregar dados atuais da ata
+        const { data: ataAtual, error } = await supabase
+          .from('atas_julgamento')
+          .select('*')
+          .eq('id', ata.id)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
+
+        if (error) throw error
+
+        const numeroAta = ataAtual.numero || `ATA-CCL-${ataAtual.id}`
+        const conteudoAtual = ataAtual.conteudo_ata || this.gerarConteudoPadraoAta(ataAtual)
+        const descricaoAtual = ataAtual.descricao || ''
+
+        // Abrir editor completo
+        const { value: dadosEditados } = await this.$swal({
+          title: `✏️ Editor de Ata - ${numeroAta}`,
+          html: `
+            <div style="text-align: left; max-width: 800px; margin: 0 auto;">
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">📋 Descrição/Resumo da Ata:</label>
+                <textarea id="descricaoAta" class="swal2-textarea" rows="3" 
+                  placeholder="Descreva brevemente o conteúdo desta ata de julgamento..."
+                  style="width: 100%; min-height: 80px;">${descricaoAtual}</textarea>
+              </div>
+              
+              <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">📄 Conteúdo Completo da Ata:</label>
+                <textarea id="conteudoAta" class="swal2-textarea" rows="15" 
+                  placeholder="Digite o conteúdo completo da ata de julgamento..."
+                  style="width: 100%; min-height: 400px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;">${conteudoAtual}</textarea>
+              </div>
+              
+              <div style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin: 10px 0; font-size: 12px;">
+                <strong>💡 Dicas:</strong>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                  <li>Use formatação clara e objetiva</li>
+                  <li>Inclua fundamentação técnica das decisões</li>
+                  <li>Mencione todos os processos julgados</li>
+                  <li>Mantenha linguagem formal e técnica</li>
+                </ul>
+              </div>
+            </div>
+          `,
+          focusConfirm: false,
+          showCancelButton: true,
+          confirmButtonText: '💾 Salvar Alterações',
+          cancelButtonText: '❌ Cancelar',
+          width: '90%',
+          customClass: {
+            container: 'editor-ata-container'
+          },
+          preConfirm: () => {
+            const descricao = document.getElementById('descricaoAta').value.trim()
+            const conteudo = document.getElementById('conteudoAta').value.trim()
+            
+            if (!descricao) {
+              this.$swal.showValidationMessage('Por favor, preencha a descrição da ata')
+              return false
+            }
+            
+            if (!conteudo) {
+              this.$swal.showValidationMessage('Por favor, preencha o conteúdo da ata')
+              return false
+            }
+            
+            return {
+              descricao: descricao,
+              conteudo: conteudo
+            }
+          }
+        })
+
+        if (dadosEditados) {
+          // Salvar as alterações no banco
+          const { error: updateError } = await supabase
+            .from('atas_julgamento')
+            .update({
+              descricao: dadosEditados.descricao,
+              conteudo_ata: dadosEditados.conteudo,
+              atualizado_em: new Date().toISOString(),
+              progresso_elaboracao: Math.min(100, (ataAtual.progresso_elaboracao || 0) + 25)
+            })
+            .eq('id', ata.id)
+            .eq('tenant_id', this.currentTenantId)
+
+          if (updateError) throw updateError
+
+          // Recarregar dados
+          await this.atualizarDadosAtas()
+
           this.$swal({
-            title: 'Em desenvolvimento',
-            text: 'O editor de atas será implementado em breve.',
-            icon: 'info'
+            title: '✅ Ata Atualizada!',
+            text: `A ata ${numeroAta} foi atualizada com sucesso.`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
           })
         }
-      })
+
+      } catch (error) {
+        console.error('Erro ao editar ata:', error)
+        this.$swal({
+          title: '❌ Erro ao Editar',
+          text: `Erro ao editar ata: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+
+    gerarConteudoPadraoAta(ata) {
+      const dataAtual = new Date().toLocaleDateString('pt-BR')
+      const numeroAta = ata.numero || `ATA-CCL-${ata.id}`
+      
+      return `ATA DE JULGAMENTO ${numeroAta}
+
+DATA: ${dataAtual}
+COMISSÃO DE COMPRA E LICITAÇÃO - CCL
+
+PROCESSOS ANALISADOS: ${ata.total_processos || 0}
+
+1. ABERTURA DA SESSÃO
+Em ${dataAtual}, reuniu-se a Comissão de Compra e Licitação - CCL para análise e julgamento dos processos administrativos encaminhados pela Comissão de Padronização de Materiais - CPM.
+
+2. ANÁLISE DOS PROCESSOS
+Os membros da CCL procederam à análise técnica e legal dos processos administrativos, verificando:
+- Conformidade técnica dos produtos/serviços
+- Adequação às especificações estabelecidas
+- Documentação apresentada pelos fornecedores
+- Atendimento aos requisitos normativos aplicáveis
+
+3. DECISÕES TOMADAS
+[Descrever aqui as decisões específicas para cada processo analisado]
+
+4. ENCAMINHAMENTOS
+Os processos aprovados são encaminhados à Autoridade Competente para homologação final.
+
+5. ENCERRAMENTO
+Nada mais havendo a ser tratado, foi encerrada a presente sessão.
+
+CCL - Comissão de Compra e Licitação`
     },
 
     async visualizarAta(ata) {
       try {
-        // Para as atas reais baseadas em processos, usar os dados já carregados
-        let processo
+        console.log('👁️ Visualizando ata completa:', ata.id)
+        
+        // PRIMEIRO: Buscar dados completos da ata do banco de dados
+        const { data: ataCompleta, error: ataError } = await supabase
+          .from('atas_julgamento')
+          .select('*')
+          .eq('id', ata.id)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
+
+        if (ataError) {
+          console.error('Erro ao buscar ata completa:', ataError)
+          throw ataError
+        }
+        
+        console.log('✅ Ata completa carregada:', ataCompleta)
+        
+        // SEGUNDO: Buscar processo relacionado se necessário
+        let processo = null
         
         if (ata.processo_completo) {
           // Usar diretamente os dados do processo que já estão carregados
-          console.log('👁️ Visualizando ata do processo:', ata.numero_processo)
+          console.log('👁️ Usando dados do processo já carregados:', ata.numero_processo)
           processo = ata.processo_completo
-        } else if (ata.processo_id) {
-          // Fallback: buscar processo se não estiver carregado
-          console.log('🔗 Buscando processo específico da ata:', ata.processo_id)
+        } else if (ataCompleta.processo_id) {
+          // Buscar processo se não estiver carregado
+          console.log('🔗 Buscando processo específico da ata:', ataCompleta.processo_id)
           const result = await supabase
             .from('processos_administrativos')
             .select('numero_processo, objeto, ata_julgamento_ccl, id, tipo_processo, nome_orgao')
-            .eq('id', ata.processo_id)
+            .eq('id', ataCompleta.processo_id)
             .eq('tenant_id', this.currentTenantId)
             .single()
           
-          if (result.error) throw result.error
-          processo = result.data
-        } else {
-          throw new Error('Ata sem vinculação específica com processo')
+          if (!result.error) {
+            processo = result.data
+          }
         }
           
         let processoInfo = ''
@@ -1390,32 +1475,57 @@ export default {
         }
 
         this.$swal({
-          title: '📄 Informações da Ata',
+          title: `📄 Visualização da Ata - ${ataCompleta.numero || `ATA-${String(ataCompleta.id).slice(-4)}`}`,
           html: `
-            <div style="text-align: left;">
-              <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-                <h4>📋 Dados da Ata</h4>
-                <p><strong>Número:</strong> ${ata.numero || ata.numero_ata || `ATA-${String(ata.id).slice(-4)}`}</p>
-                <p><strong>Período:</strong> ${ata.periodo || 'N/A'}</p>
-                <p><strong>Data Publicação:</strong> ${this.formatDate(ata.dataPublicacao || ata.data_publicacao)}</p>
-                <p><strong>Status:</strong> ${ata.statusRecursal || ata.status_ata || 'EM PRAZO'}</p>
-                <p><strong>Total de Processos:</strong> ${ata.totalProcessos || ata.processos_count || 1}</p>
+            <div style="text-align: left; max-height: 600px; overflow-y: auto;">
+              <!-- Cabeçalho da Ata -->
+              <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #007bff;">
+                <h4 style="margin-top: 0;">📋 Informações da Ata</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div>
+                    <p><strong>Número:</strong> ${ataCompleta.numero || `ATA-${String(ataCompleta.id).slice(-4)}`}</p>
+                    <p><strong>Status:</strong> ${ataCompleta.status_ata || 'EM ELABORAÇÃO'}</p>
+                    <p><strong>Total Processos:</strong> ${ataCompleta.total_processos || 1}</p>
+                  </div>
+                  <div>
+                    <p><strong>Período:</strong> ${ataCompleta.periodo || 'N/A'}</p>
+                    <p><strong>Data Publicação:</strong> ${this.formatDate(ataCompleta.data_publicacao)}</p>
+                    <p><strong>Progresso:</strong> ${ataCompleta.progresso_elaboracao || 0}%</p>
+                  </div>
+                </div>
+                ${ataCompleta.descricao ? `<p><strong>Descrição:</strong> ${ataCompleta.descricao}</p>` : ''}
               </div>
-              
+
+              <!-- Conteúdo da Ata Editado -->
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #28a745;">
+                <h4 style="margin-top: 0; color: #155724;">📄 CONTEÚDO DA ATA</h4>
+                <div style="background: white; padding: 15px; border-radius: 5px; white-space: pre-line; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6;">
+                  ${ataCompleta.conteudo_ata || 'Conteúdo da ata ainda não foi editado. Use o botão "✏️ Continuar" para adicionar conteúdo.'}
+                </div>
+              </div>
+
+              <!-- Informações do Processo Relacionado -->
               ${processoInfo}
               
-              <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px solid #c3e6cb;">
-                <h4 style="margin-top: 0; color: #155724;">✨ Novo: PDF com Ata CCL (Fl. 003)</h4>
-                <p style="margin-bottom: 10px; color: #155724;">Agora você pode gerar o relatório completo do processo com a Ata de Julgamento CCL incluída como Fl. 003!</p>
-                ${processo ? `
-                  <button onclick="window.gerarPDFComAta('${ata.id}', '${processo.id}')" 
-                          style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-right: 10px;">
-                    📄 Gerar PDF Completo (com Ata)
+              <!-- Ações Disponíveis -->
+              <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h4 style="margin-top: 0; color: #856404;">⚡ Ações Disponíveis</h4>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <button onclick="window.editarAtaCompleta('${ataCompleta.id}')" 
+                          style="background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                    ✏️ Editar Conteúdo
                   </button>
-                ` : ''}
-                <small style="display: block; margin-top: 8px; color: #6c757d;">
-                  O PDF incluirá: Folha de Rosto (Fl. 001) + DFD (Fl. 002) + <strong>Ata CCL (Fl. 003)</strong> + Demais documentos
-                </small>
+                  ${processo ? `
+                    <button onclick="window.gerarPDFComAta('${ataCompleta.id}', '${processo.id}')" 
+                            style="background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                      📄 Baixar PDF
+                    </button>
+                  ` : ''}
+                  <button onclick="window.finalizarAta('${ataCompleta.id}')" 
+                          style="background: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                    🎯 Finalizar Ata
+                  </button>
+                </div>
               </div>
             </div>
           `,
@@ -1423,12 +1533,17 @@ export default {
           confirmButtonText: 'Fechar',
           width: '700px',
           didOpen: () => {
-            // Adicionar função global temporária para gerar PDF
+            // Adicionar funções globais temporárias
+            window.editarAtaCompleta = (ataId) => {
+              this.$swal.close()
+              this.editarAta(ataCompleta)
+            }
+            
             window.gerarPDFComAta = async (ataId, processoId) => {
               try {
                 this.$swal.close()
-                if (processo && ata) {
-                  await this.visualizarProcessoComAta(processo, ata)
+                if (processo && ataCompleta) {
+                  await this.visualizarProcessoComAta(processo, ataCompleta)
                 }
               } catch (error) {
                 console.error('Erro ao gerar PDF:', error)
@@ -1439,10 +1554,17 @@ export default {
                 })
               }
             }
+            
+            window.finalizarAta = (ataId) => {
+              this.$swal.close()
+              this.finalizarAtaElaboracao(ataCompleta)
+            }
           },
           willClose: () => {
-            // Limpar função global
+            // Limpar funções globais
+            delete window.editarAtaCompleta
             delete window.gerarPDFComAta
+            delete window.finalizarAta
           }
         })
       } catch (error) {
@@ -1466,6 +1588,22 @@ export default {
     async baixarAta(ata) {
       try {
         console.log('📄 Gerando PDF para ata:', ata.numero)
+        
+        // PRIMEIRO: Buscar dados completos da ata do banco de dados
+        const { data: ataCompleta, error: ataError } = await supabase
+          .from('atas_julgamento')
+          .select('*')
+          .eq('id', ata.id)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
+        
+        if (ataError) {
+          console.error('Erro ao buscar ata completa:', ataError)
+        } else if (ataCompleta) {
+          console.log('✅ Ata completa encontrada no banco:', ataCompleta.numero)
+          // Usar ataCompleta se os dados forem encontrados
+          ata = { ...ata, ...ataCompleta }
+        }
         
         // Para atas publicadas, buscar processo(s) vinculado(s)
         let processo = null
@@ -1556,11 +1694,9 @@ export default {
         }
         
         if (!processo || processos.length === 0) {
-          this.$swal({
-            title: '❌ Erro',
-            text: 'Não foi possível encontrar o(s) processo(s) relacionado(s) à ata. Verifique se a ata está corretamente vinculada aos processos.',
-            icon: 'error'
-          })
+          // Gerar PDF apenas com dados da ata
+          console.log('⚠️ Gerando PDF apenas com dados da ata (sem processos)')
+          await this.gerarPDFSomenteAta(ata)
           return
         }
 
@@ -2238,11 +2374,16 @@ export default {
         }
         
         // Contar por status - ajustado para o fluxo correto da CCL
+        console.log('🔍 [DEBUG CCL] Iniciando contagem por status...')
+        console.log('🔍 [DEBUG CCL] Tenant ID:', this.currentTenantId)
+        
         const statsCounts = await Promise.all([
           this.contarPorStatus(['aprovado', 'reprovado']), // CPM já analisou, CCL precisa julgar (pendentes)
           this.contarPorStatus(['julgado_aprovado', 'julgado_reprovado']), // Já julgados pela CCL
           this.contarPorStatus('homologado') // Processos homologados
         ])
+        
+        console.log('🔍 [DEBUG CCL] Stats counts:', statsCounts)
         
         // Garantir que processosPendentes é um array antes de usar filter
         const processosArray = Array.isArray(this.processosPendentes) ? this.processosPendentes : []
@@ -2250,8 +2391,14 @@ export default {
         this.aprovados = statsCounts[1] || processosArray.filter(p => p.status === 'julgado_ccl').length
         this.homologados = statsCounts[2]
         
+        console.log('🔍 [DEBUG CCL] Contadores finais:')
+        console.log('- Pendentes:', this.pendentes)
+        console.log('- Aprovados:', this.aprovados)
+        console.log('- Homologados:', this.homologados)
+        
         // Contar recursos em análise
         this.recursosEmAnalise = this.recursos.filter(r => r.status === 'EM ANÁLISE' || r.status === 'AGUARDANDO CPM').length
+        console.log('- Recursos em análise:', this.recursosEmAnalise)
         
         // Atualizar paginação
         this.atualizarTotalPaginacao('processosPendentes', this.processosPendentesArray.length)
@@ -2266,7 +2413,12 @@ export default {
       }
     },
     async contarPorStatus(status) {
-      if (!this.currentTenantId) return 0
+      if (!this.currentTenantId) {
+        console.warn('🔍 [DEBUG CCL] Sem tenant ID para contar status:', status)
+        return 0
+      }
+      
+      console.log('🔍 [DEBUG CCL] Contando status:', status, 'para tenant:', this.currentTenantId)
       
       let query = supabase
         .from('processos_administrativos')
@@ -2282,10 +2434,11 @@ export default {
       const { count, error } = await query
       
       if (error) {
-        console.error(`Erro ao contar produtos ${status}:`, error)
+        console.error(`🔍 [DEBUG CCL] Erro ao contar produtos ${status}:`, error)
         return 0
       }
       
+      console.log(`🔍 [DEBUG CCL] Resultado contagem ${status}:`, count)
       return count || 0
     },
     formatDate(dateInput) {
@@ -2742,7 +2895,6 @@ export default {
                 <select id="decisaoCCL" class="swal2-select" style="width: 100%; box-sizing: border-box;">
                   <option value="">Selecione a decisão...</option>
                   <option value="homologar">✅ APROVAR - Recomendar aprovação do processo</option>
-                  <option value="indeferir">❌ REJEITAR - Rejeitar o processo</option>
                   <option value="diligencia">📄 DILIGÊNCIA - Solicitar correções/esclarecimentos</option>
                 </select>
               </div>
@@ -3087,7 +3239,6 @@ export default {
                 <select id="decisaoCCL" class="swal2-select" style="width: 100%;">
                   <option value="">Selecione uma recomendação</option>
                   <option value="recomendar_homologacao">📋 Recomendar Homologação (Aprovar pré-qualificação)</option>
-                  <option value="recomendar_indeferimento">📋 Recomendar Indeferimento (Rejeitar pré-qualificação)</option>
                   <option value="diligencia">📋 Solicitar Diligência à CPM</option>
                   <option value="pendencia">⏳ Aguardar Documentação Complementar</option>
                 </select>
@@ -3494,7 +3645,7 @@ export default {
       try {
         if (!this.currentTenantId) return
         
-        // Carregar atas PUBLICADAS da tabela atas_julgamento (status 'EM PRAZO', 'FINALIZADA', etc.)
+        // Carregar atas PUBLICADAS da tabela atas_julgamento
         const { data: atasPublicadas, error } = await supabase
           .from('atas_julgamento')
           .select(`
@@ -3520,6 +3671,94 @@ export default {
         
         // Mapear as atas publicadas da tabela atas_julgamento
         if (atasPublicadas && atasPublicadas.length > 0) {
+          // Buscar processos associados para cada ata
+          for (const ata of atasPublicadas) {
+            let processo = null
+            
+            // Tentativa 1: Buscar por processo_id se existir
+            if (ata.processo_id) {
+              console.log('🔍 Buscando processo para ata:', ata.numero, 'processo_id:', ata.processo_id)
+              const { data: processoData, error: errorProcesso } = await supabase
+                .from('processos_administrativos')
+                .select('id, status, numero_processo')
+                .eq('id', ata.processo_id)
+                .eq('tenant_id', this.currentTenantId)
+                .single()
+              
+              if (!errorProcesso && processoData) {
+                processo = processoData
+                console.log('✅ Processo encontrado por ID:', processo)
+              }
+            }
+            
+            // Tentativa 2: Se não encontrou por ID, buscar por ata_julgamento_ccl contendo o número da ata
+            if (!processo) {
+              console.log('🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo:', ata.numero)
+              const { data: processosData, error: errorProcesso2 } = await supabase
+                .from('processos_administrativos')
+                .select('id, status, numero_processo, ata_julgamento_ccl')
+                .eq('tenant_id', this.currentTenantId)
+                .in('status', ['ata_ccl', 'publicacao_ata', 'julgamento_ccl'])
+                .order('created_at', { ascending: false })
+                .limit(10)
+              
+              if (!errorProcesso2 && processosData) {
+                // Buscar processo que tem referência desta ata no campo ata_julgamento_ccl
+                const processoEncontrado = processosData.find(p => 
+                  p.ata_julgamento_ccl && p.ata_julgamento_ccl.includes(ata.numero)
+                )
+                
+                if (processoEncontrado) {
+                  processo = processoEncontrado
+                  console.log('✅ Processo encontrado por ata_julgamento_ccl:', processo)
+                  
+                  // Atualizar o processo_id na ata para próximas consultas
+                  await supabase
+                    .from('atas_julgamento')
+                    .update({ processo_id: processo.id })
+                    .eq('id', ata.id)
+                    .eq('tenant_id', this.currentTenantId)
+                }
+              }
+            }
+            
+            // Tentativa 3: Buscar por número do processo extraído do número da ata
+            if (!processo) {
+              console.log('🔍 Tentativa 3: Extraindo número do processo da ata:', ata.numero)
+              // ATA-CCL-001-2025 -> buscar processo 001/2025
+              const match = ata.numero.match(/ATA-CCL-(\d+)-(\d+)/)
+              if (match) {
+                const numeroProcesso = `${match[1].padStart(3, '0')}/${match[2]}`
+                console.log('🔍 Número do processo extraído:', numeroProcesso)
+                
+                const { data: processoData, error: errorProcesso3 } = await supabase
+                  .from('processos_administrativos')
+                  .select('id, status, numero_processo')
+                  .eq('numero_processo', numeroProcesso)
+                  .eq('tenant_id', this.currentTenantId)
+                  .single()
+                
+                if (!errorProcesso3 && processoData) {
+                  processo = processoData
+                  console.log('✅ Processo encontrado por número:', processo)
+                  
+                  // Atualizar o processo_id na ata para próximas consultas
+                  await supabase
+                    .from('atas_julgamento')
+                    .update({ processo_id: processo.id })
+                    .eq('id', ata.id)
+                    .eq('tenant_id', this.currentTenantId)
+                }
+              }
+            }
+            
+            if (processo) {
+              ata.processos_administrativos = processo
+            } else {
+              console.log('❌ Nenhum processo encontrado para ata:', ata.numero)
+            }
+          }
+          
           this.atasPublicadasRecentes = atasPublicadas.map(ata => {
             const dataAta = new Date(ata.data_publicacao || ata.criado_em)
             
@@ -3538,7 +3777,7 @@ export default {
               data_julgamento: ata.data_publicacao,
               // Dados para vinculação específica processo-ata
               processo_id: ata.processo_id,
-              ata_completa: ata // Dados completos da ata
+              ata_completa: ata // Dados completos da ata (incluindo processo)
             }
           })
           
@@ -5038,6 +5277,533 @@ Exemplo:
       }
     },
 
+    async gerarPDFSomenteAta(ata) {
+      try {
+        console.log('📄 Gerando PDF somente com dados da ata:', ata.numero)
+        
+        // PRIMEIRO: Buscar dados completos da ata do banco de dados
+        const { data: ataCompleta, error: ataError } = await supabase
+          .from('atas_julgamento')
+          .select('*')
+          .eq('id', ata.id)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
+        
+        if (ataError) {
+          console.error('Erro ao buscar ata completa:', ataError)
+          throw ataError
+        }
+        
+        if (!ataCompleta) {
+          throw new Error('Ata não encontrada no banco de dados')
+        }
+        
+        console.log('✅ Ata encontrada no banco:', ataCompleta.numero)
+        
+        // Importar jsPDF
+        const { jsPDF } = await import('jspdf')
+        const doc = new jsPDF()
+        
+        // Configurações básicas
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        const margin = 20
+        let yPosition = 40
+
+        // === CABEÇALHO OFICIAL ===
+        doc.setFontSize(14)
+        doc.setFont('helvetica', 'bold')
+        doc.text('SISTEMA COMPRAR BEM', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 8
+        
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'normal')
+        doc.text('GESTAO DE PROCESSOS ADMINISTRATIVOS', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 15
+
+        // Linha separadora
+        doc.setLineWidth(0.5)
+        doc.line(margin, yPosition, pageWidth - margin, yPosition)
+        yPosition += 15
+
+        // Título principal
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.text('ATA DE JULGAMENTO CCL', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 20
+
+        // === CALCULAR E DESENHAR BOX COM CONTEÚDO ===
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'normal')
+        
+        // PASSO 1: Calcular altura total necessária
+        let alturaCalculada = 16 // padding inicial e final
+        
+        // Informações básicas (4 linhas fixas)
+        alturaCalculada += 8 * 4 // Número, Data, Status, Total
+        
+        // Descrição (se existir)
+        if (ataCompleta.descricao) {
+          alturaCalculada += 13 // título + espaço
+          const descLines = doc.splitTextToSize(ataCompleta.descricao, pageWidth - 50)
+          alturaCalculada += descLines.length * 6 + 3 // linhas + espaço
+        }
+        
+        // Conteúdo (se existir) 
+        if (ataCompleta.conteudo_ata) {
+          alturaCalculada += 21 // título + linha + espaços
+          doc.setFontSize(10)
+          const conteudoLines = doc.splitTextToSize(ataCompleta.conteudo_ata, pageWidth - 50)
+          alturaCalculada += conteudoLines.length * 6
+          doc.setFontSize(11)
+        }
+        
+        // PASSO 2: Desenhar o fundo do box PRIMEIRO
+        doc.setDrawColor(0, 0, 0)
+        doc.setFillColor(245, 245, 245)
+        doc.roundedRect(margin, yPosition, pageWidth - (margin * 2), alturaCalculada, 2, 2, 'FD')
+        
+        // PASSO 3: Escrever o conteúdo POR CIMA do fundo
+        let infoY = yPosition + 8
+        
+        // Número da Ata
+        doc.setFont('helvetica', 'bold')
+        doc.text('Numero da Ata:', margin + 5, infoY)
+        doc.setFont('helvetica', 'normal')
+        doc.text(ataCompleta.numero || 'Nao informado', margin + 45, infoY)
+        infoY += 8
+        
+        // Data de Publicação
+        if (ataCompleta.data_publicacao) {
+          doc.setFont('helvetica', 'bold')
+          doc.text('Data de Publicacao:', margin + 5, infoY)
+          doc.setFont('helvetica', 'normal')
+          doc.text(new Date(ataCompleta.data_publicacao).toLocaleDateString('pt-BR'), margin + 55, infoY)
+          infoY += 8
+        } else {
+          infoY += 8 // manter espaçamento mesmo sem data
+        }
+        
+        // Status
+        if (ataCompleta.status_ata) {
+          doc.setFont('helvetica', 'bold')
+          doc.text('Status:', margin + 5, infoY)
+          doc.setFont('helvetica', 'normal')
+          doc.text(ataCompleta.status_ata, margin + 25, infoY)
+          infoY += 8
+        } else {
+          infoY += 8 // manter espaçamento mesmo sem status
+        }
+        
+        // Total de Processos
+        if (ataCompleta.total_processos) {
+          doc.setFont('helvetica', 'bold')
+          doc.text('Total de Processos:', margin + 5, infoY)
+          doc.setFont('helvetica', 'normal')
+          doc.text(ataCompleta.total_processos.toString(), margin + 55, infoY)
+          infoY += 8
+        } else {
+          infoY += 8 // manter espaçamento mesmo sem total
+        }
+        
+        // Descrição da Ata
+        if (ataCompleta.descricao) {
+          infoY += 5
+          doc.setFont('helvetica', 'bold')
+          doc.text('Descricao da Ata:', margin + 5, infoY)
+          infoY += 8
+          
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(10)
+          const descricaoLines = doc.splitTextToSize(ataCompleta.descricao, pageWidth - 50)
+          for (const line of descricaoLines) {
+            doc.text(line, margin + 5, infoY)
+            infoY += 6
+          }
+          doc.setFontSize(11)
+          infoY += 3
+        }
+        
+        // Conteúdo da Ata
+        if (ataCompleta.conteudo_ata) {
+          infoY += 5
+          doc.setFont('helvetica', 'bold')
+          doc.text('Conteudo Completo da Ata:', margin + 5, infoY)
+          infoY += 8
+          
+          // Linha separadora
+          doc.setLineWidth(0.2)
+          doc.setDrawColor(100, 100, 100)
+          doc.line(margin + 5, infoY, pageWidth - margin - 5, infoY)
+          infoY += 8
+          
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(10)
+          const linhas = doc.splitTextToSize(ataCompleta.conteudo_ata, pageWidth - 50)
+          for (const linha of linhas) {
+            doc.text(linha, margin + 5, infoY)
+            infoY += 6
+          }
+          doc.setFontSize(11)
+        }
+        
+        yPosition += alturaCalculada + 15
+
+        // === RODAPÉ PROFISSIONAL ===
+        const rodapeY = pageHeight - 25
+        
+        // Linha superior do rodapé
+        doc.setLineWidth(0.3)
+        doc.line(margin, rodapeY - 5, pageWidth - margin, rodapeY - 5)
+        
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        
+        // Informações do rodapé
+        const dataHora = `Gerado em: ${new Date().toLocaleDateString('pt-BR')} as ${new Date().toLocaleTimeString('pt-BR')}`
+        doc.text(dataHora, margin, rodapeY)
+        
+        const sistema = 'Sistema Comprar Bem - Gestao de Processos Administrativos'
+        doc.text(sistema, pageWidth - margin, rodapeY, { align: 'right' })
+        
+        // Rodapé adicional
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'italic')
+        doc.text('Documento oficial gerado automaticamente pelo sistema', pageWidth / 2, rodapeY + 8, { align: 'center' })
+
+        // Salvar PDF
+        const nomeArquivo = `Ata_CCL_${(ataCompleta.numero || 'SemNumero').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+        doc.save(nomeArquivo)
+        
+        this.$swal({
+          title: '✅ PDF Gerado!',
+          text: `Arquivo ${nomeArquivo} baixado com sucesso.`,
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false
+        })
+        
+      } catch (error) {
+        console.error('Erro ao gerar PDF da ata:', error)
+        this.$swal({
+          title: '❌ Erro ao Gerar PDF',
+          text: error.message || 'Erro interno do sistema',
+          icon: 'error'
+        })
+      }
+    },
+
+    async tramitarProcessoAta(ata) {
+      try {
+        console.log('🔄 Iniciando tramitação para ata:', ata.numero)
+        
+        // PRIMEIRO: Buscar dados completos da ata
+        const { data: ataCompleta, error: ataError } = await supabase
+          .from('atas_julgamento')
+          .select('*')
+          .eq('id', ata.id)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
+        
+        if (ataError || !ataCompleta) {
+          throw new Error('Não foi possível encontrar os dados da ata')
+        }
+
+        // SEGUNDO: Buscar processo(s) relacionado(s) à ata
+        let processos = []
+        
+        console.log('🔍 DEBUG: Dados da ata completa:', ataCompleta)
+        console.log('🔍 DEBUG: processo_id:', ataCompleta.processo_id)
+        console.log('🔍 DEBUG: Processo já carregado em ata.ata_completa:', ata.ata_completa?.processos_administrativos)
+        
+        // PRIORIDADE: Usar processo já carregado anteriormente
+        if (ata.ata_completa?.processos_administrativos) {
+          console.log('✅ Usando processo já carregado:', ata.ata_completa.processos_administrativos)
+          processos = [ata.ata_completa.processos_administrativos]
+        }
+        
+        // VERIFICAÇÃO ESPECIAL: Se não encontrou processo carregado e temos numero_processo, vamos buscar o ID do processo
+        if (processos.length === 0 && !ataCompleta.processo_id && ataCompleta.numero_processo) {
+          console.log('🔧 CORREÇÃO: Encontrado numero_processo sem processo_id, buscando...')
+          const { data: processoCorrecao, error: erroCorrecao } = await supabase
+            .from('processos_administrativos')
+            .select('id')
+            .eq('numero_processo', ataCompleta.numero_processo)
+            .eq('tenant_id', this.currentTenantId)
+            .single()
+          
+          if (!erroCorrecao && processoCorrecao) {
+            console.log('🔧 CORREÇÃO: Processo encontrado, atualizando ata...')
+            // Atualizar a ata com o processo_id correto
+            await supabase
+              .from('atas_julgamento')
+              .update({ processo_id: processoCorrecao.id })
+              .eq('id', ataCompleta.id)
+              .eq('tenant_id', this.currentTenantId)
+            
+            // Atualizar o objeto local
+            ataCompleta.processo_id = processoCorrecao.id
+            console.log('✅ CORREÇÃO: Ata atualizada com processo_id:', processoCorrecao.id)
+          }
+        }
+        
+        if (processos.length === 0 && ataCompleta.processo_id) {
+          // Ata de processo único
+          console.log('🔍 DEBUG: Buscando processo único:', ataCompleta.processo_id)
+          const { data: processo, error: processoError } = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .eq('id', ataCompleta.processo_id)
+            .eq('tenant_id', this.currentTenantId)
+            .single()
+          
+          console.log('🔍 DEBUG: Resultado busca processo único:', { data: processo, error: processoError })
+          
+          if (!processoError && processo) {
+            processos = [processo]
+          }
+        } else if (processos.length === 0 && ataCompleta.processos_incluidos && ataCompleta.processos_incluidos.length > 0) {
+          // Ata consolidada com múltiplos processos
+          console.log('🔍 DEBUG: Buscando processos consolidados:', ataCompleta.processos_incluidos)
+          const { data: processosData, error: processosError } = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .in('id', ataCompleta.processos_incluidos)
+            .eq('tenant_id', this.currentTenantId)
+          
+          console.log('🔍 DEBUG: Resultado busca processos consolidados:', { data: processosData, error: processosError })
+          
+          if (!processosError && processosData) {
+            processos = processosData
+          }
+        }
+
+        // FALLBACK: Buscar por números de processo se tiver
+        if (processos.length === 0 && ataCompleta.numeros_processos && ataCompleta.numeros_processos.length > 0) {
+          console.log('🔍 DEBUG: FALLBACK - Buscando por números de processo:', ataCompleta.numeros_processos)
+          const { data: processosData, error: processosError } = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .in('numero_processo', ataCompleta.numeros_processos)
+            .eq('tenant_id', this.currentTenantId)
+          
+          console.log('🔍 DEBUG: Resultado busca por números:', { data: processosData, error: processosError })
+          
+          if (!processosError && processosData) {
+            processos = processosData
+          }
+        }
+
+        // FALLBACK 2: Buscar processos que tenham ata_julgamento_ccl relacionado
+        if (processos.length === 0) {
+          console.log('🔍 DEBUG: FALLBACK 2 - Buscando processos com status de ata CCL')
+          const { data: processosData, error: processosError } = await supabase
+            .from('processos_administrativos')
+            .select('*')
+            .eq('tenant_id', this.currentTenantId)
+            .in('status', ['ata_ccl', 'ata_julgamento_emitida_ccl', 'em_prazo_recursal'])
+            .order('created_at', { ascending: false })
+            .limit(10)
+          
+          console.log('🔍 DEBUG: Processos com status CCL encontrados:', processosData)
+          
+          if (!processosError && processosData && processosData.length > 0) {
+            // Mostrar opções para o usuário escolher
+            const { value: processoEscolhido } = await this.$swal({
+              title: '🔍 Selecionar Processo',
+              width: '650px',
+              html: `
+                <div style="text-align: left; margin: 20px 0;">
+                  <p>Não foi possível identificar automaticamente o processo relacionado à ata <strong>${ataCompleta.numero}</strong>.</p>
+                  <p>Selecione o processo correto:</p>
+                  <br>
+                  <div style="max-height: 350px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; background: #fafafa;">
+                    ${processosData.map((p, index) => `
+                      <div 
+                        data-processo-id="${p.id}"
+                        style="
+                          padding: 15px; 
+                          margin: 5px;
+                          border-radius: 6px;
+                          border: 2px solid transparent;
+                          cursor: pointer; 
+                          transition: all 0.2s;
+                          background: white;
+                          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        " 
+                        onmouseover="this.style.borderColor='#3b82f6'; this.style.transform='translateY(-1px)'"
+                        onmouseout="if(!this.classList.contains('selected')) { this.style.borderColor='transparent'; this.style.transform='translateY(0)'; }"
+                        onclick="
+                          document.querySelectorAll('[data-processo-id]').forEach(el => {
+                            el.classList.remove('selected');
+                            el.style.borderColor = 'transparent';
+                            el.style.backgroundColor = 'white';
+                          });
+                          this.classList.add('selected');
+                          this.style.borderColor = '#3b82f6';
+                          this.style.backgroundColor = '#eff6ff';
+                          document.getElementById('processoSelecionado').value = '${p.id}';
+                        ">
+                        <div style="font-weight: 600; color: #1e40af; font-size: 15px; margin-bottom: 8px;">
+                          📋 ${p.numero_processo}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; font-size: 13px; color: #64748b;">
+                          <span style="background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 4px; font-weight: 500;">
+                            ${p.status}
+                          </span>
+                          <span style="color: #6b7280;">
+                            📅 ${this.formatDate(p.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                  <input type="hidden" id="processoSelecionado" value="">
+                  <div style="margin-top: 15px; padding: 12px; background: #f0f9ff; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 13px; color: #1e40af;">
+                    💡 <strong>Dica:</strong> Clique em um processo para selecioná-lo antes de confirmar.
+                  </div>
+                </div>
+              `,
+              showCancelButton: true,
+              confirmButtonText: '✅ Confirmar',
+              cancelButtonText: '❌ Cancelar',
+              preConfirm: () => {
+                const processoId = document.getElementById('processoSelecionado').value
+                if (!processoId) {
+                  this.$swal.showValidationMessage('Por favor, clique em um processo para selecioná-lo')
+                  return false
+                }
+                return processoId
+              }
+            })
+            
+            if (processoEscolhido) {
+              const processoSelecionado = processosData.find(p => p.id === processoEscolhido)
+              if (processoSelecionado) {
+                processos = [processoSelecionado]
+              }
+            }
+          }
+        }
+
+        console.log('🔍 DEBUG: Processos finais encontrados:', processos)
+
+        if (processos.length === 0) {
+          throw new Error('Não foi possível encontrar processos relacionados à ata. Verifique se a ata está corretamente vinculada aos processos.')
+        }
+
+        // TERCEIRO: Mostrar opções de tramitação
+        const { value: tipoTramitacao } = await this.$swal({
+          title: `⚖️ Tramitar Processo${processos.length > 1 ? 's' : ''}`,
+          html: `
+            <div style="text-align: left; margin: 20px 0;">
+              <p><strong>Ata:</strong> ${ataCompleta.numero}</p>
+              <p><strong>Processo${processos.length > 1 ? 's' : ''}:</strong> ${processos.map(p => p.numero_processo).join(', ')}</p>
+              <br>
+              <p>A ata foi publicada. Conforme orientação do cliente, a CCL deve submeter o processo à decisão da Autoridade Competente:</p>
+            </div>
+            
+            <select id="tipoTramitacao" class="swal2-select" style="width: 100%; padding: 15px; margin: 20px 0; font-size: 16px;">
+              <option value="">Selecione a próxima etapa...</option>
+              <option value="autoridade">👨‍💼 Submeter à Autoridade Competente (para decisão)</option>
+              <option value="juridico">⚖️ Enviar para Assessoria Jurídica (se houver dúvidas)</option>
+            </select>
+          `,
+          showCancelButton: true,
+          confirmButtonText: '✅ Tramitar',
+          cancelButtonText: '❌ Cancelar',
+          width: 500,
+          preConfirm: () => {
+            const tipo = document.getElementById('tipoTramitacao').value
+            
+            if (!tipo) {
+              this.$swal.showValidationMessage('Selecione o tipo de tramitação')
+              return false
+            }
+            
+            return tipo
+          }
+        })
+
+        if (!tipoTramitacao) return
+
+        // QUARTO: Executar a tramitação
+        await this.executarTramitacaoAta(processos, tipoTramitacao, ataCompleta)
+
+      } catch (error) {
+        console.error('Erro na tramitação:', error)
+        this.$swal({
+          title: '❌ Erro na Tramitação',
+          text: error.message || 'Erro interno do sistema',
+          icon: 'error'
+        })
+      }
+    },
+
+    async executarTramitacaoAta(processos, opcaoTramitacao, ata) {
+      try {
+        let novoStatus = ''
+        let mensagemSucesso = ''
+
+        // Definir novo status baseado na opção escolhida
+        switch (opcaoTramitacao) {
+          case 'autoridade':
+            novoStatus = 'homologado'
+            mensagemSucesso = `Processo${processos.length > 1 ? 's' : ''} submetido${processos.length > 1 ? 's' : ''} à Autoridade Competente para decisão`
+            break
+          case 'juridico':
+            novoStatus = 'analise_juridica'
+            mensagemSucesso = `Processo${processos.length > 1 ? 's' : ''} enviado${processos.length > 1 ? 's' : ''} para Assessoria Jurídica`
+            break
+        }
+
+        // Atualizar status de todos os processos
+        for (const processo of processos) {
+          const { error: updateError } = await supabase
+            .from('processos_administrativos')
+            .update({
+              status: novoStatus
+            })
+            .eq('id', processo.id)
+            .eq('tenant_id', this.currentTenantId)
+
+          if (updateError) {
+            throw updateError
+          }
+
+          // Enviar notificação por email
+          try {
+            await EmailNotificationService.enviarNotificacaoTramitacao(
+              processo.id, 
+              processo.status, 
+              novoStatus, 
+              `Processo tramitado via ata ${ata.numero}. ${mensagemSucesso}`
+            )
+          } catch (emailError) {
+            console.warn('Erro ao enviar notificação por email:', emailError)
+            // Não bloqueia a tramitação se falhar o email
+          }
+        }
+
+        // Recarregar dados
+        await this.carregarDados()
+        await this.atualizarDadosAtas()
+
+        // Sucesso
+        this.$swal({
+          title: '✅ Tramitação Realizada!',
+          text: mensagemSucesso,
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false
+        })
+
+      } catch (error) {
+        console.error('Erro ao executar tramitação:', error)
+        throw error
+      }
+    },
+
     async finalizarAtaElaboracao(ata) {
       try {
         const result = await this.$swal({
@@ -5087,8 +5853,15 @@ Exemplo:
         
         if (error) throw error
         
-        // Recarregar dados automaticamente
+        // Recarregar dados automaticamente com melhor timing
         await this.atualizarDadosAtas()
+        
+        // Aguardar um momento e forçar uma segunda atualização para garantir UI refresh
+        await this.$nextTick()
+        setTimeout(async () => {
+          await this.atualizarDadosAtas()
+          this.$forceUpdate()
+        }, 500)
         
         this.$swal({
           title: '🎉 Ata Finalizada e Publicada!',
@@ -5176,9 +5949,16 @@ Exemplo:
         
         if (error) throw error
         
-        // Recarregar dados automaticamente
+        // Recarregar dados automaticamente com melhor timing
         await this.atualizarDadosAtas()
         await this.carregarDados()
+        
+        // Aguardar um momento e forçar uma segunda atualização para garantir UI refresh
+        await this.$nextTick()
+        setTimeout(async () => {
+          await this.atualizarDadosAtas()
+          this.$forceUpdate()
+        }, 500)
         
         this.$swal({
           title: '🎉 Ata Finalizada e Publicada!',
@@ -7059,7 +7839,6 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
                   <option value="aprovar">✅ APROVAR - Enviar para Atas de Julgamento (fluxo normal)</option>
                   <option value="aprovar_homologacao_direta">⚡ HOMOLOGAR DIRETAMENTE - Enviar para Homologações (decisão direta da CCL)</option>
                   <option value="devolver">↩️ DEVOLVER - Solicitar correções</option>
-                  <option value="rejeitar">❌ REJEITAR - Processo inadequado</option>
                 </select>
               </div>
               
@@ -7070,15 +7849,6 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
                   style="width: 95%; box-sizing: border-box; resize: vertical;"></textarea>
               </div>
               
-              <div style="background: #e3f2fd; padding: 12px; border-radius: 8px;">
-                <h5 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px;">ℹ️ Próximos Passos:</h5>
-                <div style="font-size: 12px; line-height: 1.4;">
-                  <p style="margin: 3px 0;"><strong>✅ APROVAR:</strong> Processo vai para elaboração de ata CCL</p>
-                  <p style="margin: 3px 0;"><strong>✅ APROVAR + HOMOLOGAÇÃO:</strong> Processo vai direto para homologação</p>
-                  <p style="margin: 3px 0;"><strong>↩️ DEVOLVER:</strong> Processo volta para CPM com observações</p>
-                  <p style="margin: 3px 0;"><strong>❌ REJEITAR:</strong> Processo é rejeitado definitivamente</p>
-                </div>
-              </div>
             </div>
           `,
           width: '700px',
@@ -7181,14 +7951,6 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
             )
             break
             
-          case 'rejeitar':
-            // Rejeitar processo
-            resultado = await TramitacaoProcessosService.rejeitarProcesso(
-              processo.id,
-              'Processo rejeitado tecnicamente pela CCL',
-              julgamento.fundamentacao
-            )
-            break
         }
         
         if (!resultado || !resultado.sucesso) {
@@ -7216,8 +7978,7 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
         // Mostrar resultado
         const decisaoTexto = {
           aprovar: 'aprovado',
-          devolver: 'devolvido para correções',
-          rejeitar: 'rejeitado'
+          devolver: 'devolvido para correções'
         }[julgamento.decisao]
         
         await this.$swal({
@@ -8903,6 +9664,38 @@ tr:hover {
   .modal-footer button {
     width: 100%;
   }
+}
+
+/* Estilos para o Editor de Atas */
+.editor-ata-container .swal2-popup {
+  border-radius: 12px;
+}
+
+.editor-ata-container .swal2-textarea {
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+  resize: vertical;
+}
+
+.editor-ata-container .swal2-textarea:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+.editor-ata-container .swal2-title {
+  font-size: 1.3rem;
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+.editor-ata-container .swal2-html-container {
+  max-height: 600px;
+  overflow-y: auto;
+  padding: 0 10px;
 }
 
 </style>

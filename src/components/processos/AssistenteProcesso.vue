@@ -152,7 +152,6 @@
                     nome: dadosProcesso.nome_orgao,
                     unidade_interessada: dadosProcesso.unidade_interessada
                   }"
-                  :observacoes="dadosProcesso.observacoes"
                 />
               </div>
             </div>
@@ -193,30 +192,6 @@
           </div>
         </div>
         
-        <div class="observacoes-adicionais">
-          <h4>💬 Observações Adicionais (opcional):</h4>
-          <div class="form-group">
-            <label>Observações sobre o processo</label>
-            <textarea 
-              v-model="dadosProcesso.observacoes" 
-              rows="4"
-              placeholder="Adicione observações especiais sobre este processo, instruções para a equipe, detalhes importantes, etc..."
-            ></textarea>
-          </div>
-          
-          <div class="dica-observacoes">
-            <div class="dica-icon">💡</div>
-            <div class="dica-texto">
-              <strong>Dica:</strong> Use este campo para adicionar informações que serão úteis durante o processo, como:
-              <ul>
-                <li>Prioridades especiais</li>
-                <li>Prazos específicos</li>
-                <li>Contatos responsáveis</li>
-                <li>Observações técnicas</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Etapa 2: DFD -->
@@ -662,8 +637,7 @@ export default {
         numero_processo: '',
         nome_orgao: '',
         unidade_interessada: '',
-        data_autuacao: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
-        observacoes: ''
+        data_autuacao: new Date().toISOString().split('T')[0] // Data atual no formato YYYY-MM-DD
       },
       
       produtos: [],
@@ -681,8 +655,7 @@ export default {
       dadosEdital: {
         numero_edital: '',
         data_publicacao: '',
-        arquivo: null,
-        observacoes: ''
+        arquivo: null
       },
       erroEdital: '',
       dragoverEdital: false,
@@ -804,7 +777,6 @@ export default {
           data_autuacao: this.processoEdicao.data_autuacao ? 
             new Date(this.processoEdicao.data_autuacao).toISOString().split('T')[0] : 
             new Date().toISOString().split('T')[0],
-          observacoes: this.processoEdicao.observacoes || '',
           
           // Dados do edital (se existirem)
           numero_edital: this.processoEdicao.numero_edital || '',
@@ -1656,18 +1628,6 @@ export default {
               line-height: 1.4;
             }
             
-            .campo.observacoes {
-              margin-top: 1.5cm;
-              border-top: 1px solid #ccc;
-              padding-top: 1cm;
-            }
-            
-            .observacoes-conteudo {
-              margin-top: 0.5cm;
-              text-align: justify;
-              line-height: 1.5;
-              font-style: italic;
-            }
             
             .campo strong {
               font-weight: bold;
@@ -1718,12 +1678,6 @@ export default {
                   <strong>OBJETO:</strong> ${objetoTexto}
                 </div>
 
-                ${this.dadosProcesso.observacoes ? `
-                <div class="campo observacoes">
-                  <strong>OBSERVAÇÕES:</strong>
-                  <div class="observacoes-conteudo">${this.dadosProcesso.observacoes.replace(/\n/g, '<br>')}</div>
-                </div>
-                ` : ''}
                 
               </div>
               
@@ -2321,7 +2275,6 @@ export default {
         nome_orgao: '',
         unidade_interessada: '',
         data_autuacao: new Date().toISOString().split('T')[0],
-        observacoes: '',
         numero_edital: '',
         edital_vinculado: false,
         data_vinculacao_edital: null
@@ -2742,28 +2695,6 @@ export default {
 .info-item span {
   color: #1e40af;
   font-weight: 500;
-}
-
-.observacoes-adicionais {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 1.5rem;
-}
-
-.observacoes-adicionais h4 {
-  color: #2d3748;
-  margin-bottom: 1rem;
-}
-
-.dica-observacoes {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #fefce8;
-  border: 1px solid #fde047;
-  border-radius: 8px;
 }
 
 .dica-icon {

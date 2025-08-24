@@ -419,47 +419,341 @@ export default {
       return date.toLocaleDateString('pt-BR')
     },
 
-    visualizarAta(homologacao) {
-      this.$swal({
-        title: '📋 Ata de Homologação',
-        text: `Visualizando ata ${homologacao.numeroAta}`,
-        icon: 'info'
-      })
-    },
+    async visualizarAta(homologacao) {
+      try {
+        // Buscar o conteúdo da ata no processo
+        const { data: processo, error } = await supabase
+          .from('processos_administrativos')
+          .select('ata_julgamento_ccl, numero_processo, status')
+          .eq('id', homologacao.processo.id)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
 
-    baixarPDF(homologacao) {
-      this.$swal({
-        title: '📥 Download PDF',
-        text: `Baixando PDF da ata ${homologacao.numeroAta}`,
-        icon: 'success',
-        timer: 2000
-      })
-    },
+        if (error) throw error
 
-    verDCBs(homologacao) {
-      this.$swal({
-        title: '📜 DCBs da Homologação',
-        html: `
-          <div style="text-align: left; padding: 15px;">
-            <h4>Ata: ${homologacao.numeroAta}</h4>
-            <p><strong>Data:</strong> ${this.formatDate(homologacao.dataHomologacao)}</p>
-            <p><strong>Tipo:</strong> ${this.formatStatus(homologacao.tipo)}</p>
-            <hr>
-            <h5>DCBs Emitidas:</h5>
-            <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;">
-              ${homologacao.tipo === 'homologada' ? 
-                `<p>✅ <strong>1 DCB emitida</strong></p>
-                 <p><small>• DCB-001/${new Date().getFullYear()}</small></p>
-                 <p><small>• Status: ATIVA</small></p>` :
-                `<p>❌ <strong>Nenhuma DCB emitida</strong></p>`
-              }
+        const conteudoAta = processo.ata_julgamento_ccl || 'Conteúdo da ata não encontrado.'
+
+        this.$swal({
+          title: `📋 Ata de Julgamento - ${processo.numero_processo}`,
+          html: `
+            <div style="text-align: left; padding: 20px; max-height: 400px; overflow-y: auto;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #007bff;">
+                <h4 style="margin: 0 0 10px 0; color: #007bff;">📄 Informações do Processo</h4>
+                <p style="margin: 5px 0;"><strong>Processo:</strong> ${processo.numero_processo}</p>
+                <p style="margin: 5px 0;"><strong>Status:</strong> ${processo.status}</p>
+                <p style="margin: 5px 0;"><strong>Data:</strong> ${this.formatDate(homologacao.dataHomologacao)}</p>
+              </div>
+              
+              <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                <h5 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">📋 Conteúdo da Ata:</h5>
+                <div style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; color: #333;">
+                  ${conteudoAta}
+                </div>
+              </div>
             </div>
-          </div>
-        `,
-        showCancelButton: true,
-        cancelButtonText: '✅ OK',
-        showConfirmButton: false
-      })
+          `,
+          showCancelButton: true,
+          cancelButtonText: '❌ Fechar',
+          showConfirmButton: true,
+          confirmButtonText: '📄 Baixar PDF',
+          confirmButtonColor: '#007bff',
+          width: '700px',
+          customClass: {
+            htmlContainer: 'custom-swal-container'
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            this.baixarPDF(homologacao)
+          }
+        })
+
+      } catch (error) {
+        console.error('Erro ao visualizar ata:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: `Erro ao carregar ata: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+
+    async baixarPDF(homologacao) {
+      try {
+        // Buscar dados completos do processo
+        const { data: processo, error } = await supabase
+          .from('processos_administrativos')
+          .select('*')
+          .eq('id', homologacao.processo.id)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
+
+        if (error) throw error
+
+        // Gerar PDF usando jsPDF
+        const { jsPDF } = window.jspdf || require('jspdf')
+        
+        if (!jsPDF) {
+          throw new Error('Biblioteca jsPDF não encontrada')
+        }
+
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const margin = 20
+
+        // Cabeçalho
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.text('ATA DE JULGAMENTO DA CCL', pageWidth / 2, 30, { align: 'center' })
+        
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`Processo: ${processo.numero_processo}`, margin, 50)
+        doc.text(`Data: ${this.formatDate(homologacao.dataHomologacao)}`, margin, 60)
+        doc.text(`Status: ${processo.status}`, margin, 70)
+        
+        // Linha separadora
+        doc.setLineWidth(0.5)
+        doc.line(margin, 80, pageWidth - margin, 80)
+        
+        // Conteúdo da ata
+        let yPosition = 95
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'normal')
+        
+        const conteudoAta = processo.ata_julgamento_ccl || 'Conteúdo da ata não disponível.'
+        const lines = doc.splitTextToSize(conteudoAta, pageWidth - 2 * margin)
+        
+        lines.forEach(line => {
+          if (yPosition > 270) { // Nova página se necessário
+            doc.addPage()
+            yPosition = 20
+          }
+          doc.text(line, margin, yPosition)
+          yPosition += 6
+        })
+        
+        // Rodapé
+        const totalPages = doc.internal.getNumberOfPages()
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i)
+          doc.setFontSize(8)
+          doc.setFont('helvetica', 'italic')
+          doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, 285, { align: 'center' })
+          doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth - margin, 285, { align: 'right' })
+        }
+        
+        // Download do arquivo
+        const fileName = `Ata_${processo.numero_processo.replace('/', '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+        doc.save(fileName)
+        
+        this.$swal({
+          title: '✅ PDF Gerado!',
+          text: `Arquivo "${fileName}" baixado com sucesso`,
+          icon: 'success',
+          timer: 3000
+        })
+
+      } catch (error) {
+        console.error('Erro ao gerar PDF:', error)
+        this.$swal({
+          title: '❌ Erro ao gerar PDF',
+          text: 'Não foi possível gerar o PDF. Verifique se a biblioteca jsPDF está carregada.',
+          icon: 'error'
+        })
+      }
+    },
+
+    async verDCBs(homologacao) {
+      try {
+        // Buscar produtos associados ao processo
+        const { data: produtos, error } = await supabase
+          .from('produtos')
+          .select(`
+            id,
+            nome,
+            codigo,
+            status,
+            dcb_numero,
+            dcb_data_emissao,
+            dcb_status,
+            created_at
+          `)
+          .eq('processo_id', homologacao.processo.id)
+          .eq('tenant_id', this.currentTenantId)
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        const produtosComDCB = produtos?.filter(p => p.dcb_numero) || []
+        const produtosSemDCB = produtos?.filter(p => !p.dcb_numero) || []
+
+        this.$swal({
+          title: `📜 DCBs do Processo ${homologacao.numeroAta}`,
+          html: `
+            <div style="text-align: left; padding: 20px; max-height: 500px; overflow-y: auto;">
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #007bff;">
+                <h4 style="margin: 0 0 10px 0; color: #007bff;">📄 Resumo do Processo</h4>
+                <p style="margin: 5px 0;"><strong>Processo:</strong> ${homologacao.numeroAta}</p>
+                <p style="margin: 5px 0;"><strong>Status:</strong> ${this.formatStatus(homologacao.tipo)}</p>
+                <p style="margin: 5px 0;"><strong>Data:</strong> ${this.formatDate(homologacao.dataHomologacao)}</p>
+                <p style="margin: 5px 0;"><strong>Total de Produtos:</strong> ${produtos?.length || 0}</p>
+              </div>
+
+              ${produtosComDCB.length > 0 ? `
+                <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #28a745;">
+                  <h5 style="margin: 0 0 15px 0; color: #155724;">✅ DCBs Emitidas (${produtosComDCB.length})</h5>
+                  ${produtosComDCB.map(produto => `
+                    <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #c3e6cb;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #155724;">${produto.nome}</strong>
+                        <span style="background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                          ${produto.dcb_status || 'ATIVA'}
+                        </span>
+                      </div>
+                      <p style="margin: 4px 0; font-size: 13px;"><strong>DCB:</strong> ${produto.dcb_numero}</p>
+                      <p style="margin: 4px 0; font-size: 13px;"><strong>Código:</strong> ${produto.codigo}</p>
+                      <p style="margin: 4px 0; font-size: 13px;"><strong>Emissão:</strong> ${produto.dcb_data_emissao ? this.formatDate(produto.dcb_data_emissao) : 'Não informada'}</p>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              ${produtosSemDCB.length > 0 ? `
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                  <h5 style="margin: 0 0 15px 0; color: #856404;">⏳ Aguardando DCB (${produtosSemDCB.length})</h5>
+                  ${produtosSemDCB.map(produto => `
+                    <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #ffeaa7;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #856404;">${produto.nome}</strong>
+                        <span style="background: #ffc107; color: #212529; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                          ${produto.status || 'PENDENTE'}
+                        </span>
+                      </div>
+                      <p style="margin: 4px 0; font-size: 13px;"><strong>Código:</strong> ${produto.codigo}</p>
+                      <p style="margin: 4px 0; font-size: 13px;"><strong>Status:</strong> Aguardando expedição de DCB</p>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              ${produtos?.length === 0 ? `
+                <div style="background: #f8d7da; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545; text-align: center;">
+                  <h5 style="margin: 0 0 10px 0; color: #721c24;">❌ Nenhum produto encontrado</h5>
+                  <p style="margin: 0; color: #721c24;">
+                    Não há produtos associados a este processo ou ainda não foram cadastrados no sistema.
+                  </p>
+                </div>
+              ` : ''}
+
+              <div style="background: #e3f2fd; padding: 12px; border-radius: 8px; margin-top: 15px;">
+                <p style="margin: 0; font-size: 12px; color: #1976d2;">
+                  💡 <strong>Dica:</strong> As DCBs são emitidas após a homologação e tramitação para a CPM.
+                </p>
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          cancelButtonText: '✅ Fechar',
+          showConfirmButton: produtosComDCB.length > 0,
+          confirmButtonText: '📥 Baixar Relatório DCBs',
+          confirmButtonColor: '#007bff',
+          width: '600px'
+        }).then((result) => {
+          if (result.isConfirmed && produtosComDCB.length > 0) {
+            this.gerarRelatorioDCBs(homologacao, produtosComDCB)
+          }
+        })
+
+      } catch (error) {
+        console.error('Erro ao carregar DCBs:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: `Erro ao carregar DCBs: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+
+    async gerarRelatorioDCBs(homologacao, produtos) {
+      try {
+        const { jsPDF } = window.jspdf || require('jspdf')
+        
+        if (!jsPDF) {
+          throw new Error('Biblioteca jsPDF não encontrada')
+        }
+
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const margin = 20
+
+        // Cabeçalho
+        doc.setFontSize(14)
+        doc.setFont('helvetica', 'bold')
+        doc.text('RELATÓRIO DE DCBs', pageWidth / 2, 30, { align: 'center' })
+        
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`Processo: ${homologacao.numeroAta}`, margin, 50)
+        doc.text(`Data: ${this.formatDate(homologacao.dataHomologacao)}`, margin, 60)
+        doc.text(`Total de DCBs: ${produtos.length}`, margin, 70)
+        
+        // Linha separadora
+        doc.setLineWidth(0.5)
+        doc.line(margin, 80, pageWidth - margin, 80)
+        
+        // Lista de DCBs
+        let yPosition = 95
+        doc.setFontSize(10)
+        
+        produtos.forEach((produto, index) => {
+          if (yPosition > 250) {
+            doc.addPage()
+            yPosition = 20
+          }
+          
+          doc.setFont('helvetica', 'bold')
+          doc.text(`${index + 1}. ${produto.nome}`, margin, yPosition)
+          yPosition += 8
+          
+          doc.setFont('helvetica', 'normal')
+          doc.text(`DCB: ${produto.dcb_numero}`, margin + 5, yPosition)
+          yPosition += 6
+          doc.text(`Código: ${produto.codigo}`, margin + 5, yPosition)
+          yPosition += 6
+          doc.text(`Status: ${produto.dcb_status || 'ATIVA'}`, margin + 5, yPosition)
+          yPosition += 6
+          doc.text(`Emissão: ${produto.dcb_data_emissao ? this.formatDate(produto.dcb_data_emissao) : 'Não informada'}`, margin + 5, yPosition)
+          yPosition += 15
+        })
+        
+        // Rodapé
+        const totalPages = doc.internal.getNumberOfPages()
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i)
+          doc.setFontSize(8)
+          doc.setFont('helvetica', 'italic')
+          doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, 285, { align: 'center' })
+          doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth - margin, 285, { align: 'right' })
+        }
+        
+        const fileName = `Relatorio_DCBs_${homologacao.numeroAta.replace('/', '_')}_${new Date().toISOString().split('T')[0]}.pdf`
+        doc.save(fileName)
+        
+        this.$swal({
+          title: '✅ Relatório Gerado!',
+          text: `Arquivo "${fileName}" baixado com sucesso`,
+          icon: 'success',
+          timer: 3000
+        })
+
+      } catch (error) {
+        console.error('Erro ao gerar relatório:', error)
+        this.$swal({
+          title: '❌ Erro ao gerar relatório',
+          text: 'Não foi possível gerar o relatório de DCBs.',
+          icon: 'error'
+        })
+      }
     },
 
     proximaPagina() {

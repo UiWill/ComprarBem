@@ -73,6 +73,53 @@
               <p>ℹ️ Este é o catálogo público de produtos padronizados. Você pode consultar marcas e modelos aprovados, mas não pode fazer reclamações nesta seção.</p>
             </div>
           </div>
+          
+          <!-- Busca de produtos -->
+          <div class="search-produtos">
+            <div class="search-row">
+              <input 
+                type="text" 
+                v-model="buscaProdutos" 
+                placeholder="Buscar produto, marca ou modelo..." 
+                @input="filtrarProdutos"
+                class="search-input"
+              >
+              <button @click="recarregarProdutos" class="btn-reload" :disabled="carregandoProdutos">
+                <span v-if="carregandoProdutos" class="spinner-small"></span>
+                {{ carregandoProdutos ? 'Carregando...' : '🔄' }}
+              </button>
+            </div>
+          </div>
+          
+          <!-- Lista de produtos -->
+          <div v-if="carregandoProdutos" class="loading-state">
+            <div class="spinner"></div>
+            <p>Carregando produtos...</p>
+          </div>
+          
+          <div v-else-if="produtosFiltrados.length > 0" class="produtos-grid">
+            <div 
+              class="produto-card" 
+              v-for="produto in produtosFiltrados" 
+              :key="produto.id"
+            >
+              <div class="produto-info">
+                <h4>{{ produto.nome }}</h4>
+                <p><strong>Marca:</strong> {{ produto.marca }}</p>
+                <p><strong>Modelo:</strong> {{ produto.modelo }}</p>
+                <p><strong>Fabricante:</strong> {{ produto.fabricante }}</p>
+                <div class="status-badge homologado">✅ Homologado</div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-else-if="produtos.length === 0 && !carregandoProdutos" class="empty-state">
+            <p>📦 Nenhum produto padronizado disponível neste órgão.</p>
+          </div>
+          
+          <div v-else-if="produtosFiltrados.length === 0 && produtos.length > 0" class="empty-state">
+            <p>🔍 Nenhum produto encontrado com os termos de busca.</p>
+          </div>
         </div>
         
         <!-- Formulário de Nova Reclamação - só no modo reclamação -->
@@ -357,7 +404,13 @@ export default {
       // Filtros
       filtroStatus: '',
       filtroCategoria: '',
-      buscaTexto: ''
+      buscaTexto: '',
+      
+      // Dados do catálogo de produtos
+      produtos: [],
+      produtosFiltrados: [],
+      carregandoProdutos: false,
+      buscaProdutos: ''
     }
   },
   computed: {
@@ -456,7 +509,12 @@ export default {
     async selecionarOrgao(orgao) {
       this.orgaoSelecionado = orgao
       this.etapaAtual = 'reclamacoes'
-      await this.carregarReclamacoes()
+      
+      if (this.modoOperacao === 'consulta') {
+        await this.carregarProdutos()
+      } else {
+        await this.carregarReclamacoes()
+      }
     },
     
     async carregarReclamacoes() {
@@ -522,11 +580,66 @@ export default {
       this.orgaoSelecionado = null
       this.reclamacoes = []
       this.reclamacoesFiltradas = []
+      this.produtos = []
+      this.produtosFiltrados = []
       this.mostrandoReclamacoes = false
       this.filtroStatus = ''
       this.filtroCategoria = ''
       this.buscaTexto = ''
+      this.buscaProdutos = ''
       this.resetarFormulario()
+    },
+    
+    async carregarProdutos() {
+      try {
+        this.carregandoProdutos = true
+        console.log('Carregando produtos para o órgão:', this.orgaoSelecionado.tenant_id)
+        
+        const { data: produtos, error } = await supabase
+          .from('produtos')
+          .select('*')
+          .eq('tenant_id', this.orgaoSelecionado.tenant_id)
+          .eq('status', 'homologado')  // Apenas produtos homologados via tramitação
+          .order('nome', { ascending: true })
+        
+        if (error) {
+          console.error('Erro ao carregar produtos:', error)
+          this.produtos = []
+        } else {
+          this.produtos = produtos || []
+          console.log(`${this.produtos.length} produtos carregados`)
+        }
+        
+        this.filtrarProdutos()
+        
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error)
+        this.produtos = []
+      } finally {
+        this.carregandoProdutos = false
+      }
+    },
+    
+    filtrarProdutos() {
+      if (!this.buscaProdutos.trim()) {
+        this.produtosFiltrados = [...this.produtos]
+        return
+      }
+      
+      const busca = this.buscaProdutos.toLowerCase().trim()
+      this.produtosFiltrados = this.produtos.filter(produto => {
+        return (
+          produto.nome?.toLowerCase().includes(busca) ||
+          produto.marca?.toLowerCase().includes(busca) ||
+          produto.modelo?.toLowerCase().includes(busca) ||
+          produto.fabricante?.toLowerCase().includes(busca)
+        )
+      })
+    },
+    
+    async recarregarProdutos() {
+      console.log('🔄 Recarregando produtos do catálogo...')
+      await this.carregarProdutos()
     },
     
     alternarVisualizacao() {
@@ -907,6 +1020,133 @@ export default {
   color: #0c5460;
   font-size: 0.95em;
   line-height: 1.5;
+}
+
+/* Busca de produtos */
+.search-produtos {
+  margin: 30px 0;
+}
+
+.search-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.btn-reload {
+  padding: 12px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+}
+
+.btn-reload:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-reload:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Grid de produtos */
+.produtos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.produto-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.produto-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.produto-info h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.produto-info p {
+  margin: 8px 0;
+  color: #666;
+  font-size: 0.95em;
+}
+
+.produto-info p strong {
+  color: #333;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.status-badge.homologado {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+/* Estado vazio */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+  font-size: 1.1em;
 }
 
 /* Ações Principais */

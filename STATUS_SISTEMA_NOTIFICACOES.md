@@ -27,7 +27,7 @@ Sistema automático que envia emails de lembrete para usuários avaliarem materi
 ## ❌ O QUE FALTA PARA PRODUÇÃO
 
 ### 🌐 Domínio Email
-- ❌ **Domínio próprio** (`comprarbem.com.br`) - COMPRAR
+- 🟡 **Domínio próprio** (`comprarbem.tec.br`) - EM PROCESSAMENTO
 - ❌ **Configuração DNS** no domínio
 - ❌ **Verificação no Resend** 
 
@@ -38,7 +38,7 @@ Sistema automático que envia emails de lembrete para usuários avaliarem materi
 
 ## 📋 CHECKLIST PARA FINALIZAR
 
-### Quando comprar `comprarbem.com.br`:
+### Quando `comprarbem.tec.br` estiver ativo (pedido #30053191):
 
 1. **[ ] Configurar DNS**
    - Adicionar registros MX, TXT, DKIM no provedor do domínio
@@ -108,7 +108,7 @@ Quando o domínio estiver configurado, o sistema deve enviar:
 
 Quando retomar o projeto:
 
-1. **[ ] Comprar domínio** `comprarbem.com.br`
+1. **[✅] Comprar domínio** `comprarbem.tec.br` - Pedido #30053191
 2. **[ ] Ler** `CONFIGURACAO_DOMINIO_EMAIL.md`
 3. **[ ] Seguir** checklist de configuração DNS
 4. **[ ] Usar** `EDGE_FUNCTION_DOMINIO_FINAL.ts`
@@ -131,5 +131,5 @@ Quando retomar o projeto:
 
 ---
 📅 **Última atualização**: 19/07/2025  
-👤 **Status**: 🟡 Aguardando domínio próprio  
-🎯 **Próximo passo**: Comprar comprarbem.com.br
+👤 **Status**: 🟡 Domínio em processamento (comprarbem.tec.br)  
+🎯 **Próximo passo**: Aguardar aprovação do domínio comprarbem.tec.br

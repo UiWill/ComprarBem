@@ -596,9 +596,16 @@ export default {
         console.log("Buscando produtos padronizados do Supabase...")
         let query = supabase
           .from('produtos')
-          .select('*')
+          .select(`
+            *,
+            dcb_certificados!produto_id (
+              numero_dcb,
+              data_validade,
+              status
+            )
+          `)
           .eq('tenant_id', this.currentTenantId)
-          .in('status', ['aprovado', 'julgado_aprovado', 'homologado']) // Produtos aprovados pela CPM e/ou julgados pela CCL
+          .in('status', ['homologado', 'aprovado']) // Produtos homologados via tramitação ou aprovados
         
         const { data: produtos, error: errorProdutos } = await query
         
@@ -606,8 +613,81 @@ export default {
           console.error('Erro ao carregar produtos:', errorProdutos)
           this.produtos = []
         } else {
-          this.produtos = produtos || []
-          console.log(`${this.produtos.length} produtos padronizados carregados`)
+          // Processar produtos e mesclar informações de DCB
+          let produtosProcessados = (produtos || []).map(produto => {
+            // Prioridade 1: Usar DCB salvo diretamente no produto
+            if (produto.numero_dcb && produto.validade_dcb) {
+              console.log(`📋 DCB encontrado no produto: ${produto.nome} - ${produto.numero_dcb}`)
+              return {
+                ...produto,
+                dcb_status: 'ativo' // Assumir ativo se está salvo no produto
+              }
+            }
+            
+            // Prioridade 2: Usar DCB da tabela dcb_certificados
+            if (produto.dcb_certificados && produto.dcb_certificados.length > 0) {
+              const dcb = produto.dcb_certificados[0] // Pegar o primeiro DCB ativo
+              console.log(`📋 DCB encontrado na tabela: ${produto.nome} - ${dcb.numero_dcb}`)
+              return {
+                ...produto,
+                numero_dcb: dcb.numero_dcb,
+                validade_dcb: dcb.data_validade,
+                dcb_status: dcb.status
+              }
+            }
+            
+            // Nenhum DCB encontrado
+            console.log(`⏳ Aguardando DCB para: ${produto.nome}`)
+            return produto
+          })
+          
+          // Remover duplicatas priorizando homologados > aprovados com DCB > aprovados sem DCB
+          const produtosUnicos = new Map()
+          
+          produtosProcessados.forEach(produto => {
+            const chave = `${produto.nome}|${produto.marca || ''}|${produto.modelo || ''}|${produto.fabricante || ''}`
+            const produtoExistente = produtosUnicos.get(chave)
+            
+            if (!produtoExistente) {
+              // Primeiro produto com essa chave
+              produtosUnicos.set(chave, produto)
+            } else {
+              // Decidir qual produto manter baseado na prioridade
+              let manterExistente = true
+              
+              // Prioridade 1: Quem tem DCB sempre ganha (independente do status)
+              const produtoTemDCB = !!(produto.numero_dcb && produto.validade_dcb)
+              const existenteTemDCB = !!(produtoExistente.numero_dcb && produtoExistente.validade_dcb)
+              
+              if (produtoTemDCB && !existenteTemDCB) {
+                manterExistente = false
+                console.log(`🔄 Priorizando produto COM DCB: ${produto.nome} (${produto.status} com DCB ${produto.numero_dcb})`)
+              }
+              // Prioridade 2: Se ambos têm DCB ou ambos não têm, priorizar homologado
+              else if (produtoTemDCB === existenteTemDCB) {
+                if (produto.status === 'homologado' && produtoExistente.status === 'aprovado') {
+                  manterExistente = false
+                  console.log(`🔄 Priorizando produto homologado: ${produto.nome} (${produtoExistente.status} → ${produto.status})`)
+                }
+              }
+              // Prioridade 3: Se existente tem DCB e novo não tem, manter existente
+              else if (!produtoTemDCB && existenteTemDCB) {
+                console.log(`✅ Mantendo produto COM DCB: ${produtoExistente.nome} (${produtoExistente.status} com DCB ${produtoExistente.numero_dcb})`)
+              }
+              
+              if (!manterExistente) {
+                produtosUnicos.set(chave, produto)
+              }
+            }
+          })
+          
+          this.produtos = Array.from(produtosUnicos.values())
+          
+          console.log(`${this.produtos.length} produtos únicos carregados (${produtosProcessados.length - this.produtos.length} duplicatas removidas)`)
+          console.log('Produtos homologados:', this.produtos.filter(p => p.status === 'homologado').length)
+          console.log('Produtos aprovados:', this.produtos.filter(p => p.status === 'aprovado').length)
+          console.log('Produtos com DCB:', this.produtos.filter(p => p.numero_dcb).length)
+          console.log('Produtos aguardando DCB:', this.produtos.filter(p => p.status === 'aprovado' && !p.numero_dcb).length)
         }
         
         // Carregar produtos despadronizados
@@ -733,25 +813,39 @@ export default {
         this.documentos = docs || []
 
         // Buscar avaliações RDM do produto (tabelas existentes)
-        const [feedbacksResponse, rdmFeedbacksResponse] = await Promise.all([
-          // Buscar feedbacks dos usuários
-          supabase
-            .from('material_feedbacks')
-            .select('*')
-            .eq('produto_id', id),
+        // Buscar feedbacks dos usuários
+        const feedbacksResponse = await supabase
+          .from('material_feedbacks')
+          .select('*')
+          .eq('produto_id', id)
 
-          // Buscar feedbacks do órgão (RDM)
-          supabase
+        // Tentar buscar feedbacks RDM com tratamento de erro
+        let rdmFeedbacksResponse = { data: [], error: null }
+        try {
+          // Primeiro tentar com produto_id
+          rdmFeedbacksResponse = await supabase
             .from('rdm_feedbacks')
             .select('*')
-            .eq('produto_id', id) // Assumindo que rdm_feedbacks também tem produto_id
-        ]);
+            .eq('produto_id', id)
+        } catch (error) {
+          // Se falhar, tentar estrutura alternativa
+          console.warn('Erro na primeira tentativa de RDM feedbacks, tentando estrutura alternativa:', error.message)
+          try {
+            rdmFeedbacksResponse = await supabase
+              .from('rdm_feedbacks') 
+              .select('*')
+              .eq('id', id)
+          } catch (secondError) {
+            console.warn('Tabela rdm_feedbacks não disponível ou sem estrutura compatível:', secondError.message)
+            rdmFeedbacksResponse = { data: [], error: null }
+          }
+        }
 
         // Tratar erros se houver
         if (feedbacksResponse.error) {
           console.error('Erro ao carregar feedbacks:', feedbacksResponse.error);
         }
-        if (rdmFeedbacksResponse.error) {
+        if (rdmFeedbacksResponse.error && !rdmFeedbacksResponse.error.code?.includes('42')) {
           console.error('Erro ao carregar feedbacks RDM:', rdmFeedbacksResponse.error);
         }
 

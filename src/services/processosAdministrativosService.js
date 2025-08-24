@@ -139,8 +139,7 @@ export class ProcessosAdministrativosService {
         dadosOrgao: {
           nome: dadosProcesso.nome_orgao || 'PREFEITURA MUNICIPAL',
           departamento: 'DEPARTAMENTO DE COMPRAS E LICITAÇÕES'
-        },
-        observacoesAdicionais: dadosProcesso.observacoes
+        }
       })
 
       return data

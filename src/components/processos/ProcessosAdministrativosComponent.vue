@@ -303,10 +303,6 @@
                 <span>{{ processoSelecionado.total_produtos }}</span>
               </div>
               
-              <div class="detail-item" v-if="processoSelecionado.observacoes">
-                <strong>💭 Observações:</strong>
-                <p>{{ processoSelecionado.observacoes }}</p>
-              </div>
               
               <div class="processo-actions-panel">
                 <div class="actions-grid">
@@ -373,10 +369,6 @@
                     <span class="btn-text">Devolver para Correção</span>
                   </button>
                   
-                  <button @click="verTramitacao(processoSelecionado)" class="action-btn action-btn-info">
-                    <span class="btn-icon">📋</span>
-                    <span class="btn-text">Ver Tramitação</span>
-                  </button>
                   
                   <!-- Botão para reenviar processo devolvido (CPM apenas) -->
                   <button 
@@ -401,7 +393,7 @@
                     class="action-info"
                     style="padding: 8px 12px; background: #f5f5f5; border-radius: 6px; color: #666; font-size: 0.9em; margin: 4px 0;">
                     <span class="btn-icon" style="opacity: 0.5;">📎</span>
-                    <span>Apenas o perfil responsável pelo status atual pode adicionar documentos</span>
+                    <span>{{ obterMensagemNaoPodeAdicionarDoc() }}</span>
                   </div>
                   
                   <button 
@@ -1077,77 +1069,6 @@
         </div>
       </div>
 
-      <!-- Modal para Ver Tramitação -->
-      <div v-if="mostrarModalTramitacao && processoSelecionado" class="modal-overlay" @click="fecharModalTramitacao">
-        <div class="modal-tramitacao" @click.stop>
-          <div class="modal-header">
-            <h3>📋 Histórico de Tramitação - {{ processoSelecionado.numero_processo }}</h3>
-            <button @click="fecharModalTramitacao" class="btn-close">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="tramitacao-info">
-              <div class="processo-info">
-                <div class="info-row">
-                  <span class="label">Status Atual:</span>
-                  <span :class="`status-badge status-${obterStatusProcesso(processoSelecionado.status).cor}`">
-                    {{ obterStatusProcesso(processoSelecionado.status).label }}
-                  </span>
-                </div>
-                <div class="info-row">
-                  <span class="label">Data de Autuação:</span>
-                  <span>{{ formatarData(processoSelecionado.data_autuacao) }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="label">Tipo:</span>
-                  <span>{{ obterTipoProcesso(processoSelecionado.tipo_processo).label }}</span>
-                </div>
-              </div>
-
-              <!-- Ações de Tramitação -->
-              <div v-if="acoesDisponiveis[processoSelecionado.id] && acoesDisponiveis[processoSelecionado.id].length > 0" class="tramitacao-actions-container">
-                <h4>🔄 Ações de Tramitação</h4>
-                <div class="workflow-buttons-modal">
-                  <button 
-                    v-for="acao in acoesDisponiveis[processoSelecionado.id]" 
-                    :key="acao.tipo"
-                    @click="executarAcaoTramitacao(processoSelecionado, acao)"
-                    class="btn-workflow-modal"
-                    :class="{ 
-                      'success': acao.cor === 'success',
-                      'warning': acao.cor === 'warning',
-                      'danger': acao.cor === 'danger'
-                    }"
-                    :title="acao.descricao"
-                  >
-                    {{ acao.label }}
-                  </button>
-                </div>
-              </div>
-
-              <div class="historico-container">
-                <h4>📈 Linha do Tempo</h4>
-                <div v-if="historicoTramitacao.length === 0" class="sem-historico">
-                  <p>⏳ Nenhuma tramitação registrada ainda</p>
-                </div>
-                <div v-else class="linha-tempo">
-                  <div v-for="(evento, index) in historicoTramitacao" :key="index" class="evento-tramitacao">
-                    <div class="evento-data">{{ formatarDataHora(evento.data_evento) }}</div>
-                    <div class="evento-status">
-                      <span :class="`status-badge status-${evento.cor || 'gray'}`">
-                        {{ evento.status_destino }}
-                      </span>
-                    </div>
-                    <div class="evento-descricao">{{ evento.descricao || evento.observacoes }}</div>
-                    <div v-if="evento.responsavel" class="evento-responsavel">
-                      👤 {{ evento.responsavel }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
       
       <!-- Modal de Confirmação de Tramitação -->
       <div v-if="mostrarModalConfirmacaoTramitacao" class="modal-overlay" @click="fecharModalConfirmacaoTramitacao">
@@ -1348,7 +1269,6 @@ export default {
       mostrarModalEdital: false,
       mostrarDocumentacao: false,
       mostrarModalAdicionarDoc: false,
-      mostrarModalTramitacao: false,
       processoSelecionado: null,
       
       // Edição
@@ -1358,7 +1278,6 @@ export default {
       
       // Dados auxiliares para visualização detalhada
       produtosProcesso: [],
-      historicoTramitacao: [],
       
       // Upload de documentos
       documentosParaUpload: [],
@@ -1684,14 +1603,6 @@ export default {
       }
     },
     
-    async carregarHistoricoTramitacao(processoId) {
-      try {
-        this.historicoTramitacao = await ProcessosAdministrativosService.obterHistoricoTramitacao(processoId)
-      } catch (error) {
-        console.error('Erro ao carregar histórico de tramitação:', error)
-        this.historicoTramitacao = []
-      }
-    },
     
     podeEditarProcesso(processo) {
       // Só pode editar processos que estão em criação
@@ -1701,6 +1612,20 @@ export default {
 
     async podeAdicionarDocumento(processo) {
       try {
+        // Status onde não se pode mais adicionar documentos (processo já foi julgado)
+        const statusBloqueados = [
+          'expedindo_dcbs',      // Expedindo as DCBs - processo já foi julgado
+          'incluindo_marcas',    // Incluindo Marcas no Catálogo - processo já finalizado
+          'finalizado',          // Processo finalizado
+          'arquivado'           // Processo arquivado
+        ]
+        
+        // Se o processo está em um status onde não pode mais adicionar documentos
+        if (statusBloqueados.includes(processo.status)) {
+          console.log(`🚫 Não é possível adicionar documentos no status "${processo.status}" - processo já foi julgado`)
+          return false
+        }
+        
         // Usar a lógica do TramitacaoProcessosService para verificar se o usuário pode tramitar
         // Se pode tramitar, significa que é o responsável pelo status atual e pode adicionar documentos
         const podeTrampitar = await TramitacaoProcessosService.podeUsuarioTramitar(processo)
@@ -1773,6 +1698,29 @@ export default {
       }
       
       return 'Adicionar Documento'
+    },
+
+    // Função para obter a mensagem apropriada quando não pode adicionar documento
+    obterMensagemNaoPodeAdicionarDoc() {
+      if (!this.processoSelecionado) {
+        return 'Processo não carregado'
+      }
+      
+      const status = this.processoSelecionado.status
+      
+      // Status onde não se pode mais adicionar documentos (processo já foi julgado)
+      const statusBloqueados = [
+        'expedindo_dcbs',      // Expedindo as DCBs - processo já foi julgado
+        'incluindo_marcas',    // Incluindo Marcas no Catálogo - processo já finalizado
+        'finalizado',          // Processo finalizado
+        'arquivado'           // Processo arquivado
+      ]
+      
+      if (statusBloqueados.includes(status)) {
+        return 'Não é possível adicionar documentos - processo já foi julgado'
+      }
+      
+      return 'Apenas o perfil responsável pelo status atual pode adicionar documentos'
     },
 
     // Verificar se tem ação de enviar disponível para este processo
@@ -1905,7 +1853,7 @@ export default {
       }
     },
     
-    gerarHTMLRelatorio(processo, documentos, produtos) {
+    gerarHTMLRelatorio(processo, documentos, produtos, ataJulgamento = null) {
       const dataAtual = new Date().toLocaleDateString('pt-BR')
       
       return `
@@ -2041,18 +1989,6 @@ export default {
               line-height: 1.4;
             }
             
-            .campo.observacoes {
-              margin-top: 1.5cm;
-              border-top: 1px solid #ccc;
-              padding-top: 1cm;
-            }
-            
-            .observacoes-conteudo {
-              margin-top: 0.5cm;
-              text-align: justify;
-              line-height: 1.5;
-              font-style: italic;
-            }
             
             .campo strong {
               font-weight: bold;
@@ -2160,12 +2096,6 @@ export default {
                   </p>
                   ` : ''}
                   
-                  ${doc.observacoes ? `
-                  <h3>OBSERVAÇÕES</h3>
-                  <div style="background: #f8f9fa; padding: 1cm; border-left: 4px solid #007bff; margin: 1cm 0;">
-                    ${doc.observacoes}
-                  </div>
-                  ` : ''}
                   
                   <div style="margin-top: 3cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm; color: #666;">
                     <p>Sistema Comprar Bem - Processo nº ${processo.numero_processo}</p>
@@ -2321,6 +2251,108 @@ export default {
                 <p><strong>Relatório gerado automaticamente pelo Sistema Comprar Bem</strong></p>
                 <p>Processo nº ${processo.numero_processo} - ${new Date().toLocaleDateString('pt-BR')}</p>
               </div>
+            </div>
+          </div>
+          ` : ''}
+          
+          <!-- SEÇÃO DA ATA DE JULGAMENTO CCL - FORMATO OFICIAL IDÊNTICO AO PAINEL CCL -->
+          ${ataJulgamento ? `
+          <div class="page-break"></div>
+          <div class="documento-pagina">
+            <div class="folha-numero">Ata CCL</div>
+            
+            <!-- CABEÇALHO OFICIAL EXATO DO PAINEL CCL -->
+            <div style="text-align: center; margin-bottom: 25px;">
+              <h1 style="font-size: 16pt; font-weight: bold; margin-bottom: 8px; font-family: 'Times New Roman', serif;">
+                COMISSÃO DE CONTRATAÇÃO OU LICITAÇÃO (CCL)
+              </h1>
+              <p style="font-size: 12pt; font-weight: normal; margin: 8px 0; font-family: 'Times New Roman', serif;">
+                Sistema de Pré-Qualificação de Bens - Lei 14.133/2021
+              </p>
+              
+              <!-- Linha decorativa -->
+              <div style="border-top: 1px solid #000; margin: 15px auto; width: 60%;"></div>
+              
+              <h1 style="font-size: 18pt; font-weight: bold; margin-top: 15px; font-family: 'Times New Roman', serif;">
+                ATA DE JULGAMENTO
+              </h1>
+            </div>
+
+            <!-- DADOS DA ATA - FORMATO OFICIAL -->
+            <div style="margin: 20px 0; font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.6;">
+              <p><strong>Número:</strong> ${ataJulgamento.numero || 'Não informado'}</p>
+              ${ataJulgamento.periodo && ataJulgamento.periodo !== 'Não informado' ? `
+              <p><strong>Período:</strong> ${ataJulgamento.periodo}</p>
+              ` : ''}
+              <p><strong>Data de Publicação:</strong> ${ataJulgamento.data_publicacao ? new Date(ataJulgamento.data_publicacao).toLocaleDateString('pt-BR') : 'Não informada'}</p>
+              ${ataJulgamento.status_ata && ataJulgamento.status_ata !== 'HOMOLOGACAO_DIRETA' ? `
+              <p><strong>Status:</strong> ${ataJulgamento.status_ata}</p>
+              ` : ''}
+            </div>
+
+            <!-- RESUMO DOS JULGAMENTOS -->
+            <div style="margin: 25px 0;">
+              <h3 style="font-size: 14pt; font-weight: bold; font-family: 'Times New Roman', serif; margin-bottom: 15px;">
+                RESUMO DOS JULGAMENTOS
+              </h3>
+              <div style="margin-left: 15px; font-size: 11pt; line-height: 1.4;">
+                <p>Total de processos julgados: 1</p>
+                <p>Processo analisado: ${processo.numero_processo || 'Não informado'}</p>
+                <p>Status da análise: APROVADO</p>
+              </div>
+            </div>
+
+            <!-- CONTEÚDO COMPLETO DA ATA - FORMATO OFICIAL -->
+            <div style="margin: 25px 0;">
+              <h3 style="font-size: 14pt; font-weight: bold; font-family: 'Times New Roman', serif; margin-bottom: 15px;">
+                CONTEÚDO COMPLETO DA ATA
+              </h3>
+              
+              <div style="
+                border: 1px solid #000; 
+                padding: 20px; 
+                margin: 10px 0;
+                font-family: 'Times New Roman', serif;
+                font-size: 10pt;
+                line-height: 1.5;
+                text-align: justify;
+                background: #fafafa;
+              ">
+                ${ataJulgamento.conteudo_ata ? 
+                  ataJulgamento.conteudo_ata.replace(/\n/g, '<br>') : 
+                  `
+                  <strong>PROCESSO Nº:</strong> ${processo.numero_processo || 'Não informado'}<br><br>
+                  
+                  <strong>OBJETO:</strong> Pré-qualificação de bens conforme Lei 14.133/2021<br><br>
+                  
+                  <strong>DECISÃO DA CCL:</strong> APROVADO<br><br>
+                  
+                  <strong>FUNDAMENTAÇÃO:</strong> A Comissão Central de Licitação, após análise técnica detalhada dos produtos apresentados, considerando os aspectos técnicos, normativos e de conformidade com as especificações estabelecidas, deliberou pela APROVAÇÃO dos produtos relacionados neste processo.<br><br>
+                  
+                  Os produtos aprovados atendem aos requisitos técnicos e normativos aplicáveis, estando aptos para inclusão no catálogo eletrônico de bens padronizados.<br><br>
+                  
+                  <strong>PRÓXIMOS PASSOS:</strong> Processo encaminhado à Assessoria Jurídica para análise da conformidade legal.<br><br>
+                  
+                  <strong>Data do julgamento:</strong> ${ataJulgamento.data_publicacao ? new Date(ataJulgamento.data_publicacao).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}
+                  `
+                }
+              </div>
+            </div>
+
+            
+            <!-- RODAPÉ OFICIAL -->
+            <div style="
+              text-align: center; 
+              margin-top: 40px; 
+              padding-top: 20px;
+              border-top: 1px solid #333;
+              font-size: 10pt;
+              font-style: italic;
+              color: #666;
+            ">
+              <p><strong>Sistema Comprar Bem - Ata de Julgamento CCL</strong></p>
+              <p>Documento oficial gerado automaticamente pelo sistema</p>
+              <p>Lei 14.133/2021 - Sistema de Pré-Qualificação de Bens</p>
             </div>
           </div>
           ` : ''}
@@ -3080,12 +3112,6 @@ export default {
               <strong>OBJETO:</strong> ${objetoTexto}
             </div>
 
-            ${processo.observacoes ? `
-            <div class="campo observacoes" style="margin-top: 1.5cm; border-top: 1px solid #ccc; padding-top: 1cm;">
-              <strong>OBSERVAÇÕES:</strong>
-              <div class="observacoes-conteudo" style="margin-top: 0.5cm; text-align: justify; line-height: 1.5; font-style: italic;">${processo.observacoes}</div>
-            </div>
-            ` : ''}
             
           </div>
         </div>
@@ -3440,8 +3466,6 @@ export default {
           await this.carregarProdutosProcesso(processo.id)
         }
         
-        // Carregar histórico de tramitação
-        await this.carregarHistoricoTramitacao(processo.id)
         
         // Verificar se o usuário pode adicionar documentos ao processo
         this.podeAdicionarDoc = await this.podeAdicionarDocumento(this.processoSelecionado)
@@ -3585,18 +3609,71 @@ export default {
           }
         }
         
+        // Buscar atas de julgamento CCL se existir
+        let ataJulgamento = null
+        try {
+          console.log('🔍 [DEBUG] Verificando se processo possui ata de julgamento CCL...')
+          console.log('🔍 [DEBUG] Status do processo:', processoCompleto.status)
+          console.log('🔍 [DEBUG] Possui ata_julgamento_ccl?', !!processoCompleto.ata_julgamento_ccl)
+          
+          // Cenário 1: Processo passou por ata formal (status indica criação de ata)
+          if (processoCompleto.status && ['ata_ccl', 'ata_julgamento_emitida_ccl', 'em_prazo_recursal', 'finalizado'].includes(processoCompleto.status)) {
+            console.log('🔍 [DEBUG] CENÁRIO 1: Processo passou por ata formal, buscando ata na tabela...')
+            
+            const { data: ata, error: ataError } = await supabase
+              .from('atas_julgamento')
+              .select('*')
+              .eq('processo_id', processo.id)
+              .eq('tenant_id', await ProcessosAdministrativosService.getTenantId())
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single()
+              
+            if (!ataError && ata) {
+              ataJulgamento = ata
+              console.log('✅ [DEBUG] Ata formal encontrada:', ata.numero)
+            } else {
+              console.log('⚠️ [DEBUG] Ata formal não encontrada na tabela, usando dados do processo')
+            }
+          }
+          
+          // Cenário 2: Homologação direta (tem fundamentação CCL mas não tem ata formal)
+          if (!ataJulgamento && processoCompleto.ata_julgamento_ccl) {
+            console.log('🔍 [DEBUG] CENÁRIO 2: Homologação direta - usando fundamentação CCL do processo')
+            
+            ataJulgamento = {
+              numero: `ATA-CCL-DIRETA-${processo.id}`,
+              tipo: 'homologacao_direta',
+              conteudo_ata: processoCompleto.ata_julgamento_ccl,
+              descricao: 'Decisão direta da CCL - Homologação sem ata formal',
+              data_publicacao: processoCompleto.ata_emitida_ccl_em,
+              status_ata: 'HOMOLOGACAO_DIRETA'
+            }
+            console.log('✅ [DEBUG] Ata de homologação direta criada virtualmente')
+          }
+          
+          // Cenário 3: Processo ainda não foi julgado pela CCL
+          if (!ataJulgamento) {
+            console.log('ℹ️ [DEBUG] CENÁRIO 3: Processo ainda não possui julgamento CCL')
+          }
+          
+        } catch (error) {
+          console.warn('⚠️ [DEBUG] Erro ao buscar ata CCL:', error)
+        }
+        
         // Debug: verificar documentos encontrados
         console.log('Documentos encontrados:', documentos)
         console.log('Produtos encontrados:', produtos)
         console.log('DFD encontrado:', dadosDFD)
+        console.log('Ata CCL encontrada:', ataJulgamento ? `${ataJulgamento.numero} (${ataJulgamento.tipo || 'formal'})` : 'Nenhuma')
         
         // Gerar documentos que faltam se necessário
         const documentosCompletos = await this.completarDocumentosProcesso(processoCompleto, documentos, produtos, dadosDFD)
         
         console.log('Documentos completos após processamento:', documentosCompletos)
         
-        // Gerar HTML do relatório
-        const htmlRelatorio = this.gerarHTMLRelatorio(processoCompleto, documentosCompletos, produtos)
+        // Gerar HTML do relatório (incluindo ata se existir)
+        const htmlRelatorio = this.gerarHTMLRelatorio(processoCompleto, documentosCompletos, produtos, ataJulgamento)
         
         // Criar blob para visualização
         const blob = new Blob([htmlRelatorio], { type: 'text/html' })
@@ -3779,19 +3856,6 @@ export default {
       this.mostrarModalAdicionarDoc = true
     },
     
-    async verTramitacao(processo) {
-      console.log('📋 Carregando tramitação do processo:', processo.numero_processo)
-      this.processoSelecionado = processo
-      
-      try {
-        // Carregar histórico de tramitação
-        await this.carregarHistoricoTramitacao(processo.id)
-        this.mostrarModalTramitacao = true
-      } catch (error) {
-        console.error('Erro ao carregar histórico de tramitação:', error)
-        alert('Erro ao carregar histórico de tramitação: ' + error.message)
-      }
-    },
     
     // =====================================================
     // AÇÕES RÁPIDAS
@@ -3863,10 +3927,6 @@ export default {
       this.processoSelecionado = null
     },
     
-    fecharModalTramitacao() {
-      this.mostrarModalTramitacao = false
-      this.processoSelecionado = null
-    },
     
     // =====================================================
     // GESTÃO DE TRAMITAÇÃO DE PROCESSOS
