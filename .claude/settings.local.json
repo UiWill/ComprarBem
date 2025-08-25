@@ -35,7 +35,9 @@
       "Bash(awk:*)",
       "Bash(curl:*)",
       "WebSearch",
-      "Bash(nslookup:*)"
+      "Bash(nslookup:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(npx gh-pages:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
