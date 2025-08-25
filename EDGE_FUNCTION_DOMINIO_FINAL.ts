@@ -115,7 +115,7 @@ function gerarHTMLLembrete(dados: any) {
       </div>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="https://comprarbem.tec.br/rdm" class="cta-button">
+        <a href="https://comprarbem.tec.br/#/rdm" class="cta-button">
           📝 Acessar Dashboard e Avaliar Agora
         </a>
       </div>
@@ -150,10 +150,10 @@ Deno.serve(async (req) => {
     // ============================================
     // 1. PROCESSAR NOVOS PRODUTOS PENDENTES
     // ============================================
-    console.log('🔍 Verificando novos produtos pendentes...')
+    console.log('🔍 Verificando novos produtos pendentes (com sistema anti-spam)...')
     
     const { data: novosProdutos, error: errorNovos } = await supabase
-      .rpc('buscar_produtos_pendentes_notificacao')
+      .rpc('buscar_produtos_pendentes_notificacao_com_throttling')
     
     if (errorNovos) {
       console.error('❌ Erro ao buscar novos produtos:', errorNovos)
@@ -164,14 +164,14 @@ Deno.serve(async (req) => {
       for (const produto of novosProdutos) {
         try {
           const emailData = {
-            destinatario: produto.usuario_email,
-            assunto: `🎉 Novo produto disponível para avaliação - ${produto.nome_produto}`,
+            destinatario: produto.np_usuario_email,
+            assunto: `🎉 Novo produto disponível para avaliação - ${produto.np_nome_produto}`,
             tipo: 'novo_produto',
             conteudo: `
               <h2>🎉 Novo Produto Disponível</h2>
-              <p><strong>Produto:</strong> ${produto.nome_produto}</p>
+              <p><strong>Produto:</strong> ${produto.np_nome_produto}</p>
               <p>Um novo produto foi adicionado ao sistema e está aguardando sua avaliação.</p>
-              <p><a href="https://comprarbem.tec.br/dashboard" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Sistema</a></p>
+              <p><a href="https://comprarbem.tec.br/#/dashboard" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Sistema</a></p>
               <hr>
               <p><small>Sistema Comprar Bem - Compras Públicas Inteligentes</small></p>
             `
@@ -184,35 +184,36 @@ Deno.serve(async (req) => {
             
             // Marcar como notificado
             await supabase.rpc('marcar_produto_notificado', {
-              p_usuario_rdm_id: produto.usuario_rdm_id,
-              p_produto_id: produto.produto_id
+              p_usuario_rdm_id: produto.np_usuario_rdm_id,
+              p_produto_id: produto.np_produto_id
             })
             
-            console.log(`✅ Produto ${produto.nome_produto} notificado para ${produto.usuario_nome}`)
-            resultados.detalhes.push(`✅ Produto notificado: ${produto.nome_produto} → ${produto.usuario_email}`)
+            console.log(`✅ Produto ${produto.np_nome_produto} notificado para ${produto.np_usuario_nome}`)
+            resultados.detalhes.push(`✅ Produto notificado: ${produto.np_nome_produto} → ${produto.np_usuario_email}`)
           } else {
             resultados.novos_produtos.erros++
-            console.log(`❌ Erro ao notificar produto ${produto.nome_produto}: ${resultado.error}`)
-            resultados.detalhes.push(`❌ Erro produto: ${produto.nome_produto} → ${resultado.error}`)
+            console.log(`❌ Erro ao notificar produto ${produto.np_nome_produto}: ${resultado.error}`)
+            resultados.detalhes.push(`❌ Erro produto: ${produto.np_nome_produto} → ${resultado.error}`)
           }
         } catch (error) {
           resultados.novos_produtos.erros++
-          console.error(`❌ Erro ao processar produto ${produto.nome_produto}:`, error)
-          resultados.detalhes.push(`❌ Erro produto: ${produto.nome_produto} → ${error.message}`)
+          console.error(`❌ Erro ao processar produto ${produto.np_nome_produto}:`, error)
+          resultados.detalhes.push(`❌ Erro produto: ${produto.np_nome_produto} → ${error.message}`)
         }
       }
     } else {
-      console.log('✅ Nenhum novo produto pendente encontrado')
-      resultados.detalhes.push('ℹ️ Nenhum novo produto pendente')
+      console.log('✅ Nenhum novo produto pendente encontrado (sistema anti-spam ativo)')
+      resultados.detalhes.push('ℹ️ Nenhum novo produto pendente - throttling funcionando')
     }
 
     // ============================================
-    // 2. PROCESSAR LEMBRETES DE AVALIAÇÃO
+    // 2. PROCESSAR LEMBRETES DE AVALIAÇÃO COM THROTTLING
     // ============================================
-    console.log('🔍 Verificando lembretes de avaliação pendentes...')
+    console.log('🔍 Verificando lembretes de avaliação pendentes (com sistema anti-spam)...')
     
+    // Buscar lembretes com verificação de throttling
     const { data: lembretesPendentes, error: errorLembretes } = await supabase
-      .rpc('verificar_usuarios_lembretes_avaliacao')
+      .rpc('verificar_usuarios_lembretes_com_throttling')
     
     if (errorLembretes) {
       console.error('❌ Erro ao buscar lembretes:', errorLembretes)
@@ -223,12 +224,12 @@ Deno.serve(async (req) => {
       for (const lembrete of lembretesPendentes) {
         try {
           const htmlContent = gerarHTMLLembrete({
-            tipo_lembrete: lembrete.tipo_lembrete_necessario,
-            material_nome: lembrete.material_nome,
-            material_codigo: lembrete.material_codigo,
-            dias_desde_vinculacao: lembrete.dias_desde_vinculacao,
-            usuario_nome: lembrete.usuario_nome,
-            unidade_setor: lembrete.unidade_setor
+            tipo_lembrete: lembrete.rdm_tipo_lembrete_necessario,
+            material_nome: lembrete.rdm_material_nome,
+            material_codigo: lembrete.rdm_material_codigo,
+            dias_desde_vinculacao: lembrete.rdm_dias_desde_vinculacao,
+            usuario_nome: lembrete.rdm_usuario_nome,
+            unidade_setor: lembrete.rdm_unidade_setor
           })
           
           const templates = {
@@ -239,8 +240,8 @@ Deno.serve(async (req) => {
           }
           
           const emailData = {
-            destinatario: lembrete.usuario_email,
-            assunto: `${templates[lembrete.tipo_lembrete_necessario]} - ${lembrete.material_nome}`,
+            destinatario: lembrete.rdm_usuario_email,
+            assunto: `${templates[lembrete.rdm_tipo_lembrete_necessario]} - ${lembrete.rdm_material_nome}`,
             tipo: 'lembrete_avaliacao',
             conteudo: htmlContent
           }
@@ -252,41 +253,41 @@ Deno.serve(async (req) => {
             
             // Registrar no banco
             await supabase.rpc('registrar_lembrete_enviado', {
-              p_usuario_rdm_id: lembrete.usuario_rdm_id,
-              p_produto_id: lembrete.produto_id,
-              p_tipo_lembrete: lembrete.tipo_lembrete_necessario,
-              p_tenant_id: lembrete.tenant_id,
+              p_usuario_rdm_id: lembrete.rdm_usuario_id,
+              p_produto_id: lembrete.rdm_produto_id,
+              p_tipo_lembrete: lembrete.rdm_tipo_lembrete_necessario,
+              p_tenant_id: lembrete.rdm_tenant_id,
               p_sucesso: true,
               p_erro: null
             })
             
-            console.log(`✅ Lembrete ${lembrete.tipo_lembrete_necessario} enviado para ${lembrete.usuario_nome}`)
-            resultados.detalhes.push(`✅ Lembrete enviado: ${lembrete.tipo_lembrete_necessario} → ${lembrete.usuario_email}`)
+            console.log(`✅ Lembrete ${lembrete.rdm_tipo_lembrete_necessario} enviado para ${lembrete.rdm_usuario_nome}`)
+            resultados.detalhes.push(`✅ Lembrete enviado: ${lembrete.rdm_tipo_lembrete_necessario} → ${lembrete.rdm_usuario_email}`)
           } else {
             resultados.lembretes.erros++
             
             // Registrar erro no banco
             await supabase.rpc('registrar_lembrete_enviado', {
-              p_usuario_rdm_id: lembrete.usuario_rdm_id,
-              p_produto_id: lembrete.produto_id,
-              p_tipo_lembrete: lembrete.tipo_lembrete_necessario,
-              p_tenant_id: lembrete.tenant_id,
+              p_usuario_rdm_id: lembrete.rdm_usuario_id,
+              p_produto_id: lembrete.rdm_produto_id,
+              p_tipo_lembrete: lembrete.rdm_tipo_lembrete_necessario,
+              p_tenant_id: lembrete.rdm_tenant_id,
               p_sucesso: false,
               p_erro: resultado.error
             })
             
-            console.log(`❌ Erro ao enviar lembrete para ${lembrete.usuario_nome}: ${resultado.error}`)
-            resultados.detalhes.push(`❌ Erro lembrete: ${lembrete.tipo_lembrete_necessario} → ${resultado.error}`)
+            console.log(`❌ Erro ao enviar lembrete para ${lembrete.rdm_usuario_nome}: ${resultado.error}`)
+            resultados.detalhes.push(`❌ Erro lembrete: ${lembrete.rdm_tipo_lembrete_necessario} → ${resultado.error}`)
           }
         } catch (error) {
           resultados.lembretes.erros++
-          console.error(`❌ Erro ao processar lembrete para ${lembrete.usuario_nome}:`, error)
-          resultados.detalhes.push(`❌ Erro lembrete: ${lembrete.usuario_nome} → ${error.message}`)
+          console.error(`❌ Erro ao processar lembrete para ${lembrete.rdm_usuario_nome}:`, error)
+          resultados.detalhes.push(`❌ Erro lembrete: ${lembrete.rdm_usuario_nome} → ${error.message}`)
         }
       }
     } else {
-      console.log('✅ Nenhum lembrete pendente encontrado')
-      resultados.detalhes.push('ℹ️ Nenhum lembrete pendente')
+      console.log('✅ Nenhum lembrete pendente encontrado (sistema anti-spam ativo)')
+      resultados.detalhes.push('ℹ️ Nenhum lembrete pendente - throttling funcionando')
     }
 
     // ============================================
@@ -300,6 +301,15 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       timestamp: new Date().toISOString(),
+      sistema_throttling: {
+        ativo: true,
+        regras: {
+          "novos_produtos": "24 horas entre notificações",
+          "lembretes_10_dias": "24 horas entre envios", 
+          "lembretes_20_dias": "48 horas entre envios",
+          "lembretes_30_dias": "6 horas entre envios (urgente)"
+        }
+      },
       resumo: {
         novos_produtos: resultados.novos_produtos,
         lembretes: resultados.lembretes,

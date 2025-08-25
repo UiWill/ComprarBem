@@ -6870,7 +6870,7 @@ Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, po
 ✅ Email enviado para: ${this.usuarioAtual.email}
 
 📧 O usuário receberá:
-• Link de acesso: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/ComprarBem/#/rdm'}
+• Link de acesso: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/#/rdm'}
 • Senha temporária para primeiro acesso
 • Instruções completas de uso
 
@@ -6886,7 +6886,7 @@ O usuário já pode fazer login no sistema!`)
 Envie manualmente os dados de acesso:
 📧 Email: ${this.usuarioAtual.email}
 🔑 Senha: ${senhaTemporaria}
-🔗 Link: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/ComprarBem/#/rdm'}
+🔗 Link: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/#/rdm'}
 
 O sistema funciona normalmente, apenas o email automático falhou.`)
           }
@@ -7481,7 +7481,7 @@ Unidade/Setor: ${usuario.unidade_setor}
 Coordenador: ${usuario.nome_coordenador}
 
 === COMO ACESSAR ===
-1. Acesse: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/ComprarBem/#/rdm'}
+1. Acesse: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/#/rdm'}
 2. Faça login com seu email e senha
 3. Comece a emitir suas RDMs online!
 
@@ -7566,7 +7566,7 @@ Este é um email automático. Não responda diretamente.
           
 📧 Destinatário: ${usuario.nome_usuario} (${usuario.email})
 🔑 Senha de acesso: ${senhaTemporaria}
-🔗 Link de acesso: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/ComprarBem/#/rdm'}
+🔗 Link de acesso: ${window.location.origin.includes('localhost') ? window.location.origin + '/rdm' : window.location.origin + '/#/rdm'}
 📅 Data: ${new Date().toLocaleString('pt-BR')}
 
 O usuário pode fazer login imediatamente no sistema RDM.`,
