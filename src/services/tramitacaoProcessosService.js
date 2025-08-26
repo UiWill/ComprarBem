@@ -29,6 +29,7 @@ export class TramitacaoProcessosService {
     'homologado',              // Com Homologação
     'expedindo_dcbs',          // Expedindo as DCBs
     'incluindo_marcas',        // Incluindo Marcas no Catálogo
+    'finalizado',              // Processo Finalizado
     
     // STATUS DE DEVOLUÇÃO - Não seguem fluxo linear
     'devolvido_pelo_orgao',    // Devolvido pelo Órgão Administrativo
@@ -70,6 +71,7 @@ export class TramitacaoProcessosService {
     'homologado': PerfilUsuarioService.PERFIS.ORGAO_ADMINISTRATIVO, // Órgão homologa
     'expedindo_dcbs': PerfilUsuarioService.PERFIS.CPM,        // CPM expede DCBs
     'incluindo_marcas': PerfilUsuarioService.PERFIS.CPM,      // CPM inclui no catálogo
+    'finalizado': null,                                       // Processo finalizado - nenhum perfil pode alterar
     
     // STATUS DE DEVOLUÇÃO - CPM deve corrigir e reenviar
     'devolvido_pelo_orgao': PerfilUsuarioService.PERFIS.CPM,     // CPM deve corrigir
@@ -132,6 +134,24 @@ export class TramitacaoProcessosService {
       if (proximoStatus === 'incluindo_marcas') {
         console.log('🎯 Status "incluindo_marcas" detectado - incluindo produtos no catálogo automaticamente')
         await this.incluirProdutosNoCatalogo(processoId)
+        
+        // Após incluir no catálogo, finalizar automaticamente o processo
+        console.log('🏁 Finalizando processo automaticamente após inclusão no catálogo')
+        const { error: errorFinalizar } = await supabase
+          .from('processos_administrativos')
+          .update({
+            status: 'finalizado',
+            finalizado_em: new Date().toISOString()
+          })
+          .eq('id', processoId)
+        
+        if (errorFinalizar) {
+          console.error('❌ Erro ao finalizar processo automaticamente:', errorFinalizar)
+        } else {
+          // Registrar tramitação para finalização
+          await this.registrarTramitacao(processoId, 'incluindo_marcas', 'finalizado', 'FINALIZACAO_AUTOMATICA', 'Processo finalizado automaticamente após inclusão das marcas no catálogo')
+          console.log('✅ Processo finalizado automaticamente')
+        }
       }
       
       // Registrar histórico de tramitação
@@ -185,6 +205,24 @@ export class TramitacaoProcessosService {
       if (statusDestino === 'incluindo_marcas') {
         console.log('🎯 Status "incluindo_marcas" detectado no envio flexível - incluindo produtos no catálogo automaticamente')
         await this.incluirProdutosNoCatalogo(processoId)
+        
+        // Após incluir no catálogo, finalizar automaticamente o processo
+        console.log('🏁 Finalizando processo automaticamente após inclusão no catálogo (tramitação flexível)')
+        const { error: errorFinalizar } = await supabase
+          .from('processos_administrativos')
+          .update({
+            status: 'finalizado',
+            finalizado_em: new Date().toISOString()
+          })
+          .eq('id', processoId)
+        
+        if (errorFinalizar) {
+          console.error('❌ Erro ao finalizar processo automaticamente:', errorFinalizar)
+        } else {
+          // Registrar tramitação para finalização
+          await this.registrarTramitacao(processoId, 'incluindo_marcas', 'finalizado', 'FINALIZACAO_AUTOMATICA_FLEXIVEL', 'Processo finalizado automaticamente após inclusão das marcas no catálogo (tramitação flexível)')
+          console.log('✅ Processo finalizado automaticamente (tramitação flexível)')
+        }
       }
       
       // Registrar histórico de tramitação
@@ -460,6 +498,11 @@ export class TramitacaoProcessosService {
     // Converter status antigos para novos equivalentes
     const statusConvertido = this.converterStatusAntigo(statusAtual)
     
+    // Se já está finalizado, não há próximo status
+    if (statusConvertido === 'finalizado') {
+      return null
+    }
+    
     const fluxo = tipoProcesso === 'padronizacao' ? this.FLUXO_PADRONIZACAO : this.FLUXO_DESPADRONIZACAO
     const indiceAtual = fluxo.indexOf(statusConvertido)
     
@@ -566,8 +609,20 @@ export class TramitacaoProcessosService {
    */
   static async podeUsuarioTramitar(processo) {
     try {
+      // Se o processo está finalizado, ninguém pode tramitar
+      if (processo.status === 'finalizado') {
+        console.log(`🏁 Processo ${processo.numero_processo} está finalizado - tramitação bloqueada`)
+        return false
+      }
+      
       const perfilUsuario = await PerfilUsuarioService.obterPerfilUsuarioAtual()
       const perfilResponsavel = this.RESPONSAVEL_POR_STATUS[processo.status]
+      
+      // Se o perfil responsável é null (como no caso de finalizado), ninguém pode tramitar
+      if (perfilResponsavel === null) {
+        console.log(`🚫 Status ${processo.status} não permite tramitação por nenhum perfil`)
+        return false
+      }
       
       // Log específico para o status "Submetido à Autoridade Competente"
       if (processo.status === 'submetido_autoridade') {
@@ -722,6 +777,7 @@ export class TramitacaoProcessosService {
       'com_recurso': 'Homologação',
       'homologado': 'Expedição DCBs',
       'expedindo_dcbs': 'Inclusão no Catálogo',
+      'incluindo_marcas': 'Finalização do Processo',
       
       // FLUXO DESPADRONIZAÇÃO - Novos status conforme cliente
       'em_criacao_desp': 'CPM - Criação',
