@@ -2050,6 +2050,7 @@
                 <span class="reclamante">👤 {{ reclamacao.nome_reclamante }}</span>
                 <span v-if="reclamacao.setor_reclamante" class="setor">🏢 {{ reclamacao.setor_reclamante }}</span>
                 <span class="data">📅 {{ formatDate(reclamacao.criado_em) }}</span>
+                <span v-if="reclamacao.telefone_email" class="telefone-email">📞 {{ reclamacao.telefone_email }}</span>
               </div>
             </div>
             <div class="reclamacao-badges">
@@ -2639,11 +2640,24 @@ export default {
         const produtos = todosProdutos || []
         
         // 📋 REQUERIMENTOS RECENTES: pendente, aprovado, reprovado, em_analise, julgado_aprovado, julgado_reprovado
-        // (Incluindo produtos julgados pela CCL para manter visibilidade)
+        // (Dashboard CPM mostra apenas produtos em fluxo de aprovação, excluindo homologados)
         this.produtos = produtos.filter(produto => 
           ['pendente', 'aprovado', 'reprovado', 'em_analise', 'julgado_aprovado', 'julgado_reprovado'].includes(produto.status)
         )
         console.log(`${this.produtos.length} requerimentos recentes carregados (sem diligências)`)
+        
+        // DEBUG: Ver status de todos os produtos carregados
+        console.log('🔍 [DEBUG] Status dos produtos carregados:')
+        this.produtos.forEach((produto, index) => {
+          console.log(`${index + 1}. ${produto.nome} - Status: ${produto.status}`)
+        })
+        
+        // DEBUG: Contar produtos por status
+        const statusCount = {}
+        this.produtos.forEach(produto => {
+          statusCount[produto.status] = (statusCount[produto.status] || 0) + 1
+        })
+        console.log('📊 [DEBUG] Contagem por status:', statusCount)
 
         // 🔍 REQUERIMENTOS COM DILIGÊNCIAS: apenas status 'diligencia'
         this.produtosComDiligencia = produtos.filter(produto => produto.status === 'diligencia')
@@ -2695,9 +2709,9 @@ export default {
         .select('id', { count: 'exact' })
         .eq('tenant_id', this.currentTenantId) // Filtrar por tenant_id
       
-      // Para 'aprovado', incluir também 'julgado_aprovado' e 'homologado'
+      // Dashboard CPM: contadores mostram apenas status exatos do fluxo CPM
       if (status === 'aprovado') {
-        query = query.in('status', ['aprovado', 'julgado_aprovado', 'homologado'])
+        query = query.eq('status', 'aprovado') // Apenas aprovados pela CPM
       } 
       // Para 'reprovado', incluir também 'julgado_reprovado'  
       else if (status === 'reprovado') {
@@ -3240,11 +3254,27 @@ export default {
      },
      
      aplicarFiltros() {
+       console.log(`🔍 [FILTRO DEBUG] Aplicando filtros - Status selecionado: "${this.filtros.status}"`)
+       console.log(`📦 [FILTRO DEBUG] Total de produtos para filtrar: ${this.produtos.length}`)
+       
        // Filtrar produtos
        this.produtosFiltrados = this.produtos.filter(produto => {
          const nomeMatch = produto.nome.toLowerCase().includes(this.filtros.nome.toLowerCase())
          const marcaMatch = produto.marca.toLowerCase().includes(this.filtros.marca.toLowerCase())
-         const statusMatch = this.filtros.status === '' || produto.status === this.filtros.status
+         // Dashboard CPM: filtros mostram apenas status exatos do fluxo CPM
+        let statusMatch = true
+        if (this.filtros.status !== '') {
+          if (this.filtros.status === 'aprovado') {
+            statusMatch = produto.status === 'aprovado' // Apenas aprovados pela CPM
+            if (statusMatch) {
+              console.log(`✅ [FILTRO DEBUG] Produto ACEITO: ${produto.nome} (${produto.status})`)
+            }
+          } else if (this.filtros.status === 'reprovado') {
+            statusMatch = ['reprovado', 'julgado_reprovado'].includes(produto.status)
+          } else {
+            statusMatch = produto.status === this.filtros.status
+          }
+        }
          
          let dataMatch = true
          if (this.filtros.data) {

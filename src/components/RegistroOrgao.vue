@@ -280,7 +280,7 @@
     </div>
 
     <!-- ETAPA 3: CONFIRMAÇÃO -->
-    <div v-if="etapaAtual === 3" class="etapa-container">
+    <div v-if="etapaAtual === 3 && !registroCompleto" class="etapa-container">
       <div class="card">
         <h2>✅ Revisão e Confirmação</h2>
         
@@ -352,11 +352,22 @@
         </div>
 
         <div class="form-actions">
-          <button @click="voltarEtapa" class="btn-secondary" :disabled="processando">
+          <button 
+            @click="voltarEtapa" 
+            class="btn-secondary" 
+            :disabled="processando || registroCompleto"
+          >
             ← Voltar
           </button>
-          <button @click="confirmarRegistro" class="btn-success" :disabled="processando">
-            {{ processando ? 'Registrando...' : '🎉 Confirmar e Criar Órgão' }}
+          <button 
+            @click="confirmarRegistro" 
+            class="btn-success" 
+            :disabled="processando || registroCompleto"
+            :class="{ 'processando': processando }"
+          >
+            <span v-if="processando">⏳ Registrando Órgão...</span>
+            <span v-else-if="registroCompleto">✅ Órgão Criado</span>
+            <span v-else>🎉 Confirmar e Criar Órgão</span>
           </button>
         </div>
       </div>
@@ -526,20 +537,39 @@ export default {
     },
     
     async confirmarRegistro() {
+      // CORREÇÃO: Prevenir execução múltipla
+      if (this.processando || this.registroCompleto) {
+        console.warn('Registro já em andamento ou concluído, ignorando clique')
+        return
+      }
+      
       try {
         this.processando = true
         this.erro = null
+        
+        console.log('🚀 Iniciando registro do órgão...')
         
         const resultado = await RegistroOrgaoService.registrarOrgaoCompleto(this.dadosOrgao)
         
         if (resultado.sucesso) {
           this.registroCompleto = true
+          console.log('✅ Registro concluído com sucesso')
+          
+          // Mostrar notificação de sucesso
+          this.$swal({
+            icon: 'success',
+            title: 'Órgão Registrado!',
+            text: `${this.dadosOrgao.nome_orgao} foi cadastrado com sucesso.`,
+            timer: 3000,
+            showConfirmButton: false
+          })
         } else {
           this.erro = resultado.mensagem || 'Erro desconhecido no registro'
+          console.error('❌ Erro no registro:', this.erro)
         }
         
       } catch (error) {
-        console.error('Erro no registro:', error)
+        console.error('❌ Erro no registro:', error)
         this.erro = error.message || 'Erro inesperado durante o registro'
       } finally {
         this.processando = false
@@ -994,6 +1024,49 @@ export default {
   .btn-secondary,
   .btn-success {
     width: 100%;
+  }
+}
+
+/* CORREÇÃO: Estados visuais para botões */
+.btn-success.processando {
+  background: linear-gradient(-45deg, #28a745, #34ce57, #28a745, #34ce57);
+  background-size: 400% 400%;
+  animation: processandoGradiente 2s ease infinite;
+  cursor: not-allowed;
+}
+
+.btn-success:disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@keyframes processandoGradiente {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Melhorar feedback visual do resultado */
+.resultado-container {
+  animation: slideInFromTop 0.5s ease-out;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

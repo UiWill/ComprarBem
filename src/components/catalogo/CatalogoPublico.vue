@@ -163,29 +163,16 @@
                 </div>
                 
                 <div class="form-group">
-                  <label for="categoriaReclamacao">Categoria da Reclamação</label>
-                  <select id="categoriaReclamacao" v-model="novaReclamacao.categoria">
-                    <option value="">Selecione uma categoria</option>
-                    <option value="Produto">Produto</option>
-                    <option value="Atendimento">Atendimento</option>
-                    <option value="Sistema">Sistema</option>
-                    <option value="Processo">Processo</option>
-                    <option value="Outro">Outro</option>
-                  </select>
+                  <label for="telefoneEmail">Telefone/E-mail</label>
+                  <input 
+                    id="telefoneEmail" 
+                    v-model="novaReclamacao.telefone_email" 
+                    type="text" 
+                    placeholder="Seu telefone ou e-mail para contato"
+                  >
                 </div>
               </div>
               
-              <div class="form-group">
-                <label for="tituloReclamacao">Título da Reclamação *</label>
-                <input 
-                  id="tituloReclamacao" 
-                  v-model="novaReclamacao.titulo_reclamacao" 
-                  type="text" 
-                  required
-                  placeholder="Título resumido da sua reclamação"
-                  maxlength="500"
-                >
-              </div>
               
               <div class="form-group">
                 <label for="descricaoReclamacao">Descrição da Reclamação *</label>
@@ -391,9 +378,8 @@ export default {
         nome_reclamante: '',
         setor_reclamante: '',
         cargo_reclamante: '',
-        titulo_reclamacao: '',
-        descricao_reclamacao: '',
-        categoria: ''
+        telefone_email: '',
+        descricao_reclamacao: ''
       },
       
       // Lista de reclamações
@@ -659,31 +645,42 @@ export default {
         nome_reclamante: '',
         setor_reclamante: '',
         cargo_reclamante: '',
-        titulo_reclamacao: '',
-        descricao_reclamacao: '',
-        categoria: ''
+        telefone_email: '',
+        descricao_reclamacao: ''
       }
     },
     
     async salvarReclamacao() {
       // Validar campos obrigatórios
       if (!this.novaReclamacao.nome_reclamante || 
-          !this.novaReclamacao.titulo_reclamacao || 
           !this.novaReclamacao.descricao_reclamacao) {
-        alert('Por favor, preencha os campos obrigatórios: Nome, Título e Descrição da Reclamação.')
+        alert('Por favor, preencha os campos obrigatórios: Nome Completo e Descrição da Reclamação.')
         return
       }
       
       this.salvandoReclamacao = true
       
       try {
+        // Gerar título automático baseado na descrição
+        const tituloAutomatico = this.novaReclamacao.descricao_reclamacao.length > 50 
+          ? this.novaReclamacao.descricao_reclamacao.substring(0, 50) + '...'
+          : this.novaReclamacao.descricao_reclamacao
+        
         const reclamacao = {
-          ...this.novaReclamacao,
+          nome_reclamante: this.novaReclamacao.nome_reclamante,
+          setor_reclamante: this.novaReclamacao.setor_reclamante,
+          cargo_reclamante: this.novaReclamacao.cargo_reclamante,
+          telefone_email: this.novaReclamacao.telefone_email,
+          descricao_reclamacao: this.novaReclamacao.descricao_reclamacao,
+          titulo_reclamacao: tituloAutomatico,
+          categoria: 'Geral',
           tenant_id: this.orgaoSelecionado.tenant_id,
           status: 'pendente',
           prioridade: 'normal',
           publica: true
         }
+        
+        console.log('📤 Enviando reclamação:', reclamacao)
         
         const { data, error } = await supabase
           .from('reclame_aqui')
@@ -692,7 +689,11 @@ export default {
           .single()
         
         if (error) {
-          console.error('Erro ao salvar reclamação:', error)
+          console.error('Erro detalhado ao salvar reclamação:', error)
+          console.error('Código do erro:', error.code)
+          console.error('Mensagem do erro:', error.message)
+          console.error('Detalhes:', error.details)
+          console.error('Hint:', error.hint)
           throw error
         }
         
