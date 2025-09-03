@@ -118,7 +118,7 @@ export class ProcessosAdministrativosService {
         tenant_id: tenantId,
         criado_por: user.id,
         atualizado_por: user.id,
-        status: 'rascunho'
+        status: dadosProcesso.status || 'em_criacao'
       }
 
       const { data, error } = await supabase
@@ -1397,6 +1397,7 @@ export class ProcessosAdministrativosService {
       const regrasTransicao = {
         'cpm': {
           'rascunho': ['criado_cpm'],
+          'em_criacao': ['criado_cpm'],
           'criado_cpm': ['aprovado_cpm', 'rejeitado_cpm'],
           'assinado_admin': ['julgamento_ccl'], // CPM pode enviar para CCL após assinatura administrativa
           'rejeitado_admin': ['aprovado_cpm', 'rejeitado_cpm'],
@@ -1800,6 +1801,9 @@ export class ProcessosAdministrativosService {
       'rascunho': {
         'cpm': ['submeter_analise']
       },
+      'em_criacao': {
+        'cpm': ['submeter_analise']
+      },
       'criado_cpm': {
         'cpm': ['aprovar_cpm', 'rejeitar_cpm']
       },
@@ -2158,7 +2162,7 @@ export class ProcessosAdministrativosService {
           id: 1,
           data: data.created_at,
           status_anterior: null,
-          status_novo: 'rascunho',
+          status_novo: 'em_criacao',
           responsavel: 'Sistema',
           observacoes: 'Processo criado'
         }
@@ -2168,7 +2172,7 @@ export class ProcessosAdministrativosService {
         historico.push({
           id: 2,
           data: data.updated_at,
-          status_anterior: 'rascunho',
+          status_anterior: 'em_criacao',
           status_novo: data.status,
           responsavel: 'Sistema',
           observacoes: 'Status atualizado'

@@ -637,7 +637,8 @@ export default {
         numero_processo: '',
         nome_orgao: '',
         unidade_interessada: '',
-        data_autuacao: new Date().toISOString().split('T')[0] // Data atual no formato YYYY-MM-DD
+        data_autuacao: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
+        status: 'em_criacao' // Status inicial válido conforme constraint do banco
       },
       
       produtos: [],
@@ -2277,7 +2278,8 @@ export default {
         data_autuacao: new Date().toISOString().split('T')[0],
         numero_edital: '',
         edital_vinculado: false,
-        data_vinculacao_edital: null
+        data_vinculacao_edital: null,
+        status: 'em_criacao' // Status inicial válido conforme constraint do banco
       }
       
       this.dadosBasicos = {

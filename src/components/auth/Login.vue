@@ -4,6 +4,11 @@
       <h2>COMPRAR BEM</h2>
       <p>COMPRAS PÚBLICAS INTELIGENTES</p>
       
+      <!-- Mensagem informativa sobre módulos disponíveis -->
+      <div class="modules-info">
+        <p>💡 <strong>Acesso unificado:</strong> Use este login para acessar todos os módulos do sistema: <strong>CCL</strong>, <strong>CPM</strong>, <strong>Órgão Administrativo</strong>, <strong>Assessoria Jurídica</strong> e demais funcionalidades.</p>
+      </div>
+      
       <div class="tabs">
         <button 
           @click="activeTab = 'login'" 
@@ -437,6 +442,27 @@ input {
   color: #6c757d;
   font-size: 0.9rem;
   font-style: italic;
+}
+
+/* Estilo para mensagem informativa dos módulos */
+.modules-info {
+  margin: 20px 0;
+  padding: 15px;
+  background: #e8f4f8;
+  border: 1px solid #bee5eb;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.modules-info p {
+  margin: 0;
+  color: #0c5460;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.modules-info strong {
+  color: #2c3e50;
 }
 
 /* Estilos para seção de acesso público */
