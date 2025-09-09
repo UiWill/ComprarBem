@@ -53,10 +53,9 @@
       <div class="dcb-section">
         <h3>PRODUTO CERTIFICADO</h3>
         <div class="primeiro-quadro">
-          <p><strong>1. Primeiro quadro</strong></p>
       <div class="info-grid">
             <div class="info-item full-width">
-              <strong>1.1. Nome do Produto:</strong> {{ produtoDetalhes.nome || 'Não informado' }}
+              <strong>Nome do Produto:</strong> {{ produtoDetalhes.nome || 'Não informado' }}
         </div>
         <div class="info-item">
               <strong>Marca:</strong> {{ produtoDetalhes.marca || 'Não informada' }}
@@ -78,17 +77,15 @@
       <div class="dcb-section">
         <h3>DADOS DA CERTIFICAÇÃO</h3>
         <div class="primeiro-quadro">
-          <p><strong>1. Primeiro quadro</strong></p>
           <div class="status-info">
-            <p style="margin-left: 20px;"><strong>1.1.</strong> Incluir abaixo de "Status":</p>
-            <div class="info-item" style="margin-left: 40px;">
+            <div class="info-item">
               <strong>Status:</strong> 
               <span class="status-badge" :class="getStatusDCBClass()">
                 {{ getStatusDCB() }}
               </span>
             </div>
-            <div class="info-item" style="margin-left: 40px;">
-              <strong>1.1.1. Origem:</strong> 
+            <div class="info-item">
+              <strong>Origem:</strong> 
               <span v-if="produtoDetalhes.numero_edital">
                 Edital de Pré-Qualificação de Bens nº {{ produtoDetalhes.numero_edital }}
               </span>
@@ -774,57 +771,51 @@ export default {
         // Título principal
         pdf.setFontSize(14)
         pdf.setFont('helvetica', 'bold')
-        const titulo = 'DECLARAÇÃO DE CONFORMIDADE DE BEM'
+        // Se numero_dcb já contém ano (ex: 001/2025), usar direto, senão concatenar
+        const dcbCompleto = produto.numero_dcb && produto.numero_dcb.includes('/') ? 
+          produto.numero_dcb : 
+          `${produto.numero_dcb || '_____'}/${numeroAno}`
+        const titulo = `DECLARAÇÃO DE CONFORMIDADE DE BEM Nº ${dcbCompleto}`
         const tituloWidth = pdf.getTextWidth(titulo)
         pdf.text(titulo, (210 - tituloWidth) / 2, 35)
         
-        pdf.setFontSize(12)
-        const dcbNumero = `DCB Nº ${produto.id}/${numeroAno}`
-        const dcbWidth = pdf.getTextWidth(dcbNumero)
-        pdf.text(dcbNumero, (210 - dcbWidth) / 2, 42)
-        
-        // Linha separadora
-        pdf.line(20, 47, 190, 47)
         
         // PRODUTO CERTIFICADO
-        let y = 55
+        let y = 50
         pdf.setFontSize(11)
         pdf.setFont('helvetica', 'bold')
         pdf.text('PRODUTO CERTIFICADO', 20, y)
         
-        y += 6
+        y += 8
         pdf.setFont('helvetica', 'normal')
-        pdf.setFontSize(9)
-        pdf.text('1. Primeiro quadro', 20, y)
+        pdf.setFontSize(10)
         
-        y += 5
         // CORREÇÃO XSS: Sanitizar dados antes de inserir no PDF
-        pdf.text(`1.1. Nome: ${this.sanitizeForPDF(produto.nome)}`, 25, y)
-        y += 4
-        pdf.text(`Marca: ${this.sanitizeForPDF(produto.marca)}`, 25, y)
-        y += 4
-        pdf.text(`Modelo: ${this.sanitizeForPDF(produto.modelo)}`, 25, y)
-        y += 4
-        pdf.text(`Fabricante: ${this.sanitizeForPDF(produto.fabricante)}`, 25, y)
-        y += 4
-        pdf.text(`CNPJ do Fabricante: ${this.sanitizeForPDF(produto.cnpj)}`, 25, y)
+        pdf.text(`Nome do Produto: ${this.sanitizeForPDF(produto.nome)}`, 20, y)
+        y += 6
+        pdf.text(`Marca: ${this.sanitizeForPDF(produto.marca)}`, 20, y)
+        y += 6
+        pdf.text(`Modelo: ${this.sanitizeForPDF(produto.modelo)}`, 20, y)
+        y += 6
+        pdf.text(`Fabricante: ${this.sanitizeForPDF(produto.fabricante)}`, 20, y)
+        y += 6
+        pdf.text(`CNPJ do Fabricante: ${this.sanitizeForPDF(produto.cnpj)}`, 20, y)
         
         // DADOS DA CERTIFICAÇÃO
-        y += 10
+        y += 8
         pdf.setFont('helvetica', 'bold')
         pdf.setFontSize(11)
         pdf.text('DADOS DA CERTIFICAÇÃO', 20, y)
         
-        y += 6
+        y += 8
         pdf.setFont('helvetica', 'normal')
-        pdf.setFontSize(9)
-        pdf.text('1. Primeiro quadro', 20, y)
-        y += 5
-        pdf.text('1.1. Incluir abaixo de "Status":', 25, y)
-        y += 4
-        pdf.text(`Status: ${this.getStatusDCB()}`, 30, y)
-        y += 4
-        pdf.text(`1.1.1. Origem: Edital de Pré-Qualificação de Bens nº ${this.sanitizeForPDF(produto.numero_edital) || 'XXX/YYYY'}`, 30, y)
+        pdf.setFontSize(10)
+        const editalTexto = produto.numero_edital ? this.sanitizeForPDF(produto.numero_edital) : '_____/_____'
+        // Se já contém "Edital de Pré-Qualificação", usar direto, senão adicionar o prefixo
+        const textoOrigem = editalTexto.includes('Edital de Pré-Qualificação') ? 
+          `Origem: ${editalTexto}` : 
+          `Origem: Edital de Pré-Qualificação de Bens nº ${editalTexto}`
+        pdf.text(textoOrigem, 20, y)
         
         // DECLARAÇÃO
         y += 10
@@ -832,28 +823,32 @@ export default {
         pdf.setFontSize(11)
         pdf.text('DECLARAÇÃO', 20, y)
         
-        y += 6
+        y += 8
         pdf.setFont('helvetica', 'normal')
-        pdf.setFontSize(8)
+        pdf.setFontSize(9)
         
-        // Texto da declaração - dividido em linhas otimizadas
+        // Texto da declaração - conforme modelo do cliente
         const textoDeclaracao = [
-          'A Comissão de Padronização de Materiais – CPM do(a) _______ (nome do órgão/entidade)',
-          '_______, constituída por meio do(a) __________ [informar o tipo de instrumento',
-          '(resolução/portaria), número e ano de expedição], DECLARA que:',
+          'A Comissão de Padronização de Materiais – CPM do(a) _______ (nome do',
+          'órgão/entidade) _______, constituída por meio do(a) __________ [informar o tipo de',
+          'instrumento (resolução/portaria), número e ano de expedição], DECLARA que:',
           '',
-          '1º) o produto especificado nesta DCB foi submetido à demonstração funcional e análise',
-          'técnica, devidamente monitoradas e documentadas por esta CPM em processo administrativo',
-          'próprio, com estrita observância às formalidades legais e regulamentares, tendo sido',
-          'considerado apto e, portanto, APROVADO para o uso e a finalidade a que se destina, uma',
-          'vez que atendeu aos requisitos técnicos exigidos pelo Edital de Pré-Qualificação de Bens',
-          'em referência, sendo a sua marca comercial e modelo lançados no Catálogo Eletrônico de',
-          'Bens Padronizados deste(a) órgão/entidade, para fins de aquisições futuras e eventuais,',
-          'conforme previsto na Lei Federal nº 14.133/2021 (Lei de Licitações e Contratos);',
+          '1º) o produto especificado nesta DCB foi submetido à demonstração funcional',
+          'e análise técnica, devidamente monitoradas e documentadas por esta CPM em',
+          'processo administrativo próprio, com estrita observância às formalidades legais e',
+          'regulamentares, tendo sido considerado apto e, portanto, APROVADO para o uso e a',
+          'finalidade a que se destina, uma vez que atendeu aos requisitos técnicos exigidos pelo',
+          'Edital de Pré-Qualificação de Bens em referência, sendo a sua marca comercial e',
+          'modelo lançados no Catálogo Eletrônico de Bens Padronizados deste(a)',
+          'órgão/entidade, para fins de aquisições futuras e eventuais;',
           '',
-          '2º) expirada a sua vigência, esta DCB somente poderá ser renovada mediante a realização',
-          'de nova demonstração do produto nela especificado, para fins de reanálise técnica e',
-          'funcional monitoradas e documentadas pela CPM.'
+          '2º) conforme previsto no art. 80, § 8º, inciso I, da Lei Federal nº 14.133/2021, o',
+          'prazo de validade desta DCB é de 1 (um) ano, contado da data de sua expedição,',
+          'podendo ser atualizada a qualquer tempo;',
+          '',
+          '3º) expirada a sua vigência, esta DCB somente poderá ser renovada mediante',
+          'a realização de nova demonstração do produto nela especificado, para fins de',
+          'reanálise técnica e funcional monitoradas e documentadas pela CPM.'
         ]
         
         textoDeclaracao.forEach(linha => {
@@ -861,16 +856,16 @@ export default {
           y += linha === '' ? 2 : 4
         })
         
-        // Assinatura - compacta
-        y += 8
+        // Assinatura conforme modelo
+        y += 10
         pdf.text('Local e data ___________', 20, y)
-        y += 12
-        pdf.text('(assinatura digital)', 20, y)
+        y += 15
+        pdf.text('(Assinatura digital)', 70, y)
         y += 5
         pdf.setFont('helvetica', 'bold')
-        pdf.text('Comissão de Padronização de Materiais', 20, y)
+        pdf.text('Comissão de Padronização de Materiais', 60, y)
         y += 4
-        pdf.text('Presidente da CPM', 20, y)
+        pdf.text('- Presidente -', 85, y)
         
         // Salvar PDF
         const nomeArquivo = `DCB_${produto.nome}_${produto.id}_${numeroAno}.pdf`
@@ -1086,26 +1081,21 @@ export default {
                 Comissão de Padronização de Materiais - CPM</strong>
               </div>
             </div>
-            <h2 style="margin: 20px 0 10px 0; font-size: 18px; font-weight: bold;">DECLARAÇÃO DE CONFORMIDADE DE BEM</h2>
-            <h3 style="margin: 5px 0; font-size: 16px;">DCB Nº ${produto.id}/${numeroAno}</h3>
+            <h2 style="margin: 20px 0 10px 0; font-size: 18px; font-weight: bold;">DECLARAÇÃO DE CONFORMIDADE DE BEM Nº ${produto.numero_dcb && produto.numero_dcb.includes('/') ? produto.numero_dcb : `${produto.numero_dcb || '_____'}/${numeroAno}`}</h2>
           </div>
           
           <div style="margin-bottom: 25px;">
             <h4 style="color: #2c3e50; margin-bottom: 15px; font-size: 16px; font-weight: bold;">PRODUTO CERTIFICADO</h4>
-            <p style="margin: 8px 0;"><strong>1. Primeiro quadro</strong></p>
-            <p style="margin: 8px 0; margin-left: 20px;"><strong>1.1. Nome:</strong> ${produto.nome || 'Não informado'}</p>
-            <p style="margin: 8px 0; margin-left: 20px;"><strong>Marca:</strong> ${produto.marca || 'Não informada'}</p>
-            <p style="margin: 8px 0; margin-left: 20px;"><strong>Modelo:</strong> ${produto.modelo || 'Não informado'}</p>
-            <p style="margin: 8px 0; margin-left: 20px;"><strong>Fabricante:</strong> ${produto.fabricante || 'Não informado'}</p>
-            <p style="margin: 8px 0; margin-left: 20px;"><strong>CNPJ do Fabricante:</strong> ${produto.cnpj || 'Não informado'}</p>
+            <p style="margin: 8px 0;"><strong>Nome do Produto:</strong> ${produto.nome || 'Não informado'}</p>
+            <p style="margin: 8px 0;"><strong>Marca:</strong> ${produto.marca || 'Não informada'}</p>
+            <p style="margin: 8px 0;"><strong>Modelo:</strong> ${produto.modelo || 'Não informado'}</p>
+            <p style="margin: 8px 0;"><strong>Fabricante:</strong> ${produto.fabricante || 'Não informado'}</p>
+            <p style="margin: 8px 0;"><strong>CNPJ do Fabricante:</strong> ${produto.cnpj || 'Não informado'}</p>
           </div>
           
           <div style="margin-bottom: 25px;">
             <h4 style="color: #2c3e50; margin-bottom: 15px; font-size: 16px; font-weight: bold;">DADOS DA CERTIFICAÇÃO</h4>
-            <p style="margin: 8px 0;"><strong>1. Primeiro quadro</strong></p>
-            <p style="margin: 8px 0; margin-left: 20px;"><strong>1.1.</strong> Incluir abaixo de "Status":</p>
-            <p style="margin: 8px 0; margin-left: 40px;"><strong>Status:</strong> ${this.getStatusDCB()}</p>
-            <p style="margin: 8px 0; margin-left: 40px;"><strong>1.1.1. Origem:</strong> Edital de Pré-Qualificação de Bens nº ${produto.numero_edital || 'XXX/YYYY'}</p>
+            <p style="margin: 8px 0;"><strong>Origem:</strong> ${produto.numero_edital && produto.numero_edital.includes('Edital de Pré-Qualificação') ? produto.numero_edital : `Edital de Pré-Qualificação de Bens nº ${produto.numero_edital || '_____/_____'}`}</p>
           </div>
           
           <div style="margin-bottom: 25px;">

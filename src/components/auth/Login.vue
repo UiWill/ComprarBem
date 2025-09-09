@@ -6,7 +6,7 @@
       
       <!-- Mensagem informativa sobre módulos disponíveis -->
       <div class="modules-info">
-        <p>💡 <strong>Acesso unificado:</strong> Use este login para acessar todos os módulos do sistema: <strong>CCL</strong>, <strong>CPM</strong>, <strong>Órgão Administrativo</strong>, <strong>Assessoria Jurídica</strong> e demais funcionalidades.</p>
+        <p>💡Acesso Unificado: Utilize login e senha cadastrados no sistema para acesso restrito aos módulos CPM, Assessoria Jurídica, CCL e Autoridade Competente.</p>
       </div>
       
       <div class="tabs">

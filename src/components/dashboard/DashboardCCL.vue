@@ -1,4 +1,5 @@
 <template>
+  <div class="dashboard-ccl-container">
   <div class="dashboard">
     <h2>Painel Comissão de Contratação ou Licitação</h2>
     
@@ -112,6 +113,14 @@
                   <!-- Botões para processos em julgamento CCL -->
                   <button 
                     v-if="processo.status === 'julgamento_ccl'"
+                    @click="assinarProcessoCCL(processo)" 
+                    class="btn-small btn-signature"
+                    title="Assinar digitalmente o julgamento"
+                  >
+                    ✍️ Assinar
+                  </button>
+                  <button 
+                    v-if="processo.status === 'julgamento_ccl'"
                     @click="iniciarJulgamentoCCL(processo)" 
                     class="btn-small btn-primary"
                     title="Iniciar julgamento técnico CCL"
@@ -128,6 +137,14 @@
                   </button>
                   
                   <!-- Botões para processos com ata CCL emitida -->
+                  <button 
+                    v-if="processo.status === 'ata_ccl'"
+                    @click="assinarProcessoCCL(processo)" 
+                    class="btn-small btn-signature"
+                    title="Assinar digitalmente a ata"
+                  >
+                    ✍️ Assinar
+                  </button>
                   <button 
                     v-if="processo.status === 'ata_ccl'"
                     @click="tramitarAtaCCL(processo)" 
@@ -541,6 +558,69 @@
       </div>
     </div>
   </div>
+  
+  <!-- Modal de Assinatura Digital CCL -->
+  <div v-if="mostrarModalAssinaturaCCL" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 999999;" @click="fecharModalAssinaturaCCL">
+    <div style="background: white; padding: 2rem; border-radius: 8px; width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto;" @click.stop>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 1rem;">
+        <h3 style="margin: 0; color: #2c3e50;">✍️ Assinatura Digital CCL</h3>
+        <button @click="fecharModalAssinaturaCCL" style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">&times;</button>
+      </div>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+          <p style="margin: 0.5rem 0;"><strong>Processo:</strong> {{ dadosAssinaturaCCL.numeroProcesso }}</p>
+          <p style="margin: 0.5rem 0;"><strong>Documento:</strong> {{ dadosAssinaturaCCL.tipoDocumento }}</p>
+          <p style="margin: 0.5rem 0;"><strong>Status:</strong> {{ dadosAssinaturaCCL.statusAtual }}</p>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Nome do Signatário:</label>
+          <input 
+            v-model="dadosAssinaturaCCL.nomeSignatario"
+            type="text"
+            placeholder="Digite seu nome completo"
+            style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;"
+            :disabled="processandoAssinaturaCCL"
+          />
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Cargo/Função:</label>
+          <input 
+            v-model="dadosAssinaturaCCL.cargoSignatario"
+            type="text"
+            placeholder="Ex: Presidente CCL, Membro CCL"
+            style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;"
+            :disabled="processandoAssinaturaCCL"
+          />
+        </div>
+        
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+          <p style="margin: 0; font-size: 0.9rem; color: #856404;">⚠️ <strong>Importante:</strong> Esta assinatura digital tem valor legal e não pode ser desfeita.</p>
+        </div>
+      </div>
+      
+      <div style="display: flex; justify-content: space-between; gap: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+        <button 
+          @click="fecharModalAssinaturaCCL" 
+          style="background: #f8f9fa; color: #495057; border: 1px solid #ddd; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer;"
+          :disabled="processandoAssinaturaCCL"
+        >
+          ❌ Cancelar
+        </button>
+        <button 
+          @click="confirmarAssinaturaCCL" 
+          style="background: #28a745; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer;"
+          :disabled="processandoAssinaturaCCL || !dadosAssinaturaCCL.nomeSignatario?.trim() || !dadosAssinaturaCCL.cargoSignatario?.trim()"
+        >
+          <span v-if="!processandoAssinaturaCCL">✍️ Assinar</span>
+          <span v-else>🔄 Assinando...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  </div>
 </template>
 
 <script>
@@ -638,7 +718,12 @@ export default {
           itensPorPagina: 5,
           total: 0
         }
-      }
+      },
+      // Modal de Assinatura Digital CCL
+      mostrarModalAssinaturaCCL: false,
+      dadosAssinaturaCCL: {},
+      processandoAssinaturaCCL: false,
+      processoParaAssinarCCL: null
     }
   },
   computed: {
@@ -8077,6 +8162,125 @@ ${index + 1}. ${produto.nome} - ${produto.marca}
         })
       }
     },
+
+    /**
+     * Assinar processo digitalmente pela CCL
+     */
+    assinarProcessoCCL(processo) {
+      console.log('✍️ Iniciando assinatura digital CCL para processo:', processo.numero_processo)
+      console.log('🔍 [DEBUG] Processo objeto:', processo)
+      
+      // Obter informações do usuário atual
+      const usuarioAtual = this.$store.state.user || {}
+      const nomeUsuario = usuarioAtual.user_metadata?.nome_completo || usuarioAtual.user_metadata?.nome || usuarioAtual.email || ''
+      console.log('🔍 [DEBUG] Usuario atual:', nomeUsuario)
+      
+      // Configurar dados do modal
+      this.processoParaAssinarCCL = processo
+      this.dadosAssinaturaCCL = {
+        numeroProcesso: processo.numero_processo,
+        tipoDocumento: processo.status === 'julgamento_ccl' ? 'Julgamento Técnico CCL' : 'Ata de Julgamento CCL',
+        statusAtual: this.formatarStatusProcesso(processo.status),
+        nomeSignatario: nomeUsuario,
+        cargoSignatario: 'Membro CCL'
+      }
+      
+      console.log('🔍 [DEBUG] Dados assinatura CCL:', this.dadosAssinaturaCCL)
+      console.log('🔍 [DEBUG] Antes de abrir modal - mostrarModalAssinaturaCCL:', this.mostrarModalAssinaturaCCL)
+      
+      // Abrir modal
+      this.mostrarModalAssinaturaCCL = true
+      
+      console.log('🔍 [DEBUG] Depois de abrir modal - mostrarModalAssinaturaCCL:', this.mostrarModalAssinaturaCCL)
+      
+      // Force Vue.js update
+      this.$forceUpdate()
+      
+      // Check if modal is in DOM after next tick
+      this.$nextTick(() => {
+        console.log('🔍 [DEBUG] Next tick - mostrarModalAssinaturaCCL:', this.mostrarModalAssinaturaCCL)
+        const modalElement = document.querySelector('.modal-overlay-ccl')
+        console.log('🔍 [DEBUG] Modal element found:', modalElement)
+        if (modalElement) {
+          console.log('🔍 [DEBUG] Modal styles:', window.getComputedStyle(modalElement))
+        }
+      })
+    },
+
+    /**
+     * Fechar modal de assinatura CCL
+     */
+    fecharModalAssinaturaCCL() {
+      this.mostrarModalAssinaturaCCL = false
+      this.dadosAssinaturaCCL = {}
+      this.processandoAssinaturaCCL = false
+      this.processoParaAssinarCCL = null
+    },
+
+    /**
+     * Confirmar assinatura digital CCL
+     */
+    async confirmarAssinaturaCCL() {
+      if (!this.processoParaAssinarCCL) return
+
+      try {
+        this.processandoAssinaturaCCL = true
+
+        const usuarioAtual = this.$store.state.user || {}
+        const processo = this.processoParaAssinarCCL
+
+        // Chamar o método de assinatura do ProcessosAdministrativosService
+        const novaAssinatura = {
+          id: `${Date.now()}-${usuarioAtual.id}-${Math.random().toString(36).substr(2, 9)}`,
+          usuario_id: usuarioAtual.id,
+          nome_signatario: this.dadosAssinaturaCCL.nomeSignatario,
+          cargo_signatario: this.dadosAssinaturaCCL.cargoSignatario,
+          observacoes: '',
+          data_assinatura: new Date().toISOString(),
+          hash_validacao: `${Date.now()}-${usuarioAtual.id}-${Math.random().toString(36).substr(2, 9)}`,
+          status_processo: processo.status
+        }
+
+        // Obter o processo completo
+        const processoCompleto = await ProcessosAdministrativosService.obterProcesso(processo.id)
+        if (!processoCompleto) {
+          throw new Error('Processo não encontrado')
+        }
+
+        // Adicionar nova assinatura
+        const assinaturasExistentes = processoCompleto.assinaturas || []
+        const todasAssinaturas = [...assinaturasExistentes, novaAssinatura]
+
+        // Atualizar processo com nova assinatura
+        await ProcessosAdministrativosService.atualizarProcesso(processo.id, {
+          assinaturas: todasAssinaturas
+        })
+
+        // Fechar modal
+        this.fecharModalAssinaturaCCL()
+
+        // Mostrar sucesso
+        this.$swal({
+          title: '✅ Assinatura Realizada',
+          text: `Processo ${processo.numero_processo} assinado digitalmente pela CCL.`,
+          icon: 'success',
+          timer: 3000
+        })
+
+        // Recarregar dados
+        await this.carregarDadosCCL()
+
+      } catch (error) {
+        console.error('❌ Erro ao assinar processo CCL:', error)
+        this.processandoAssinaturaCCL = false
+        
+        this.$swal({
+          title: '❌ Erro na Assinatura',
+          text: error.message || 'Erro inesperado ao assinar processo',
+          icon: 'error'
+        })
+      }
+    },
     
     /**
      * Tramitar ata CCL para próxima etapa (publicação pelo órgão)
@@ -9234,6 +9438,18 @@ tr:hover {
   background: #1e7e34;
 }
 
+.btn-small.btn-signature {
+  background: #6f42c1;
+  color: white;
+  border: 2px solid #6f42c1;
+}
+
+.btn-small.btn-signature:hover {
+  background: #5a2d91;
+  border-color: #5a2d91;
+  transform: translateY(-1px);
+}
+
 /* Responsividade para Homologações */
 @media (max-width: 768px) {
   .processo-card,
@@ -9696,6 +9912,313 @@ tr:hover {
   max-height: 600px;
   overflow-y: auto;
   padding: 0 10px;
+}
+
+</style>
+/* ===================================== */
+/* MODAL DE ASSINATURA DIGITAL CCL */
+/* ===================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(3px);
+}
+
+.modal-assinatura-digital {
+  background: white;
+  border-radius: 16px;
+  width: 700px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: slideInUp 0.3s ease-out;
+}
+
+.modal-header-assinatura {
+  display: flex;
+  align-items: center;
+  padding: 2rem 2rem 1rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header-assinatura .header-icon {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+
+.assinatura-icon {
+  font-size: 3rem;
+  animation: bounce 2s infinite;
+}
+
+.modal-header-assinatura .header-content {
+  flex: 1;
+}
+
+.modal-header-assinatura h3 {
+  margin: 0 0 0.5rem 0;
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.btn-close-assinatura {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #a0aec0;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-close-assinatura:hover {
+  background: #f7fafc;
+  color: #e53e3e;
+}
+
+.modal-body-assinatura {
+  padding: 2rem;
+}
+
+.documento-info {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.documento-info h4 {
+  margin: 0 0 1rem 0;
+  color: #2d3748;
+  font-size: 1.2rem;
+}
+
+.status-info {
+  color: #718096;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0 0;
+}
+
+.signatario-section, .cargo-section {
+  margin-bottom: 1.5rem;
+}
+
+.signatario-label, .cargo-label {
+  display: block;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.signatario-input, .cargo-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.signatario-input:focus, .cargo-input:focus {
+  border-color: #667eea;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.assinatura-aviso {
+  background: #fff8e1;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.aviso-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.aviso-texto p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.modal-footer-assinatura {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.btn-cancelar, .btn-assinar {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-cancelar {
+  background: #f7fafc;
+  color: #4a5568;
+  border: 2px solid #e2e8f0;
+}
+
+.btn-cancelar:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.btn-assinar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-assinar:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  transform: translateY(-1px);
+}
+
+.btn-assinar:disabled {
+  background: #e2e8f0;
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0,0,0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -8px, 0);
+  }
+  70% {
+    transform: translate3d(0, -4px, 0);
+  }
+  90% {
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .modal-assinatura-digital {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .modal-header-assinatura {
+    padding: 1.5rem;
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .modal-header-assinatura .header-icon {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .modal-header-assinatura h3 {
+    font-size: 1.3rem;
+    margin: 0.5rem 0;
+  }
+  
+  .modal-footer-assinatura {
+    flex-direction: column;
+  }
+  
+  .btn-cancelar, .btn-assinar {
+    width: 100%;
+  }
+  
+  .modal-assinatura-digital-ccl {
+    width: 95%;
+    margin: 1rem;
+  }
+}
+
+/* ============================================ */
+/* Estilos Específicos para Modal CCL */
+/* ============================================ */
+
+.modal-overlay-ccl {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-assinatura-digital-ccl {
+  background: white;
+  border-radius: 16px;
+  width: 700px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  animation: slideInUp 0.3s ease-out;
+  border: 2px solid #e2e8f0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 </style>

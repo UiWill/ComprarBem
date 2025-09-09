@@ -1,10 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run serve:*)"
+      "Bash(npm run serve:*)",
+      "Bash(npm run lint)",
+      "Bash(psql:*)"
     ],
     "deny": [],
-    "defaultMode": "acceptEdits",
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   }
 }

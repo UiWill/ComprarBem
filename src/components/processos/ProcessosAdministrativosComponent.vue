@@ -318,17 +318,17 @@
                     class="action-btn action-btn-success"
                   >
                     <span class="btn-icon">🚀</span>
-                    <span class="btn-text">Enviar para Análise</span>
+                    <span class="btn-text">Enviar para Análise/Aprovação</span>
                   </button>
                   
-                  <!-- Botões específicos para Órgão Administrativo em processos aguardando assinatura -->
+                  <!-- Botão Universal de Assinatura Digital -->
                   <button 
-                    v-if="podeOrgaoAssinarDocumento(processoSelecionado)" 
-                    @click="assinarEEnviarProcesso(processoSelecionado)" 
-                    class="action-btn action-btn-success"
+                    v-if="podeUsuarioAssinar(processoSelecionado)" 
+                    @click="assinarProcesso(processoSelecionado)" 
+                    class="action-btn action-btn-signature"
                   >
                     <span class="btn-icon">✍️</span>
-                    <span class="btn-text">Assinar e Enviar para CCL</span>
+                    <span class="btn-text">Assinar Digitalmente</span>
                   </button>
                   
                   <button 
@@ -352,7 +352,7 @@
                   
                   <!-- Botões de Tramitação Geral -->
                   <button 
-                    v-if="temAcaoTramitacaoEnviar(processoSelecionado)" 
+                    v-if="temAcaoTramitacaoEnviar(processoSelecionado) && !podeEnviarParaAnalise(processoSelecionado)" 
                     @click="enviarParaProximaEtapa(processoSelecionado)" 
                     class="action-btn action-btn-success"
                   >
@@ -1148,6 +1148,96 @@
       </div>
     </div>
     
+    <!-- Modal de Assinatura Digital -->
+    <div v-if="mostrarModalAssinatura" class="modal-overlay" @click="fecharModalAssinatura">
+      <div class="modal-assinatura-digital" @click.stop>
+        <div class="modal-header-assinatura">
+          <div class="header-icon">
+            <span class="assinatura-icon">✍️</span>
+          </div>
+          <div class="header-content">
+            <h3>Assinatura Digital do Documento</h3>
+            <p class="processo-numero">Processo: {{ dadosAssinatura.numeroProcesso }}</p>
+          </div>
+          <button @click="fecharModalAssinatura" class="btn-close-assinatura">&times;</button>
+        </div>
+        
+        <div class="modal-body-assinatura">
+          <div class="assinatura-info">
+            <div class="documento-info">
+              <h4>📄 Documento a ser assinado</h4>
+              <p>{{ dadosAssinatura.tipoDocumento }}</p>
+              <p class="status-info">{{ dadosAssinatura.statusAtual }} → {{ dadosAssinatura.proximoStatus }}</p>
+            </div>
+            
+            <div class="signatario-section">
+              <label for="nomeSignatario" class="signatario-label">
+                👤 Nome do Signatário
+              </label>
+              <input 
+                id="nomeSignatario"
+                v-model="dadosAssinatura.nomeSignatario"
+                type="text"
+                class="signatario-input"
+                placeholder="Digite seu nome completo"
+                :disabled="processandoAssinatura"
+              />
+            </div>
+            
+            <div class="cargo-section">
+              <label for="cargoSignatario" class="cargo-label">
+                🏢 Cargo/Função
+              </label>
+              <input 
+                id="cargoSignatario"
+                v-model="dadosAssinatura.cargoSignatario"
+                type="text"
+                class="cargo-input"
+                placeholder="Ex: Procurador do Estado, Advogado Autárquico"
+                :disabled="processandoAssinatura"
+              />
+            </div>
+            
+            
+            <div class="assinatura-aviso">
+              <div class="aviso-icon">⚠️</div>
+              <div class="aviso-texto">
+                <p><strong>Importante:</strong></p>
+                <ul>
+                  <li>Esta assinatura será incorporada permanentemente ao documento PDF</li>
+                  <li>A data e hora da assinatura serão registradas automaticamente</li>
+                  <li>A assinatura digital terá validade jurídica conforme legislação vigente</li>
+                  <li>Após assinar, o processo seguirá para a próxima etapa</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer-assinatura">
+          <button 
+            @click="fecharModalAssinatura" 
+            class="btn-cancelar"
+            :disabled="processandoAssinatura"
+          >
+            ❌ Cancelar
+          </button>
+          <button 
+            @click="confirmarAssinatura" 
+            class="btn-assinar"
+            :disabled="processandoAssinatura || !dadosAssinatura.nomeSignatario || !dadosAssinatura.cargoSignatario"
+          >
+            <span v-if="!processandoAssinatura">
+              ✍️ Assinar Documento
+            </span>
+            <span v-else>
+              ⏳ Processando Assinatura...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Modal de Devolução para CPM -->
     <div v-if="mostrarModalDevolucao" class="modal-overlay" @click="fecharModalDevolucao">
       <div class="modal-devolucao" @click.stop>
@@ -1291,6 +1381,12 @@ export default {
       observacoesTramitacao: '',
       processandoTramitacao: false,
       callbackConfirmacao: null,
+      
+      // Modal de assinatura digital
+      mostrarModalAssinatura: false,
+      dadosAssinatura: {},
+      processandoAssinatura: false,
+      callbackAssinatura: null,
       
       // Modal de devolução
       mostrarModalDevolucao: false,
@@ -1687,6 +1783,94 @@ export default {
       
       // Órgão Administrativo pode devolver em status "aguardando_assinatura_orgao"
       return perfilUsuario === 'orgao_administrativo' && statusProcesso === 'aguardando_assinatura_orgao'
+    },
+    
+    // Função para verificar se o usuário pode assinar digitalmente o processo
+    async podeUsuarioAssinar(processo) {
+      try {
+        console.log(`🔍 DEBUG - podeUsuarioAssinar INÍCIO para processo ${processo.numero_processo}`)
+        
+        // Se o processo está finalizado, ninguém pode assinar
+        if (processo?.status === 'finalizado') {
+          console.log(`🔍 DEBUG - Processo finalizado, não pode assinar`)
+          return false
+        }
+        
+        // Verificação específica para CCL nos status de julgamento
+        const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
+        const statusProcesso = processo?.status?.toLowerCase() || ''
+        
+        // CCL pode assinar nos status de julgamento e ata
+        const statusCCL = ['julgamento_ccl', 'ata_ccl']
+        if (perfilUsuario === 'ccl' && statusCCL.includes(statusProcesso)) {
+          console.log(`🔍 DEBUG - CCL pode assinar no status ${statusProcesso}`)
+          // Continuar para verificar se já assinou
+        } else {
+          // Para outros perfis, verificar se pode tramitar
+          const podeTrampitar = await TramitacaoProcessosService.podeUsuarioTramitar(processo)
+          
+          if (!podeTrampitar) {
+            console.log(`🔍 DEBUG - Usuário não pode tramitar, não pode assinar`)
+            return false
+          }
+        }
+        
+        console.log(`🔍 DEBUG - Usuário pode tramitar, verificando assinaturas existentes...`)
+        
+        // Verificar se o usuário atual já assinou neste processo
+        const usuarioAtual = this.$store.state.user
+        if (usuarioAtual?.id) {
+          console.log(`🔍 DEBUG - Verificando assinaturas existentes para usuário ${usuarioAtual.id} no processo ${processo.id}`)
+          
+          try {
+            // Usar o serviço para consultar o processo completo
+            const processoCompleto = await ProcessosAdministrativosService.obterProcesso(processo.id)
+            
+            console.log(`🔍 DEBUG - Processo obtido via serviço:`, processoCompleto)
+            
+            if (processoCompleto) {
+              // Verificar se o usuário já assinou no status atual
+              const assinaturasExistentes = processoCompleto.assinaturas || []
+              const statusAtual = processoCompleto.status
+              
+              const jaAssinouNoStatusAtual = assinaturasExistentes.some(assinatura => 
+                assinatura.usuario_id === usuarioAtual.id && 
+                assinatura.status_processo === statusAtual
+              )
+              
+              console.log(`🔍 DEBUG - Status atual do processo:`, statusAtual)
+              console.log(`🔍 DEBUG - Assinaturas existentes:`, assinaturasExistentes)
+              console.log(`🔍 DEBUG - Usuario ${usuarioAtual.id} já assinou no status "${statusAtual}"?`, jaAssinouNoStatusAtual)
+              
+              if (jaAssinouNoStatusAtual) {
+                console.log(`🔍 DEBUG - ❌ Usuário já assinou este processo no status atual "${statusAtual}"`)
+                return false
+              } else {
+                console.log(`🔍 DEBUG - ✅ Usuário ainda não assinou no status atual "${statusAtual}", pode assinar`)
+              }
+            } else {
+              console.log(`🔍 DEBUG - Erro ao consultar processo, permitindo assinatura`)
+            }
+          } catch (error) {
+            console.log(`🔍 DEBUG - Erro ao consultar processo via serviço, permitindo assinatura:`, error)
+          }
+        }
+        
+        // Log para debug
+        console.log(`🔍 DEBUG - podeUsuarioAssinar:`, {
+          numeroProcesso: processo.numero_processo,
+          status: processo.status,
+          perfilUsuario: this.perfilUsuario,
+          podeTrampitar: podeTrampitar,
+          podeAssinar: true
+        })
+        
+        return true
+        
+      } catch (error) {
+        console.error('❌ Erro ao verificar se usuário pode assinar:', error)
+        return false
+      }
     },
     
     // Função para obter o texto correto do botão Adicionar Documento
@@ -2356,16 +2540,87 @@ export default {
             </div>
           </div>
           ` : ''}
+
+          ${this.gerarHTMLAssinaturasDigitais(processo)}
+          
         </body>
         </html>
       `
     },
 
     // =====================================================
+    // GERAÇÃO DE SEÇÃO DE ASSINATURAS DIGITAIS NO PDF
+    // =====================================================
+    
+    gerarHTMLAssinaturasDigitais(processo) {
+      // Esta função será chamada de forma assíncrona durante a geração do relatório
+      return `
+        <div class="page-break"></div>
+        <div class="documento-pagina">
+          <div class="documento-header">
+            <h1>${processo.nome_orgao}</h1>
+            <h2>ASSINATURAS DIGITAIS</h2>
+            <p><strong>Processo:</strong> ${processo.numero_processo}</p>
+          </div>
+          
+          <div class="documento-conteudo">
+            <div class="assinaturas-digitais-section">
+              <h3>📝 Validação de Assinaturas Digitais</h3>
+              
+              <div class="info-verificacao">
+                <p><strong>Importante:</strong> Este documento contém assinaturas digitais válidas conforme a legislação vigente.</p>
+                <p><strong>Verificação:</strong> As assinaturas podem ser verificadas através do hash de validação único de cada uma.</p>
+                <p><strong>Data de geração do documento:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+              </div>
+
+              <div id="lista-assinaturas-digitais">
+                <!-- Assinaturas serão inseridas aqui dinamicamente -->
+                <div class="mensagem-carregamento">
+                  <p><em>🔄 As assinaturas digitais serão carregadas na visualização do documento...</em></p>
+                  <p><small>Este documento será atualizado automaticamente com todas as assinaturas válidas do processo.</small></p>
+                </div>
+              </div>
+              
+              <div class="rodape-assinaturas">
+                <hr style="margin: 3cm 0 1cm 0; border: 1px solid #000;">
+                <p><strong>Sistema Comprar Bem</strong></p>
+                <p>Assinatura Digital conforme MP 2.200-2/2001 e Lei 14.133/2021</p>
+                <p><small>Este documento foi gerado eletronicamente e possui validação digital.</small></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    },
+
+    // Método para carregar assinaturas do processo
+    async carregarAssinaturasProcesso(processoId) {
+      try {
+        console.log('🔍 Carregando assinaturas para processo:', processoId)
+        
+        // Usar o serviço para obter o processo completo
+        const processo = await ProcessosAdministrativosService.obterProcesso(processoId)
+        
+        if (!processo) {
+          console.error('Processo não encontrado para carregar assinaturas:', processoId)
+          return []
+        }
+        
+        const assinaturas = processo.assinaturas || []
+        console.log('✅ Assinaturas carregadas:', assinaturas)
+        
+        return assinaturas
+      } catch (error) {
+        console.error('Erro ao carregar assinaturas:', error)
+        return []
+      }
+    },
+    
+    // =====================================================
     // GERAÇÃO DE DOCUMENTO DE ASSINATURA SEPARADO
     // =====================================================
     
-    gerarDocumentoAssinatura(processo) {
+    gerarDocumentoAssinatura(processo, assinaturas = []) {
       const dataAtual = new Date().toLocaleDateString('pt-BR')
       const horaAtual = new Date().toLocaleTimeString('pt-BR')
       
@@ -2491,18 +2746,50 @@ export default {
               </div>
               
               <div class="area-assinatura">
-                <div class="data-local">
-                  _________________, ${dataAtual}
-                </div>
-                
-                <div class="linha-assinatura"></div>
-                
-                <div class="texto-responsavel">
-                  <p>Responsável Técnico</p>
-                </div>
+                ${assinaturas.length > 0 ? '' : 
+                  `<div class="data-local">
+                     _________________, ${dataAtual}
+                   </div>
+                   
+                   <div class="linha-assinatura"></div>
+                   
+                   <div class="texto-responsavel">
+                     <p>Responsável Técnico</p>
+                     <p style="font-size: 10pt; color: #666; margin-top: 1cm;">
+                       (Documento ainda não foi assinado digitalmente)
+                     </p>
+                   </div>`
+                }
               </div>
             </div>
           </div>
+          
+          ${assinaturas.length > 0 ? `
+          <div style="page-break-before: always; padding: 2cm;">
+            <div style="text-align: center; margin-bottom: 2cm;">
+              <h2 style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">ASSINATURAS DIGITAIS</h2>
+              <p style="font-size: 12pt; margin-top: 0.5cm;">Processo: ${processo.numero_processo}</p>
+            </div>
+            
+            <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 1cm 0;">
+              ${assinaturas.map((assinatura, index) => {
+                const dataAssinatura = new Date(assinatura.data_assinatura)
+                const dataFormatada = dataAssinatura.toLocaleDateString('pt-BR')
+                const horaFormatada = dataAssinatura.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                
+                return `
+                <div style="margin-bottom: 1cm; padding: 0.5cm 0; border-bottom: ${index < assinaturas.length - 1 ? '1px solid #ccc' : 'none'};">
+                  <p style="font-size: 11pt; line-height: 1.4; margin: 0; text-align: justify;">
+                    Documento assinado eletronicamente por <strong>${assinatura.nome_signatario}</strong>, 
+                    <strong>${assinatura.cargo_signatario}</strong>, em <strong>${dataFormatada}</strong>, 
+                    às <strong>${horaFormatada}</strong>, conforme horário oficial de Brasília, 
+                    com fundamento no art. 6º, § 1º, do Decreto nº 47.222, de 26 de julho de 2025.
+                  </p>
+                </div>`
+              }).join('')}
+            </div>
+          </div>
+          ` : ''}
         </body>
         </html>
       `
@@ -2513,8 +2800,12 @@ export default {
       try {
         console.log('🖊️ Gerando documento de assinatura para processo:', processo.numero_processo)
         
+        // Carregar assinaturas do processo
+        const assinaturas = await this.carregarAssinaturasProcesso(processo.id)
+        console.log('✍️ Assinaturas encontradas:', assinaturas)
+        
         // Gerar HTML do documento de assinatura
-        const htmlAssinatura = this.gerarDocumentoAssinatura(processo)
+        const htmlAssinatura = this.gerarDocumentoAssinatura(processo, assinaturas)
         
         // Criar nome do arquivo
         const nomeArquivo = `Declaracao_Conformidade_${processo.numero_processo}_${new Date().toISOString().split('T')[0]}.pdf`
@@ -3009,8 +3300,8 @@ export default {
           return new Date(a.data_autuacao || 0) - new Date(b.data_autuacao || 0)
         }
         
-        // Demais documentos por número
-        return (a.numero_folha || 999) - (b.numero_folha || 999)
+        // Demais documentos por número sequencial (evita problema com strings)
+        return (a.numero_sequencial || 999) - (b.numero_sequencial || 999)
       })
     },
 
@@ -3687,6 +3978,16 @@ export default {
         novaJanela.document.write(htmlRelatorio)
         novaJanela.document.close()
         
+        // Carregar e inserir assinaturas digitais no documento
+        setTimeout(async () => {
+          try {
+            const assinaturas = await this.carregarAssinaturasProcesso(processoCompleto.id)
+            this.inserirAssinaturasNoPDF(novaJanela, assinaturas)
+          } catch (error) {
+            console.warn('⚠️ Erro ao carregar assinaturas:', error)
+          }
+        }, 1000)
+        
         // Adicionar funcionalidade de download PDF à nova janela
         setTimeout(() => {
           if (novaJanela && !novaJanela.closed) {
@@ -3792,14 +4093,14 @@ export default {
       // Configurar dados do modal de confirmação
       this.dadosConfirmacaoTramitacao = {
         icone: '🚀',
-        titulo: 'Enviar para Análise Administrativa',
+        titulo: 'Enviar para Análise e Aprovação',
         numeroProcesso: processo.numero_processo,
         statusAtual: 'Criado pela CPM',
-        proximoStatus: 'Aguardando Assinatura',
+        proximoStatus: 'Aguardando Aprovação',
         placeholderObservacoes: 'Ex: Processo revisado e aprovado pela equipe técnica...',
         consequencia1: 'O processo será encaminhado para o órgão administrativo',
         consequencia2: 'Você receberá uma notificação por email sobre o andamento',
-        consequencia3: 'O status será alterado para "Aguardando Assinatura"',
+        consequencia3: 'O status será alterado para "Aguardando Aprovação"',
         textoBotao: 'Enviar para Análise'
       }
       
@@ -4361,6 +4662,139 @@ export default {
       }
     },
     
+    // Métodos para o modal de assinatura digital
+    abrirModalAssinatura(processo, callback) {
+      console.log('✍️ Abrindo modal de assinatura para processo:', processo.numero_processo)
+      
+      // Obter informações do usuário atual
+      const usuarioAtual = this.$store.state.user || {}
+      const nomeUsuario = usuarioAtual.user_metadata?.nome_completo || usuarioAtual.user_metadata?.nome || usuarioAtual.email || ''
+      
+      // Determinar cargo baseado no perfil do usuário
+      let cargoDefault = ''
+      const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
+      switch (perfilUsuario) {
+        case 'orgao_administrativo':
+          cargoDefault = 'Procurador do Estado'
+          break
+        case 'cpm':
+          cargoDefault = 'Coordenador CPM'
+          break
+        case 'ccl':
+          cargoDefault = 'Membro CCL'
+          break
+        case 'assessoria_juridica':
+          cargoDefault = 'Advogado Autárquico'
+          break
+        default:
+          cargoDefault = 'Responsável'
+      }
+      
+      this.dadosAssinatura = {
+        numeroProcesso: processo.numero_processo,
+        tipoDocumento: this.obterTipoDocumento(processo),
+        statusAtual: this.obterNomeStatus(processo.status),
+        proximoStatus: this.obterNomeStatus(this.obterProximoStatus(processo)),
+        nomeSignatario: nomeUsuario,
+        cargoSignatario: cargoDefault
+      }
+      
+      this.callbackAssinatura = callback
+      this.mostrarModalAssinatura = true
+    },
+    
+    fecharModalAssinatura() {
+      this.mostrarModalAssinatura = false
+      this.dadosAssinatura = {}
+      this.processandoAssinatura = false
+      this.callbackAssinatura = null
+    },
+    
+    async confirmarAssinatura() {
+      if (!this.callbackAssinatura) return
+      
+      // Validações
+      if (!this.dadosAssinatura.nomeSignatario.trim()) {
+        this.$swal({
+          title: '❌ Nome obrigatório',
+          text: 'Por favor, informe seu nome completo.',
+          icon: 'error'
+        })
+        return
+      }
+      
+      if (!this.dadosAssinatura.cargoSignatario.trim()) {
+        this.$swal({
+          title: '❌ Cargo obrigatório',
+          text: 'Por favor, informe seu cargo ou função.',
+          icon: 'error'
+        })
+        return
+      }
+      
+      
+      this.processandoAssinatura = true
+      
+      try {
+        // Preparar dados da assinatura
+        const dadosAssinatura = {
+          nomeSignatario: this.dadosAssinatura.nomeSignatario.trim(),
+          cargoSignatario: this.dadosAssinatura.cargoSignatario.trim(),
+          observacoes: '', // Sem observações por enquanto
+          dataAssinatura: new Date().toISOString(),
+          hashValidacao: this.gerarHashAssinatura()
+        }
+        
+        // Executar callback com dados da assinatura
+        await this.callbackAssinatura(dadosAssinatura)
+        
+        this.fecharModalAssinatura()
+        
+        this.$swal({
+          title: '✅ Assinatura Confirmada',
+          text: 'O documento foi assinado digitalmente com sucesso!',
+          icon: 'success',
+          timer: 2000
+        })
+        
+      } catch (error) {
+        console.error('Erro na assinatura:', error)
+        
+        let mensagemErro = 'Ocorreu um erro ao processar a assinatura.'
+        if (error.message === 'Senha inválida') {
+          mensagemErro = 'Senha incorreta. Verifique sua senha de login.'
+        }
+        
+        this.$swal({
+          title: '❌ Erro na Assinatura',
+          text: mensagemErro,
+          icon: 'error'
+        })
+        
+        this.processandoAssinatura = false
+      }
+    },
+    
+    // Métodos auxiliares para assinatura
+    
+    gerarHashAssinatura() {
+      // Gerar hash único para validação da assinatura
+      const timestamp = new Date().getTime()
+      const random = Math.random().toString(36).substr(2, 9)
+      const userId = this.$store.state.user?.id || 'unknown'
+      return `${timestamp}-${userId}-${random}`
+    },
+    
+    obterTipoDocumento(processo) {
+      const tipoProcesso = processo.tipo_processo === 'padronizacao' ? 'Padronização' : 'Despadronização'
+      return `Processo Administrativo de ${tipoProcesso}`
+    },
+    
+    obterProximoStatus(processo) {
+      // Importar o serviço de tramitação para obter o próximo status
+      return TramitacaoProcessosService.obterProximoStatus(processo.status, processo.tipo_processo)
+    },
+    
     // =====================================================
     // MÉTODOS PARA ÓRGÃO ADMINISTRATIVO
     // =====================================================
@@ -4428,45 +4862,203 @@ export default {
       }
     },
     
-    // Assinar documento e enviar para CCL
-    async assinarEEnviarProcesso(processo) {
-      try {
-        console.log('✍️ Assinando e enviando processo para CCL:', processo.numero_processo)
+    // Assinar documento apenas (sem tramitação automática)
+    async assinarProcesso(processo) {
+      console.log('✍️ Iniciando assinatura digital para:', processo.numero_processo)
+      
+      // Abrir modal de assinatura digital
+      this.abrirModalAssinatura(processo, async (dadosAssinatura) => {
+        console.log('✍️ Executando assinatura com dados:', dadosAssinatura)
         
-        const confirmacao = confirm(
-          `✍️ ASSINAR E ENVIAR PROCESSO\n\n` +
-          `Processo: ${processo.numero_processo}\n` +
-          `Status atual: Aguardando Assinatura do Órgão\n` +
-          `Próximo status: Assinado pelo Órgão Administrativo\n\n` +
-          `Confirma a assinatura e envio para a CCL?`
-        )
-        
-        if (!confirmacao) return
-        
-        const resultado = await TramitacaoProcessosService.enviarProcesso(
-          processo.id,
-          'Documento assinado pelo Órgão Administrativo'
-        )
-        
-        if (resultado.sucesso) {
-          console.log('✅ Processo assinado e enviado com sucesso')
+        try {
+          // Salvar assinatura no banco de dados
+          await this.salvarAssinaturaProcesso(processo.id, dadosAssinatura)
           
+          console.log('✅ Processo assinado com sucesso')
+          
+          // Mostrar mensagem de sucesso
           alert(
-            `✅ PROCESSO ASSINADO E ENVIADO\n\n` +
+            `✅ Assinatura Digital Realizada com Sucesso!\n\n` +
             `Processo: ${processo.numero_processo}\n` +
-            `Status anterior: ${this.obterNomeStatus(resultado.statusAnterior)}\n` +
-            `Status atual: ${this.obterNomeStatus(resultado.statusNovo)}\n\n` +
-            `O processo foi assinado e enviado para julgamento da CCL.`
+            `Assinado por: ${dadosAssinatura.nomeSignatario}\n` +
+            `Cargo: ${dadosAssinatura.cargoSignatario}\n\n` +
+            `A assinatura foi salva no sistema. Use o botão "Enviar" quando estiver pronto para tramitar o processo.`
           )
           
-          // Recarregar processos
+          // Recarregar processos para mostrar a assinatura
           await this.carregarProcessos()
-          this.fecharVisualizacaoProcesso()
+          
+          // Atualizar processo no modal se ele estiver aberto
+          if (this.processoSelecionado && this.processoSelecionado.id === processo.id) {
+            // Buscar o processo atualizado
+            const processoAtualizado = this.processos.find(p => p.id === processo.id)
+            if (processoAtualizado) {
+              this.processoSelecionado = processoAtualizado
+            }
+          }
+          
+        } catch (error) {
+          console.error('❌ Erro na assinatura:', error)
+          throw error
+        }
+      })
+    },
+    
+    // Assinar documento e enviar para próxima etapa
+    async assinarEEnviarProcesso(processo) {
+      console.log('✍️ Iniciando processo de assinatura digital para:', processo.numero_processo)
+      
+      // Abrir modal de assinatura digital
+      this.abrirModalAssinatura(processo, async (dadosAssinatura) => {
+        console.log('✍️ Executando assinatura com dados:', dadosAssinatura)
+        
+        try {
+          // 1. Salvar assinatura no banco de dados
+          await this.salvarAssinaturaProcesso(processo.id, dadosAssinatura)
+          
+          // 2. Tramitar processo para próxima etapa
+          const observacoes = `Documento assinado digitalmente por ${dadosAssinatura.nomeSignatario} (${dadosAssinatura.cargoSignatario}). ${dadosAssinatura.observacoes || ''}`
+          
+          const resultado = await TramitacaoProcessosService.enviarProcesso(
+            processo.id,
+            observacoes.trim()
+          )
+          
+          if (resultado.sucesso) {
+            console.log('✅ Processo assinado e tramitado com sucesso')
+            
+            // Recarregar processos
+            await this.carregarProcessos()
+            this.fecharVisualizacaoProcesso()
+          }
+          
+        } catch (error) {
+          console.error('❌ Erro no processo de assinatura:', error)
+          throw error
+        }
+      })
+    },
+    
+    // Salvar assinatura diretamente na coluna do processo
+    async salvarAssinaturaProcesso(processoId, dadosAssinatura) {
+      try {
+        console.log('💾 Salvando assinatura diretamente no processo:', dadosAssinatura)
+        
+        const user = this.$store.state.user
+        
+        // Obter o processo completo para saber o status atual
+        const processoCompleto = await ProcessosAdministrativosService.obterProcesso(processoId)
+        
+        if (!processoCompleto) {
+          throw new Error('Processo não encontrado')
+        }
+
+        // Preparar objeto da assinatura incluindo o status atual
+        const novaAssinatura = {
+          id: this.gerarHashAssinatura(), // Usar como ID único
+          usuario_id: user?.id,
+          nome_signatario: dadosAssinatura.nomeSignatario,
+          cargo_signatario: dadosAssinatura.cargoSignatario,
+          observacoes: dadosAssinatura.observacoes || '',
+          data_assinatura: dadosAssinatura.dataAssinatura,
+          hash_validacao: dadosAssinatura.hashValidacao,
+          ip_assinatura: await this.obterIpUsuario() || '127.0.0.1',
+          status_processo: processoCompleto.status // Adicionar o status atual do processo
         }
         
+        console.log('📝 Nova assinatura preparada:', novaAssinatura)
+        
+        // Pegar array de assinaturas existentes ou criar novo
+        const assinaturasExistentes = processoCompleto.assinaturas || []
+        console.log('📋 Assinaturas existentes:', assinaturasExistentes)
+        
+        // Adicionar nova assinatura ao array
+        const todasAssinaturas = [...assinaturasExistentes, novaAssinatura]
+        console.log('📋 Todas as assinaturas após adicionar:', todasAssinaturas)
+        
+        // Atualizar processo usando o serviço
+        await ProcessosAdministrativosService.atualizarProcesso(processoId, {
+          assinaturas: todasAssinaturas
+        })
+        
+        console.log('✅ Assinatura salva com sucesso no processo!')
+        
       } catch (error) {
-        console.error('❌ Erro ao assinar e enviar processo:', error)
-        alert(`❌ Erro ao processar assinatura: ${error.message}`)
+        console.error('❌ Erro ao salvar assinatura:', error)
+        throw error // Propagar erro para mostrar ao usuário
+      }
+    },
+    
+    // Método auxiliar para obter IP (opcional)
+    async obterIpUsuario() {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json')
+        const data = await response.json()
+        return data.ip || 'unknown'
+      } catch (error) {
+        return 'unknown'
+      }
+    },
+    
+    // Carregar assinaturas digitais do processo
+    
+    // Inserir assinaturas digitais no PDF gerado
+    inserirAssinaturasNoPDF(janelaPDF, assinaturas) {
+      try {
+        if (!janelaPDF || janelaPDF.closed) {
+          console.warn('⚠️ Janela do PDF não está disponível')
+          return
+        }
+        
+        const documento = janelaPDF.document
+        const containerAssinaturas = documento.getElementById('lista-assinaturas-digitais')
+        
+        if (!containerAssinaturas) {
+          console.warn('⚠️ Container de assinaturas não encontrado no PDF')
+          return
+        }
+        
+        // Limpar mensagem de carregamento
+        containerAssinaturas.innerHTML = ''
+        
+        if (!assinaturas || assinaturas.length === 0) {
+          containerAssinaturas.innerHTML = `
+            <div class="sem-assinaturas">
+              <p><em>📝 Este processo ainda não possui assinaturas digitais.</em></p>
+              <p><small>As assinaturas aparecerão aqui conforme o processo for tramitado.</small></p>
+            </div>
+          `
+          return
+        }
+        
+        // Gerar HTML simplificado das assinaturas
+        let htmlAssinaturas = `
+          <div class="assinaturas-simples" style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 1cm 0;">
+            ${assinaturas.map((assinatura, index) => {
+              const dataAssinatura = new Date(assinatura.data_assinatura)
+              const dataFormatada = dataAssinatura.toLocaleDateString('pt-BR')
+              const horaFormatada = dataAssinatura.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+              
+              return `
+              <div style="margin-bottom: 1cm; padding: 0.5cm 0; border-bottom: ${index < assinaturas.length - 1 ? '1px solid #ccc' : 'none'};">
+                <p style="font-size: 11pt; line-height: 1.4; margin: 0; text-align: justify;">
+                  Documento assinado eletronicamente por <strong>${assinatura.nome_signatario}</strong>, 
+                  <strong>${assinatura.cargo_signatario}</strong>, em <strong>${dataFormatada}</strong>, 
+                  às <strong>${horaFormatada}</strong>, conforme horário oficial de Brasília, 
+                  com fundamento no art. 6º, § 1º, do Decreto nº 47.222, de 26 de julho de 2025.
+                </p>
+              </div>`
+            }).join('')}
+          </div>
+        `
+        
+        // Inserir HTML no container
+        containerAssinaturas.innerHTML = htmlAssinaturas
+        
+        console.log(`✅ ${assinaturas.length} assinaturas inseridas no PDF`)
+        
+      } catch (error) {
+        console.error('❌ Erro ao inserir assinaturas no PDF:', error)
       }
     },
     
@@ -4481,8 +5073,8 @@ export default {
         'aguardando_aprovacao': 'Aguardando Aprovação',
         'criado_cpm': 'Criado pela CPM',
         'criado_cpm_desp': 'Criado pela CPM',
-        'aguardando_assinatura_orgao': 'Aguardando Assinatura do Órgão',
-        'aguardando_assinatura_orgao_desp': 'Aguardando Assinatura do Órgão',
+        'aguardando_assinatura_orgao': 'Aguardando Aprovação do Órgão',
+        'aguardando_assinatura_orgao_desp': 'Aguardando Aprovação do Órgão',
         'assinado_admin': 'Assinado pelo Órgão Administrativo',
         'julgamento_ccl': 'Em Julgamento pela CCL',
         'aprovado_ccl': 'Aprovado pela CCL',
@@ -5528,6 +6120,29 @@ export default {
 
 .action-btn-warning:hover {
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+.action-btn-signature {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  border: 2px solid #8b5cf6;
+}
+
+.action-btn-signature:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  border-color: #7c3aed;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+}
+
+.action-btn-signature .btn-icon {
+  font-size: 1.2rem;
+  animation: signature-pulse 2s infinite;
+}
+
+@keyframes signature-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 @media (max-width: 768px) {
@@ -7081,6 +7696,265 @@ export default {
   }
   
   .btn-cancelar, .btn-confirmar {
+    width: 100%;
+  }
+}
+
+/* ===== MODAL DE ASSINATURA DIGITAL ===== */
+.modal-assinatura-digital {
+  background: white;
+  border-radius: 16px;
+  width: 700px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: slideInUp 0.3s ease-out;
+}
+
+.modal-header-assinatura {
+  display: flex;
+  align-items: center;
+  padding: 2rem 2rem 1rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header-assinatura .header-icon {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+
+.assinatura-icon {
+  font-size: 3rem;
+  animation: bounce 2s infinite;
+}
+
+.modal-header-assinatura .header-content {
+  flex: 1;
+}
+
+.modal-header-assinatura h3 {
+  margin: 0 0 0.5rem 0;
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.btn-close-assinatura {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #a0aec0;
+  cursor: pointer;
+  padding: 0.5rem;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.btn-close-assinatura:hover {
+  color: #e53e3e;
+  background: #fed7d7;
+}
+
+.modal-body-assinatura {
+  padding: 2rem;
+}
+
+.documento-info {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.documento-info h4 {
+  margin: 0 0 0.5rem 0;
+  color: #2d3748;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.documento-info p {
+  margin: 0.25rem 0;
+  color: #4a5568;
+  font-size: 0.95rem;
+}
+
+.status-info {
+  font-weight: 600;
+  color: #3182ce !important;
+  margin-top: 0.5rem !important;
+}
+
+.signatario-section, .cargo-section, .validacao-section, .observacoes-assinatura-section {
+  margin-bottom: 1.5rem;
+}
+
+.signatario-label, .cargo-label, .senha-label, .obs-assinatura-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.signatario-input, .cargo-input, .senha-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.signatario-input:focus, .cargo-input:focus, .senha-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.signatario-input:disabled, .cargo-input:disabled, .senha-input:disabled {
+  background: #f7fafc;
+  color: #a0aec0;
+}
+
+.obs-assinatura-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background: white;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.obs-assinatura-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.obs-assinatura-textarea:disabled {
+  background: #f7fafc;
+  color: #a0aec0;
+}
+
+.assinatura-aviso {
+  display: flex;
+  align-items: flex-start;
+  padding: 1.5rem;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 12px;
+  margin-top: 1.5rem;
+}
+
+.assinatura-aviso .aviso-icon {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  flex-shrink: 0;
+}
+
+.assinatura-aviso .aviso-texto {
+  flex: 1;
+}
+
+.assinatura-aviso .aviso-texto p {
+  margin: 0 0 0.5rem 0;
+  color: #c53030;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.assinatura-aviso .aviso-texto ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: #744210;
+}
+
+.assinatura-aviso .aviso-texto li {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.modal-footer-assinatura {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding: 1.5rem 2rem 2rem 2rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-assinar {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 180px;
+  justify-content: center;
+}
+
+.btn-assinar:hover:not(:disabled) {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+.btn-assinar:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Responsividade para o modal de assinatura */
+@media (max-width: 768px) {
+  .modal-assinatura-digital {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .modal-header-assinatura {
+    padding: 1.5rem;
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .modal-header-assinatura .header-icon {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .modal-header-assinatura h3 {
+    font-size: 1.3rem;
+    margin: 0.5rem 0;
+  }
+  
+  .modal-footer-assinatura {
+    flex-direction: column;
+  }
+  
+  .btn-cancelar, .btn-assinar {
     width: 100%;
   }
 }

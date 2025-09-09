@@ -3,10 +3,6 @@
     <div class="catalogo-header">
       <h2>Catálogo Eletrônico de Bens Padronizados</h2>
       <div class="export-buttons">
-        <button @click="exportarCatalogoPDF" class="btn-exportar btn-resumido" :disabled="exportandoPDF">
-          <span v-if="exportandoPDF && tipoExportacao === 'resumido'" class="spinner-small"></span>
-          {{ (exportandoPDF && tipoExportacao === 'resumido') ? 'Gerando...' : '📄 Catálogo Legal' }}
-        </button>
         <button @click="exportarCatalogoDetalhado" class="btn-exportar btn-detalhado" :disabled="exportandoPDF">
           <span v-if="exportandoPDF && tipoExportacao === 'detalhado'" class="spinner-small"></span>
           {{ (exportandoPDF && tipoExportacao === 'detalhado') ? 'Gerando...' : '📋 Catálogo Completo' }}
@@ -395,7 +391,7 @@
           
           <form @submit.prevent="despadronizarProduto">
             <div class="form-group">
-              <label for="numeroProcesso">Número do Processo de Cancelamento *</label>
+              <label for="numeroProcesso">Número do Processo de Despadronização *</label>
               <input 
                 id="numeroProcesso" 
                 v-model="despadronizacao.numero_processo" 
@@ -579,17 +575,17 @@ export default {
           }
         }
         
-        // Carregar categorias
-        console.log("Buscando categorias do Supabase...")
-        const { data: categorias, error: errorCategorias } = await supabase
-          .from('categorias')
+        // Carregar grupos (ao invés de categorias)
+        console.log("Buscando grupos do Supabase...")
+        const { data: grupos, error: errorGrupos } = await supabase
+          .from('grupos')
           .select('*')
           
-        if (errorCategorias) {
-          console.error('Erro ao carregar categorias:', errorCategorias)
+        if (errorGrupos) {
+          console.error('Erro ao carregar grupos:', errorGrupos)
         } else {
-          this.categorias = categorias || []
-          console.log(`${this.categorias.length} categorias carregadas`)
+          this.categorias = grupos || [] // Usar a mesma variável mas com dados de grupos
+          console.log(`${this.categorias.length} grupos carregados`)
         }
         
         // Carregar produtos - apenas produtos pré-qualificados e padronizados
@@ -613,6 +609,8 @@ export default {
           console.error('Erro ao carregar produtos:', errorProdutos)
           this.produtos = []
         } else {
+          console.log('🗄️ Dados brutos do Supabase:', produtos?.length > 0 ? produtos[0] : 'Nenhum produto')
+          console.log('🔧 Query executada com select:', query.toString ? 'query object' : 'Query string não disponível')
           // Processar produtos e mesclar informações de DCB
           let produtosProcessados = (produtos || []).map(produto => {
             // Prioridade 1: Usar DCB salvo diretamente no produto
@@ -683,11 +681,26 @@ export default {
           
           this.produtos = Array.from(produtosUnicos.values())
           
+          // 🎯 SOLUÇÃO: Preencher campos ausentes (grupo_id, classe_id) buscando em produtos similares
+          await this.preencherCamposAusentes()
+          
           console.log(`${this.produtos.length} produtos únicos carregados (${produtosProcessados.length - this.produtos.length} duplicatas removidas)`)
           console.log('Produtos homologados:', this.produtos.filter(p => p.status === 'homologado').length)
           console.log('Produtos aprovados:', this.produtos.filter(p => p.status === 'aprovado').length)
           console.log('Produtos com DCB:', this.produtos.filter(p => p.numero_dcb).length)
           console.log('Produtos aguardando DCB:', this.produtos.filter(p => p.status === 'aprovado' && !p.numero_dcb).length)
+          console.log('🏷️ Produtos com grupo_id:', this.produtos.filter(p => p.grupo_id).length)
+          
+          // Debug de amostra de produtos para verificar grupo_id
+          if (this.produtos.length > 0) {
+            console.log('📋 Exemplo de produto carregado:', {
+              nome: this.produtos[0].nome,
+              grupo_id: this.produtos[0].grupo_id,
+              classe_id: this.produtos[0].classe_id,
+              status: this.produtos[0].status,
+              id: this.produtos[0].id
+            })
+          }
         }
         
         // Carregar produtos despadronizados
@@ -734,39 +747,154 @@ export default {
     
     async carregarCategoriasDireto() {
       try {
-        console.log('Tentando carregar categorias diretamente...')
+        console.log('Tentando carregar grupos diretamente...')
         const { data, error } = await supabase
-          .from('categorias')
+          .from('grupos')
           .select('*')
         
         if (error) {
-          console.error('Erro ao carregar categorias direto:', error)
+          console.error('Erro ao carregar grupos direto:', error)
           return
         }
         
-        console.log('Resposta direta de categorias:', data)
+        console.log('Resposta direta de grupos:', data)
         
         if (data && data.length > 0 && this.categorias.length === 0) {
-          console.log('Atualizando categorias com dados diretos')
-          this.categorias = data
+          console.log('Atualizando grupos com dados diretos')
+          this.categorias = data // Usar a mesma variável mas com dados de grupos
         }
       } catch (e) {
-        console.error('Exceção ao carregar categorias direto:', e)
+        console.error('Exceção ao carregar grupos direto:', e)
       }
     },
+
+    // 🎯 NOVA FUNÇÃO: Preencher campos ausentes (grupo_id, classe_id) de produtos similares
+    async preencherCamposAusentes() {
+      try {
+        console.log('🔧 Preenchendo campos ausentes dos produtos...')
+        
+        for (let produto of this.produtos) {
+          // Se o produto não tem grupo_id, buscar em produtos similares
+          if (!produto.grupo_id || !produto.classe_id) {
+            console.log(`🔍 Produto sem grupo_id: ${produto.nome}`)
+            
+            // Buscar produtos similares no banco
+            const { data: produtosSimilares, error } = await supabase
+              .from('produtos')
+              .select('grupo_id, classe_id, nome, marca, fabricante')
+              .eq('tenant_id', this.currentTenantId)
+              .eq('nome', produto.nome)
+              .not('grupo_id', 'is', null) // Apenas produtos que TEM grupo_id
+            
+            if (!error && produtosSimilares && produtosSimilares.length > 0) {
+              // Pegar o primeiro produto similar que tem os campos preenchidos
+              const produtoReferencia = produtosSimilares.find(p => 
+                p.grupo_id && 
+                (p.marca === produto.marca || p.fabricante === produto.fabricante)
+              ) || produtosSimilares[0]
+              
+              if (produtoReferencia) {
+                console.log(`✅ Preenchendo grupo_id: ${produtoReferencia.grupo_id} para ${produto.nome}`)
+                produto.grupo_id = produtoReferencia.grupo_id
+                produto.classe_id = produtoReferencia.classe_id || produto.classe_id
+              }
+            }
+          }
+        }
+        
+        console.log('✅ Preenchimento de campos ausentes concluído')
+        
+      } catch (error) {
+        console.error('❌ Erro ao preencher campos ausentes:', error)
+      }
+    },
+
+    // 🎯 FUNÇÃO ESPECÍFICA PARA PDF: Preencher campos ausentes E buscar nomes de grupos
+    async preencherCamposAusentesPDF(produtos) {
+      try {
+        console.log('🔧 Preenchendo campos ausentes para PDF...')
+        
+        // 1. Preencher campos ausentes (igual a função anterior)
+        for (let produto of produtos) {
+          if (!produto.grupo_id || !produto.classe_id) {
+            console.log(`🔍 PDF - Produto sem grupo_id: ${produto.nome}`)
+            
+            const { data: produtosSimilares, error } = await supabase
+              .from('produtos')
+              .select('grupo_id, classe_id, nome, marca, fabricante')
+              .eq('tenant_id', this.currentTenantId)
+              .eq('nome', produto.nome)
+              .not('grupo_id', 'is', null)
+            
+            if (!error && produtosSimilares && produtosSimilares.length > 0) {
+              const produtoReferencia = produtosSimilares.find(p => 
+                p.grupo_id && 
+                (p.marca === produto.marca || p.fabricante === produto.fabricante)
+              ) || produtosSimilares[0]
+              
+              if (produtoReferencia) {
+                console.log(`✅ PDF - Preenchendo grupo_id: ${produtoReferencia.grupo_id} para ${produto.nome}`)
+                produto.grupo_id = produtoReferencia.grupo_id
+                produto.classe_id = produtoReferencia.classe_id || produto.classe_id
+              }
+            }
+          }
+        }
+        
+        // 2. Buscar nomes dos grupos para exibir no PDF
+        const { data: grupos, error: errorGrupos } = await supabase
+          .from('grupos')
+          .select('id, nome')
+        
+        if (!errorGrupos && grupos) {
+          // Criar mapa de grupo_id -> nome
+          const mapaGrupos = {}
+          grupos.forEach(grupo => {
+            mapaGrupos[grupo.id] = grupo.nome
+          })
+          
+          // Adicionar nome do grupo aos produtos
+          produtos.forEach(produto => {
+            if (produto.grupo_id && mapaGrupos[produto.grupo_id]) {
+              produto.nome_grupo = mapaGrupos[produto.grupo_id]
+              console.log(`📋 Produto ${produto.nome} → Grupo: ${produto.nome_grupo}`)
+            }
+          })
+        }
+        
+        console.log('✅ Preenchimento PDF concluído')
+        return produtos
+        
+      } catch (error) {
+        console.error('❌ Erro ao preencher campos PDF:', error)
+        return produtos
+      }
+    },
+
     filtrarProdutos() {
-      console.log('Filtrando produtos por:', this.filtroCategoria, 'e texto:', this.searchTerm)
+      console.log('🔍 Filtrando produtos por categoria:', this.filtroCategoria, 'e texto:', this.searchTerm)
       
       this.produtosFiltrados = this.produtos.filter(produto => {
-        const matchCategoria = !this.filtroCategoria || produto.categoria_id === this.filtroCategoria
+        const matchCategoria = !this.filtroCategoria || produto.grupo_id === this.filtroCategoria
         const matchText = !this.searchTerm || 
                         produto.nome.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
                         (produto.descricao && produto.descricao.toLowerCase().includes(this.searchTerm.toLowerCase()))
         
+        // Debug detalhado
+        if (this.filtroCategoria) {
+          console.log(`📋 Produto: ${produto.nome} | grupo_id: ${produto.grupo_id} | filtro: ${this.filtroCategoria} | match: ${matchCategoria}`)
+        }
+        
         return matchCategoria && matchText
       })
       
-      console.log('Produtos filtrados:', this.produtosFiltrados.length)
+      console.log('✅ Produtos filtrados:', this.produtosFiltrados.length)
+      
+      // Debug de grupos disponíveis nos produtos
+      if (this.filtroCategoria) {
+        const gruposEncontrados = [...new Set(this.produtos.map(p => p.grupo_id).filter(Boolean))]
+        console.log('📊 Grupos disponíveis nos produtos:', gruposEncontrados)
+      }
     },
     async verDetalhesProduto(id) {
       try {
@@ -1280,12 +1408,39 @@ export default {
         const nomeOrgao = tenantData?.nome || 'Órgão Público'
         
         // Buscar todos os produtos padronizados e despadronizados
-        const { data: produtosPadronizados } = await supabase
+        const { data: produtosBrutos } = await supabase
           .from('produtos')
           .select('*')
           .eq('tenant_id', this.currentTenantId)
           .in('status', ['aprovado', 'julgado_aprovado', 'homologado'])
           .order('nome')
+
+        // Aplicar lógica de deduplicação (mesmo que na tela)
+        const produtosUnicos = new Map()
+        
+        produtosBrutos?.forEach(produto => {
+          const chave = `${produto.nome}-${produto.marca}-${produto.modelo || 'sem-modelo'}`
+          
+          if (!produtosUnicos.has(chave)) {
+            produtosUnicos.set(chave, produto)
+          } else {
+            const produtoExistente = produtosUnicos.get(chave)
+            
+            // Priorizar status homologado
+            if (produto.status === 'homologado' && produtoExistente.status !== 'homologado') {
+              produtosUnicos.set(chave, produto)
+            }
+            // Se ambos têm mesmo status, manter o com DCB
+            else if (produto.status === produtoExistente.status && produto.numero_dcb && !produtoExistente.numero_dcb) {
+              produtosUnicos.set(chave, produto)
+            }
+          }
+        })
+        
+        let produtosPadronizados = Array.from(produtosUnicos.values())
+        
+        // 🎯 SOLUÇÃO: Preencher campos ausentes no PDF também
+        produtosPadronizados = await this.preencherCamposAusentesPDF(produtosPadronizados)
         
         // Buscar produtos despadronizados
         const { data: produtosDespadronizados } = await supabase
@@ -1561,23 +1716,44 @@ export default {
         const nomeOrgao = tenantData?.nome || 'Órgão Público'
         
         // Buscar todos os produtos com mais detalhes
-        const { data: produtosPadronizados } = await supabase
+        const { data: produtosBrutosDetalhado } = await supabase
           .from('produtos')
-          .select(`
-            *,
-            categorias:categoria_id(nome)
-          `)
+          .select('*')
           .eq('tenant_id', this.currentTenantId)
           .in('status', ['aprovado', 'julgado_aprovado', 'homologado'])
           .order('nome')
+
+        // Aplicar lógica de deduplicação (mesmo que na tela)
+        const produtosUnicosDetalhado = new Map()
+        
+        produtosBrutosDetalhado?.forEach(produto => {
+          const chave = `${produto.nome}-${produto.marca}-${produto.modelo || 'sem-modelo'}`
+          
+          if (!produtosUnicosDetalhado.has(chave)) {
+            produtosUnicosDetalhado.set(chave, produto)
+          } else {
+            const produtoExistente = produtosUnicosDetalhado.get(chave)
+            
+            // Priorizar status homologado
+            if (produto.status === 'homologado' && produtoExistente.status !== 'homologado') {
+              produtosUnicosDetalhado.set(chave, produto)
+            }
+            // Se ambos têm mesmo status, manter o com DCB
+            else if (produto.status === produtoExistente.status && produto.numero_dcb && !produtoExistente.numero_dcb) {
+              produtosUnicosDetalhado.set(chave, produto)
+            }
+          }
+        })
+        
+        let produtosPadronizados = Array.from(produtosUnicosDetalhado.values())
+        
+        // 🎯 SOLUÇÃO: Preencher campos ausentes no PDF detalhado também
+        produtosPadronizados = await this.preencherCamposAusentesPDF(produtosPadronizados)
         
         // Buscar produtos despadronizados com detalhes
         const { data: produtosDespadronizados } = await supabase
           .from('produtos')
-          .select(`
-            *,
-            categorias:categoria_id(nome)
-          `)
+          .select('*')
           .eq('tenant_id', this.currentTenantId)
           .eq('status', 'despadronizado')
           .order('nome')
@@ -1782,20 +1958,18 @@ export default {
             <table>
               <thead>
                 <tr>
-                  <th style="width: 10%">Código</th>
-                  <th style="width: 25%">Especificação</th>
+                  <th style="width: 30%">Especificação</th>
                   <th style="width: 12%">Marca</th>
-                  <th style="width: 10%">Modelo</th>
-                  <th style="width: 12%">Fabricante</th>
-                  <th style="width: 8%">Categoria</th>
+                  <th style="width: 12%">Modelo</th>
+                  <th style="width: 15%">Fabricante</th>
+                  <th style="width: 10%">Categoria</th>
                   <th style="width: 8%">Status</th>
-                  <th style="width: 15%">Detalhes Técnicos</th>
+                  <th style="width: 13%">Detalhes Técnicos</th>
                 </tr>
               </thead>
               <tbody>
                 ${dados.produtosPadronizados.map(produto => `
                   <tr>
-                    <td><strong>${produto.codigo_material || produto.codigo || 'N/A'}</strong></td>
                     <td>
                       <strong>${produto.nome || 'N/A'}</strong>
                       ${produto.descricao ? `<br><small>${produto.descricao}</small>` : ''}
@@ -1803,7 +1977,7 @@ export default {
                     <td>${produto.marca || 'N/A'}</td>
                     <td>${produto.modelo || 'N/A'}</td>
                     <td>${produto.fabricante || 'N/A'}</td>
-                    <td>${produto.categorias?.nome || 'N/A'}</td>
+                    <td>${produto.nome_grupo || produto.categorias?.nome || 'N/A'}</td>
                     <td><span class="status-padronizado">PADRONIZADO</span></td>
                     <td class="detalhes-adicionais">
                       ${produto.cnpj ? `<strong>CNPJ:</strong> ${produto.cnpj}<br>` : ''}
@@ -1824,11 +1998,10 @@ export default {
             <table>
               <thead>
                 <tr>
-                  <th style="width: 10%">Código</th>
-                  <th style="width: 20%">Especificação</th>
+                  <th style="width: 25%">Especificação</th>
                   <th style="width: 12%">Marca</th>
-                  <th style="width: 10%">Modelo</th>
-                  <th style="width: 12%">Fabricante</th>
+                  <th style="width: 12%">Modelo</th>
+                  <th style="width: 15%">Fabricante</th>
                   <th style="width: 8%">Status</th>
                   <th style="width: 15%">Motivo Despadronização</th>
                   <th style="width: 13%">Detalhes Processo</th>
@@ -1837,7 +2010,6 @@ export default {
               <tbody>
                 ${dados.produtosDespadronizados.map(produto => `
                   <tr>
-                    <td><strong>${produto.codigo_material || produto.codigo || 'N/A'}</strong></td>
                     <td>
                       <strong>${produto.nome || 'N/A'}</strong>
                       ${produto.descricao ? `<br><small>${produto.descricao}</small>` : ''}

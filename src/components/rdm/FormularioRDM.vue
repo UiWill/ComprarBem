@@ -5,20 +5,59 @@
     <form @submit.prevent="enviarFeedback">
       <div class="form-group">
         <label for="produto">Produto*</label>
-        <select 
-          id="produto" 
-          v-model="feedback.rdm_id" 
-          required
-        >
-          <option value="">Selecione o produto...</option>
-          <option 
-            v-for="produto in produtos" 
-            :key="produto.id" 
-            :value="produto.id"
-          >
-            {{ produto.nome }} - {{ produto.codigo || 'Sem código' }}
-          </option>
-        </select>
+        
+        <!-- Searchable Dropdown Unificado -->
+        <div class="searchable-dropdown" :class="{ 'dropdown-open': dropdownAberto }">
+          <div class="dropdown-input-container">
+            <input 
+              type="text" 
+              v-model="textoDisplay" 
+              @input="filtrarProdutos"
+              @focus="abrirDropdown"
+              @blur="fecharDropdown"
+              placeholder="🔍 Digite o nome do produto ou clique para ver lista completa..."
+              class="dropdown-input"
+              autocomplete="off"
+            />
+            <div class="dropdown-arrow" @mousedown="toggleDropdown">
+              {{ dropdownAberto ? '▲' : '▼' }}
+            </div>
+          </div>
+          
+          <div v-if="dropdownAberto" class="dropdown-list">
+            <div v-if="produtosFiltrados.length === 0" class="dropdown-item no-results">
+              Nenhum produto encontrado
+            </div>
+            <div 
+              v-for="produto in produtosFiltrados" 
+              :key="produto.id" 
+              class="dropdown-item"
+              @mousedown="selecionarProduto(produto)"
+              :class="{ selected: feedback.rdm_id === produto.id }"
+            >
+              <div class="produto-nome">{{ produto.nome }}</div>
+              <div class="produto-detalhes">
+                <small>Código: {{ produto.codigo || 'Sem código' }}</small>
+                <small v-if="produto.marca"> • Marca: {{ produto.marca }}</small>
+              </div>
+            </div>
+          </div>
+          
+          <div class="search-info" v-if="textoDisplay && !dropdownAberto">
+            {{ produtosFiltrados.length }} produto(s) encontrado(s)
+          </div>
+        </div>
+        
+        <!-- Produto selecionado -->
+        <div v-if="produtoSelecionado" class="produto-selecionado">
+          <div class="produto-info">
+            <strong>✓ {{ produtoSelecionado.nome }}</strong>
+            <br>
+            <small>Código: {{ produtoSelecionado.codigo || 'Sem código' }}</small>
+            <small v-if="produtoSelecionado.marca"> • Marca: {{ produtoSelecionado.marca }}</small>
+          </div>
+          <button type="button" class="btn-limpar" @click="limparSelecao">×</button>
+        </div>
       </div>
       
       <div class="form-group">
@@ -83,6 +122,10 @@ export default {
         material_codigo: '',
       },
       produtos: [],
+      produtosFiltrados: [],
+      textoDisplay: '',
+      dropdownAberto: false,
+      produtoSelecionado: null,
       loading: false,
       currentUser: null,
       currentTenantId: null,
@@ -147,6 +190,7 @@ export default {
         if (error) throw error
         
         this.produtos = data || []
+        this.produtosFiltrados = this.produtos // Inicializar produtos filtrados
       } catch (error) {
         console.error('Erro ao carregar produtos:', error)
         this.$swal({
@@ -258,6 +302,48 @@ export default {
         this.loading = false
       }
     },
+    filtrarProdutos() {
+      if (!this.textoDisplay || this.textoDisplay.trim() === '') {
+        this.produtosFiltrados = this.produtos
+        return
+      }
+      
+      const termo = this.textoDisplay.toLowerCase().trim()
+      this.produtosFiltrados = this.produtos.filter(produto => {
+        return produto.nome.toLowerCase().includes(termo) ||
+               (produto.codigo && produto.codigo.toLowerCase().includes(termo)) ||
+               (produto.descricao && produto.descricao.toLowerCase().includes(termo)) ||
+               (produto.marca && produto.marca.toLowerCase().includes(termo)) ||
+               (produto.fabricante && produto.fabricante.toLowerCase().includes(termo))
+      })
+    },
+    abrirDropdown() {
+      this.dropdownAberto = true
+      this.filtrarProdutos()
+    },
+    fecharDropdown() {
+      setTimeout(() => {
+        this.dropdownAberto = false
+      }, 200) // Delay para permitir clique nos itens
+    },
+    toggleDropdown() {
+      this.dropdownAberto = !this.dropdownAberto
+      if (this.dropdownAberto) {
+        this.filtrarProdutos()
+      }
+    },
+    selecionarProduto(produto) {
+      this.feedback.rdm_id = produto.id
+      this.produtoSelecionado = produto
+      this.textoDisplay = produto.nome
+      this.dropdownAberto = false
+    },
+    limparSelecao() {
+      this.feedback.rdm_id = ''
+      this.produtoSelecionado = null
+      this.textoDisplay = ''
+      this.produtosFiltrados = this.produtos
+    },
     limparFormulario() {
       this.feedback = {
         rdm_id: '',
@@ -267,6 +353,10 @@ export default {
         material_nome: '',
         material_codigo: ''
       }
+      this.textoDisplay = ''
+      this.dropdownAberto = false
+      this.produtosFiltrados = this.produtos
+      this.produtoSelecionado = null
       this.error = null
     }
   }
@@ -342,5 +432,193 @@ textarea {
   color: #dc3545;
   font-size: 0.875rem;
   margin-top: 0.25rem;
+}
+
+/* Searchable Dropdown Unificado */
+.searchable-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-input {
+  width: 100%;
+  padding: 12px 40px 12px 12px;
+  border: 2px solid #3498db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #f8f9fa;
+  transition: all 0.3s ease;
+  cursor: text;
+}
+
+.dropdown-input:focus {
+  outline: none;
+  border-color: #2980b9;
+  background-color: white;
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+}
+
+.dropdown-arrow {
+  position: absolute;
+  right: 12px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  user-select: none;
+  padding: 5px;
+  transition: color 0.2s ease;
+}
+
+.dropdown-arrow:hover {
+  color: #2980b9;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #3498db;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item {
+  padding: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.dropdown-item.selected {
+  background-color: #e3f2fd;
+  border-left: 4px solid #2196f3;
+}
+
+.dropdown-item.no-results {
+  color: #666;
+  font-style: italic;
+  cursor: default;
+  text-align: center;
+}
+
+.dropdown-item.no-results:hover {
+  background-color: white;
+}
+
+.produto-nome {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.produto-detalhes {
+  color: #7f8c8d;
+  font-size: 12px;
+}
+
+.produto-detalhes small {
+  margin-right: 8px;
+}
+
+.search-info {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+  text-align: right;
+}
+
+/* Produto Selecionado */
+.produto-selecionado {
+  margin-top: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
+  border: 2px solid #27ae60;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.produto-info {
+  flex: 1;
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.produto-info strong {
+  color: #27ae60;
+  font-size: 14px;
+}
+
+.produto-info small {
+  color: #5d6d7e;
+}
+
+.btn-limpar {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: 10px;
+}
+
+.btn-limpar:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
+
+.dropdown-open .dropdown-input {
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: transparent;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar personalizada para a lista */
+.dropdown-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.dropdown-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.dropdown-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
 }
 </style> 

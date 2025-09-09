@@ -589,7 +589,7 @@
           class="btn-primary"
           :disabled="processando"
         >
-          {{ processando ? 'Finalizando...' : '🎉 Finalizar Processo' }}
+          {{ processando ? 'Salvando...' : '💾 Salvar' }}
         </button>
       </div>
     </div>
