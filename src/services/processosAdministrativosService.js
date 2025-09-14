@@ -765,13 +765,66 @@ export class ProcessosAdministrativosService {
 
       console.log(`DFD criado com sucesso: ${documento.folha_numero}`)
 
-      return { 
-        dfd: dfdData, 
+      // Retornar os dados do DFD com informações extras
+      return {
+        ...dfdData,
         documento: documento,
         folha_numero: documento.folha_numero
       }
     } catch (error) {
       console.error('Erro no serviço de DFD:', error)
+      throw error
+    }
+  }
+
+  static async atualizarDFD(dfdId, dadosDFD) {
+    try {
+      console.log('🔄 Atualizando DFD:', dfdId, dadosDFD)
+
+      const tenantId = await getTenantId()
+      if (!tenantId) {
+        throw new Error('Usuário não autenticado')
+      }
+
+      // Verificar se o DFD existe e pertence ao tenant
+      const { data: dfdExistente, error: errorBuscar } = await supabase
+        .from('dfd_processo')
+        .select('*')
+        .eq('id', dfdId)
+        .eq('tenant_id', tenantId)
+        .single()
+
+      if (errorBuscar || !dfdExistente) {
+        throw new Error(`DFD ${dfdId} não encontrado`)
+      }
+
+      // Preparar dados para atualização
+      const dadosAtualizacao = {
+        ...dadosDFD,
+        tenant_id: tenantId,
+        updated_at: new Date().toISOString()
+      }
+
+      // Atualizar o DFD
+      const { data: dfdAtualizado, error: errorAtualizar } = await supabase
+        .from('dfd_processo')
+        .update(dadosAtualizacao)
+        .eq('id', dfdId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single()
+
+      if (errorAtualizar) {
+        console.error('Erro ao atualizar DFD:', errorAtualizar)
+        throw errorAtualizar
+      }
+
+      console.log('✅ DFD atualizado com sucesso:', dfdAtualizado.id)
+
+      return dfdAtualizado
+
+    } catch (error) {
+      console.error('Erro ao atualizar DFD:', error)
       throw error
     }
   }

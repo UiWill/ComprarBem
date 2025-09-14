@@ -2894,6 +2894,72 @@ export default {
       }
     },
 
+    /**
+     * Valida se um DFD tem conteúdo suficiente para ser incluído no relatório
+     * @param {Object} dfd - Objeto DFD a ser validado
+     * @returns {boolean} - true se o DFD é válido, false se está vazio
+     */
+    validarDFDPreenchido(dfd) {
+      if (!dfd) return false
+
+      // TEMPORÁRIO: Aceitar todos os DFDs enquanto ajustamos a lógica
+      // Verificar se o DFD tem conteúdo HTML (indica que foi processado)
+      const temConteudoHTML = dfd.conteudo_html &&
+                              typeof dfd.conteudo_html === 'string' &&
+                              dfd.conteudo_html.trim().length > 100
+
+      // Se tem conteúdo HTML, aceitar como válido
+      if (temConteudoHTML) {
+        console.log(`🔍 DEBUG: DFD ${dfd.id} tem conteúdo HTML (${dfd.conteudo_html.length} chars)`)
+        return true
+      }
+
+      // Se não tem conteúdo HTML, verificar campos de dados
+      const camposDados = Object.entries(dfd).filter(([key, value]) => {
+        // Ignorar campos de metadados
+        const camposMetadados = ['id', 'processo_id', 'tenant_id', 'tipo_documento', 'nome_documento',
+                                'titulo', 'folha_numero', 'criado_por', 'created_at', 'updated_at',
+                                'data_criacao', 'criado_em', 'atualizado_em', 'data_autuacao', 'status',
+                                'documento_id', 'tipo_dfd', 'modelo_usado', 'fase_processo', 'prioridade']
+
+        if (camposMetadados.includes(key)) return false
+        if (!value || typeof value !== 'string') return false
+
+        const valorLimpo = value.trim()
+
+        // Filtrar textos muito curtos ou de teste
+        if (valorLimpo.length < 8) return false
+        if (/^(dsad|sadsad|dsadsa|asdsad|sdsad|test|teste|abc|xxx){1,}$/i.test(valorLimpo)) return false
+
+        return true
+      })
+
+      // Verificar se tem pelo menos um campo substantivo
+      const temConteudoSubstantivo = camposDados.some(([key, value]) => {
+        const valorLimpo = value.trim()
+        // Considerar substantivo se tem mais de 20 caracteres OU contém email/emoji/formatação
+        return valorLimpo.length > 20 ||
+               /@/.test(valorLimpo) ||
+               /[📦📝🎯✅💭📍]/u.test(valorLimpo) ||
+               /\n/.test(valorLimpo)
+      })
+
+      const temConteudo = camposDados.length > 0 && temConteudoSubstantivo
+
+      // Debug reduzido para não poluir console
+      if (camposDados.length > 0) {
+        console.log(`🔍 DEBUG: DFD ${dfd.id} - ${camposDados.length} campos com dados (substantivo: ${temConteudoSubstantivo})`)
+      }
+
+      if (temConteudo) {
+        console.log(`✅ DFD ${dfd.id} validado como preenchido`)
+      } else {
+        console.log(`🚫 DFD ${dfd.id} filtrado como vazio`)
+      }
+
+      return temConteudo
+    },
+
     async completarDocumentosProcesso(processo, documentosExistentes, produtos, dadosDFD) {
       let documentosCompletos = [...documentosExistentes]
       
@@ -2924,65 +2990,101 @@ export default {
       console.log('Dados DFD passados:', dadosDFD)
       
       if (!temDFD) {
-        // Buscar DFD se não foi passado
-        if (!dadosDFD) {
-          console.log('Buscando DFD no banco...')
+        // Buscar DFDs se não foram passados
+        if (!dadosDFD || dadosDFD.length === 0) {
+          console.log('Buscando DFDs no banco...')
           try {
-            const { data: dfdData } = await supabase
+            const { data: dfdsData } = await supabase
               .from('dfd_processo')
               .select('*')
               .eq('processo_id', processo.id)
-              .single()
-            dadosDFD = dfdData
-            console.log('DFD encontrado no banco:', dadosDFD)
+              .order('created_at', { ascending: true })
+
+            // Filtrar DFDs vazios
+            const dfdsValidos = (dfdsData || []).filter(dfd => this.validarDFDPreenchido(dfd))
+            dadosDFD = dfdsValidos
+
+            console.log(`${dadosDFD.length} DFD(s) válido(s) encontrado(s) no banco:`, dadosDFD)
+
+            if (dfdsData && dfdsData.length > dfdsValidos.length) {
+              console.log(`🚫 ${dfdsData.length - dfdsValidos.length} DFD(s) vazio(s) filtrado(s) no completarDocumentosProcesso`)
+            }
           } catch (error) {
             console.log('DFD não encontrado no banco, criando com dados padrão')
-            dadosDFD = {
+            dadosDFD = [{
               justificativa: 'Justificativa da necessidade conforme demanda apresentada',
               descricao_necessidade: 'Descrição detalhada da necessidade identificada',
               criterios_aceitacao: 'Critérios de aceitação e ensaios estabelecidos',
               observacoes_especiais: 'Observações especiais e condições do processo'
-            }
+            }]
           }
         }
         
         const modeloDFD = processo.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'
-        const dfd = {
-          numero_folha: 2, // Conforme Instrução: sempre Fl. 002
-          tipo_documento: 'DFD',
-          nome_documento: `Documento de Formalização de Demanda - ${modeloDFD}`,
-          titulo: `DFD - Documento de Formalização de Demanda (${modeloDFD})`,
-          descricao: `Documento de Formalização de Demanda do processo de ${processo.tipo_processo}`,
-          data_autuacao: dadosDFD?.created_at || processo.created_at,
-          conteudo_html: this.gerarHTMLDFD(processo, dadosDFD, produtos)
-        }
-        
-        console.log('Criando DFD:', dfd)
-        
-        // Inserir DFD após folha de rosto
-        const folhaRostoIndex = documentosCompletos.findIndex(doc => doc.tipo_documento === 'FOLHA_ROSTO')
-        if (folhaRostoIndex >= 0) {
-          documentosCompletos.splice(folhaRostoIndex + 1, 0, dfd)
-        } else {
-          documentosCompletos.push(dfd)
-        }
-        console.log('DFD adicionado aos documentos')
+
+        // Criar um documento para cada DFD
+        console.log(`🔧 DEBUG: Criando documentos para ${dadosDFD.length} DFD(s)`)
+        console.log('🔧 DEBUG: Dados DFD recebidos:', dadosDFD)
+        let folhaAtual = 2 // DFDs começam na Fl. 002
+
+        dadosDFD.forEach((dfdData, index) => {
+          console.log(`🔧 DEBUG: Processando DFD ${index + 1}:`, dfdData.id)
+          const dfd = {
+            numero_folha: folhaAtual + index, // Folhas sequenciais para cada DFD
+            tipo_documento: 'DFD',
+            nome_documento: `Documento de Formalização de Demanda ${index + 1} - ${modeloDFD}`,
+            titulo: `DFD ${index + 1} - Documento de Formalização de Demanda (${modeloDFD})`,
+            descricao: `Documento de Formalização de Demanda ${index + 1} do processo de ${processo.tipo_processo}`,
+            data_autuacao: dfdData?.created_at || processo.created_at,
+            conteudo_html: this.gerarHTMLDFD(processo, dfdData, produtos, index + 1)
+          }
+
+          console.log(`🔧 DEBUG: Criando DFD ${index + 1}:`, dfd.titulo)
+
+          // Inserir DFD após folha de rosto (ou último DFD inserido)
+          const folhaRostoIndex = documentosCompletos.findIndex(doc => doc.tipo_documento === 'FOLHA_ROSTO')
+          const ultimoDFDIndex = documentosCompletos.findLastIndex(doc => doc.tipo_documento === 'DFD')
+
+          console.log(`🔧 DEBUG: Índices - Folha Rosto: ${folhaRostoIndex}, Último DFD: ${ultimoDFDIndex}`)
+
+          if (ultimoDFDIndex >= 0) {
+            documentosCompletos.splice(ultimoDFDIndex + 1, 0, dfd)
+            console.log(`🔧 DEBUG: DFD ${index + 1} inserido após último DFD na posição ${ultimoDFDIndex + 1}`)
+          } else if (folhaRostoIndex >= 0) {
+            documentosCompletos.splice(folhaRostoIndex + 1, 0, dfd)
+            console.log(`🔧 DEBUG: DFD ${index + 1} inserido após folha de rosto na posição ${folhaRostoIndex + 1}`)
+          } else {
+            documentosCompletos.push(dfd)
+            console.log(`🔧 DEBUG: DFD ${index + 1} inserido no final do array`)
+          }
+        })
+
+        console.log(`🔧 DEBUG: ${dadosDFD.length} DFD(s) adicionado(s) aos documentos`)
+        console.log('🔧 DEBUG: Documentos completos após adição de DFDs:')
+        documentosCompletos.forEach((doc, index) => {
+          console.log(`   ${index + 1}. ${doc.tipo_documento} - ${doc.titulo || doc.nome_documento}`)
+        })
       } else {
-        // DFD existe, garantir que tenha conteúdo HTML
-        console.log('DFD existente encontrado')
-        const dfd = documentosCompletos.find(doc => doc.tipo_documento === 'DFD' || doc.tipo_documento === 'dfd')
-        if (dfd) {
-          dfd.numero_folha = 2
+        // DFDs existem, garantir que tenham conteúdo HTML
+        console.log('DFD(s) existente(s) encontrado(s)')
+        const dfdsExistentes = documentosCompletos.filter(doc => doc.tipo_documento === 'DFD' || doc.tipo_documento === 'dfd')
+
+        dfdsExistentes.forEach((dfd, index) => {
           const modeloDFD = processo.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'
-          dfd.nome_documento = `Documento de Formalização de Demanda - ${modeloDFD}`
-          dfd.titulo = `DFD - Documento de Formalização de Demanda (${modeloDFD})`
-          
+          const numeroDFD = index + 1
+
+          dfd.numero_folha = 2 + index // Folhas sequenciais
+          dfd.nome_documento = `Documento de Formalização de Demanda ${numeroDFD} - ${modeloDFD}`
+          dfd.titulo = `DFD ${numeroDFD} - Documento de Formalização de Demanda (${modeloDFD})`
+
           // Garantir que tenha conteúdo HTML
           if (!dfd.conteudo_html) {
-            console.log('Gerando HTML para DFD existente')
-            dfd.conteudo_html = this.gerarHTMLDFD(processo, dadosDFD || {}, produtos)
+            console.log(`Gerando HTML para DFD existente ${numeroDFD}`)
+            // Usar dados DFD específicos ou o primeiro se disponível
+            const dadosDFDEspecifico = Array.isArray(dadosDFD) && dadosDFD[index] ? dadosDFD[index] : (dadosDFD || {})
+            dfd.conteudo_html = this.gerarHTMLDFD(processo, dadosDFDEspecifico, produtos, numeroDFD)
           }
-        }
+        })
       }
       
       // Buscar edital apenas para incluir no índice (sem gerar página)
@@ -3251,19 +3353,31 @@ export default {
         }
       }
       
-      // Remover DFDs duplicados
+      // Manter TODOS os DFDs (não remover como duplicados)
       const dfds = outrosDocumentos.filter(doc => doc.tipo_documento === 'DFD')
       const outrosDocumentosSemDFD = outrosDocumentos.filter(doc => doc.tipo_documento !== 'DFD')
-      const melhorDFD = dfds.length > 0 ? dfds[0] : null
-      
-      if (dfds.length > 1) {
-        console.log(`❌ Removidos ${dfds.length - 1} DFDs duplicados`)
-      }
-      
-      // Recriar lista com apenas os documentos únicos
+
+      console.log(`✅ Mantendo ${dfds.length} DFD(s) encontrado(s)`)
+
+      // Recriar lista com TODOS os DFDs
       documentosCompletos = []
       if (melhorFolhaRosto) documentosCompletos.push(melhorFolhaRosto)
-      if (melhorDFD) documentosCompletos.push(melhorDFD)
+
+      // Adicionar TODOS os DFDs válidos ordenados por data de criação
+      if (dfds.length > 0) {
+        // Filtrar DFDs vazios dos documentos existentes
+        const dfdsValidos = dfds.filter(dfd => this.validarDFDPreenchido(dfd))
+        const dfdsOrdenados = dfdsValidos.sort((a, b) => new Date(a.data_autuacao || a.created_at) - new Date(b.data_autuacao || b.created_at))
+
+        console.log(`📄 Adicionando ${dfdsOrdenados.length} DFD(s) válido(s) ao relatório`)
+
+        if (dfds.length > dfdsValidos.length) {
+          console.log(`🚫 ${dfds.length - dfdsValidos.length} DFD(s) vazio(s) filtrado(s) dos documentos existentes`)
+        }
+
+        documentosCompletos.push(...dfdsOrdenados)
+      }
+
       documentosCompletos.push(...outrosDocumentosSemDFD)
       
       // Renumerar documentos seguindo Instrução Processual
@@ -3409,13 +3523,13 @@ export default {
       `
     },
 
-    gerarHTMLDFD(processo, dadosDFD, produtos) {
+    gerarHTMLDFD(processo, dadosDFD, produtos, numeroDFD = 1) {
       const modeloTipo = processo.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'
       const finalidade = processo.tipo_processo === 'padronizacao' ? 
         'PADRONIZAÇÃO DE MARCAS E MODELOS DE PRODUTOS' : 
         'DESPADRONIZAÇÃO DE MARCAS E MODELOS DE PRODUTOS'
         
-      const tituloCompleto = `DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - ${modeloTipo}`
+      const tituloCompleto = `DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA${numeroDFD > 1 ? ` ${numeroDFD}` : ''} - ${modeloTipo}`
 
       // Função auxiliar para renderizar valor booleano
       const formatarBooleano = (valor) => valor ? 'SIM' : 'NÃO'
@@ -3878,26 +3992,45 @@ export default {
           }
         }
         
-        // Buscar dados DFD se existir
-        let dadosDFD = null
+        // Buscar dados DFD se existir (múltiplos DFDs)
+        let dadosDFD = []
         try {
-          const { data: dfd } = await supabase
+          console.log(`🔍 DEBUG: Buscando DFDs para processo ID: ${processo.id}`)
+          const { data: dfds, error: dfdError } = await supabase
             .from('dfd_processo')
             .select('*')
             .eq('processo_id', processo.id)
-            .single()
-          dadosDFD = dfd
-          console.log('✅ DFD carregado do banco:', dadosDFD)
+            .order('created_at', { ascending: true })
+
+          if (dfdError) {
+            console.error('❌ DEBUG: Erro ao buscar DFDs:', dfdError)
+            throw dfdError
+          }
+
+          // Filtrar DFDs vazios antes de processar
+          const dfdsValidos = (dfds || []).filter(dfd => this.validarDFDPreenchido(dfd))
+
+          dadosDFD = dfdsValidos
+          console.log(`✅ DEBUG: ${dadosDFD.length} DFD(s) válido(s) carregado(s) do banco para processo ${processo.id}:`)
+
+          if (dfds && dfds.length > dfdsValidos.length) {
+            console.log(`🚫 DEBUG: ${dfds.length - dfdsValidos.length} DFD(s) vazio(s) filtrado(s) automaticamente`)
+          }
+
+          dadosDFD.forEach((dfd, index) => {
+            console.log(`   📄 DFD ${index + 1}: ID ${dfd.id} - ${dfd.justificativa?.substring(0, 50)}...`)
+          })
         } catch (error) {
           console.log('⚠️ DFD não encontrado no banco, usando dados padrão')
-          // Dados padrão mais ricos se não encontrar no banco
-          dadosDFD = {
+          // Dados padrão mais ricos se não encontrar no banco (como array para compatibilidade)
+          dadosDFD = [{
+            id: 'default_dfd',
             justificativa: 'Justificativa da necessidade conforme processo administrativo e demanda apresentada pelos setores solicitantes.',
             descricao_necessidade: 'Descrição detalhada da necessidade identificada para padronização/despadronização dos produtos especificados.',
             criterios_aceitacao: 'Critérios de aceitação e ensaios estabelecidos conforme normas técnicas aplicáveis.',
             observacoes_especiais: 'Observações especiais e condições específicas do processo de avaliação.',
             modelo_usado: 'MODELO_1'
-          }
+          }]
         }
         
         // Buscar atas de julgamento CCL se existir

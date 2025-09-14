@@ -1,0 +1,140 @@
+16. COMO CADASTRAR UM NOVO ORGAO NO SISTEMA
+
+Procedimento para cadastrar organizacoes publicas e criar usuarios
+
+RESPOSTA:
+
+CADASTRO DE ORGAO PUBLICO NO SISTEMA:
+
+IMPORTANTE: O sistema NAO permite cadastro individual de usuarios. O cadastro e feito por orgao publico, criando automaticamente 4 usuarios obrigatorios com perfis especificos.
+
+---
+
+PROCESSO DE CADASTRO DE ORGAO
+
+Pre-requisitos:
+- Ser um orgao publico (Municipal, Estadual, Federal ou Outro Publico)
+- Ter 4 e-mails institucionais diferentes (um para cada perfil)
+- Dados completos do orgao
+
+Passo a Passo:
+
+1. Acessar o Cadastro de Orgao:
+1. Acesse https://comprarbem.tec.br/
+2. Na tela de login, clique na aba "Registrar"
+3. Clique em "Cadastrar Orgao"
+4. Sera iniciado o assistente de cadastro em 3 etapas
+
+2. ETAPA 1 - Dados do Orgao:
+1. Nome do Orgao: Nome oficial completo da instituicao
+2. Tipo de Orgao: Selecione entre:
+   - Municipal
+   - Estadual  
+   - Federal
+   - Outro Publico
+3. CNPJ: CNPJ do orgao (opcional)
+4. Endereco: Endereco completo da sede
+5. Telefone: Telefone de contato
+6. E-mail de Contato: E-mail institucional geral
+7. Clique em "Proximo"
+
+3. ETAPA 2 - Criacao dos 4 Usuarios Obrigatorios:
+
+O sistema criara automaticamente 4 usuarios com perfis especificos:
+
+CPM - Comissao de Padronizacao de Materiais:
+- E-mail: E-mail institucional (sera o login)
+- Senha: Defina senha (minimo 6 caracteres)
+- Responsavel: Nome do responsavel (opcional)
+- Acesso: Painel CPM completo, processos, catalogo
+
+CCL - Comissao de Contratacao e Licitacao:
+- E-mail: E-mail institucional (diferente do CPM)
+- Senha: Defina senha (minimo 6 caracteres)
+- Responsavel: Nome do responsavel (opcional)
+- Acesso: Apenas Painel CCL
+
+Autoridade Administrativa:
+- E-mail: E-mail institucional (diferente dos anteriores)
+- Senha: Defina senha (minimo 6 caracteres)
+- Responsavel: Nome do responsavel (opcional)
+- Acesso: Processos administrativos e assinaturas
+
+Assessoria Juridica:
+- E-mail: E-mail institucional (diferente dos anteriores)
+- Senha: Defina senha (minimo 6 caracteres)
+- Responsavel: Nome do responsavel (opcional)
+- Acesso: Analises juridicas e pareceres
+
+Validacoes Obrigatorias:
+- Todos os 4 e-mails devem ser diferentes
+- Senhas devem ter no minimo 6 caracteres
+- E-mails nao podem ja existir no sistema
+
+4. ETAPA 3 - Confirmacao:
+1. Revise todos os dados do orgao e usuarios
+2. Confirme se todas as informacoes estao corretas
+3. Clique em "Finalizar Cadastro"
+
+5. Acesso Imediato:
+- Sem verificacao por e-mail - acesso imediato
+- Todos os 4 usuarios podem fazer login imediatamente
+- Cada usuario acessa automaticamente sua area especifica
+
+---
+
+PERFIS DE ACESSO CRIADOS
+
+CPM (Comissao de Padronizacao):
+- Dashboard CPM completo
+- Cadastro de produtos
+- Pesquisa de mercado (QualiBot 2.0)
+- Emissao de DCBs
+- Gestao de marcas despadronizadas
+- Processos administrativos
+- Catalogo de marcas
+
+CCL (Comissao de Licitacao):
+- Apenas Painel CCL
+- Sistema de julgamento
+- Criacao de atas
+- Gestao de recursos
+- Assinatura digital
+
+Autoridade Administrativa:
+- Processos administrativos
+- Assinatura de documentos
+- Tramitacao de processos
+
+Assessoria Juridica:
+- Painel juridico
+- Analise de editais
+- Pareceres juridicos
+- Recursos administrativos
+- Biblioteca juridica
+
+---
+
+OBSERVACOES IMPORTANTES
+
+Caracteristicas do Cadastro:
+- Cadastro unico por orgao - nao ha cadastro individual
+- 4 usuarios obrigatorios - todos devem ser criados simultaneamente
+- Acesso imediato - sem necessidade de confirmacao por e-mail
+- Isolamento de dados - cada orgao ve apenas seus proprios dados
+- E-mails unicos - nao podem ser reutilizados em outros orgaos
+
+Restricoes:
+- Nao e possivel cadastrar usuarios individuais
+- Nao e possivel criar apenas alguns dos 4 perfis
+- E-mails devem ser diferentes para cada perfil
+- Sistema projetado apenas para orgaos publicos
+
+Apos o Cadastro:
+- CPM pode gerenciar usuarios adicionais via painel
+- Senhas podem ser alteradas pelos proprios usuarios
+- Dados do orgao podem ser atualizados pelo CPM
+
+---
+
+Secao baseada na analise do codigo fonte do sistema - Janeiro 2025

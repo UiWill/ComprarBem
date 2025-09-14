@@ -540,6 +540,10 @@ export default {
     tipoProcesso: {
       type: String,
       required: true
+    },
+    dfdEditando: {
+      type: Object,
+      default: null
     }
   },
   data() {
@@ -605,20 +609,56 @@ export default {
     dadosDFD: {
       handler() {
         // Salvar automaticamente após mudanças (com debounce)
-        this.salvarRascunhoAutomatico()
+        this.salvarAutomaticamente()
       },
       deep: true
     },
     modeloSelecionado: {
       handler() {
         // Salvar automaticamente quando modelo muda
-        this.salvarRascunhoAutomatico()
+        this.salvarAutomaticamente()
       }
+    },
+    dfdEditando: {
+      handler(newValue) {
+        if (newValue) {
+          // Carregar dados quando DFD para edição é fornecido
+          this.carregarDadosDFD()
+        }
+      },
+      immediate: true
     }
   },
   
   
   methods: {
+    carregarDadosDFD() {
+      if (!this.dfdEditando) return
+
+      console.log('📝 Carregando dados do DFD para edição:', this.dfdEditando.id)
+
+      // Carregar dados do DFD existente
+      Object.keys(this.dadosDFD).forEach(key => {
+        if (this.dfdEditando[key] !== undefined) {
+          this.dadosDFD[key] = this.dfdEditando[key]
+        }
+      })
+
+      // Determinar o modelo baseado nos dados
+      if (this.dfdEditando.modelo) {
+        this.modeloSelecionado = this.dfdEditando.modelo
+      } else {
+        // Inferir modelo baseado no tipo de processo ou dados existentes
+        if (this.tipoProcesso === 'despadronizacao') {
+          this.modeloSelecionado = 'modelo_2'
+        } else {
+          this.modeloSelecionado = 'modelo_1'
+        }
+      }
+
+      console.log('✅ DFD carregado com sucesso para edição')
+    },
+
     selecionarModelo(modelo) {
       this.modeloSelecionado = modelo
       // Limpar campos específicos de outros modelos
@@ -699,27 +739,81 @@ export default {
         console.log('⚠️ Já está salvando DFD, ignorando nova chamada')
         return
       }
-      
+
       try {
         this.salvando = true
-        
+
         const dadosCompletos = {
           ...this.dadosDFD,
           modelo_usado: this.modeloSelecionado
         }
-        
-        const resultado = await ProcessosAdministrativosService.criarDFD(
-          this.processoId, 
-          dadosCompletos
-        )
-        
+
+        let resultado
+
+        if (this.dfdEditando && this.dfdEditando.id) {
+          // Editando DFD existente
+          console.log('✏️ Atualizando DFD existente:', this.dfdEditando.id)
+          resultado = await ProcessosAdministrativosService.atualizarDFD(
+            this.dfdEditando.id,
+            dadosCompletos
+          )
+        } else {
+          // Criando novo DFD
+          console.log('🆕 Criando novo DFD')
+          resultado = await ProcessosAdministrativosService.criarDFD(
+            this.processoId,
+            dadosCompletos
+          )
+        }
+
         this.$emit('dfd-criado', resultado)
-        
+
       } catch (error) {
         console.error('Erro ao salvar DFD:', error)
         alert(`Erro ao salvar DFD: ${error.message}`)
       } finally {
         this.salvando = false
+      }
+    },
+
+    async salvarAutomaticamente() {
+      // Auto-salvamento silencioso para não perder dados
+      if (!this.modeloSelecionado || this.salvando) return
+
+      console.log('💾 Iniciando auto-save:', {
+        dfdEditando: !!this.dfdEditando,
+        dfdId: this.dfdEditando?.id,
+        modelo: this.modeloSelecionado
+      })
+
+      try {
+        const dadosCompletos = {
+          ...this.dadosDFD,
+          modelo_usado: this.modeloSelecionado,
+          status: 'rascunho' // Marcar como rascunho no auto-save
+        }
+
+        if (this.dfdEditando && this.dfdEditando.id) {
+          // Atualizar DFD existente silenciosamente
+          await ProcessosAdministrativosService.atualizarDFD(
+            this.dfdEditando.id,
+            dadosCompletos
+          )
+          console.log('💾 DFD atualizado automaticamente')
+        } else {
+          // Para novos DFDs, criar no banco mas não emitir evento ainda
+          const resultado = await ProcessosAdministrativosService.criarDFD(
+            this.processoId,
+            dadosCompletos
+          )
+
+          // Após criar, atualizar as props para que vire "edição"
+          this.$emit('dfd-auto-criado', resultado)
+          console.log('💾 Novo DFD salvo automaticamente como rascunho')
+        }
+
+      } catch (error) {
+        console.warn('⚠️ Erro no auto-save (não crítico):', error.message)
       }
     },
     
@@ -753,31 +847,11 @@ export default {
         clearTimeout(this.autoSaveTimeout)
       }
       
-      // Definir novo timeout para salvar após 2 segundos de inatividade
-      this.autoSaveTimeout = setTimeout(() => {
-        try {
-          // Só salvar se houver pelo menos um modelo selecionado e alguns dados preenchidos
-          if (this.modeloSelecionado && (
-            this.dadosDFD.nome_presidente.trim() ||
-            this.dadosDFD.justificativa.trim() ||
-            this.dadosDFD.necessidade_descricao.trim()
-          )) {
-            // Salvar no localStorage como rascunho
-            const rascunho = {
-              processoId: this.processoId,
-              modeloSelecionado: this.modeloSelecionado,
-              dadosDFD: { ...this.dadosDFD },
-              dataSalvo: new Date().toISOString(),
-              autoSave: true
-            }
-            
-            localStorage.setItem(`dfd_rascunho_${this.processoId}`, JSON.stringify(rascunho))
-            console.log('📄 Rascunho DFD salvo automaticamente')
-          }
-        } catch (error) {
-          console.error('Erro ao salvar rascunho automaticamente:', error)
-        }
-      }, 2000) // 2 segundos de debounce
+      // Definir novo timeout para salvar após 3 segundos de inatividade
+      this.autoSaveTimeout = setTimeout(async () => {
+        // Usar o novo método de salvamento automático no banco
+        await this.salvarAutomaticamente()
+      }, 3000) // 3 segundos de debounce
     },
     
     carregarRascunho() {
@@ -927,35 +1001,28 @@ export default {
   },
   
   mounted() {
+    console.log('🔧 FormularioDFD mounted:', {
+      dfdEditando: !!this.dfdEditando,
+      dfdId: this.dfdEditando?.id
+    })
+
+    // Se estamos editando um DFD existente, carregar seus dados (SEM perguntar sobre rascunho)
+    if (this.dfdEditando) {
+      console.log('✏️ Modo edição - carregando dados do DFD:', this.dfdEditando.id)
+      this.carregarDadosDFD()
+      return
+    }
+
+    // Modo novo DFD - configurar padrões
+    console.log('🆕 Modo novo DFD')
+
     // Se for processo de despadronização, selecionar modelo 2 automaticamente
     if (this.tipoProcesso === 'despadronizacao') {
       this.modeloSelecionado = 'modelo_2'
     }
-    
-    // Tentar carregar rascunho salvo
-    if (this.carregarRascunho()) {
-      const confirmacao = confirm('Foi encontrado um rascunho salvo. Deseja carregá-lo?')
-      if (!confirmacao) {
-        this.modeloSelecionado = null
-        this.dadosDFD = {
-          justificativa: '',
-          necessidade_descricao: '',
-          quantidade_estimada: null,
-          prazo_entrega: '',
-          local_entrega: '',
-          criterios_aceitacao: '',
-          observacoes_especiais: '',
-          fonte_reclamacoes: '',
-          descricao_problemas: '',
-          base_legal: '',
-          impacto_esperado: '',
-          riscos_identificados: '',
-          medidas_mitigadoras: '',
-          prazo_vigencia: null,
-          periodicidade_revisao: ''
-        }
-      }
-    }
+
+    // NÃO carregar rascunho para evitar confusão - começar sempre limpo para novos DFDs
+    console.log('🧹 Iniciando com formulário limpo (novo DFD)')
   },
   
   beforeUnmount() {

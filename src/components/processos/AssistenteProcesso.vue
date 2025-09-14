@@ -133,13 +133,27 @@
             
             <div class="form-group">
               <label>Data de Autuação *</label>
-              <input 
-                type="date" 
-                v-model="dadosProcesso.data_autuacao" 
+              <input
+                type="date"
+                v-model="dadosProcesso.data_autuacao"
                 required
               >
             </div>
-            
+
+            <div class="form-group">
+              <label>Objeto do Processo</label>
+              <textarea
+                v-model="dadosProcesso.objeto_customizado"
+                placeholder="Deixe vazio para usar o texto padrão ou digite um texto personalizado..."
+                rows="4"
+                class="campo-texto objeto-campo"
+              ></textarea>
+              <small class="field-hint">
+                Texto padrão para {{ dadosProcesso.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização' }}:
+                <em>{{ getObjetoTextoPreview() }}</em>
+              </small>
+            </div>
+
             <!-- Preview da Folha de Rosto -->
             <div class="folha-rosto-preview-mini">
               <h4>🔍 Preview da Folha de Rosto:</h4>
@@ -200,367 +214,75 @@
           <span class="numero-pagina">Página 3</span>
           <h3>📄 Documento de Formalização de Demanda</h3>
         </div>
-        <FormularioDFD
-          v-if="processoTemporario"
-          :processo-id="processoTemporario.id"
-          :numero-processo="dadosProcesso.numero_processo"
-          :tipo-processo="dadosProcesso.tipo_processo"
-          @dfd-criado="dfdCriado"
-          @cancelar="voltarEtapa"
-        />
-      </div>
 
-      <!-- Etapa 3: Seleção de Produtos Aprovados (apenas para padronização) -->
-      <div v-if="etapaAtual === 3 && dadosProcesso.tipo_processo === 'padronizacao'" class="etapa-conteudo">
-        <div class="etapa-header-numeracao">
-          <span class="numero-pagina">Página 4</span>
-          <h3>📦 Selecionar Produtos para Pré-qualificação</h3>
-        </div>
-        <div class="produtos-configuracao">
-          <div class="produtos-header">
-            <h4>Selecione os produtos já aprovados pela CPM:</h4>
-            <button @click="abrirSeletorProdutos" class="btn-adicionar" :disabled="carregandoProdutos">
-              {{ carregandoProdutos ? '🔄 Carregando...' : '➕ Selecionar Produtos' }}
+        <!-- Lista de DFDs criados -->
+        <div v-if="dfdsLista.length > 0 && !mostrandoFormularioDFD" class="dfds-lista">
+          <div class="dfds-header">
+            <h4>📋 DFDs do Processo ({{ dfdsLista.length }})</h4>
+            <button @click="adicionarNovoDFD" class="btn-adicionar">
+              ➕ Adicionar Mais DFD
             </button>
           </div>
 
-          <!-- Lista de Produtos Aprovados Disponíveis -->
-          <div v-if="mostrarSeletorProdutos" class="produtos-disponiveis">
-            <h4>🔍 Produtos Aprovados Disponíveis:</h4>
-            <div v-if="produtosAprovados.length === 0" class="produtos-vazio">
-              <div class="vazio-icon">⚠️</div>
-              <p>Nenhum produto aprovado encontrado</p>
-              <small>Produtos devem ser cadastrados e aprovados pela CPM primeiro</small>
-            </div>
-            <div v-else class="produtos-grid">
-              <div 
-                v-for="produto in produtosAprovados" 
-                :key="produto.id"
-                class="produto-disponivel"
-                :class="{ selecionado: produtosSelecionados.includes(produto.id) }"
-                @click="toggleProdutoSelecionado(produto)"
-              >
-                <div class="produto-info">
-                  <h5>{{ produto.nome }}</h5>
-                  <p class="produto-fabricante">{{ produto.fabricante }}</p>
-                  <p class="produto-categoria">{{ produto.categoria }}</p>
-                  <p class="produto-status">✅ Aprovado pela CPM</p>
-                </div>
-                <div class="produto-checkbox">
-                  <input 
-                    type="checkbox" 
-                    :checked="produtosSelecionados.includes(produto.id)"
-                    @change="toggleProdutoSelecionado(produto)"
-                  >
+          <div class="dfds-grid">
+            <div
+              v-for="(dfd, index) in dfdsLista"
+              :key="dfd.id || index"
+              class="dfd-item"
+            >
+              <div class="dfd-header">
+                <span class="dfd-numero">DFD {{ index + 1 }}</span>
+                <div class="dfd-acoes">
+                  <button @click="editarDFD(dfd, index)" class="btn-editar" title="Editar DFD">
+                    ✏️
+                  </button>
+                  <button @click="removerDFD(index)" class="btn-remover" title="Remover DFD">
+                    ✕
+                  </button>
                 </div>
               </div>
-            </div>
-            <div class="seletor-acoes">
-              <button @click="confirmarSelecaoProdutos" class="btn-primary" :disabled="produtosSelecionados.length === 0">
-                ✅ Confirmar Seleção ({{ produtosSelecionados.length }} produtos)
-              </button>
-              <button @click="cancelarSelecaoProdutos" class="btn-secondary">
-                ❌ Cancelar
-              </button>
+              <div class="dfd-info">
+                <p v-if="dfd.justificativa"><strong>Justificativa:</strong> {{ dfd.justificativa.length > 100 ? dfd.justificativa.substring(0, 100) + '...' : dfd.justificativa }}</p>
+                <p><strong>Status:</strong> {{ dfd.status || 'Criado' }}</p>
+                <small v-if="dfd.created_at">Criado em: {{ formatarDataSegura(dfd.created_at) }}</small>
+              </div>
             </div>
           </div>
+        </div>
 
-          <!-- Lista de Produtos Selecionados -->
-          <div v-if="produtos.length === 0 && !mostrarSeletorProdutos" class="produtos-vazio">
-            <div class="vazio-icon">📦</div>
-            <p>Nenhum produto selecionado ainda</p>
-            <button @click="abrirSeletorProdutos" class="btn-primary">
-              Selecionar Produtos Aprovados
+        <!-- Estado vazio - nenhum DFD criado -->
+        <div v-if="dfdsLista.length === 0 && !mostrandoFormularioDFD" class="dfds-vazio">
+          <div class="vazio-icon">📄</div>
+          <p>Nenhum DFD criado ainda</p>
+          <button @click="adicionarNovoDFD" class="btn-primary">
+            Criar Primeiro DFD
+          </button>
+        </div>
+
+        <!-- Formulário para criar/editar DFD -->
+        <div v-if="mostrandoFormularioDFD" class="formulario-dfd-container">
+          <div class="formulario-header">
+            <h4>{{ dfdEditando ? 'Editar DFD' : 'Novo DFD' }}</h4>
+            <button @click="cancelarFormularioDFD" class="btn-cancelar">
+              ✕ Cancelar
             </button>
           </div>
 
-          <div v-else-if="!mostrarSeletorProdutos" class="produtos-selecionados">
-            <h4>📋 Produtos Selecionados para Pré-qualificação:</h4>
-            <div class="produtos-lista">
-              <div 
-                v-for="(produto, index) in produtos" 
-                :key="produto.id || index"
-                class="produto-item selecionado"
-              >
-                <div class="produto-header">
-                  <div class="produto-info-header">
-                    <h5>{{ produto.nome_produto || produto.nome }}</h5>
-                    <span class="produto-badge">✅ Aprovado</span>
-                  </div>
-                  <button @click="removerProdutoSelecionado(index)" class="btn-remover" title="Remover da seleção">🗑️</button>
-                </div>
-                
-                <div class="produto-detalhes">
-                  <div class="produto-info-grid">
-                    <div class="info-item">
-                      <strong>Fabricante:</strong> {{ produto.fabricante || 'N/A' }}
-                    </div>
-                    <div class="info-item">
-                      <strong>Categoria:</strong> {{ produto.categoria || produto.categoria_produto || 'N/A' }}
-                    </div>
-                    <div class="info-item">
-                      <strong>Especificações:</strong> 
-                      <div class="especificacoes-content">
-                        <p>{{ produto.especificacoes_tecnicas }}</p>
-                        <button 
-                          v-if="produto.especificacoes_tecnicas === 'Especificações não disponíveis'"
-                          @click="verCadastroCompleto(produto)" 
-                          class="btn-ver-cadastro"
-                        >
-                          📋 Ver Cadastro Completo
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Campos específicos do processo -->
-                  <!-- Documentos do Produto -->
-                  <div v-if="produto.documentos && produto.documentos.length > 0" class="produto-documentos">
-                    <h6>📄 Documentos do Produto:</h6>
-                    <div class="documentos-produto-grid">
-                      <div 
-                        v-for="doc in produto.documentos" 
-                        :key="doc.id"
-                        class="documento-produto-item"
-                      >
-                        <div class="doc-icon">📄</div>
-                        <div class="doc-info">
-                          <strong>{{ doc.nome }}</strong>
-                          <small>{{ doc.tipo }}</small>
-                        </div>
-                        <div class="doc-actions">
-                          <a :href="doc.arquivo_url" target="_blank" class="btn-visualizar-doc">
-                            👁️ Ver
-                          </a>
-                          <button 
-                            @click="adicionarDocumentoProcesso(doc, index)" 
-                            class="btn-adicionar-doc"
-                            :class="{ 'adicionado': produto.documentos_adicionados && produto.documentos_adicionados.includes(doc.id) }"
-                          >
-                            {{ produto.documentos_adicionados && produto.documentos_adicionados.includes(doc.id) ? '✅ Adicionado' : '➕ Adicionar' }}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="produto-processo-info">
-                    <h6>📋 Informações Específicas do Processo:</h6>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label>Quantidade de Amostras Necessárias</label>
-                        <input 
-                          type="number" 
-                          v-model.number="produto.quantidade_amostras" 
-                          placeholder="Ex: 3"
-                          min="0"
-                        >
-                      </div>
-                      
-                      <div class="form-group">
-                        <label>Valor Estimado para Amostras (R$)</label>
-                        <input 
-                          type="number" 
-                          step="0.01"
-                          v-model.number="produto.valor_estimado" 
-                          placeholder="0.00"
-                          min="0"
-                        >
-                      </div>
-                    </div>
-                    
-                    <div class="form-group">
-                      <label>Observações Específicas (opcional)</label>
-                      <textarea 
-                        v-model="produto.observacoes_processo" 
-                        rows="2"
-                        placeholder="Observações específicas para este processo..."
-                      ></textarea>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <FormularioDFD
+            v-if="processoTemporario"
+            :key="dfdEditando ? `edit-${dfdEditando.id}` : 'novo-dfd'"
+            :processo-id="processoTemporario.id"
+            :numero-processo="dadosProcesso.numero_processo"
+            :tipo-processo="dadosProcesso.tipo_processo"
+            :dfd-editando="dfdEditando"
+            @dfd-criado="dfdCriado"
+            @dfd-auto-criado="dfdAutoCriado"
+            @cancelar="cancelarFormularioDFD"
+          />
         </div>
       </div>
 
-      <!-- Etapa final: Documentação -->
-      <div v-if="etapaAtual === (dadosProcesso.tipo_processo === 'padronizacao' ? 4 : 3)" class="etapa-conteudo">
-        <div class="etapa-header-numeracao">
-          <span class="numero-pagina">Página {{ dadosProcesso.tipo_processo === 'padronizacao' ? '5+' : '4+' }}</span>
-          <h3>📁 Documentação do Processo</h3>
-        </div>
-        <div class="documentacao-container">
-          <div class="documentacao-info">
-            <p>Upload dos documentos necessários para completar o processo administrativo.</p>
-            <p>Faça o upload de todos os documentos que compõem este processo. Eles serão organizados em formato de caderno eletrônico.</p>
-          </div>
-          
-          <!-- Seção de Vinculação de Edital -->
-          <div v-if="dadosProcesso.tipo_processo === 'padronizacao'" class="edital-section">
-            <div class="edital-header">
-              <h4>📎 Edital de Pré-Qualificação</h4>
-              <p>Selecione um edital existente do órgão para vincular ao processo</p>
-            </div>
-            
-            <div v-if="!editalVinculado" class="edital-form">
-              <div class="form-group">
-                <label>Editais Disponíveis do Órgão</label>
-                <button 
-                  @click="carregarEditaisDisponiveis" 
-                  class="btn-carregar-editais"
-                  :disabled="carregandoEditais"
-                >
-                  {{ carregandoEditais ? '🔄 Carregando...' : '🔍 Buscar Editais' }}
-                </button>
-              </div>
-              
-              <div v-if="editaisDisponiveis.length > 0" class="editais-lista">
-                <h5>📋 Editais Encontrados:</h5>
-                <div class="editais-grid">
-                  <div 
-                    v-for="edital in editaisDisponiveis" 
-                    :key="edital.id"
-                    class="edital-item"
-                    :class="{ 'selecionado': editalSelecionado && editalSelecionado.id === edital.id }"
-                    @click="selecionarEdital(edital)"
-                  >
-                    <div class="edital-info">
-                      <h6>{{ edital.numero_edital }}</h6>
-                      <p class="edital-data">{{ formatarData(edital.data_publicacao) }}</p>
-                      <p class="edital-tipo">{{ edital.tipo_edital || 'Pré-Qualificação' }}</p>
-                      <div v-if="edital.produtos_count" class="edital-produtos">
-                        📦 {{ edital.produtos_count }} produtos
-                      </div>
-                    </div>
-                    <div class="edital-status">
-                      <span v-if="edital.status === 'ativo'" class="status-ativo">✅ Ativo</span>
-                      <span v-else class="status-inativo">⏸️ {{ edital.status }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div v-else-if="editaisCarregados && editaisDisponiveis.length === 0" class="editais-vazio">
-                <div class="vazio-icon">📄</div>
-                <p>Nenhum edital encontrado para este órgão</p>
-                <small>Verifique se há editais cadastrados no sistema</small>
-              </div>
-              
-              <div v-if="editalSelecionado" class="edital-selecionado">
-                <h5>📎 Edital Selecionado:</h5>
-                <div class="edital-preview">
-                  <div class="preview-info">
-                    <strong>{{ editalSelecionado.numero_edital }}</strong>
-                    <p>Data: {{ formatarData(editalSelecionado.data_publicacao) }}</p>
-                    <p v-if="editalSelecionado.descricao">{{ editalSelecionado.descricao }}</p>
-                  </div>
-                  <div class="preview-acoes">
-                    <a v-if="editalSelecionado.arquivo_url" :href="editalSelecionado.arquivo_url" target="_blank" class="btn-ver-edital">
-                      👁️ Ver PDF
-                    </a>
-                    <div v-else class="aviso-pdf">
-                      📄 PDF não disponível para visualização
-                    </div>
-                    <button @click="editalSelecionado = null" class="btn-remover-selecao">
-                      🗑️ Remover
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="edital-acao">
-                <button 
-                  @click="vincularEditalSelecionado" 
-                  class="btn-vincular-edital"
-                  :disabled="!editalSelecionado || processando"
-                >
-                  {{ processando ? '🔄 Vinculando...' : '📎 Vincular Edital Selecionado' }}
-                </button>
-              </div>
-            </div>
-            
-            <div v-else class="edital-vinculado">
-              <div class="vinculado-success">
-                <div class="success-icon">✅</div>
-                <div class="success-info">
-                  <h5>Edital Vinculado com Sucesso</h5>
-                  <p><strong>Número:</strong> {{ dadosProcesso.numero_edital }}</p>
-                  <p v-if="dadosProcesso.data_vinculacao_edital">
-                    <strong>Data:</strong> {{ formatarData(dadosProcesso.data_vinculacao_edital) }}
-                  </p>
-                </div>
-                <button @click="editarEdital" class="btn-editar-edital">✏️ Editar</button>
-              </div>
-            </div>
-          </div>
-          
-          <div class="documentos-section">
-            <div class="documentos-header">
-              <h4>📄 Documentos do Processo</h4>
-              <button @click="adicionarDocumento" class="btn-adicionar">
-                ➕ Adicionar Documento
-              </button>
-            </div>
-            
-            <div v-if="documentos.length === 0" class="documentos-vazio">
-              <div class="vazio-icon">📄</div>
-              <p>Nenhum documento adicionado ainda</p>
-              <p><small>Clique em "Adicionar Documento" para fazer upload dos arquivos</small></p>
-            </div>
-            
-            <div v-else class="documentos-lista">
-              <div 
-                v-for="(documento, index) in documentos" 
-                :key="index"
-                class="documento-item"
-              >
-                <div class="documento-info">
-                  <div class="documento-icon">📄</div>
-                  <div class="documento-detalhes">
-                    <h5>{{ documento.nome }}</h5>
-                    <p class="documento-tipo">{{ documento.tipo }}</p>
-                    <p class="documento-data">Adicionado em: {{ formatarData(documento.data_upload) }}</p>
-                  </div>
-                </div>
-                <div class="documento-acoes">
-                  <button @click="visualizarDocumento(documento)" class="btn-visualizar">👁️ Ver</button>
-                  <button @click="removerDocumento(index)" class="btn-remover">🗑️ Remover</button>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Numeração automática -->
-            <div class="numeracao-info">
-              <h4>📊 Numeração Automática - Caderno Eletrônico</h4>
-              <p>O sistema numera automaticamente todas as páginas do processo:</p>
-              <div class="exemplo-numeracao">
-                <div class="paginas-fixas">
-                  <strong>Páginas Fixas:</strong>
-                  <ul>
-                    <li>Página 1: Folha de Rosto</li>
-                    <li>Página 2: Informações Básicas</li>
-                    <li>Página 3: DFD</li>
-                    <li v-if="dadosProcesso.tipo_processo === 'padronizacao'">Página 4: Produtos</li>
-                  </ul>
-                </div>
-                <div class="paginas-documentos">
-                  <strong>Documentos Adicionais:</strong>
-                  <span v-if="documentos.length === 0">
-                    Página {{ dadosProcesso.tipo_processo === 'padronizacao' ? '5' : '4' }}+ (conforme documentos adicionados)
-                  </span>
-                  <ul v-else>
-                    <li v-for="(documento, index) in documentos" :key="index">
-                      Página {{ (dadosProcesso.tipo_processo === 'padronizacao' ? 5 : 4) + index }}: {{ documento.nome }}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+
     </div>
 
     <div class="assistente-acoes">
@@ -574,18 +296,18 @@
       </button>
       
       <div class="acoes-direita">
-        <button 
-          v-if="etapaAtual < etapas.length - 1" 
-          @click="proximaEtapa" 
+        <button
+          v-if="etapaAtual < etapas.length - 1 && !mostrandoFormularioDFD"
+          @click="proximaEtapa"
           class="btn-primary"
           :disabled="!podeAvancar || processando"
         >
           {{ processando ? 'Processando...' : 'Próximo →' }}
         </button>
         
-        <button 
-          v-if="etapaAtual === etapas.length - 1" 
-          @click="finalizarProcesso" 
+        <button
+          v-if="etapaAtual === etapas.length - 1 && !mostrandoFormularioDFD"
+          @click="finalizarProcesso"
           class="btn-primary"
           :disabled="processando"
         >
@@ -630,7 +352,9 @@ export default {
       etapaAtual: 0,
       processando: false,
       processoTemporario: null,
-      dfdCriada: null,
+      dfdsLista: [], // Array para armazenar múltiplos DFDs
+      mostrandoFormularioDFD: false, // Controla se está mostrando o formulário de novo DFD
+      dfdEditando: null, // DFD sendo editado (null para novo DFD)
       
       dadosProcesso: {
         tipo_processo: '',
@@ -638,7 +362,8 @@ export default {
         nome_orgao: '',
         unidade_interessada: '',
         data_autuacao: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
-        status: 'em_criacao' // Status inicial válido conforme constraint do banco
+        status: 'em_criacao', // Status inicial válido conforme constraint do banco
+        objeto_customizado: '' // Campo editável para personalizar o objeto do processo
       },
       
       produtos: [],
@@ -685,19 +410,7 @@ export default {
           descricao: 'Documento de Formalização de Demanda'
         }
       ]
-      
-      if (this.dadosProcesso.tipo_processo === 'padronizacao') {
-        etapasBase.push({
-          titulo: 'Produtos',
-          descricao: 'Configuração dos produtos'
-        })
-      }
-      
-      etapasBase.push({
-        titulo: 'Documentação',
-        descricao: 'Upload de documentos do processo'
-      })
-      
+
       return etapasBase
     },
     
@@ -714,17 +427,8 @@ export default {
           // Etapa Informações Básicas - sempre pode avançar (apenas observações opcionais)
           return true
         case 2:
-          // Etapa DFD
-          return this.dfdCriada
-        case 3:
-          // Etapa Produtos (apenas para padronização)
-          if (this.dadosProcesso.tipo_processo === 'padronizacao') {
-            return this.produtos.length > 0 && this.produtos.every(p => p.nome_produto)
-          }
-          return true
-        case 4:
-          // Etapa Documentação - sempre pode finalizar
-          return true
+          // Etapa DFD - verificar se há pelo menos um DFD criado
+          return this.dfdsLista.length > 0
         default:
           return true
       }
@@ -753,11 +457,17 @@ export default {
       await this.carregarDadosProcesso()
     }
     
-    // Se carregou processo salvo e tem processo temporário, carregar produtos do banco
+    // Se carregou processo salvo e tem processo temporário, carregar dados do banco
     if (processoCarregado && (this.processoTemporario?.id || this.processoEdicao?.id)) {
       await this.carregarProdutosProcesso()
-      // Redeterminar etapa após carregar produtos
+      await this.carregarDFDsProcesso() // Carregar DFDs salvos
+      // Redeterminar etapa após carregar dados
       this.determinarEtapaAtual()
+    }
+
+    // Sempre tentar carregar DFDs se há processo ativo (temporário ou edição)
+    if (this.processoTemporario?.id || this.processoEdicao?.id) {
+      await this.carregarDFDsProcesso()
     }
   },
   
@@ -789,9 +499,12 @@ export default {
         if (this.processoEdicao.tipo_processo === 'padronizacao') {
           await this.carregarProdutosProcesso()
         }
-        
-        // Carregar documentos
-        await this.carregarDocumentosProcesso()
+
+        // Carregar DFDs do processo
+        await this.carregarDFDsProcesso()
+
+        // Carregar documentos (comentado pois removemos essa funcionalidade)
+        // await this.carregarDocumentosProcesso()
         
         // Verificar DFD - se existe DFD, marcar como criado
         this.dfdCriada = { id: 'existing', processo_id: this.processoEdicao.id }
@@ -954,25 +667,14 @@ export default {
         return
       }
       
-      // Verificar se tem DFD
-      if (!this.dfdCriada) {
+      // Verificar se tem DFDs
+      if (this.dfdsLista.length === 0) {
         this.etapaAtual = 2 // DFD
         return
       }
-      
-      // Para processos de padronização, verificar produtos
-      if (this.dadosProcesso.tipo_processo === 'padronizacao') {
-        if (this.produtos.length === 0 || this.produtosSelecionados.length === 0) {
-          this.etapaAtual = 3 // Produtos
-          return
-        } else {
-          this.etapaAtual = 4 // Documentação
-          return
-        }
-      }
-      
-      // Para despadronização, ir direto para documentação após DFD
-      this.etapaAtual = 3 // Documentação (despadronização)
+
+      // Se chegou até aqui, processo está completo (apenas 3 etapas agora)
+      this.etapaAtual = 2 // Permanece na etapa DFD
     },
     
     selecionarTipo(tipo) {
@@ -988,15 +690,7 @@ export default {
         await this.criarProcessoTemporario()
       }
       
-      if (this.etapaAtual === 3 && this.dadosProcesso.tipo_processo === 'padronizacao') {
-        // Salvar produtos
-        await this.salvarProdutos()
-      }
-      
-      if (this.etapaAtual === 4) {
-        // Salvar documentos (edital, DFD, etc.)
-        await this.salvarDocumentosProcesso()
-      }
+      // Remover validação de produtos e documentos - não existem mais
       
       this.etapaAtual++
     },
@@ -1131,7 +825,10 @@ export default {
         
         // Criar automaticamente a Folha de Rosto (Fl. 001)
         await this.criarFolhaDeRosto()
-        
+
+        // Carregar DFDs existentes (se houver)
+        await this.carregarDFDsProcesso()
+
       } catch (error) {
         console.error('Erro ao criar processo:', error)
         alert('Erro ao criar processo: ' + error.message)
@@ -1171,10 +868,129 @@ export default {
         throw error
       }
     },
-    
+
+    async carregarDFDsProcesso() {
+      try {
+        // Usar ID correto dependendo do contexto
+        const processoId = this.processoEdicao?.id || this.processoTemporario?.id
+        if (!processoId) {
+          console.warn('Nenhum processo ID disponível para carregar DFDs')
+          return
+        }
+
+        console.log(`🔍 Buscando DFDs para processo ID: ${processoId}`)
+
+        const { data, error } = await supabase
+          .from('dfd_processo')
+          .select('*')
+          .eq('processo_id', processoId)
+          .order('created_at', { ascending: true })
+
+        if (error) {
+          console.error('❌ Erro na query DFDs:', error)
+          throw error
+        }
+
+        this.dfdsLista = data || []
+
+        console.log(`📄 ${this.dfdsLista.length} DFDs carregados para o processo ${processoId}`)
+
+        if (this.dfdsLista.length > 0) {
+          console.log('📋 DFDs encontrados:', this.dfdsLista.map(dfd => ({
+            id: dfd.id,
+            justificativa: dfd.justificativa?.substring(0, 50) + '...',
+            created_at: dfd.created_at
+          })))
+        }
+
+      } catch (error) {
+        console.error('Erro ao carregar DFDs do processo:', error)
+        this.dfdsLista = []
+      }
+    },
+
     dfdCriado(resultado) {
-      this.dfdCriada = resultado
-      this.proximaEtapa()
+      const isEdicao = this.dfdEditando !== null
+
+      if (isEdicao) {
+        // Editando DFD existente
+        const index = this.dfdsLista.findIndex(dfd => dfd.id === this.dfdEditando.id)
+        if (index !== -1) {
+          this.dfdsLista.splice(index, 1, resultado)
+          console.log(`✅ DFD atualizado na posição ${index}:`, {
+            id: resultado.id,
+            justificativa: resultado.justificativa?.substring(0, 50) + '...'
+          })
+        } else {
+          console.error('❌ Erro: DFD para editar não encontrado na lista')
+        }
+      } else {
+        // Novo DFD
+        this.dfdsLista.push(resultado)
+        console.log(`🆕 Novo DFD criado:`, {
+          id: resultado.id,
+          justificativa: resultado.justificativa?.substring(0, 50) + '...',
+          totalDFDs: this.dfdsLista.length
+        })
+      }
+
+      this.mostrandoFormularioDFD = false
+      this.dfdEditando = null
+    },
+
+    dfdAutoCriado(resultado) {
+      // DFD foi criado automaticamente no banco, agora adicionar à lista e marcar como edição
+      console.log('💾 DFD auto-criado recebido:', resultado.id)
+
+      if (this.dfdsLista.some(dfd => dfd.id === resultado.id)) {
+        // DFD já existe na lista, apenas atualizar
+        const index = this.dfdsLista.findIndex(dfd => dfd.id === resultado.id)
+        this.dfdsLista.splice(index, 1, resultado)
+      } else {
+        // Adicionar novo DFD à lista
+        this.dfdsLista.push(resultado)
+      }
+
+      // Atualizar para modo edição
+      this.dfdEditando = { ...resultado }
+      console.log('🔄 DFD agora em modo edição automática')
+    },
+
+    adicionarNovoDFD() {
+      // Limpar completamente qualquer DFD sendo editado
+      this.dfdEditando = null
+      this.mostrandoFormularioDFD = true
+
+      // Aguardar próximo tick para garantir que o FormularioDFD receba null
+      this.$nextTick(() => {
+        console.log('🆕 Criando novo DFD - dfdEditando deve ser null:', this.dfdEditando)
+      })
+    },
+
+    editarDFD(dfd, index) {
+      // Garantir que estamos editando o DFD correto
+      this.dfdEditando = { ...dfd } // Clonar para evitar referência direta
+      this.mostrandoFormularioDFD = true
+
+      console.log('✏️ Editando DFD:', {
+        id: this.dfdEditando.id,
+        justificativa: this.dfdEditando.justificativa?.substring(0, 50) + '...',
+        index: index
+      })
+    },
+
+    removerDFD(index) {
+      if (confirm('Tem certeza que deseja remover este DFD?')) {
+        this.dfdsLista.splice(index, 1)
+        console.log(`📄 DFD removido. Total de DFDs: ${this.dfdsLista.length}`)
+      }
+    },
+
+    cancelarFormularioDFD() {
+      this.mostrandoFormularioDFD = false
+      this.dfdEditando = null
+
+      console.log('❌ Formulário DFD cancelado - estado limpo')
     },
     
     // NOVOS MÉTODOS para seleção de produtos aprovados
@@ -1461,6 +1277,18 @@ export default {
     formatarData(data) {
       return new Date(data).toLocaleString('pt-BR')
     },
+
+    formatarDataSegura(data) {
+      try {
+        if (!data) return ''
+        const dataObj = new Date(data)
+        if (isNaN(dataObj.getTime())) return ''
+        return dataObj.toLocaleDateString('pt-BR')
+      } catch (error) {
+        console.warn('Erro ao formatar data:', data, error)
+        return ''
+      }
+    },
     
     formatarDataBrasileira(data) {
       if (!data) return ''
@@ -1527,55 +1355,115 @@ export default {
     
     async gerarPDFDFD() {
       try {
-        // Buscar dados do DFD do processo (usar ID correto dependendo do modo)
-        const processoId = this.processoTemporario?.id || this.processoEdicao?.id
-        console.log('🔍 Debug - Buscando DFD para processo ID:', processoId)
-        
-        const { data: dfd, error } = await supabase
-          .from('dfd_processo')
-          .select('*')
-          .eq('processo_id', processoId)
-          .single()
-        
-        if (error) {
-          console.error('Erro ao buscar DFD:', error)
-          alert('Erro ao carregar dados do DFD: ' + error.message)
+        // Verificar se há DFDs na lista
+        if (this.dfdsLista.length === 0) {
+          alert('Nenhum DFD encontrado para gerar PDF')
           return
         }
-        
-        if (!dfd) {
-          console.warn('⚠️ DFD não encontrado para o processo ID:', processoId)
-          alert('DFD não encontrado para este processo. Certifique-se de que o DFD foi criado corretamente.')
+
+        // Se há apenas um DFD, gerar PDF diretamente
+        if (this.dfdsLista.length === 1) {
+          await this.gerarPDFDFDUnico(this.dfdsLista[0])
           return
         }
-        
-        console.log('✅ DFD encontrado:', dfd)
-        
-        // Criar conteúdo HTML do DFD
-        const conteudoHTML = this.gerarConteudoDFD(dfd)
-        
-        // Abrir em nova janela para impressão/salvamento
-        const novaJanela = window.open('', '_blank')
-        novaJanela.document.write(conteudoHTML)
-        novaJanela.document.close()
-        
-        // Aguardar carregar e imprimir
-        setTimeout(() => {
-          novaJanela.focus()
-          novaJanela.print()
-        }, 500)
-        
+
+        // Se há múltiplos DFDs, perguntar qual gerar ou se quer todos
+        const opcoes = this.dfdsLista.map((dfd, index) =>
+          `${index + 1}. DFD ${index + 1} - ${dfd.justificativa ? dfd.justificativa.substring(0, 50) + '...' : 'Sem justificativa'}`
+        ).join('\n')
+
+        const escolha = prompt(
+          `Múltiplos DFDs encontrados. Escolha uma opção:\n\n${opcoes}\n\n0. Gerar PDF com todos os DFDs\n\nDigite o número da opção:`
+        )
+
+        if (escolha === null) return // Cancelou
+
+        const opcaoEscolhida = parseInt(escolha)
+
+        if (opcaoEscolhida === 0) {
+          // Gerar PDF com todos os DFDs
+          await this.gerarPDFTodosDFDs()
+        } else if (opcaoEscolhida >= 1 && opcaoEscolhida <= this.dfdsLista.length) {
+          // Gerar PDF do DFD específico
+          await this.gerarPDFDFDUnico(this.dfdsLista[opcaoEscolhida - 1])
+        } else {
+          alert('Opção inválida')
+        }
+
       } catch (error) {
         console.error('Erro ao gerar PDF do DFD:', error)
         alert('Erro ao gerar PDF do DFD: ' + error.message)
       }
     },
+
+    async gerarPDFDFDUnico(dfd) {
+      try {
+        console.log('✅ Gerando PDF do DFD:', dfd)
+
+        // Criar conteúdo HTML do DFD
+        const conteudoHTML = this.gerarConteudoDFD(dfd)
+
+        // Abrir em nova janela para impressão/salvamento
+        const novaJanela = window.open('', '_blank')
+        novaJanela.document.write(conteudoHTML)
+        novaJanela.document.close()
+
+        // Aguardar carregar e imprimir
+        setTimeout(() => {
+          novaJanela.focus()
+          novaJanela.print()
+        }, 500)
+
+      } catch (error) {
+        console.error('Erro ao gerar PDF do DFD:', error)
+        throw error
+      }
+    },
+
+    async gerarPDFTodosDFDs() {
+      try {
+        // Para múltiplos DFDs, gerar PDFs individuais
+        for (let i = 0; i < this.dfdsLista.length; i++) {
+          const dfd = this.dfdsLista[i]
+          await this.gerarPDFDFDUnico(dfd)
+
+          // Pequeno delay entre downloads para não sobrecarregar
+          if (i < this.dfdsLista.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          }
+        }
+
+        alert(`${this.dfdsLista.length} PDFs de DFD foram gerados com sucesso!`)
+
+      } catch (error) {
+        console.error('Erro ao gerar PDFs dos DFDs:', error)
+        throw error
+      }
+    },
     
-    gerarConteudoFolhaRosto() {
-      const dataAtual = new Date().toLocaleDateString('pt-BR')
-      const objetoTexto = this.dadosProcesso.tipo_processo === 'padronizacao' ? 
+    getObjetoTextoPreview() {
+      if (this.dadosProcesso.tipo_processo === 'padronizacao') {
+        return 'CHAMAMENTO PÚBLICO DESTINADO À REALIZAÇÃO DO PROCEDIMENTO AUXILIAR DE PRÉ-QUALIFICAÇÃO DE BENS...'
+      } else {
+        return 'DESPADRONIZAÇÃO DE MARCA(S) E MODELO(S) DE PRODUTO(S)...'
+      }
+    },
+
+    getObjetoTextoCompleto() {
+      // Se tem texto customizado, usar ele. Caso contrário, usar o padrão
+      if (this.dadosProcesso.objeto_customizado && this.dadosProcesso.objeto_customizado.trim()) {
+        return this.dadosProcesso.objeto_customizado.trim()
+      }
+
+      // Texto padrão baseado no tipo de processo
+      return this.dadosProcesso.tipo_processo === 'padronizacao' ?
         `CHAMAMENTO PÚBLICO DESTINADO À REALIZAÇÃO DO PROCEDIMENTO AUXILIAR DE PRÉ-QUALIFICAÇÃO DE BENS PREVISTO NO ART. 80, INCISO II, DA LEI FEDERAL Nº 14.133/2021, OBJETIVANDO PROMOVER A SELEÇÃO TÉCNICA DE MARCAS E MODELOS DE PRODUTOS QUE POSSUAM OS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE, ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINAM, CONFORME AS CARACTERÍSTICAS E CONDIÇÕES CONSTANTES NO EDITAL E SEUS ANEXOS, PARA SEREM INCLUÍDOS NO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS, COM VISTAS ÀS AQUISIÇÕES EVENTUAIS E FUTURAS` :
         `DESPADRONIZAÇÃO DE MARCA(S) E MODELO(S) DE PRODUTO(S) QUE NÃO MAIS ATENDE(M) AOS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE E ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINA(M), COM VISTAS À SUA RETIRADA DO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS`
+    },
+
+    gerarConteudoFolhaRosto() {
+      const dataAtual = new Date().toLocaleDateString('pt-BR')
+      const objetoTexto = this.getObjetoTextoCompleto()
       
       // Usar formato exato do componente FolhaRosto.vue
       return `
@@ -4044,6 +3932,287 @@ export default {
 
   .acoes-direita button {
     flex: 1;
+  }
+}
+
+/* ===== ESTILOS PARA SEÇÃO DE DFDs ===== */
+.dfds-lista {
+  background: linear-gradient(135deg, #f8fafc 0%, #e3f2fd 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e1f5fe;
+}
+
+.dfds-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #01579b;
+}
+
+.dfds-header h4 {
+  color: #01579b;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dfds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.dfd-item {
+  background: white;
+  border: 2px solid #e3f2fd;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.dfd-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #1976d2, #42a5f5);
+}
+
+.dfd-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(25, 118, 210, 0.15);
+  border-color: #1976d2;
+}
+
+.dfd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dfd-numero {
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 10px rgba(25, 118, 210, 0.3);
+}
+
+.dfd-acoes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-editar, .btn-remover {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.btn-editar {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.btn-editar:hover {
+  background: #ffeaa7;
+  transform: scale(1.05);
+}
+
+.btn-remover {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.btn-remover:hover {
+  background: #f5c6cb;
+  transform: scale(1.05);
+}
+
+.dfd-info {
+  color: #424242;
+  line-height: 1.5;
+}
+
+.dfd-info p {
+  margin: 0.5rem 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.dfd-info strong {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.dfd-info small {
+  color: #616161;
+  font-style: italic;
+  margin-top: 1rem;
+  display: block;
+  padding-top: 1rem;
+  border-top: 1px solid #e3f2fd;
+}
+
+.dfds-vazio {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 16px;
+  border: 2px dashed #bbdefb;
+  color: #546e7a;
+}
+
+.dfds-vazio .vazio-icon {
+  font-size: 5rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.6;
+  background: linear-gradient(135deg, #64b5f6, #1976d2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dfds-vazio p {
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  color: #616161;
+}
+
+.formulario-dfd-container {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e3f2fd;
+}
+
+.formulario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e3f2fd;
+}
+
+.formulario-header h4 {
+  color: #1976d2;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.btn-cancelar {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.btn-cancelar:hover {
+  background: #ffcdd2;
+  transform: translateY(-1px);
+}
+
+/* Melhorias nos botões existentes para DFDs */
+.dfds-lista .btn-adicionar,
+.dfds-vazio .btn-primary {
+  background: linear-gradient(135deg, #4caf50, #388e3c) !important;
+  color: white !important;
+  border: none !important;
+  padding: 0.75rem 1.5rem !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 3px 12px rgba(76, 175, 80, 0.3) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.dfds-lista .btn-adicionar:hover,
+.dfds-vazio .btn-primary:hover {
+  background: linear-gradient(135deg, #66bb6a, #4caf50) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4) !important;
+}
+
+/* Animações */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dfd-item {
+  animation: slideUp 0.4s ease-out;
+}
+
+.formulario-dfd-container {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Responsividade para DFDs */
+@media (max-width: 768px) {
+  .dfds-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dfds-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .formulario-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .dfd-item {
+    padding: 1rem;
+  }
+
+  .dfds-lista {
+    padding: 1rem;
   }
 }
 </style>
