@@ -679,7 +679,14 @@ export class ProcessosAdministrativosService {
             </div>
             
             <div style="text-align: left;">
-              <strong>OBJETO:</strong> ${processo.tipo_processo === 'padronizacao' ? objetoPadronizacao : objetoDespadronizacao}
+              <strong>OBJETO:</strong> ${(() => {
+                console.log('🔍 DEBUG OBJETO:', {
+                  objeto_customizado: processo.objeto_customizado,
+                  tipo_processo: processo.tipo_processo,
+                  campos_disponveis: Object.keys(processo)
+                })
+                return processo.objeto_customizado || (processo.tipo_processo === 'padronizacao' ? objetoPadronizacao : objetoDespadronizacao)
+              })()}
             </div>
             
           </div>
@@ -727,7 +734,9 @@ export class ProcessosAdministrativosService {
       }
 
       // Gerar HTML do DFD
+      console.log('🔧 DEBUG criarDFD - Iniciando geração de HTML...')
       const htmlDFD = this.gerarHTMLDFD(dadosDFD)
+      console.log('✅ DEBUG criarDFD - HTML gerado com sucesso:', htmlDFD.length, 'caracteres')
 
       // Registrar documento com numeração sequencial automática
       const documento = await NumeracaoDocumentosService.registrarDocumento({
@@ -746,9 +755,17 @@ export class ProcessosAdministrativosService {
         processo_id: processoId,
         documento_id: documento.id,
         ...dadosDFD,
+        // conteudo_html: htmlDFD, // TEMPORARIAMENTE COMENTADO: coluna não existe ainda
         tenant_id: tenantId,
         folha_numero: documento.folha_numero
       }
+
+      console.log('💾 DEBUG criarDFD - Salvando DFD com HTML:', {
+        id: dfd.id,
+        htmlSize: htmlDFD.length,
+        justificativa: dadosDFD.justificativa?.length || 0,
+        necessidade_descricao: dadosDFD.necessidade_descricao?.length || 0
+      })
 
       const { data: dfdData, error: dfdError } = await supabase
         .from('dfd_processo')
@@ -798,9 +815,15 @@ export class ProcessosAdministrativosService {
         throw new Error(`DFD ${dfdId} não encontrado`)
       }
 
+      // Gerar novo HTML do DFD com dados atualizados
+      console.log('🔧 DEBUG atualizarDFD - Regenerando HTML...')
+      const htmlDFDAtualizado = this.gerarHTMLDFD(dadosDFD)
+      console.log('✅ DEBUG atualizarDFD - HTML regenerado:', htmlDFDAtualizado.length, 'caracteres')
+
       // Preparar dados para atualização
       const dadosAtualizacao = {
         ...dadosDFD,
+        // conteudo_html: htmlDFDAtualizado, // TEMPORARIAMENTE COMENTADO: coluna não existe ainda
         tenant_id: tenantId,
         updated_at: new Date().toISOString()
       }
@@ -830,28 +853,55 @@ export class ProcessosAdministrativosService {
   }
 
   static gerarHTMLDFD(dadosDFD) {
-    return `
-      <div class="documento-dfd">
-        <h1>DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - ${dadosDFD.modelo_usado?.toUpperCase() || 'MODELO PADRÃO'}</h1>
-        
+    console.log('🔧 DEBUG gerarHTMLDFD - Dados recebidos:', {
+      justificativa: dadosDFD.justificativa?.length || 0,
+      necessidade_descricao: dadosDFD.necessidade_descricao?.length || 0,
+      modelo_usado: dadosDFD.modelo_usado,
+      nome_presidente: !!dadosDFD.nome_presidente,
+      criterios_aceitacao: !!dadosDFD.criterios_aceitacao,
+      observacoes_especiais: !!dadosDFD.observacoes_especiais
+    })
+
+    console.log('🎨 DEBUG: Aplicando NOVA formatação compacta do DFD')
+
+    // Validar campos obrigatórios
+    if (!dadosDFD.justificativa || dadosDFD.justificativa.trim().length === 0) {
+      console.warn('⚠️ gerarHTMLDFD - Justificativa vazia!')
+    }
+    if (!dadosDFD.necessidade_descricao || dadosDFD.necessidade_descricao.trim().length === 0) {
+      console.warn('⚠️ gerarHTMLDFD - Descrição da necessidade vazia!')
+    }
+
+    const html = `
+      <div class="documento-dfd" style="font-family: 'Times New Roman', serif; line-height: 1.4; margin: 0; padding: 0.3cm; color: #000;">
+        <h1 style="text-align: center; font-size: 14pt; font-weight: bold; margin: 0 0 0.4cm 0; text-transform: uppercase;">
+          DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - ${dadosDFD.modelo_usado?.toUpperCase() || 'MODELO_1'}
+        </h1>
+
         ${dadosDFD.nome_presidente ? `
-        <div class="secao">
-          <h2>DADOS DO DEMANDANTE</h2>
-          <p><strong>Nome do Presidente da CPPM:</strong> ${dadosDFD.nome_presidente}</p>
-          ${dadosDFD.matricula_presidente ? `<p><strong>Matrícula:</strong> ${dadosDFD.matricula_presidente}</p>` : ''}
-          ${dadosDFD.email_presidente ? `<p><strong>E-mail:</strong> ${dadosDFD.email_presidente}</p>` : ''}
-          ${dadosDFD.telefone_presidente ? `<p><strong>Telefone:</strong> ${dadosDFD.telefone_presidente}</p>` : ''}
+        <div style="margin-bottom: 0.4cm; page-break-inside: avoid;">
+          <h2 style="font-size: 12pt; font-weight: bold; margin: 0 0 0.2cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.05cm;">DADOS DO DEMANDANTE</h2>
+          <div style="margin-left: 0.3cm; text-align: justify;">
+            <p style="margin: 0.1cm 0;"><strong>Nome do Presidente da CPPM:</strong> ${dadosDFD.nome_presidente}</p>
+            ${dadosDFD.matricula_presidente ? `<p style="margin: 0.1cm 0;"><strong>Matrícula:</strong> ${dadosDFD.matricula_presidente}</p>` : ''}
+            ${dadosDFD.email_presidente ? `<p style="margin: 0.1cm 0;"><strong>E-mail:</strong> ${dadosDFD.email_presidente}</p>` : ''}
+            ${dadosDFD.telefone_presidente ? `<p style="margin: 0.1cm 0;"><strong>Telefone:</strong> ${dadosDFD.telefone_presidente}</p>` : ''}
+          </div>
         </div>
         ` : ''}
-        
-        <div class="secao">
-          <h2>JUSTIFICATIVA</h2>
-          <p>${dadosDFD.justificativa}</p>
+
+        <div style="margin-bottom: 0.4cm; page-break-inside: avoid;">
+          <h2 style="font-size: 12pt; font-weight: bold; margin: 0 0 0.2cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.05cm;">1. JUSTIFICATIVA</h2>
+          <div style="margin-left: 0.3cm; text-align: justify;">
+            <p style="margin: 0.15cm 0; line-height: 1.4; text-indent: 0.8cm;">${dadosDFD.justificativa || '[CAMPO VAZIO - JUSTIFICATIVA NÃO PREENCHIDA]'}</p>
+          </div>
         </div>
 
-        <div class="secao">
-          <h2>DESCRIÇÃO DA NECESSIDADE</h2>
-          <p>${dadosDFD.necessidade_descricao}</p>
+        <div style="margin-bottom: 0.4cm; page-break-inside: avoid;">
+          <h2 style="font-size: 12pt; font-weight: bold; margin: 0 0 0.2cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.05cm;">2. DESCRIÇÃO DA NECESSIDADE</h2>
+          <div style="margin-left: 0.3cm; text-align: justify;">
+            <p style="margin: 0.15cm 0; line-height: 1.4; text-indent: 0.8cm;">${dadosDFD.necessidade_descricao || '[CAMPO VAZIO - DESCRIÇÃO NÃO PREENCHIDA]'}</p>
+          </div>
         </div>
 
         ${dadosDFD.produtos_especificacao ? `
@@ -1039,6 +1089,15 @@ export class ProcessosAdministrativosService {
         </div>
       </div>
     `
+
+    console.log('✅ DEBUG gerarHTMLDFD - HTML gerado:', {
+      tamanho: html.length,
+      temJustificativa: html.includes('JUSTIFICATIVA'),
+      temDescricao: html.includes('DESCRIÇÃO DA NECESSIDADE'),
+      preview: html.substring(0, 150) + '...'
+    })
+
+    return html
   }
 
   // =====================================================
@@ -2151,7 +2210,7 @@ export class ProcessosAdministrativosService {
             </div>
             
             <div style="text-align: left;">
-              <strong>OBJETO:</strong> ${dados.tipoProcesso === 'padronizacao' ? objetoPadronizacao : objetoDespadronizacao}
+              <strong>OBJETO:</strong> ${dados.objeto_customizado || (dados.tipoProcesso === 'padronizacao' ? objetoPadronizacao : objetoDespadronizacao)}
             </div>
             
           </div>

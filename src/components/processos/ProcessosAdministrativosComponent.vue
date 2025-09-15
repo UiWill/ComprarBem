@@ -1417,8 +1417,8 @@ export default {
           return false;
         }
         
-        // ❌ EXCLUIR DFD - todas as variações possíveis
-        if (doc.tipo_documento === 'DFD' || 
+        // REMOVIDO FILTRO: DFD agora incluído conforme solicitado pelo usuário
+        if (doc.tipo_documento === 'DFD' ||
             doc.tipo_documento === 'dfd' ||
             (doc.nome_documento && (
               doc.nome_documento.toLowerCase().includes('formalização de demanda') ||
@@ -1428,8 +1428,8 @@ export default {
               doc.titulo.toLowerCase().includes('formalização de demanda') ||
               doc.titulo.toLowerCase().includes('dfd')
             ))) {
-          console.log('❌ DEBUG - EXCLUINDO DFD:', doc.titulo || doc.nome_documento)
-          return false;
+          console.log('✅ DEBUG - INCLUINDO DFD (sem filtro):', doc.titulo || doc.nome_documento)
+          return true; // MUDANÇA: Agora retorna true para incluir DFD
         }
         
         // INCLUIR documentos dos produtos (SEM verificar descrição)
@@ -2330,29 +2330,21 @@ export default {
             </div>
           ` : ''}
           
-          <!-- ÍNDICE DE DOCUMENTOS -->
+          <!-- ANEXOS (só aparece se houver documentos anexados) -->
+          ${documentos.filter(doc => doc.tipo_documento !== 'FOLHA_ROSTO' && doc.tipo_documento !== 'DFD' && doc.arquivo_url && doc.arquivo_url !== 'undefined').length > 0 ? `
           <div class="page-break"></div>
           <div class="documento-pagina">
-            <div class="folha-numero">Índice</div>
-            
+            <div class="folha-numero">Anexos</div>
+
             <div class="documento-header">
               <h1>${processo.nome_orgao}</h1>
-              <h2>ÍNDICE DE DOCUMENTOS</h2>
+              <h2>ANEXOS</h2>
               <p>Processo nº ${processo.numero_processo}</p>
             </div>
-            
+
             <div class="documento-conteudo">
-              <h3>📋 DADOS GERAIS DO PROCESSO</h3>
-              <p><strong>Número:</strong> ${processo.numero_processo || 'Não definido'}</p>
-              <p><strong>Tipo:</strong> ${processo.tipo_processo === 'padronizacao' ? 'Padronização de Produtos' : 'Despadronização de Produtos'}</p>
-              <p><strong>Status:</strong> ${this.formatarStatus(processo.status)}</p>
-              <p><strong>Órgão:</strong> ${processo.nome_orgao}</p>
-              <p><strong>Unidade:</strong> ${processo.unidade_interessada}</p>
-              <p><strong>Data:</strong> ${this.formatarData(processo.data_autuacao)}</p>
-              
-              
-              <h3 style="margin-top: 2cm;">RELAÇÃO DE DOCUMENTOS</h3>
-              
+              <h3>📎 DOCUMENTOS ANEXADOS AO PROCESSO</h3>
+
               <table class="tabela" style="margin-top: 1cm;">
                 <thead>
                   <tr>
@@ -2373,26 +2365,20 @@ export default {
                         ${doc.tipo_documento !== (doc.nome_documento || doc.tipo_documento) ? `<br><small style="color: #666;">(${doc.tipo_documento})</small>` : ''}
                       </td>
                       <td style="text-align: center;">${this.formatarData(doc.data_autuacao)}</td>
-                      <td style="text-align: center;">
-                        ${doc.arquivo_url ? `
-                          <a href="${doc.arquivo_url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
-                            Abrir PDF
-                          </a>
-                        ` : '-'}
-                      </td>
+                      <td style="text-align: center;">📎 Anexo</td>
                     </tr>
                   `).join('')}
                 </tbody>
               </table>
-              
+
               <div style="margin-top: 2cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm;">
-                <p><strong>Total de documentos:</strong> ${documentos.filter(d => d.tipo_documento !== 'FOLHA_ROSTO' && d.tipo_documento !== 'DFD' && d.arquivo_url && d.arquivo_url !== 'undefined').length}</p>
-                ${produtos.length > 0 ? `<p><strong>Total de produtos:</strong> ${produtos.length}</p>` : ''}
+                <p><strong>Total de anexos:</strong> ${documentos.filter(d => d.tipo_documento !== 'FOLHA_ROSTO' && d.tipo_documento !== 'DFD' && d.arquivo_url && d.arquivo_url !== 'undefined').length}</p>
                 <p style="color: #666; margin-top: 1cm;">Gerado em ${dataAtual} - Sistema Comprar Bem</p>
               </div>
-              
+
             </div>
           </div>
+          ` : ''}
           
           ${produtos.length > 0 ? `
           <!-- RESUMO DOS PRODUTOS -->
@@ -2553,40 +2539,13 @@ export default {
     // =====================================================
     
     gerarHTMLAssinaturasDigitais(processo) {
-      // Esta função será chamada de forma assíncrona durante a geração do relatório
+      // Página simplificada - só mostra assinaturas quando existirem
       return `
         <div class="page-break"></div>
         <div class="documento-pagina">
-          <div class="documento-header">
-            <h1>${processo.nome_orgao}</h1>
-            <h2>ASSINATURAS DIGITAIS</h2>
-            <p><strong>Processo:</strong> ${processo.numero_processo}</p>
-          </div>
-          
           <div class="documento-conteudo">
-            <div class="assinaturas-digitais-section">
-              <h3>📝 Validação de Assinaturas Digitais</h3>
-              
-              <div class="info-verificacao">
-                <p><strong>Importante:</strong> Este documento contém assinaturas digitais válidas conforme a legislação vigente.</p>
-                <p><strong>Verificação:</strong> As assinaturas podem ser verificadas através do hash de validação único de cada uma.</p>
-                <p><strong>Data de geração do documento:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-              </div>
-
-              <div id="lista-assinaturas-digitais">
-                <!-- Assinaturas serão inseridas aqui dinamicamente -->
-                <div class="mensagem-carregamento">
-                  <p><em>🔄 As assinaturas digitais serão carregadas na visualização do documento...</em></p>
-                  <p><small>Este documento será atualizado automaticamente com todas as assinaturas válidas do processo.</small></p>
-                </div>
-              </div>
-              
-              <div class="rodape-assinaturas">
-                <hr style="margin: 3cm 0 1cm 0; border: 1px solid #000;">
-                <p><strong>Sistema Comprar Bem</strong></p>
-                <p>Assinatura Digital conforme MP 2.200-2/2001 e Lei 14.133/2021</p>
-                <p><small>Este documento foi gerado eletronicamente e possui validação digital.</small></p>
-              </div>
+            <div id="lista-assinaturas-digitais">
+              <!-- As assinaturas aparecerão aqui quando forem feitas -->
             </div>
           </div>
         </div>
@@ -2902,62 +2861,17 @@ export default {
     validarDFDPreenchido(dfd) {
       if (!dfd) return false
 
-      // TEMPORÁRIO: Aceitar todos os DFDs enquanto ajustamos a lógica
-      // Verificar se o DFD tem conteúdo HTML (indica que foi processado)
-      const temConteudoHTML = dfd.conteudo_html &&
-                              typeof dfd.conteudo_html === 'string' &&
-                              dfd.conteudo_html.trim().length > 100
+      // REMOVIDO FILTRO: Aceitar TODOS os DFDs sem validação de conteúdo
+      console.log(`✅ DFD ${dfd.id} aceito SEM FILTRO (conforme solicitado pelo usuário)`)
 
-      // Se tem conteúdo HTML, aceitar como válido
-      if (temConteudoHTML) {
-        console.log(`🔍 DEBUG: DFD ${dfd.id} tem conteúdo HTML (${dfd.conteudo_html.length} chars)`)
-        return true
+      // Garantir que sempre tenha HTML para exibição
+      if (!dfd.conteudo_html || dfd.conteudo_html.trim().length < 50) {
+        const htmlGerado = this.gerarHTMLDFDSimples(dfd)
+        dfd.conteudo_html = htmlGerado
+        console.log(`🔧 HTML gerado automaticamente para DFD ${dfd.id} (${htmlGerado.length} caracteres)`)
       }
 
-      // Se não tem conteúdo HTML, verificar campos de dados
-      const camposDados = Object.entries(dfd).filter(([key, value]) => {
-        // Ignorar campos de metadados
-        const camposMetadados = ['id', 'processo_id', 'tenant_id', 'tipo_documento', 'nome_documento',
-                                'titulo', 'folha_numero', 'criado_por', 'created_at', 'updated_at',
-                                'data_criacao', 'criado_em', 'atualizado_em', 'data_autuacao', 'status',
-                                'documento_id', 'tipo_dfd', 'modelo_usado', 'fase_processo', 'prioridade']
-
-        if (camposMetadados.includes(key)) return false
-        if (!value || typeof value !== 'string') return false
-
-        const valorLimpo = value.trim()
-
-        // Filtrar textos muito curtos ou de teste
-        if (valorLimpo.length < 8) return false
-        if (/^(dsad|sadsad|dsadsa|asdsad|sdsad|test|teste|abc|xxx){1,}$/i.test(valorLimpo)) return false
-
-        return true
-      })
-
-      // Verificar se tem pelo menos um campo substantivo
-      const temConteudoSubstantivo = camposDados.some(([key, value]) => {
-        const valorLimpo = value.trim()
-        // Considerar substantivo se tem mais de 20 caracteres OU contém email/emoji/formatação
-        return valorLimpo.length > 20 ||
-               /@/.test(valorLimpo) ||
-               /[📦📝🎯✅💭📍]/u.test(valorLimpo) ||
-               /\n/.test(valorLimpo)
-      })
-
-      const temConteudo = camposDados.length > 0 && temConteudoSubstantivo
-
-      // Debug reduzido para não poluir console
-      if (camposDados.length > 0) {
-        console.log(`🔍 DEBUG: DFD ${dfd.id} - ${camposDados.length} campos com dados (substantivo: ${temConteudoSubstantivo})`)
-      }
-
-      if (temConteudo) {
-        console.log(`✅ DFD ${dfd.id} validado como preenchido`)
-      } else {
-        console.log(`🚫 DFD ${dfd.id} filtrado como vazio`)
-      }
-
-      return temConteudo
+      return true // SEMPRE retorna true - sem filtros
     },
 
     async completarDocumentosProcesso(processo, documentosExistentes, produtos, dadosDFD) {
@@ -3000,15 +2914,21 @@ export default {
               .eq('processo_id', processo.id)
               .order('created_at', { ascending: true })
 
-            // Filtrar DFDs vazios
-            const dfdsValidos = (dfdsData || []).filter(dfd => this.validarDFDPreenchido(dfd))
-            dadosDFD = dfdsValidos
+            // REMOVIDO FILTRO: Aceitar TODOS os DFDs
+            dadosDFD = dfdsData || []
 
-            console.log(`${dadosDFD.length} DFD(s) válido(s) encontrado(s) no banco:`, dadosDFD)
-
-            if (dfdsData && dfdsData.length > dfdsValidos.length) {
-              console.log(`🚫 ${dfdsData.length - dfdsValidos.length} DFD(s) vazio(s) filtrado(s) no completarDocumentosProcesso`)
-            }
+            console.log(`📋 DEBUG DETALHADO: ${dadosDFD.length} DFD(s) encontrado(s) para processo ${processo.id}:`)
+            dadosDFD.forEach((dfd, index) => {
+              console.log(`📄 DFD ${index + 1}:`, {
+                id: dfd.id,
+                justificativa: dfd.justificativa || '[VAZIO]',
+                justificativa_length: dfd.justificativa?.length || 0,
+                necessidade_descricao: dfd.necessidade_descricao || '[VAZIO]',
+                necessidade_descricao_length: dfd.necessidade_descricao?.length || 0,
+                modelo_usado: dfd.modelo_usado || '[SEM MODELO]',
+                created_at: dfd.created_at
+              })
+            })
           } catch (error) {
             console.log('DFD não encontrado no banco, criando com dados padrão')
             dadosDFD = [{
@@ -3077,13 +2997,21 @@ export default {
           dfd.nome_documento = `Documento de Formalização de Demanda ${numeroDFD} - ${modeloDFD}`
           dfd.titulo = `DFD ${numeroDFD} - Documento de Formalização de Demanda (${modeloDFD})`
 
-          // Garantir que tenha conteúdo HTML
-          if (!dfd.conteudo_html) {
-            console.log(`Gerando HTML para DFD existente ${numeroDFD}`)
-            // Usar dados DFD específicos ou o primeiro se disponível
-            const dadosDFDEspecifico = Array.isArray(dadosDFD) && dadosDFD[index] ? dadosDFD[index] : (dadosDFD || {})
-            dfd.conteudo_html = this.gerarHTMLDFD(processo, dadosDFDEspecifico, produtos, numeroDFD)
-          }
+          // FORÇAR REGENERAÇÃO DO HTML com dados atuais do banco
+          console.log(`🔧 FORÇANDO regeneração de HTML para DFD ${numeroDFD} com dados atuais`)
+          // Usar dados DFD específicos ou o primeiro se disponível
+          const dadosDFDEspecifico = Array.isArray(dadosDFD) && dadosDFD[index] ? dadosDFD[index] : (dadosDFD || {})
+
+          console.log('📊 DEBUG: Dados para regeneração HTML:', {
+            id: dadosDFDEspecifico?.id,
+            justificativa: dadosDFDEspecifico?.justificativa || '[VAZIO]',
+            justificativa_length: dadosDFDEspecifico?.justificativa?.length || 0,
+            necessidade_descricao: dadosDFDEspecifico?.necessidade_descricao || '[VAZIO]',
+            necessidade_descricao_length: dadosDFDEspecifico?.necessidade_descricao?.length || 0
+          })
+
+          dfd.conteudo_html = this.gerarHTMLDFD(processo, dadosDFDEspecifico, produtos, numeroDFD)
+          console.log(`✅ HTML REGENERADO com ${dfd.conteudo_html.length} caracteres usando dados atuais`)
         })
       }
       
@@ -3363,17 +3291,12 @@ export default {
       documentosCompletos = []
       if (melhorFolhaRosto) documentosCompletos.push(melhorFolhaRosto)
 
-      // Adicionar TODOS os DFDs válidos ordenados por data de criação
+      // Adicionar TODOS os DFDs SEM FILTRO ordenados por data de criação
       if (dfds.length > 0) {
-        // Filtrar DFDs vazios dos documentos existentes
-        const dfdsValidos = dfds.filter(dfd => this.validarDFDPreenchido(dfd))
-        const dfdsOrdenados = dfdsValidos.sort((a, b) => new Date(a.data_autuacao || a.created_at) - new Date(b.data_autuacao || b.created_at))
+        // REMOVIDO FILTRO: Aceitar todos os DFDs independente do conteúdo
+        const dfdsOrdenados = dfds.sort((a, b) => new Date(a.data_autuacao || a.created_at) - new Date(b.data_autuacao || b.created_at))
 
-        console.log(`📄 Adicionando ${dfdsOrdenados.length} DFD(s) válido(s) ao relatório`)
-
-        if (dfds.length > dfdsValidos.length) {
-          console.log(`🚫 ${dfds.length - dfdsValidos.length} DFD(s) vazio(s) filtrado(s) dos documentos existentes`)
-        }
+        console.log(`📄 Adicionando ${dfdsOrdenados.length} DFD(s) SEM FILTRO ao relatório`)
 
         documentosCompletos.push(...dfdsOrdenados)
       }
@@ -3514,7 +3437,14 @@ export default {
             </div>
             
             <div class="campo objeto" style="margin-bottom: 1cm; text-align: justify; line-height: 1.4;">
-              <strong>OBJETO:</strong> ${objetoTexto}
+              <strong>OBJETO:</strong> ${(() => {
+                console.log('🔍 DEBUG OBJETO Component:', {
+                  objeto_customizado: processo.objeto_customizado,
+                  tipo_processo: processo.tipo_processo,
+                  campos_disponveis: Object.keys(processo)
+                })
+                return processo.objeto_customizado || objetoTexto
+              })()}
             </div>
 
             
@@ -3524,36 +3454,51 @@ export default {
     },
 
     gerarHTMLDFD(processo, dadosDFD, produtos, numeroDFD = 1) {
+      console.log('🔧 DEBUG gerarHTMLDFD (Component) - Dados recebidos:', {
+        processoId: processo?.id,
+        tipoProcesso: processo?.tipo_processo,
+        dadosDFD: {
+          justificativa: dadosDFD?.justificativa?.length || 0,
+          necessidade_descricao: dadosDFD?.necessidade_descricao?.length || 0,
+          criterios_aceitacao: dadosDFD?.criterios_aceitacao?.length || 0,
+          observacoes_especiais: dadosDFD?.observacoes_especiais?.length || 0
+        },
+        numeroDFD,
+        totalProdutos: produtos?.length || 0
+      })
+
       const modeloTipo = processo.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'
-      const finalidade = processo.tipo_processo === 'padronizacao' ? 
-        'PADRONIZAÇÃO DE MARCAS E MODELOS DE PRODUTOS' : 
+      const finalidade = processo.tipo_processo === 'padronizacao' ?
+        'PADRONIZAÇÃO DE MARCAS E MODELOS DE PRODUTOS' :
         'DESPADRONIZAÇÃO DE MARCAS E MODELOS DE PRODUTOS'
-        
+
       const tituloCompleto = `DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA${numeroDFD > 1 ? ` ${numeroDFD}` : ''} - ${modeloTipo}`
 
       // Função auxiliar para renderizar valor booleano
       const formatarBooleano = (valor) => valor ? 'SIM' : 'NÃO'
 
+      console.log('🎨 DEBUG: Aplicando NOVA formatação compacta do DFD no Component')
+
       let htmlConteudo = `
-        <div class="documento-header" style="text-align: center; margin-bottom: 1cm;">
-          <h1 style="font-size: 16pt; font-weight: bold; margin: 0.5cm 0; page-break-inside: avoid;">${processo.nome_orgao}</h1>
-          <h2 style="font-size: 14pt; font-weight: bold; margin: 0.3cm 0; page-break-inside: avoid;">${tituloCompleto}</h2>
-          <p style="font-size: 12pt; margin: 0.3cm 0;">Processo nº ${processo.numero_processo}</p>
+        <div class="documento-header" style="text-align: center; margin-bottom: 0.3cm;">
+          <h1 style="font-size: 14pt; font-weight: bold; margin: 0.2cm 0; page-break-inside: avoid;">${processo.nome_orgao}</h1>
+          <h2 style="font-size: 13pt; font-weight: bold; margin: 0.2cm 0; page-break-inside: avoid;">${tituloCompleto}</h2>
+          <p style="font-size: 11pt; margin: 0.1cm 0;">Processo nº ${processo.numero_processo}</p>
         </div>
-        
-        <div class="documento-conteudo" style="text-align: justify; line-height: 1.7; font-size: 12pt; word-wrap: break-word; overflow-wrap: break-word; page-break-inside: avoid;">
-          
-          <h3 style="margin: 0.8cm 0 0.4cm 0; font-size: 13pt; text-transform: uppercase; page-break-after: avoid;">1. JUSTIFICATIVA</h3>
-          <p style="text-indent: 1.5cm; margin-bottom: 0.6cm; page-break-inside: avoid;">${dadosDFD?.justificativa || 'Justificativa da necessidade conforme processo administrativo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' de produtos.'}</p>
-          
-          <h3 style="margin: 0.8cm 0 0.4cm 0; font-size: 13pt; text-transform: uppercase; page-break-after: avoid;">2. DESCRIÇÃO DA NECESSIDADE</h3>
-          <p style="text-indent: 1.5cm; margin-bottom: 0.6cm; page-break-inside: avoid;">${dadosDFD?.descricao_necessidade || 'Descrição detalhada da necessidade identificada para o processo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' dos produtos especificados.'}</p>
-          
-          <h3 style="margin: 0.8cm 0 0.4cm 0; font-size: 13pt; text-transform: uppercase; page-break-after: avoid;">3. CRITÉRIOS DE ACEITAÇÃO</h3>
-          <p style="text-indent: 1.5cm; margin-bottom: 0.6cm; page-break-inside: avoid;">${dadosDFD?.criterios_aceitacao || 'Critérios de aceitação conforme normas técnicas aplicáveis e especificações definidas para o processo.'}</p>
-          
-          <h2 style="margin: 1cm 0 0.5cm 0; font-size: 14pt; text-transform: uppercase;">OBSERVAÇÕES ESPECIAIS</h2>
-          <p style="text-indent: 1.5cm; margin-bottom: 0.8cm;">${dadosDFD?.observacoes_especiais || 'Observações especiais do processo.'}</p>`
+
+        <div class="documento-conteudo" style="text-align: justify; line-height: 1.4; font-size: 11pt; word-wrap: break-word; overflow-wrap: break-word; padding: 0.2cm;">
+
+          <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">1. JUSTIFICATIVA</h3>
+          <p style="text-indent: 0.8cm; margin-bottom: 0.2cm; page-break-inside: avoid;">${dadosDFD?.justificativa || 'Justificativa da necessidade conforme processo administrativo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' de produtos.'}</p>
+
+          <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">2. DESCRIÇÃO DA NECESSIDADE</h3>
+          <p style="text-indent: 0.8cm; margin-bottom: 0.2cm; page-break-inside: avoid;">${dadosDFD?.necessidade_descricao || 'Descrição detalhada da necessidade identificada para o processo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' dos produtos especificados.'}</p>
+
+          <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">3. CRITÉRIOS DE ACEITAÇÃO</h3>
+          <p style="text-indent: 0.8cm; margin-bottom: 0.2cm; page-break-inside: avoid;">${dadosDFD?.criterios_aceitacao || 'Critérios de aceitação conforme normas técnicas aplicáveis e especificações definidas para o processo.'}</p>
+
+          <h2 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase;">OBSERVAÇÕES ESPECIAIS</h2>
+          <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD?.observacoes_especiais || 'Observações especiais do processo.'}</p>`
 
       // Incluir produtos se existirem
       if (produtos && produtos.length > 0) {
@@ -3589,44 +3534,44 @@ export default {
       if (processo.tipo_processo === 'padronizacao') {
         if (dadosDFD?.produtos_especificacao) {
           htmlConteudo += `
-            <h3 style="margin-top: 1cm; font-size: 13pt; page-break-after: avoid;">4. ESPECIFICAÇÃO DOS PRODUTOS</h3>
-            <p style="text-indent: 1.5cm; margin-bottom: 0.6cm; page-break-inside: avoid;">${dadosDFD.produtos_especificacao}</p>`
+            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">4. ESPECIFICAÇÃO DOS PRODUTOS</h3>
+            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm; page-break-inside: avoid;">${dadosDFD.produtos_especificacao}</p>`
         }
 
         if (dadosDFD?.quantidade_amostras) {
           htmlConteudo += `
-            <h4 style="margin-top: 0.8cm; font-size: 12pt; page-break-after: avoid;">4.1. Quantidades de Amostras</h4>
-            <p style="text-indent: 1.5cm; margin-bottom: 0.4cm;">${dadosDFD.quantidade_amostras} unidades</p>`
+            <h4 style="margin: 0.2cm 0 0.1cm 0; font-size: 11pt; page-break-after: avoid;">4.1. Quantidades de Amostras</h4>
+            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.quantidade_amostras} unidades</p>`
         }
 
         if (dadosDFD?.previsao_aquisicoes) {
           htmlConteudo += `
-            <h4 style="margin-top: 0.8cm; font-size: 12pt; page-break-after: avoid;">4.2. Previsão de Aquisições</h4>
-            <p style="text-indent: 1.5cm; margin-bottom: 0.4cm;">${dadosDFD.previsao_aquisicoes} unidades</p>`
+            <h4 style="margin: 0.2cm 0 0.1cm 0; font-size: 11pt; page-break-after: avoid;">4.2. Previsão de Aquisições</h4>
+            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.previsao_aquisicoes} unidades</p>`
         }
 
         if (dadosDFD?.especificacoes_tecnicas) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">3. ESPECIFICAÇÕES TÉCNICAS:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.especificacoes_tecnicas}</p>`
+            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">5. ESPECIFICAÇÕES TÉCNICAS</h3>
+            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.especificacoes_tecnicas}</p>`
         }
 
         if (dadosDFD?.ensaios_exigidos) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">4. ENSAIOS EXIGIDOS:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.ensaios_exigidos}</p>`
+            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">6. ENSAIOS EXIGIDOS</h3>
+            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.ensaios_exigidos}</p>`
         }
 
         if (dadosDFD?.local_entrega_amostras) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">5. LOCAL DE ENTREGA DAS AMOSTRAS:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.local_entrega_amostras}</p>`
+            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">7. LOCAL DE ENTREGA DAS AMOSTRAS</h3>
+            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.local_entrega_amostras}</p>`
         }
 
         if (dadosDFD?.prazo_entrega_amostras) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">6. PRAZO PARA ENTREGA DAS AMOSTRAS:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.prazo_entrega_amostras}</p>`
+            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">8. PRAZO PARA ENTREGA DAS AMOSTRAS</h3>
+            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.prazo_entrega_amostras}</p>`
         }
       }
 
@@ -3634,13 +3579,13 @@ export default {
       if (processo.tipo_processo === 'despadronizacao') {
         if (dadosDFD?.produtos_despadronizar) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">2. PRODUTOS A SEREM DESPADRONIZADOS:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.produtos_despadronizar}</p>`
+            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">3. PRODUTOS A SEREM DESPADRONIZADOS</h3>
+            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.produtos_despadronizar}</p>`
         }
 
         // Fontes da demanda
         htmlConteudo += `
-          <h2 style="margin-top: 2cm; font-size: 14pt;">3. FONTES DA DEMANDA:</h2>`
+          <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">4. FONTES DA DEMANDA</h3>`
 
         const fontes = []
         if (dadosDFD?.fonte_rdm) fontes.push('Relatórios de Desempenho de Material (RDM)')
@@ -3769,9 +3714,105 @@ export default {
         </div>
       `
 
+      console.log('✅ DEBUG gerarHTMLDFD (Component) - HTML gerado:', {
+        tamanho: htmlConteudo.length,
+        temJustificativa: htmlConteudo.includes('JUSTIFICATIVA'),
+        temDescricao: htmlConteudo.includes('DESCRIÇÃO DA NECESSIDADE'),
+        temDadosReais: htmlConteudo.includes(dadosDFD?.justificativa?.substring(0, 20)) || false,
+        preview: htmlConteudo.substring(0, 200) + '...'
+      })
+
       return htmlConteudo
     },
-    
+
+    // Método simplificado para gerar HTML do DFD (PATCH TEMPORÁRIO)
+    gerarHTMLDFDSimples(dadosDFD) {
+      console.log('🔧 PATCH gerarHTMLDFDSimples - Gerando HTML direto dos dados DFD')
+      console.log('📊 DEBUG: Dados recebidos no gerarHTMLDFDSimples:', {
+        id: dadosDFD?.id || '[SEM ID]',
+        justificativa_length: dadosDFD?.justificativa?.length || 0,
+        justificativa_preview: dadosDFD?.justificativa?.substring(0, 50) || '[VAZIO]',
+        necessidade_descricao_length: dadosDFD?.necessidade_descricao?.length || 0,
+        necessidade_descricao_preview: dadosDFD?.necessidade_descricao?.substring(0, 50) || '[VAZIO]',
+        modelo_usado: dadosDFD?.modelo_usado || '[SEM MODELO]'
+      })
+
+      const html = `
+        <div class="documento-dfd" style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h1 style="text-align: center; margin-bottom: 1cm;">DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - ${dadosDFD.modelo_usado?.toUpperCase() || 'MODELO_1'}</h1>
+
+          ${dadosDFD.nome_presidente ? `
+          <div style="margin-bottom: 1cm;">
+            <h2>DADOS DO DEMANDANTE</h2>
+            <p><strong>Nome do Presidente da CPPM:</strong> ${dadosDFD.nome_presidente}</p>
+            ${dadosDFD.matricula_presidente ? `<p><strong>Matrícula:</strong> ${dadosDFD.matricula_presidente}</p>` : ''}
+            ${dadosDFD.email_presidente ? `<p><strong>E-mail:</strong> ${dadosDFD.email_presidente}</p>` : ''}
+            ${dadosDFD.telefone_presidente ? `<p><strong>Telefone:</strong> ${dadosDFD.telefone_presidente}</p>` : ''}
+          </div>
+          ` : ''}
+
+          <div style="margin-bottom: 1cm;">
+            <h2>1. JUSTIFICATIVA</h2>
+            <p style="text-align: justify;">${dadosDFD.justificativa || 'Justificativa não preenchida.'}</p>
+          </div>
+
+          <div style="margin-bottom: 1cm;">
+            <h2>2. DESCRIÇÃO DA NECESSIDADE</h2>
+            <p style="text-align: justify;">${dadosDFD.necessidade_descricao || 'Descrição da necessidade não preenchida.'}</p>
+          </div>
+
+          ${dadosDFD.produtos_especificacao ? `
+          <div style="margin-bottom: 1cm;">
+            <h2>3. PRODUTOS A SEREM PRÉ-QUALIFICADOS</h2>
+            <p style="text-align: justify;"><strong>Especificação dos Produtos/Serviços:</strong> ${dadosDFD.produtos_especificacao}</p>
+          </div>
+          ` : ''}
+
+          ${dadosDFD.criterios_aceitacao ? `
+          <div style="margin-bottom: 1cm;">
+            <h2>4. CRITÉRIOS DE ACEITAÇÃO</h2>
+            <p style="text-align: justify;">${dadosDFD.criterios_aceitacao}</p>
+          </div>
+          ` : ''}
+
+          ${dadosDFD.especificacoes_tecnicas ? `
+          <div style="margin-bottom: 1cm;">
+            <h2>5. ESPECIFICAÇÕES TÉCNICAS</h2>
+            <p style="text-align: justify;">${dadosDFD.especificacoes_tecnicas}</p>
+          </div>
+          ` : ''}
+
+          ${dadosDFD.ensaios_exigidos ? `
+          <div style="margin-bottom: 1cm;">
+            <h2>6. ENSAIOS EXIGIDOS</h2>
+            <p style="text-align: justify;">${dadosDFD.ensaios_exigidos}</p>
+          </div>
+          ` : ''}
+
+          ${dadosDFD.observacoes_especiais ? `
+          <div style="margin-bottom: 1cm;">
+            <h2>OBSERVAÇÕES ESPECIAIS</h2>
+            <p style="text-align: justify;">${dadosDFD.observacoes_especiais}</p>
+          </div>
+          ` : ''}
+
+          <div style="margin-top: 2cm; text-align: center;">
+            <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
+            <br><br>
+            <p>_________________________________________</p>
+            <p>Presidente da CPPM</p>
+          </div>
+        </div>
+      `
+
+      console.log('✅ PATCH gerarHTMLDFDSimples - HTML gerado:', {
+        tamanho: html.length,
+        preview: html.substring(0, 200) + '...'
+      })
+
+      return html
+    },
+
     // =====================================================
     // FILTROS E BUSCA
     // =====================================================
@@ -4002,20 +4043,27 @@ export default {
             .eq('processo_id', processo.id)
             .order('created_at', { ascending: true })
 
+          console.log(`📋 DEBUG DETALHADO GERAÇÃO PDF: ${dfds?.length || 0} DFD(s) encontrado(s):`)
+          dfds?.forEach((dfd, index) => {
+            console.log(`📄 DFD ${index + 1} DADOS COMPLETOS:`, {
+              id: dfd.id,
+              justificativa: dfd.justificativa || '[VAZIO]',
+              justificativa_length: dfd.justificativa?.length || 0,
+              necessidade_descricao: dfd.necessidade_descricao || '[VAZIO]',
+              necessidade_descricao_length: dfd.necessidade_descricao?.length || 0,
+              conteudo_html_length: dfd.conteudo_html?.length || 0,
+              modelo_usado: dfd.modelo_usado || '[SEM MODELO]'
+            })
+          })
+
           if (dfdError) {
             console.error('❌ DEBUG: Erro ao buscar DFDs:', dfdError)
             throw dfdError
           }
 
-          // Filtrar DFDs vazios antes de processar
-          const dfdsValidos = (dfds || []).filter(dfd => this.validarDFDPreenchido(dfd))
-
-          dadosDFD = dfdsValidos
-          console.log(`✅ DEBUG: ${dadosDFD.length} DFD(s) válido(s) carregado(s) do banco para processo ${processo.id}:`)
-
-          if (dfds && dfds.length > dfdsValidos.length) {
-            console.log(`🚫 DEBUG: ${dfds.length - dfdsValidos.length} DFD(s) vazio(s) filtrado(s) automaticamente`)
-          }
+          // REMOVIDO FILTRO: Aceitar TODOS os DFDs sem validação
+          dadosDFD = dfds || []
+          console.log(`✅ DEBUG: ${dadosDFD.length} DFD(s) carregados SEM FILTRO do banco para processo ${processo.id}:`)
 
           dadosDFD.forEach((dfd, index) => {
             console.log(`   📄 DFD ${index + 1}: ID ${dfd.id} - ${dfd.justificativa?.substring(0, 50)}...`)
@@ -5155,12 +5203,7 @@ export default {
         containerAssinaturas.innerHTML = ''
         
         if (!assinaturas || assinaturas.length === 0) {
-          containerAssinaturas.innerHTML = `
-            <div class="sem-assinaturas">
-              <p><em>📝 Este processo ainda não possui assinaturas digitais.</em></p>
-              <p><small>As assinaturas aparecerão aqui conforme o processo for tramitado.</small></p>
-            </div>
-          `
+          containerAssinaturas.innerHTML = ''
           return
         }
         

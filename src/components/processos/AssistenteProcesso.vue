@@ -891,14 +891,15 @@ export default {
           throw error
         }
 
+        // REMOVIDO FILTRO: Aceitar TODOS os DFDs sem filtrar
         this.dfdsLista = data || []
 
-        console.log(`📄 ${this.dfdsLista.length} DFDs carregados para o processo ${processoId}`)
+        console.log(`📄 ${this.dfdsLista.length} DFD(s) carregados SEM FILTRO para o processo ${processoId}`)
 
         if (this.dfdsLista.length > 0) {
-          console.log('📋 DFDs encontrados:', this.dfdsLista.map(dfd => ({
+          console.log('📋 TODOS os DFDs encontrados (sem filtro):', this.dfdsLista.map(dfd => ({
             id: dfd.id,
-            justificativa: dfd.justificativa?.substring(0, 50) + '...',
+            justificativa: dfd.justificativa?.substring(0, 50) + '...' || 'VAZIO',
             created_at: dfd.created_at
           })))
         }
