@@ -115,6 +115,7 @@ export class ProcessosAdministrativosService {
       const processo = {
         ...dadosProcesso,
         objeto,
+        objeto_customizado: dadosProcesso.objeto_customizado || null, // Incluir campo customizado
         tenant_id: tenantId,
         criado_por: user.id,
         atualizado_por: user.id,
@@ -873,64 +874,64 @@ export class ProcessosAdministrativosService {
     }
 
     const html = `
-      <div class="documento-dfd" style="font-family: 'Times New Roman', serif; line-height: 1.4; margin: 0; padding: 0.3cm; color: #000;">
-        <h1 style="text-align: center; font-size: 14pt; font-weight: bold; margin: 0 0 0.4cm 0; text-transform: uppercase;">
+      <div class="documento-dfd" style="font-family: 'Times New Roman', serif; line-height: 1.2; margin: 0; padding: 0.2cm; color: #000; font-size: 10pt;">
+        <h1 style="text-align: center; font-size: 12pt; font-weight: bold; margin: 0 0 0.2cm 0; text-transform: uppercase;">
           DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - ${dadosDFD.modelo_usado?.toUpperCase() || 'MODELO_1'}
         </h1>
 
         ${dadosDFD.nome_presidente ? `
-        <div style="margin-bottom: 0.4cm; page-break-inside: avoid;">
-          <h2 style="font-size: 12pt; font-weight: bold; margin: 0 0 0.2cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.05cm;">DADOS DO DEMANDANTE</h2>
-          <div style="margin-left: 0.3cm; text-align: justify;">
-            <p style="margin: 0.1cm 0;"><strong>Nome do Presidente da CPPM:</strong> ${dadosDFD.nome_presidente}</p>
-            ${dadosDFD.matricula_presidente ? `<p style="margin: 0.1cm 0;"><strong>Matrícula:</strong> ${dadosDFD.matricula_presidente}</p>` : ''}
-            ${dadosDFD.email_presidente ? `<p style="margin: 0.1cm 0;"><strong>E-mail:</strong> ${dadosDFD.email_presidente}</p>` : ''}
-            ${dadosDFD.telefone_presidente ? `<p style="margin: 0.1cm 0;"><strong>Telefone:</strong> ${dadosDFD.telefone_presidente}</p>` : ''}
+        <div style="margin-bottom: 0.2cm; page-break-inside: avoid;">
+          <h2 style="font-size: 10pt; font-weight: bold; margin: 0 0 0.1cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.02cm;">DADOS DO DEMANDANTE</h2>
+          <div style="margin-left: 0.2cm; text-align: justify; font-size: 9pt;">
+            <p style="margin: 0.05cm 0;"><strong>Nome do Presidente da CPPM:</strong> ${dadosDFD.nome_presidente}</p>
+            ${dadosDFD.matricula_presidente ? `<p style="margin: 0.05cm 0;"><strong>Matrícula:</strong> ${dadosDFD.matricula_presidente}</p>` : ''}
+            ${dadosDFD.email_presidente ? `<p style="margin: 0.05cm 0;"><strong>E-mail:</strong> ${dadosDFD.email_presidente}</p>` : ''}
+            ${dadosDFD.telefone_presidente ? `<p style="margin: 0.05cm 0;"><strong>Telefone:</strong> ${dadosDFD.telefone_presidente}</p>` : ''}
           </div>
         </div>
         ` : ''}
 
-        <div style="margin-bottom: 0.4cm; page-break-inside: avoid;">
-          <h2 style="font-size: 12pt; font-weight: bold; margin: 0 0 0.2cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.05cm;">1. JUSTIFICATIVA</h2>
-          <div style="margin-left: 0.3cm; text-align: justify;">
-            <p style="margin: 0.15cm 0; line-height: 1.4; text-indent: 0.8cm;">${dadosDFD.justificativa || '[CAMPO VAZIO - JUSTIFICATIVA NÃO PREENCHIDA]'}</p>
+        <div style="margin-bottom: 0.2cm; page-break-inside: avoid;">
+          <h2 style="font-size: 10pt; font-weight: bold; margin: 0 0 0.1cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.02cm;">1. JUSTIFICATIVA</h2>
+          <div style="margin-left: 0.2cm; text-align: justify;">
+            <p style="margin: 0.1cm 0; line-height: 1.2; text-indent: 0.4cm; font-size: 9pt;">${dadosDFD.justificativa || '[CAMPO VAZIO - JUSTIFICATIVA NÃO PREENCHIDA]'}</p>
           </div>
         </div>
 
-        <div style="margin-bottom: 0.4cm; page-break-inside: avoid;">
-          <h2 style="font-size: 12pt; font-weight: bold; margin: 0 0 0.2cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.05cm;">2. DESCRIÇÃO DA NECESSIDADE</h2>
-          <div style="margin-left: 0.3cm; text-align: justify;">
-            <p style="margin: 0.15cm 0; line-height: 1.4; text-indent: 0.8cm;">${dadosDFD.necessidade_descricao || '[CAMPO VAZIO - DESCRIÇÃO NÃO PREENCHIDA]'}</p>
+        <div style="margin-bottom: 0.2cm; page-break-inside: avoid;">
+          <h2 style="font-size: 10pt; font-weight: bold; margin: 0 0 0.1cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.02cm;">2. DESCRIÇÃO DA NECESSIDADE</h2>
+          <div style="margin-left: 0.2cm; text-align: justify;">
+            <p style="margin: 0.1cm 0; line-height: 1.2; text-indent: 0.4cm; font-size: 9pt;">${dadosDFD.necessidade_descricao || '[CAMPO VAZIO - DESCRIÇÃO NÃO PREENCHIDA]'}</p>
           </div>
         </div>
 
         ${dadosDFD.produtos_especificacao ? `
-        <div class="secao">
-          <h2>PRODUTOS A SEREM PRÉ-QUALIFICADOS</h2>
-          <p><strong>Especificação dos Produtos/Serviços:</strong> ${dadosDFD.produtos_especificacao}</p>
+        <div style="margin-bottom: 0.15cm; page-break-inside: avoid;">
+          <h2 style="font-size: 10pt; font-weight: bold; margin: 0 0 0.1cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.02cm;">3. PRODUTOS A SEREM PRÉ-QUALIFICADOS</h2>
+          <p style="margin: 0.05cm 0.2cm; line-height: 1.2; font-size: 9pt;"><strong>Especificação dos Produtos/Serviços:</strong> ${dadosDFD.produtos_especificacao}</p>
         </div>
         ` : ''}
 
         ${dadosDFD.quantidade_amostras || dadosDFD.previsao_aquisicoes ? `
-        <div class="secao">
-          <h2>QUANTIDADES E AMOSTRAGEM</h2>
-          ${dadosDFD.quantidade_amostras ? `<p><strong>Quantidade de Amostras para Análise:</strong> ${dadosDFD.quantidade_amostras}</p>` : ''}
-          ${dadosDFD.previsao_aquisicoes ? `<p><strong>Aquisições Previstas (12 meses):</strong> ${dadosDFD.previsao_aquisicoes}</p>` : ''}
+        <div style="margin-bottom: 0.15cm; page-break-inside: avoid;">
+          <h2 style="font-size: 10pt; font-weight: bold; margin: 0 0 0.1cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.02cm;">4. QUANTIDADES</h2>
+          ${dadosDFD.quantidade_amostras ? `<p style="margin: 0.05cm 0.2cm; line-height: 1.2; font-size: 9pt;"><strong>Amostras:</strong> ${dadosDFD.quantidade_amostras}</p>` : ''}
+          ${dadosDFD.previsao_aquisicoes ? `<p style="margin: 0.05cm 0.2cm; line-height: 1.2; font-size: 9pt;"><strong>Previsão (12 meses):</strong> ${dadosDFD.previsao_aquisicoes}</p>` : ''}
         </div>
         ` : ''}
 
         ${dadosDFD.especificacoes_tecnicas ? `
-        <div class="secao">
-          <h2>ESPECIFICAÇÕES TÉCNICAS DETALHADAS</h2>
-          <p><strong>Especificações Técnicas Obrigatórias:</strong> ${dadosDFD.especificacoes_tecnicas}</p>
+        <div style="margin-bottom: 0.15cm; page-break-inside: avoid;">
+          <h2 style="font-size: 10pt; font-weight: bold; margin: 0 0 0.1cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.02cm;">5. ESPECIFICAÇÕES TÉCNICAS</h2>
+          <p style="margin: 0.05cm 0.2cm; line-height: 1.2; font-size: 9pt; text-align: justify;">${dadosDFD.especificacoes_tecnicas}</p>
         </div>
         ` : ''}
 
         ${dadosDFD.ensaios_exigidos || dadosDFD.criterios_aceitacao ? `
-        <div class="secao">
-          <h2>CRITÉRIOS DE ACEITAÇÃO E ENSAIOS</h2>
-          ${dadosDFD.criterios_aceitacao ? `<p><strong>Critérios de Aceitação:</strong> ${dadosDFD.criterios_aceitacao}</p>` : ''}
-          ${dadosDFD.ensaios_exigidos ? `<p><strong>Ensaios e Testes Exigidos:</strong> ${dadosDFD.ensaios_exigidos}</p>` : ''}
+        <div style="margin-bottom: 0.15cm; page-break-inside: avoid;">
+          <h2 style="font-size: 10pt; font-weight: bold; margin: 0 0 0.1cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.02cm;">6. CRITÉRIOS E ENSAIOS</h2>
+          ${dadosDFD.criterios_aceitacao ? `<p style="margin: 0.05cm 0.2cm; line-height: 1.2; font-size: 9pt; text-align: justify;"><strong>Critérios:</strong> ${dadosDFD.criterios_aceitacao}</p>` : ''}
+          ${dadosDFD.ensaios_exigidos ? `<p style="margin: 0.05cm 0.2cm; line-height: 1.2; font-size: 9pt; text-align: justify;"><strong>Ensaios:</strong> ${dadosDFD.ensaios_exigidos}</p>` : ''}
         </div>
         ` : ''}
 
@@ -1075,17 +1076,23 @@ export class ProcessosAdministrativosService {
         ` : ''}
 
         ${dadosDFD.observacoes_especiais ? `
-        <div class="secao">
-          <h2>OBSERVAÇÕES ESPECIAIS</h2>
-          <p>${dadosDFD.observacoes_especiais}</p>
+        <div style="margin-bottom: 0.15cm; page-break-inside: avoid;">
+          <h2 style="font-size: 10pt; font-weight: bold; margin: 0 0 0.1cm 0; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.02cm;">OBSERVAÇÕES ESPECIAIS</h2>
+          <p style="margin: 0.05cm 0.2cm; line-height: 1.2; font-size: 9pt; text-align: justify;">${dadosDFD.observacoes_especiais}</p>
         </div>
         ` : ''}
 
-        <div class="assinatura">
-          <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
-          <br>
-          <p>_________________________________________</p>
-          <p>Presidente da CPPM</p>
+        <div style="margin-top: 0.3cm; text-align: center; page-break-inside: avoid;">
+          <p style="margin: 0.1cm 0; font-size: 9pt;">
+            Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização
+            para a abertura e instrução do pertinente processo administrativo.
+          </p>
+          <p style="margin: 0.15cm 0; font-size: 9pt;">Em ${new Date().toLocaleDateString('pt-BR')}.</p>
+          <p style="margin: 0.1cm 0; font-size: 9pt;">Data: ${new Date().toLocaleDateString('pt-BR')}</p>
+          <div style="margin-top: 0.4cm;">
+            <p style="border-top: 1px solid #000; width: 8cm; margin: 0 auto; padding-top: 0.1cm; font-size: 9pt;">Equipe Técnica Responsável</p>
+            <p style="margin: 0.2cm 0; font-size: 9pt; font-weight: bold;">${dadosDFD.nome_presidente || '[Nome do Responsável]'}</p>
+          </div>
         </div>
       </div>
     `

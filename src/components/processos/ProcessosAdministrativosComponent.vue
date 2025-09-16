@@ -438,45 +438,6 @@
                 </div>
               </div>
               
-              <h4>📄 Documentos do Processo</h4>
-              <div class="documentos-container">
-                <div v-if="documentosProcessoFiltrados.length === 0" class="empty-documentos">
-                  <p>⚠️ Nenhum documento encontrado</p>
-                  <button @click="carregarDocumentosProcesso(processoSelecionado.id)" class="btn-secondary">
-                    🔄 Recarregar
-                  </button>
-                </div>
-                <div v-else class="lista-documentos">
-                  <div 
-                    v-for="doc in documentosProcessoFiltrados" 
-                    :key="doc.id"
-                    class="documento-item"
-                  >
-                    <div class="doc-numero">{{ doc.folha_numero || `Fl. ${String(doc.numero_sequencial || 0).padStart(3, '0')}` }}</div>
-                    <div class="doc-info">
-                      <h5>{{ doc.titulo }}</h5>
-                      <p>{{ doc.descricao }}</p>
-                      <small>{{ formatarData(doc.data_autuacao) }}</small>
-                    </div>
-                    <div class="doc-status">
-                      <span v-if="doc.assinado" class="status-assinado">✅ Assinado</span>
-                      <span v-else-if="doc.status === 'disponivel'" class="status-disponivel">📄 Disponível</span>
-                      <span v-else class="status-pendente">⏳ Pendente</span>
-                    </div>
-                    <div class="doc-actions">
-                      <button v-if="doc.arquivo_url || doc.url_arquivo" @click="visualizarDocumento(doc)" class="btn-visualizar">
-                        👁️ Ver
-                      </button>
-                      <button v-else-if="doc.tipo_documento === 'EDITAL'" @click="buscarUrlEdital(doc)" class="btn-visualizar">
-                        👁️ Ver
-                      </button>
-                      <span v-else class="no-file">
-                        📄 Sem arquivo
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
               
               <div v-if="false" class="manual-preview">
                   <div class="manual-content">
@@ -2049,11 +2010,16 @@ export default {
           <style>
             @page {
               margin: 2cm;
+              @top-left { content: none; }
+              @top-center { content: none; }
+              @top-right { content: none; }
+              @bottom-left { content: none; }
               @bottom-center {
                 content: "Página " counter(page) " - Processo ${processo.numero_processo || processo.id}";
                 font-size: 10pt;
                 color: #666;
               }
+              @bottom-right { content: none; }
             }
             
             body { 
@@ -2223,10 +2189,13 @@ export default {
             
             @media print {
               .documento-pagina {
-                box-shadow: none;
-                margin: 0;
-                padding: 2cm 2cm 3cm 2cm; /* Margem inferior extra */
-                page-break-inside: avoid;
+                border: 2px solid #000 !important;
+                margin: 0.5cm auto !important;
+                padding: 1cm !important;
+                width: 19cm !important;
+                min-height: 24cm !important;
+                page-break-after: always !important;
+                box-sizing: border-box !important;
               }
               
               .page-break {
@@ -2254,38 +2223,41 @@ export default {
             ${index > 0 ? '<div class="page-break"></div>' : ''}
             <div class="documento-pagina">
               <div class="folha-numero">Fl. ${String(doc.numero_sequencial || index + 1).padStart(3, '0')}</div>
-              
-              ${doc.conteudo_html ? doc.conteudo_html : `
-                <div class="documento-header">
+
+              ${doc.conteudo_html ?
+                // Se tem conteúdo HTML, usar diretamente (DFD e Folha de Rosto já tem formato completo)
+                doc.conteudo_html
+                :
+                // Se não tem conteúdo HTML, gerar layout padrão
+                `<div class="documento-header">
                   <h1>${processo.nome_orgao}</h1>
                   <h2>${doc.nome_documento || doc.tipo_documento}</h2>
                   <p>Processo nº ${processo.numero_processo}</p>
                 </div>
-                
+
                 <div class="documento-conteudo">
                   <h3>INFORMAÇÕES DO DOCUMENTO</h3>
                   <p><strong>Tipo:</strong> ${doc.tipo_documento}</p>
                   <p><strong>Título:</strong> ${doc.titulo || doc.nome_documento || 'Sem título'}</p>
                   <p><strong>Descrição:</strong> ${doc.descricao || 'Documento do processo administrativo'}</p>
                   <p><strong>Data de Autuação:</strong> ${this.formatarData(doc.data_autuacao)}</p>
-                  
+
                   ${doc.arquivo_url ? `
                   <h3>ARQUIVO ANEXO</h3>
                   <p><strong>Observação:</strong> Este documento possui arquivo anexo com informações complementares.</p>
-                  
-                  <p style="margin-top: 1cm;"><strong>Arquivo:</strong> 
+
+                  <p style="margin-top: 1cm;"><strong>Arquivo:</strong>
                     <a href="${doc.arquivo_url}" target="_blank" style="color: #1976d2; text-decoration: underline; font-weight: bold;">
                       ${doc.arquivo_url}
                     </a>
                   </p>
                   ` : ''}
-                  
-                  
+
                   <div style="margin-top: 3cm; text-align: center; border-top: 1px solid #ccc; padding-top: 1cm; color: #666;">
                     <p>Sistema Comprar Bem - Processo nº ${processo.numero_processo}</p>
                   </div>
-                </div>
-              `}
+                </div>`
+              }
             </div>
           `).join('')}
           
@@ -2808,10 +2780,16 @@ export default {
             btnDownloadPDF.onclick = () => {
               // Esconder os controles temporariamente
               downloadControls.style.display = 'none'
-              
+
               // Aguardar um pouco e then imprimir
               setTimeout(() => {
-                novaJanela.print()
+                try {
+                  if (!novaJanela.closed) {
+                    novaJanela.print()
+                  }
+                } catch (error) {
+                  console.warn('Erro ao imprimir:', error)
+                }
                 downloadControls.style.display = 'block'
               }, 500)
             }
@@ -3319,27 +3297,61 @@ export default {
       })
       
       // Reordenar por número de folha garantindo ordem correta
-      return documentosCompletos.sort((a, b) => {
+      const documentosOrdenados = documentosCompletos.sort((a, b) => {
         // Folha de rosto sempre primeiro
         if (a.tipo_documento === 'FOLHA_ROSTO') return -1
         if (b.tipo_documento === 'FOLHA_ROSTO') return 1
-        
+
         // DFD sempre segundo
         if (a.tipo_documento === 'DFD') return b.tipo_documento === 'FOLHA_ROSTO' ? 1 : -1
         if (b.tipo_documento === 'DFD') return a.tipo_documento === 'FOLHA_ROSTO' ? -1 : 1
-        
+
         // Documentos ASSINADOS sempre por último (página final do processo)
         if (a.tipo_documento === 'ASSINADO' && b.tipo_documento !== 'ASSINADO') return 1
         if (b.tipo_documento === 'ASSINADO' && a.tipo_documento !== 'ASSINADO') return -1
-        
+
         // Entre documentos ASSINADOS, manter ordem cronológica (mais recente por último)
         if (a.tipo_documento === 'ASSINADO' && b.tipo_documento === 'ASSINADO') {
           return new Date(a.data_autuacao || 0) - new Date(b.data_autuacao || 0)
         }
-        
+
         // Demais documentos por número sequencial (evita problema com strings)
         return (a.numero_sequencial || 999) - (b.numero_sequencial || 999)
       })
+
+      // RENUMERAR documentos após reordenação para corrigir numeração
+      documentosOrdenados.forEach((doc, index) => {
+        doc.numero_sequencial = index + 1
+        doc.numero_folha = index + 1
+        console.log(`🔢 DEBUG: Documento ${doc.tipo_documento} numerado como Fl. ${String(index + 1).padStart(3, '0')}`)
+
+        // LIMPAR CABEÇALHOS DUPLICADOS do conteudo_html
+        if (doc.conteudo_html) {
+          const htmlOriginal = doc.conteudo_html
+
+          // Limpeza muito mais agressiva
+          doc.conteudo_html = doc.conteudo_html
+            // Remover linhas completas com data/hora e "Caderno do Processo"
+            .replace(/^.*\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2}.*Caderno do Processo.*$/gmi, '')
+            .replace(/^.*15\/09\/2025,?\s*07:\d{2}.*$/gmi, '')
+            .replace(/^.*Caderno do Processo\s*\d+.*$/gmi, '')
+            // Remover Fl. xxx duplicados no início de linhas
+            .replace(/^.*Fl\.\s*\d{3}.*$/gmi, '')
+            // Remover apenas data/hora no início de linhas
+            .replace(/^\d{2}\/\d{2}\/\d{4},?\s*\d{2}:\d{2}\s*/gm, '')
+            // Limpar linhas vazias múltiplas
+            .replace(/\n\s*\n\s*\n/g, '\n\n')
+            .trim()
+
+          if (htmlOriginal !== doc.conteudo_html) {
+            console.log(`🧹 DEBUG: Limpeza aplicada em ${doc.tipo_documento}:`)
+            console.log(`   Antes: ${htmlOriginal.length} chars`)
+            console.log(`   Depois: ${doc.conteudo_html.length} chars`)
+          }
+        }
+      })
+
+      return documentosOrdenados
     },
 
     // =====================================================
@@ -3480,50 +3492,50 @@ export default {
       console.log('🎨 DEBUG: Aplicando NOVA formatação compacta do DFD no Component')
 
       let htmlConteudo = `
-        <div class="documento-header" style="text-align: center; margin-bottom: 0.3cm;">
-          <h1 style="font-size: 14pt; font-weight: bold; margin: 0.2cm 0; page-break-inside: avoid;">${processo.nome_orgao}</h1>
-          <h2 style="font-size: 13pt; font-weight: bold; margin: 0.2cm 0; page-break-inside: avoid;">${tituloCompleto}</h2>
-          <p style="font-size: 11pt; margin: 0.1cm 0;">Processo nº ${processo.numero_processo}</p>
+        <div class="documento-header" style="text-align: center; margin-bottom: 0.1cm;">
+          <h1 style="font-size: 12pt; font-weight: bold; margin: 0.1cm 0; page-break-inside: avoid;">${processo.nome_orgao}</h1>
+          <h2 style="font-size: 11pt; font-weight: bold; margin: 0.05cm 0; page-break-inside: avoid;">${tituloCompleto}</h2>
+          <p style="font-size: 9pt; margin: 0.02cm 0;">Processo nº ${processo.numero_processo}</p>
         </div>
 
-        <div class="documento-conteudo" style="text-align: justify; line-height: 1.4; font-size: 11pt; word-wrap: break-word; overflow-wrap: break-word; padding: 0.2cm;">
+        <div class="documento-conteudo" style="text-align: justify; line-height: 1.1; font-size: 9pt; word-wrap: break-word; overflow-wrap: break-word; padding: 0.05cm;">
 
-          <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">1. JUSTIFICATIVA</h3>
-          <p style="text-indent: 0.8cm; margin-bottom: 0.2cm; page-break-inside: avoid;">${dadosDFD?.justificativa || 'Justificativa da necessidade conforme processo administrativo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' de produtos.'}</p>
+          <h3 style="margin: 0.1cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">1. JUSTIFICATIVA</h3>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm; page-break-inside: avoid;">${dadosDFD?.justificativa || 'Justificativa da necessidade conforme processo administrativo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' de produtos.'}</p>
 
-          <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">2. DESCRIÇÃO DA NECESSIDADE</h3>
-          <p style="text-indent: 0.8cm; margin-bottom: 0.2cm; page-break-inside: avoid;">${dadosDFD?.necessidade_descricao || 'Descrição detalhada da necessidade identificada para o processo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' dos produtos especificados.'}</p>
+          <h3 style="margin: 0.1cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">2. DESCRIÇÃO DA NECESSIDADE</h3>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm; page-break-inside: avoid;">${dadosDFD?.necessidade_descricao || 'Descrição detalhada da necessidade identificada para o processo de ' + (processo.tipo_processo === 'padronizacao' ? 'padronização' : 'despadronização') + ' dos produtos especificados.'}</p>
 
-          <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">3. CRITÉRIOS DE ACEITAÇÃO</h3>
-          <p style="text-indent: 0.8cm; margin-bottom: 0.2cm; page-break-inside: avoid;">${dadosDFD?.criterios_aceitacao || 'Critérios de aceitação conforme normas técnicas aplicáveis e especificações definidas para o processo.'}</p>
+          <h3 style="margin: 0.1cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">3. CRITÉRIOS DE ACEITAÇÃO</h3>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm; page-break-inside: avoid;">${dadosDFD?.criterios_aceitacao || 'Critérios de aceitação conforme normas técnicas aplicáveis e especificações definidas para o processo.'}</p>
 
-          <h2 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase;">OBSERVAÇÕES ESPECIAIS</h2>
-          <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD?.observacoes_especiais || 'Observações especiais do processo.'}</p>`
+          <h2 style="margin: 0.1cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase;">OBSERVAÇÕES ESPECIAIS</h2>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD?.observacoes_especiais || 'Observações especiais do processo.'}</p>`
 
       // Incluir produtos se existirem
       if (produtos && produtos.length > 0) {
         htmlConteudo += `
-          <h3 style="font-size: 13pt; margin-top: 1.5cm;">1.1. Relação de ${processo.tipo_processo === 'padronizacao' ? 'Bens' : 'Bens Passíveis de Despadronização'}:</h3>
-          <table class="tabela" style="width: 100%; border-collapse: collapse; margin: 1cm 0; font-size: 11pt;">
+          <h3 style="font-size: 10pt; margin-top: 0.3cm;">1.1. Relação de ${processo.tipo_processo === 'padronizacao' ? 'Bens' : 'Bens Passíveis de Despadronização'}:</h3>
+          <table class="tabela" style="width: 100%; border-collapse: collapse; margin: 0.2cm 0; font-size: 8pt;">
             <thead>
               <tr style="background-color: #f0f0f0;">
-                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">ITEM</th>
-                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">CÓDIGO</th>
-                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">DESCRIÇÃO</th>
-                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">UNIDADE</th>
-                <th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">${processo.tipo_processo === 'padronizacao' ? 'REQUISITOS MÍNIMOS' : 'MOTIVAÇÃO'}</th>
-                ${processo.tipo_processo === 'padronizacao' ? '<th style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold;">PREÇO ESTIMADO</th>' : ''}
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold;">ITEM</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold;">CÓDIGO</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold;">DESCRIÇÃO</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold;">UNIDADE</th>
+                <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold;">${processo.tipo_processo === 'padronizacao' ? 'REQUISITOS MÍNIMOS' : 'MOTIVAÇÃO'}</th>
+                ${processo.tipo_processo === 'padronizacao' ? '<th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold;">PREÇO ESTIMADO</th>' : ''}
               </tr>
             </thead>
             <tbody>
               ${produtos.map((produto, index) => `
                 <tr>
-                  <td style="border: 1px solid #000; padding: 8px; text-align: center;">${index + 1}</td>
-                  <td style="border: 1px solid #000; padding: 8px;">${produto.codigo || 'N/A'}</td>
-                  <td style="border: 1px solid #000; padding: 8px;">${produto.nome_produto}</td>
-                  <td style="border: 1px solid #000; padding: 8px; text-align: center;">UN</td>
-                  <td style="border: 1px solid #000; padding: 8px;">${produto.especificacoes_tecnicas || 'A definir'}</td>
-                  ${processo.tipo_processo === 'padronizacao' ? `<td style="border: 1px solid #000; padding: 8px; text-align: right;">R$ ${produto.valor_estimado || '0,00'}</td>` : ''}
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center;">${index + 1}</td>
+                  <td style="border: 1px solid #000; padding: 3px;">${produto.codigo || 'N/A'}</td>
+                  <td style="border: 1px solid #000; padding: 3px;">${produto.nome_produto}</td>
+                  <td style="border: 1px solid #000; padding: 3px; text-align: center;">UN</td>
+                  <td style="border: 1px solid #000; padding: 3px;">${produto.especificacoes_tecnicas || 'A definir'}</td>
+                  ${processo.tipo_processo === 'padronizacao' ? `<td style="border: 1px solid #000; padding: 3px; text-align: right;">R$ ${produto.valor_estimado || '0,00'}</td>` : ''}
                 </tr>
               `).join('')}
             </tbody>
@@ -3534,44 +3546,44 @@ export default {
       if (processo.tipo_processo === 'padronizacao') {
         if (dadosDFD?.produtos_especificacao) {
           htmlConteudo += `
-            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">4. ESPECIFICAÇÃO DOS PRODUTOS</h3>
-            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm; page-break-inside: avoid;">${dadosDFD.produtos_especificacao}</p>`
+            <h3 style="margin: 0.05cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">4. ESPECIFICAÇÃO DOS PRODUTOS</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm; page-break-inside: avoid;">${dadosDFD.produtos_especificacao}</p>`
         }
 
         if (dadosDFD?.quantidade_amostras) {
           htmlConteudo += `
-            <h4 style="margin: 0.2cm 0 0.1cm 0; font-size: 11pt; page-break-after: avoid;">4.1. Quantidades de Amostras</h4>
-            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.quantidade_amostras} unidades</p>`
+            <h4 style="margin: 0.05cm 0 0.02cm 0; font-size: 9pt; page-break-after: avoid;">4.1. Quantidades de Amostras</h4>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.quantidade_amostras} unidades</p>`
         }
 
         if (dadosDFD?.previsao_aquisicoes) {
           htmlConteudo += `
-            <h4 style="margin: 0.2cm 0 0.1cm 0; font-size: 11pt; page-break-after: avoid;">4.2. Previsão de Aquisições</h4>
-            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.previsao_aquisicoes} unidades</p>`
+            <h4 style="margin: 0.05cm 0 0.02cm 0; font-size: 9pt; page-break-after: avoid;">4.2. Previsão de Aquisições</h4>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.previsao_aquisicoes} unidades</p>`
         }
 
         if (dadosDFD?.especificacoes_tecnicas) {
           htmlConteudo += `
-            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">5. ESPECIFICAÇÕES TÉCNICAS</h3>
-            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.especificacoes_tecnicas}</p>`
+            <h3 style="margin: 0.05cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">5. ESPECIFICAÇÕES TÉCNICAS</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.especificacoes_tecnicas}</p>`
         }
 
         if (dadosDFD?.ensaios_exigidos) {
           htmlConteudo += `
-            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">6. ENSAIOS EXIGIDOS</h3>
-            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.ensaios_exigidos}</p>`
+            <h3 style="margin: 0.05cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">6. ENSAIOS EXIGIDOS</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.ensaios_exigidos}</p>`
         }
 
         if (dadosDFD?.local_entrega_amostras) {
           htmlConteudo += `
-            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">7. LOCAL DE ENTREGA DAS AMOSTRAS</h3>
-            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.local_entrega_amostras}</p>`
+            <h3 style="margin: 0.05cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">7. LOCAL DE ENTREGA DAS AMOSTRAS</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.local_entrega_amostras}</p>`
         }
 
         if (dadosDFD?.prazo_entrega_amostras) {
           htmlConteudo += `
-            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">8. PRAZO PARA ENTREGA DAS AMOSTRAS</h3>
-            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.prazo_entrega_amostras}</p>`
+            <h3 style="margin: 0.05cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">8. PRAZO PARA ENTREGA DAS AMOSTRAS</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.prazo_entrega_amostras}</p>`
         }
       }
 
@@ -3579,13 +3591,13 @@ export default {
       if (processo.tipo_processo === 'despadronizacao') {
         if (dadosDFD?.produtos_despadronizar) {
           htmlConteudo += `
-            <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">3. PRODUTOS A SEREM DESPADRONIZADOS</h3>
-            <p style="text-indent: 0.8cm; margin-bottom: 0.2cm;">${dadosDFD.produtos_despadronizar}</p>`
+            <h3 style="margin: 0.05cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">3. PRODUTOS A SEREM DESPADRONIZADOS</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.produtos_despadronizar}</p>`
         }
 
         // Fontes da demanda
         htmlConteudo += `
-          <h3 style="margin: 0.2cm 0 0.1cm 0; font-size: 12pt; text-transform: uppercase; page-break-after: avoid;">4. FONTES DA DEMANDA</h3>`
+          <h3 style="margin: 0.05cm 0 0.02cm 0; font-size: 10pt; text-transform: uppercase; page-break-after: avoid;">4. FONTES DA DEMANDA</h3>`
 
         const fontes = []
         if (dadosDFD?.fonte_rdm) fontes.push('Relatórios de Desempenho de Material (RDM)')
@@ -3595,120 +3607,120 @@ export default {
         if (dadosDFD?.fonte_outros) fontes.push('Outros')
 
         if (fontes.length > 0) {
-          htmlConteudo += `<ul style="margin-left: 2cm;">`
+          htmlConteudo += `<ul style="margin-left: 1cm; margin-bottom: 0.05cm;">`
           fontes.forEach(fonte => {
-            htmlConteudo += `<li>${fonte}</li>`
+            htmlConteudo += `<li style="margin-bottom: 0.02cm;">${fonte}</li>`
           })
           htmlConteudo += `</ul>`
         }
 
         if (dadosDFD?.outras_fontes) {
           htmlConteudo += `
-            <h3 style="margin-top: 1cm; font-size: 13pt;">3.1. Outras Fontes:</h3>
-            <p style="text-indent: 1.5cm;">${dadosDFD.outras_fontes}</p>`
+            <h3 style="margin-top: 0.1cm; font-size: 9pt;">3.1. Outras Fontes:</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.outras_fontes}</p>`
         }
 
         if (dadosDFD?.problemas_identificados) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">4. PROBLEMAS IDENTIFICADOS:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.problemas_identificados}</p>`
+            <h2 style="margin-top: 0.1cm; font-size: 10pt;">4. PROBLEMAS IDENTIFICADOS:</h2>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.problemas_identificados}</p>`
         }
 
         if (dadosDFD?.frequencia_problemas) {
           htmlConteudo += `
-            <h3 style="margin-top: 1cm; font-size: 13pt;">4.1. Frequência dos Problemas:</h3>
-            <p style="text-indent: 1.5cm;">${dadosDFD.frequencia_problemas}</p>`
+            <h3 style="margin-top: 0.05cm; font-size: 9pt;">4.1. Frequência dos Problemas:</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.frequencia_problemas}</p>`
         }
 
         if (dadosDFD?.impacto_problemas) {
           htmlConteudo += `
-            <h3 style="margin-top: 1cm; font-size: 13pt;">4.2. Impacto dos Problemas:</h3>
-            <p style="text-indent: 1.5cm;">${dadosDFD.impacto_problemas}</p>`
+            <h3 style="margin-top: 0.05cm; font-size: 9pt;">4.2. Impacto dos Problemas:</h3>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.impacto_problemas}</p>`
         }
 
         if (dadosDFD?.quantidade_adquirida) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">5. QUANTIDADES:</h2>
-            <p style="text-indent: 1.5cm;"><strong>Quantidade adquirida:</strong> ${dadosDFD.quantidade_adquirida} unidades</p>`
+            <h2 style="margin-top: 0.05cm; font-size: 10pt;">5. QUANTIDADES:</h2>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.02cm;"><strong>Quantidade adquirida:</strong> ${dadosDFD.quantidade_adquirida} unidades</p>`
         }
 
         if (dadosDFD?.quantidade_problemas) {
           htmlConteudo += `
-            <p style="text-indent: 1.5cm;"><strong>Quantidade com problemas:</strong> ${dadosDFD.quantidade_problemas} unidades</p>`
+            <p style="text-indent: 0.5cm; margin-bottom: 0.02cm;"><strong>Quantidade com problemas:</strong> ${dadosDFD.quantidade_problemas} unidades</p>`
         }
 
         if (dadosDFD?.prejuizo_estimado) {
           htmlConteudo += `
-            <p style="text-indent: 1.5cm;"><strong>Prejuízo estimado:</strong> R$ ${dadosDFD.prejuizo_estimado}</p>`
+            <p style="text-indent: 0.5cm; margin-bottom: 0.02cm;"><strong>Prejuízo estimado:</strong> R$ ${dadosDFD.prejuizo_estimado}</p>`
         }
 
         if (dadosDFD?.rdms_negativos) {
           htmlConteudo += `
-            <p style="text-indent: 1.5cm;"><strong>RDMs negativos:</strong> ${dadosDFD.rdms_negativos}</p>`
+            <p style="text-indent: 0.5cm; margin-bottom: 0.02cm;"><strong>RDMs negativos:</strong> ${dadosDFD.rdms_negativos}</p>`
         }
 
         if (dadosDFD?.parecer_tecnico) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">6. PARECER TÉCNICO:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.parecer_tecnico}</p>`
+            <h2 style="margin-top: 0.05cm; font-size: 10pt;">6. PARECER TÉCNICO:</h2>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.parecer_tecnico}</p>`
         }
 
         if (dadosDFD?.alternativas_avaliadas) {
           htmlConteudo += `
-            <h2 style="margin-top: 2cm; font-size: 14pt;">7. ALTERNATIVAS AVALIADAS:</h2>
-            <p style="text-indent: 1.5cm;">${dadosDFD.alternativas_avaliadas}</p>`
+            <h2 style="margin-top: 0.05cm; font-size: 10pt;">7. ALTERNATIVAS AVALIADAS:</h2>
+            <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.alternativas_avaliadas}</p>`
         }
       }
 
       // Seção GERAL (MODELO_GERAL) - aplicável a ambos os tipos
       if (dadosDFD?.base_legal) {
         htmlConteudo += `
-          <h2 style="margin-top: 2cm; font-size: 14pt;">BASE LEGAL:</h2>
-          <p style="text-indent: 1.5cm;">${dadosDFD.base_legal}</p>`
+          <h2 style="margin-top: 0.05cm; font-size: 10pt;">BASE LEGAL:</h2>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.base_legal}</p>`
       }
 
       if (dadosDFD?.impacto_esperado) {
         htmlConteudo += `
-          <h2 style="margin-top: 2cm; font-size: 14pt;">IMPACTO ESPERADO:</h2>
-          <p style="text-indent: 1.5cm;">${dadosDFD.impacto_esperado}</p>`
+          <h2 style="margin-top: 0.05cm; font-size: 10pt;">IMPACTO ESPERADO:</h2>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.impacto_esperado}</p>`
       }
 
       if (dadosDFD?.riscos_identificados) {
         htmlConteudo += `
-          <h2 style="margin-top: 2cm; font-size: 14pt;">RISCOS IDENTIFICADOS:</h2>
-          <p style="text-indent: 1.5cm;">${dadosDFD.riscos_identificados}</p>`
+          <h2 style="margin-top: 0.05cm; font-size: 10pt;">RISCOS IDENTIFICADOS:</h2>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.riscos_identificados}</p>`
       }
 
       if (dadosDFD?.medidas_mitigadoras) {
         htmlConteudo += `
-          <h2 style="margin-top: 2cm; font-size: 14pt;">MEDIDAS MITIGADORAS:</h2>
-          <p style="text-indent: 1.5cm;">${dadosDFD.medidas_mitigadoras}</p>`
+          <h2 style="margin-top: 0.05cm; font-size: 10pt;">MEDIDAS MITIGADORAS:</h2>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.medidas_mitigadoras}</p>`
       }
 
       if (dadosDFD?.prazo_vigencia) {
         htmlConteudo += `
-          <h2 style="margin-top: 2cm; font-size: 14pt;">PRAZO DE VIGÊNCIA:</h2>
-          <p style="text-indent: 1.5cm;">${dadosDFD.prazo_vigencia} meses</p>`
+          <h2 style="margin-top: 0.05cm; font-size: 10pt;">PRAZO DE VIGÊNCIA:</h2>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.prazo_vigencia} meses</p>`
       }
 
       if (dadosDFD?.periodicidade_revisao) {
         htmlConteudo += `
-          <h2 style="margin-top: 2cm; font-size: 14pt;">PERIODICIDADE DE REVISÃO:</h2>
-          <p style="text-indent: 1.5cm;">${dadosDFD.periodicidade_revisao}</p>`
+          <h2 style="margin-top: 0.05cm; font-size: 10pt;">PERIODICIDADE DE REVISÃO:</h2>
+          <p style="text-indent: 0.5cm; margin-bottom: 0.05cm;">${dadosDFD.periodicidade_revisao}</p>`
       }
 
       // Conclusão
       htmlConteudo += `
-          <div style="margin-top: 1.5cm; page-break-inside: avoid;">
-            <p style="text-align: justify; margin-bottom: 1cm;">Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.</p>
-            
-            <p style="margin-bottom: 1.5cm;">Em ${new Date().toLocaleDateString('pt-BR')}.</p>
-            
-            <div style="text-align: center; margin-top: 2cm;">
-              <p style="margin-bottom: 0.5cm;"><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-              <div style="border-top: 1px solid #000; width: 8cm; margin: 1cm auto 0.3cm auto;"></div>
-              <p><strong>Equipe Técnica Responsável</strong></p>
-              <p>${processo.nome_orgao}</p>
+          <div style="margin-top: 0.2cm; page-break-inside: avoid;">
+            <p style="text-align: justify; margin-bottom: 0.1cm; font-size: 9pt;">Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.</p>
+
+            <p style="margin-bottom: 0.1cm; font-size: 9pt;">Em ${new Date().toLocaleDateString('pt-BR')}.</p>
+
+            <div style="text-align: center; margin-top: 0.3cm;">
+              <p style="margin-bottom: 0.1cm; font-size: 9pt;"><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+              <div style="border-top: 1px solid #000; width: 6cm; margin: 0.2cm auto 0.1cm auto;"></div>
+              <p style="font-size: 9pt;"><strong>Equipe Técnica Responsável</strong></p>
+              <p style="font-size: 9pt;">${processo.nome_orgao}</p>
             </div>
           </div>
         </div>
@@ -3994,282 +4006,1103 @@ export default {
     },
     
     async gerarRelatorio(processo) {
+      // Chamar nova função limpa
+      return this.gerarRelatorioPDF(processo)
+    },
+
+    async gerarRelatorioPDF(processo) {
       try {
-        console.log('Gerando relatório PDF para processo:', processo.id)
-        
-        // Buscar dados completos do processo
+        console.log('🆕 NOVA LÓGICA: Gerando relatório PDF para processo:', processo.id)
+
+        // 1. Buscar dados completos do processo
         const processoCompleto = await ProcessosAdministrativosService.obterProcesso(processo.id)
-        
-        // Buscar todos os documentos com conteúdo HTML
-        let documentos = await ProcessosAdministrativosService.listarDocumentosProcesso(processo.id)
-        
-        // Buscar produtos e seus documentos
+        console.log('🔍 Processo completo:', {
+          id: processoCompleto.id,
+          numero_processo: processoCompleto.numero_processo,
+          objeto_customizado: processoCompleto.objeto_customizado,
+          nome_orgao: processoCompleto.nome_orgao
+        })
+
+        // 2. Buscar DFDs reais do banco
+        const { data: dfdsReais } = await supabase
+          .from('dfd_processo')
+          .select('*')
+          .eq('processo_id', processo.id)
+          .order('created_at', { ascending: true })
+
+        console.log('📋 DFDs encontrados:', dfdsReais?.length || 0)
+        console.log('📋 DFDs DADOS DETALHADOS:', dfdsReais?.map((dfd, i) => ({
+          [`DFD ${i+1}`]: {
+            id: dfd.id,
+            justificativa: dfd.justificativa,
+            necessidade_descricao: dfd.necessidade_descricao,
+            criterios_aceitacao: dfd.criterios_aceitacao,
+            observacoes_especiais: dfd.observacoes_especiais,
+            'todas as chaves': Object.keys(dfd)
+          }
+        })))
+
+        // 3. Buscar produtos se for padronização
         let produtos = []
         if (processoCompleto.tipo_processo === 'padronizacao') {
           produtos = await ProcessosAdministrativosService.listarProdutosProcesso(processo.id)
-          
-          // Buscar documentos dos produtos para incluir no relatório
-          const tenantId = await ProcessosAdministrativosService.getTenantId()
-          const { data: documentosProdutos } = await supabase
-            .from('documentos_produtos_processo')
-            .select('*')
-            .eq('processo_id', processo.id)
-            .eq('tenant_id', tenantId)
-          
-          if (documentosProdutos && documentosProdutos.length > 0) {
-            // Adicionar documentos de produtos à lista de documentos
-            for (const docProduto of documentosProdutos) {
-              documentos.push({
-                id: `produto_${docProduto.id}`,
-                tipo_documento: 'DOCUMENTO_PRODUTO',
-                nome_documento: `${docProduto.nome_produto} - ${docProduto.nome_arquivo}`,
-                titulo: `${docProduto.nome_produto} - ${docProduto.nome_arquivo}`,
-                descricao: `Documento técnico do produto ${docProduto.nome_produto}`,
-                data_autuacao: docProduto.created_at,
-                arquivo_url: docProduto.url_arquivo,
-                nome_arquivo: docProduto.nome_arquivo
-              })
-            }
-          }
+          console.log('📦 Produtos encontrados:', produtos?.length || 0)
         }
-        
-        // Buscar dados DFD se existir (múltiplos DFDs)
-        let dadosDFD = []
+
+        // 4. Buscar documentos anexados ao processo - busca direta pelos tipos que queremos
+        let documentosAnexados = []
+
         try {
-          console.log(`🔍 DEBUG: Buscando DFDs para processo ID: ${processo.id}`)
-          const { data: dfds, error: dfdError } = await supabase
-            .from('dfd_processo')
+          console.log('🔍 Buscando documentos anexados para processo:', processo.id)
+
+          const { data: resultados, error: erroDocumentos } = await supabase
+            .from('documentos_processo')
             .select('*')
             .eq('processo_id', processo.id)
+            .in('tipo_documento', ['COMPLEMENTAR', 'CORRECAO', 'ADICIONAL', 'PARECER', 'MANIFESTACAO', 'ASSINADO'])
             .order('created_at', { ascending: true })
 
-          console.log(`📋 DEBUG DETALHADO GERAÇÃO PDF: ${dfds?.length || 0} DFD(s) encontrado(s):`)
-          dfds?.forEach((dfd, index) => {
-            console.log(`📄 DFD ${index + 1} DADOS COMPLETOS:`, {
-              id: dfd.id,
-              justificativa: dfd.justificativa || '[VAZIO]',
-              justificativa_length: dfd.justificativa?.length || 0,
-              necessidade_descricao: dfd.necessidade_descricao || '[VAZIO]',
-              necessidade_descricao_length: dfd.necessidade_descricao?.length || 0,
-              conteudo_html_length: dfd.conteudo_html?.length || 0,
-              modelo_usado: dfd.modelo_usado || '[SEM MODELO]'
-            })
-          })
-
-          if (dfdError) {
-            console.error('❌ DEBUG: Erro ao buscar DFDs:', dfdError)
-            throw dfdError
+          if (erroDocumentos) {
+            console.error('❌ Erro ao buscar documentos anexados:', erroDocumentos)
+          } else {
+            documentosAnexados = resultados || []
+            console.log('✅ Busca de documentos concluída com sucesso')
           }
-
-          // REMOVIDO FILTRO: Aceitar TODOS os DFDs sem validação
-          dadosDFD = dfds || []
-          console.log(`✅ DEBUG: ${dadosDFD.length} DFD(s) carregados SEM FILTRO do banco para processo ${processo.id}:`)
-
-          dadosDFD.forEach((dfd, index) => {
-            console.log(`   📄 DFD ${index + 1}: ID ${dfd.id} - ${dfd.justificativa?.substring(0, 50)}...`)
-          })
         } catch (error) {
-          console.log('⚠️ DFD não encontrado no banco, usando dados padrão')
-          // Dados padrão mais ricos se não encontrar no banco (como array para compatibilidade)
-          dadosDFD = [{
-            id: 'default_dfd',
-            justificativa: 'Justificativa da necessidade conforme processo administrativo e demanda apresentada pelos setores solicitantes.',
-            descricao_necessidade: 'Descrição detalhada da necessidade identificada para padronização/despadronização dos produtos especificados.',
-            criterios_aceitacao: 'Critérios de aceitação e ensaios estabelecidos conforme normas técnicas aplicáveis.',
-            observacoes_especiais: 'Observações especiais e condições específicas do processo de avaliação.',
-            modelo_usado: 'MODELO_1'
-          }]
+          console.error('❌ Erro na busca de documentos:', error)
         }
-        
-        // Buscar atas de julgamento CCL se existir
-        let ataJulgamento = null
-        try {
-          console.log('🔍 [DEBUG] Verificando se processo possui ata de julgamento CCL...')
-          console.log('🔍 [DEBUG] Status do processo:', processoCompleto.status)
-          console.log('🔍 [DEBUG] Possui ata_julgamento_ccl?', !!processoCompleto.ata_julgamento_ccl)
-          
-          // Cenário 1: Processo passou por ata formal (status indica criação de ata)
-          if (processoCompleto.status && ['ata_ccl', 'ata_julgamento_emitida_ccl', 'em_prazo_recursal', 'finalizado'].includes(processoCompleto.status)) {
-            console.log('🔍 [DEBUG] CENÁRIO 1: Processo passou por ata formal, buscando ata na tabela...')
-            
-            const { data: ata, error: ataError } = await supabase
-              .from('atas_julgamento')
-              .select('*')
-              .eq('processo_id', processo.id)
-              .eq('tenant_id', await ProcessosAdministrativosService.getTenantId())
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single()
-              
-            if (!ataError && ata) {
-              ataJulgamento = ata
-              console.log('✅ [DEBUG] Ata formal encontrada:', ata.numero)
-            } else {
-              console.log('⚠️ [DEBUG] Ata formal não encontrada na tabela, usando dados do processo')
-            }
-          }
-          
-          // Cenário 2: Homologação direta (tem fundamentação CCL mas não tem ata formal)
-          if (!ataJulgamento && processoCompleto.ata_julgamento_ccl) {
-            console.log('🔍 [DEBUG] CENÁRIO 2: Homologação direta - usando fundamentação CCL do processo')
-            
-            ataJulgamento = {
-              numero: `ATA-CCL-DIRETA-${processo.id}`,
-              tipo: 'homologacao_direta',
-              conteudo_ata: processoCompleto.ata_julgamento_ccl,
-              descricao: 'Decisão direta da CCL - Homologação sem ata formal',
-              data_publicacao: processoCompleto.ata_emitida_ccl_em,
-              status_ata: 'HOMOLOGACAO_DIRETA'
-            }
-            console.log('✅ [DEBUG] Ata de homologação direta criada virtualmente')
-          }
-          
-          // Cenário 3: Processo ainda não foi julgado pela CCL
-          if (!ataJulgamento) {
-            console.log('ℹ️ [DEBUG] CENÁRIO 3: Processo ainda não possui julgamento CCL')
-          }
-          
-        } catch (error) {
-          console.warn('⚠️ [DEBUG] Erro ao buscar ata CCL:', error)
-        }
-        
-        // Debug: verificar documentos encontrados
-        console.log('Documentos encontrados:', documentos)
-        console.log('Produtos encontrados:', produtos)
-        console.log('DFD encontrado:', dadosDFD)
-        console.log('Ata CCL encontrada:', ataJulgamento ? `${ataJulgamento.numero} (${ataJulgamento.tipo || 'formal'})` : 'Nenhuma')
-        
-        // Gerar documentos que faltam se necessário
-        const documentosCompletos = await this.completarDocumentosProcesso(processoCompleto, documentos, produtos, dadosDFD)
-        
-        console.log('Documentos completos após processamento:', documentosCompletos)
-        
-        // Gerar HTML do relatório (incluindo ata se existir)
-        const htmlRelatorio = this.gerarHTMLRelatorio(processoCompleto, documentosCompletos, produtos, ataJulgamento)
-        
-        // Criar blob para visualização
-        const blob = new Blob([htmlRelatorio], { type: 'text/html' })
-        const url = URL.createObjectURL(blob)
-        
-        // Criar nome do arquivo PDF
-        const nomeArquivo = `Processo_${processoCompleto.numero_processo || processoCompleto.id}_${new Date().toISOString().split('T')[0]}.pdf`
-        
-        // Abrir em nova janela com funcionalidades de download
+
+        console.log('📄 Documentos anexados encontrados:', documentosAnexados?.length || 0)
+        console.log('📄 Documentos anexados detalhes:', documentosAnexados?.map(doc => ({
+          id: doc.id,
+          nome: doc.nome_documento,
+          tipo: doc.tipo_documento,
+          arquivo_url: doc.arquivo_url,
+          todas_as_chaves: Object.keys(doc)
+        })))
+
+        // 5. Buscar assinaturas do processo
+        const assinaturas = await this.carregarAssinaturasProcesso(processo.id)
+        console.log('✍️ Assinaturas encontradas:', assinaturas?.length || 0)
+
+        // 6. Gerar HTML limpo do PDF (incluindo documentos anexados e assinaturas)
+        const htmlLimpo = this.gerarHTMLPDFLimpo(processoCompleto, dfdsReais || [], produtos, documentosAnexados || [], assinaturas)
+
+        // 5. Abrir em nova janela
         const novaJanela = window.open('', '_blank')
-        novaJanela.document.write(htmlRelatorio)
+        if (!novaJanela) {
+          alert('Por favor, permita pop-ups para gerar o PDF')
+          return
+        }
+
+        novaJanela.document.write(htmlLimpo)
         novaJanela.document.close()
-        
-        // Carregar e inserir assinaturas digitais no documento
-        setTimeout(async () => {
-          try {
-            const assinaturas = await this.carregarAssinaturasProcesso(processoCompleto.id)
-            this.inserirAssinaturasNoPDF(novaJanela, assinaturas)
-          } catch (error) {
-            console.warn('⚠️ Erro ao carregar assinaturas:', error)
-          }
-        }, 1000)
-        
-        // Adicionar funcionalidade de download PDF à nova janela
+
+        // Adicionar botão de download após carregar
         setTimeout(() => {
-          if (novaJanela && !novaJanela.closed) {
-            // Criar elementos de download dinamicamente
-            const downloadControls = novaJanela.document.createElement('div')
-            downloadControls.id = 'download-controls'
-            downloadControls.style.cssText = `
-              position: fixed; 
-              top: 10px; 
-              right: 10px; 
-              background: #fff; 
-              border: 2px solid #dc3545; 
-              border-radius: 8px; 
-              padding: 15px; 
-              box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
-              z-index: 9999;
-              display: flex;
-              gap: 10px;
-              font-family: Arial, sans-serif;
-            `
-            
-            // Botão baixar PDF
-            const btnDownloadPDF = novaJanela.document.createElement('button')
-            btnDownloadPDF.innerHTML = '📄 Baixar PDF'
-            btnDownloadPDF.style.cssText = `
-              background: #dc3545; 
-              color: white; 
-              border: none; 
-              padding: 8px 15px; 
-              border-radius: 5px; 
-              cursor: pointer;
-              font-weight: bold;
-            `
-            btnDownloadPDF.onclick = () => {
-              // Esconder os controles temporariamente
-              downloadControls.style.display = 'none'
-              
-              // Aguardar um momento para garantir que os controles foram escondidos
-              setTimeout(() => {
-                // Usar a API print() do navegador que permite salvar como PDF
-                novaJanela.print()
-                
-                // Mostrar os controles novamente após um tempo
-                setTimeout(() => {
-                  if (!novaJanela.closed) {
-                    downloadControls.style.display = 'flex'
-                  }
-                }, 2000)
-              }, 100)
-            }
-            
-            // Botão fechar
-            const btnClose = novaJanela.document.createElement('button')
-            btnClose.innerHTML = '✕'
-            btnClose.style.cssText = `
-              background: #6c757d; 
-              color: white; 
-              border: none; 
-              padding: 8px 12px; 
-              border-radius: 5px; 
-              cursor: pointer;
-              font-weight: bold;
-            `
-            btnClose.onclick = () => {
-              downloadControls.style.display = 'none'
-            }
-            
-            // Adicionar botões ao container
-            downloadControls.appendChild(btnDownloadPDF)
-            downloadControls.appendChild(btnClose)
-            
-            // Adicionar container ao body
-            novaJanela.document.body.insertBefore(downloadControls, novaJanela.document.body.firstChild)
-            
-            // Adicionar dica no console
-            novaJanela.console.log('💡 DICA: Clique em "Baixar PDF" e escolha "Salvar como PDF" no destino da impressão.')
-            
-            // Adicionar CSS para esconder controles durante a impressão
-            const printStyle = novaJanela.document.createElement('style')
-            printStyle.textContent = `
-              @media print {
-                #download-controls {
-                  display: none !important;
-                }
-              }
-            `
-            novaJanela.document.head.appendChild(printStyle)
-          }
-        }, 1000)
-        
-        // Limpar URL do blob principal após um tempo
-        setTimeout(() => {
-          URL.revokeObjectURL(url)
-        }, 10000)
-        
+          this.adicionarBotaoDownloadPDF(novaJanela, processoCompleto)
+        }, 500)
+
+        console.log('✅ PDF gerado com nova lógica limpa')
+
       } catch (error) {
-        console.error('Erro ao gerar relatório:', error)
-        alert(`Erro ao gerar relatório: ${error.message}`)
+        console.error('❌ Erro na nova lógica de PDF:', error)
+        alert(`Erro ao gerar PDF: ${error.message}`)
       }
     },
-    
+
+    gerarHTMLPDFLimpo(processo, dfds, produtos, documentosAnexados = [], assinaturas = []) {
+      console.log('🎨 Gerando HTML limpo do PDF', {
+        dfds: dfds?.length || 0,
+        produtos: produtos?.length || 0,
+        documentosAnexados: documentosAnexados?.length || 0,
+        assinaturas: assinaturas?.length || 0
+      })
+
+      // CSS base limpo e profissional
+      const cssLimpo = `
+        <style>
+          @page {
+            size: A4;
+            margin: 3cm 2.5cm 2.5cm 3cm;
+          }
+
+          body {
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.4;
+            color: #000;
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
+
+          .page-break {
+            page-break-before: always;
+          }
+
+          .documento-pagina {
+            width: 100%;
+            min-height: 24cm;
+            position: relative;
+            padding: 1cm;
+            background: white;
+            border: 1px solid #ddd;
+            margin: 0.5cm auto;
+            max-width: 19cm;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+
+          .documento-pagina:not(:last-child) {
+            page-break-after: always;
+          }
+
+          .folha-numero {
+            position: absolute;
+            top: 0.3cm;
+            right: 0.5cm;
+            font-size: 10pt;
+            font-weight: bold;
+            color: #666;
+            z-index: 999;
+            font-family: 'Times New Roman', serif;
+          }
+
+          .caixa-bordered {
+            border: 2px solid #000;
+            padding: 2cm 1.5cm;
+            margin: 1cm auto;
+            background: white;
+          }
+
+          .campo {
+            margin-bottom: 1cm;
+            text-align: justify;
+            line-height: 1.5;
+          }
+
+          .campo strong {
+            font-weight: bold;
+          }
+
+          .titulo-processo {
+            font-weight: bold;
+            font-size: 14pt;
+            text-align: center;
+            margin-bottom: 1.5cm;
+            text-transform: uppercase;
+          }
+
+          .folha-rosto {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 20cm;
+          }
+
+          /* DFD Específico */
+          .dfd-container {
+            padding: 0.5cm;
+          }
+
+          .dfd-titulo {
+            font-weight: bold;
+            font-size: 12pt;
+            text-align: center;
+            margin-bottom: 1.5cm;
+            text-transform: uppercase;
+            border-bottom: 2px solid #000;
+            padding-bottom: 0.5cm;
+            line-height: 1.3;
+          }
+
+          .dfd-secao {
+            margin-bottom: 0.8cm;
+            page-break-inside: avoid;
+          }
+
+          .dfd-secao-titulo {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-bottom: 0.3cm;
+            text-transform: uppercase;
+            color: #000;
+          }
+
+          .dfd-conteudo {
+            text-align: justify;
+            line-height: 1.2;
+            font-size: 10pt;
+            margin-bottom: 0.3cm;
+            text-indent: 0;
+          }
+
+          .dfd-campo-inline {
+            margin-bottom: 0.1cm;
+          }
+
+          .dfd-campo-inline strong {
+            font-weight: bold;
+          }
+
+          /* Estilos para Assinaturas */
+          .pagina-assinatura {
+            width: 100%;
+            min-height: 24cm;
+            position: relative;
+            padding: 1cm 0;
+            page-break-before: always;
+          }
+
+          .header-assinatura {
+            text-align: center;
+            margin-bottom: 2cm;
+            border-bottom: 2px solid #000;
+            padding-bottom: 0.5cm;
+          }
+
+          .titulo-assinatura {
+            font-size: 14pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 0.5cm;
+          }
+
+          .info-assinatura {
+            background: #f8f9fa;
+            border: 1px solid #ccc;
+            padding: 1cm;
+            margin-bottom: 1cm;
+            border-radius: 5px;
+          }
+
+          .campo-assinatura {
+            margin-bottom: 0.8cm;
+            display: flex;
+            align-items: flex-start;
+          }
+
+          .label-assinatura {
+            font-weight: bold;
+            min-width: 150px;
+            margin-right: 10px;
+          }
+
+          .valor-assinatura {
+            flex: 1;
+            border-bottom: 1px solid #000;
+            min-height: 20px;
+            padding-bottom: 2px;
+          }
+
+          .espaco-assinatura {
+            border: 1px solid #333;
+            height: 100px;
+            margin: 1.5cm 0;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9f9f9;
+            font-style: italic;
+            color: #666;
+          }
+
+          /* Layout para páginas com múltiplas assinaturas */
+          .pagina-assinaturas-multiplas {
+            padding: 1cm 0.5cm;
+          }
+
+          .titulo-assinaturas {
+            font-size: 14pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2cm;
+            border-bottom: 2px solid #333;
+            padding-bottom: 0.5cm;
+          }
+
+          .assinatura-item {
+            margin-bottom: 1.5cm;
+            padding: 0.8cm;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+          }
+
+          .assinatura-numero {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5cm;
+          }
+
+          .assinatura-texto {
+            font-size: 10pt;
+            line-height: 1.6;
+            text-align: justify;
+          }
+
+          /* Layout para páginas de documentos anexados */
+          .documento-anexado-container {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+          }
+
+          /* Página especial para PDFs - sem padding */
+          .documento-pagina.pdf-pagina-completa {
+            padding: 0 !important;
+            margin: 0.5cm auto !important;
+            position: relative;
+            max-width: 19cm;
+            display: block;
+          }
+
+          /* Ajustar posição do número da folha em PDFs completos */
+          .documento-pagina.pdf-pagina-completa .folha-numero {
+            position: absolute;
+            top: 0.5cm;
+            right: 0.5cm;
+            z-index: 1000;
+            background: white;
+            border: 2px solid #000;
+            padding: 4px 8px;
+            font-size: 10pt;
+            font-weight: bold;
+          }
+
+          .titulo-documento-anexado {
+            font-size: 14pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2cm;
+            border-bottom: 2px solid #333;
+            padding-bottom: 0.5cm;
+          }
+
+          .info-documento {
+            margin-bottom: 2cm;
+            background: #f9f9f9;
+            padding: 1cm;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+          }
+
+          .campo-documento {
+            margin-bottom: 0.8cm;
+            font-size: 11pt;
+            line-height: 1.4;
+          }
+
+          .preview-documento {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1cm;
+            background: white;
+            min-height: 10cm;
+          }
+
+          .preview-indisponivel,
+          .preview-pdf,
+          .preview-arquivo {
+            text-align: center;
+            padding: 2cm;
+          }
+
+          .preview-imagem {
+            text-align: center;
+          }
+
+          /* Layout para PDFs página completa */
+          .preview-pdf-pagina-completa {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            border: none;
+            position: relative;
+          }
+
+          .preview-pdf-pagina-completa object,
+          .preview-pdf-pagina-completa iframe {
+            width: 100% !important;
+            height: calc(100vh - 2cm) !important;
+            min-height: 22cm;
+            max-height: 24cm;
+            border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block;
+          }
+
+          .pdf-fallback {
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+          }
+
+          .icone-documento {
+            font-size: 3em;
+            margin-bottom: 1cm;
+          }
+
+          .tipo-arquivo {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 1cm;
+          }
+
+          .url-documento {
+            background: #f5f5f5;
+            padding: 0.5cm;
+            border-radius: 4px;
+            margin: 1cm 0;
+            font-family: monospace;
+          }
+
+          .observacao-preview {
+            font-style: italic;
+            color: #666;
+            margin-top: 1cm;
+            font-size: 10pt;
+          }
+
+          @media print {
+            * {
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            body {
+              background: white !important;
+              margin: 0 !important;
+            }
+
+            .documento-pagina {
+              background: white !important;
+              border: 2px solid #000 !important;
+              margin: 0.5cm auto !important;
+              padding: 1cm !important;
+              width: 19cm !important;
+              min-height: 24cm !important;
+              box-sizing: border-box !important;
+              page-break-after: always !important;
+            }
+
+            .documento-pagina:last-child {
+              page-break-after: avoid !important;
+            }
+
+            .folha-numero {
+              position: absolute !important;
+              top: 0.3cm !important;
+              right: 0.5cm !important;
+              background: white !important;
+              border: 2px solid #000 !important;
+              padding: 4px 8px !important;
+              font-size: 10pt !important;
+              font-weight: bold !important;
+            }
+
+            .caixa-bordered {
+              border: 2px solid #000 !important;
+              background: white !important;
+            }
+
+            .assinatura-item {
+              border: 1px solid #000 !important;
+              background: white !important;
+              margin-bottom: 1.2cm !important;
+              page-break-inside: avoid !important;
+            }
+
+            .titulo-assinaturas {
+              border-bottom: 2px solid #000 !important;
+            }
+
+            .info-documento {
+              border: 1px solid #000 !important;
+              background: white !important;
+            }
+
+            .preview-documento {
+              border: 1px solid #000 !important;
+              background: white !important;
+            }
+
+            .titulo-documento-anexado {
+              border-bottom: 2px solid #000 !important;
+            }
+
+            .url-documento {
+              background: #f5f5f5 !important;
+              border: 1px solid #000 !important;
+            }
+
+            .preview-pdf-pagina-completa {
+              background: white !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+
+            .preview-pdf-pagina-completa object,
+            .preview-pdf-pagina-completa iframe {
+              border: none !important;
+              background: white !important;
+              width: 100% !important;
+              height: 100% !important;
+            }
+
+            .documento-pagina.pdf-pagina-completa {
+              padding: 0 !important;
+              margin: 0.5cm auto !important;
+              max-width: 19cm !important;
+              display: block !important;
+            }
+
+            .documento-pagina.pdf-pagina-completa .folha-numero {
+              position: absolute !important;
+              top: 0.3cm !important;
+              right: 0.3cm !important;
+              z-index: 1000 !important;
+              background: white !important;
+              border: 2px solid #000 !important;
+            }
+          }
+        </style>
+      `
+
+      let numeroPagina = 1
+      let htmlCompleto = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Processo ${processo.numero_processo || processo.id}</title>
+          ${cssLimpo}
+        </head>
+        <body>
+      `
+
+      // PÁGINA 1: FOLHA DE ROSTO LIMPA
+      htmlCompleto += this.gerarFolhaRostoLimpa(processo, numeroPagina++)
+
+      // PÁGINAS DFD: Somente se existirem DFDs reais
+      if (dfds && dfds.length > 0) {
+        dfds.forEach((dfd, index) => {
+          htmlCompleto += '<div class="page-break"></div>'
+          htmlCompleto += this.gerarDFDLimpo(processo, dfd, produtos, numeroPagina++, index + 1)
+        })
+      }
+
+      // PÁGINAS DE DOCUMENTOS ANEXADOS: Se existirem documentos
+      if (documentosAnexados && documentosAnexados.length > 0) {
+        documentosAnexados.forEach((documento, index) => {
+          htmlCompleto += this.gerarPaginaDocumentoAnexado(processo, documento, numeroPagina++, index + 1)
+        })
+      }
+
+      // PÁGINAS DE ASSINATURA: Se existirem assinaturas (múltiplas por página)
+      if (assinaturas && assinaturas.length > 0) {
+        htmlCompleto += this.gerarPaginasAssinaturasOtimizadas(processo, assinaturas, numeroPagina)
+        numeroPagina += Math.ceil(assinaturas.length / 3) // 3 assinaturas por página
+      }
+
+      htmlCompleto += `
+        </body>
+        </html>
+      `
+
+      return htmlCompleto
+    },
+
+    gerarFolhaRostoLimpa(processo, numeroPagina) {
+      // SEMPRE mostrar mensagem padrão primeiro
+      const mensagemPadrao = processo.tipo_processo === 'padronizacao' ?
+        'CHAMAMENTO PÚBLICO DESTINADO À REALIZAÇÃO DO PROCEDIMENTO AUXILIAR DE PRÉ-QUALIFICAÇÃO DE BENS PREVISTO NO ART. 80, INCISO II, DA LEI FEDERAL Nº 14.133/2021, OBJETIVANDO PROMOVER A SELEÇÃO TÉCNICA DE MARCAS E MODELOS DE PRODUTOS QUE POSSUAM OS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE, ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINAM, CONFORME AS CARACTERÍSTICAS E CONDIÇÕES CONSTANTES NO EDITAL E SEUS ANEXOS, PARA SEREM INCLUÍDOS NO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS, COM VISTAS ÀS AQUISIÇÕES EVENTUAIS E FUTURAS.' :
+        'DESPADRONIZAÇÃO DE MARCA(S) E MODELO(S) DE PRODUTO(S) QUE NÃO MAIS ATENDE(M) AOS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE E ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINA(M), COM VISTAS À SUA RETIRADA DO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS.'
+
+      // Se houver texto personalizado, adicionar diretamente após a mensagem padrão
+      const objetoFinal = processo.objeto_customizado ?
+        `${mensagemPadrao} ${processo.objeto_customizado}` :
+        mensagemPadrao
+
+      console.log('📄 FOLHA DE ROSTO:', {
+        objeto_customizado: processo.objeto_customizado,
+        objetoFinal: objetoFinal.substring(0, 50) + '...'
+      })
+
+      return `
+        <div class="documento-pagina">
+          <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
+
+          <div class="folha-rosto">
+            <div class="caixa-bordered">
+
+              <div class="titulo-processo">
+                PROCESSO ADMINISTRATIVO Nº ${processo.numero_processo || '[não definido]'}
+              </div>
+
+              <div class="campo">
+                <strong>NOME DO ÓRGÃO:</strong> ${processo.nome_orgao || 'Não informado'}
+              </div>
+
+              <div class="campo">
+                <strong>INTERESSADO(A):</strong> ${processo.unidade_interessada || 'DEPARTAMENTO DE COMPRAS E LICITAÇÕES'}
+              </div>
+
+              <div class="campo">
+                <strong>DATA DE AUTUAÇÃO:</strong> ${this.formatarData(processo.data_autuacao)}
+              </div>
+
+              <div class="campo" style="text-align: justify; line-height: 1.4;">
+                <strong>OBJETO:</strong> ${objetoFinal}
+              </div>
+
+            </div>
+          </div>
+        </div>
+      `
+    },
+
+    gerarDFDLimpo(processo, dfd, produtos, numeroPagina, numeroDFD) {
+      const modeloTipo = processo.tipo_processo === 'padronizacao' ? 'MODELO_1' : 'MODELO_2'
+      const tituloCompleto = `DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA${numeroDFD > 1 ? ` ${numeroDFD}` : ''} - ${modeloTipo}`
+
+      console.log('📋 DFD LIMPO - CAMPOS DETALHADOS:', {
+        numeroDFD,
+        modelo: modeloTipo,
+        dfd_id: dfd?.id,
+        justificativa: dfd?.justificativa,
+        necessidade_descricao: dfd?.necessidade_descricao,
+        produtos_especificacao: dfd?.produtos_especificacao,
+        especificacoes_tecnicas: dfd?.especificacoes_tecnicas,
+        criterios_aceitacao: dfd?.criterios_aceitacao,
+        ensaios_exigidos: dfd?.ensaios_exigidos,
+        observacoes_especiais: dfd?.observacoes_especiais
+      })
+
+      return `
+        <div class="documento-pagina">
+          <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
+
+          <div class="dfd-container">
+            <div class="dfd-titulo">
+              ${processo.nome_orgao || 'ÓRGÃO NÃO INFORMADO'}<br>
+              ${tituloCompleto}<br>
+              <span style="font-size: 10pt; font-weight: normal;">PROCESSO Nº ${processo.numero_processo || '[NÃO DEFINIDO]'}</span>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">1. JUSTIFICATIVA</div>
+              <div class="dfd-conteudo">${dfd?.justificativa || 'Justificativa não informada.'}</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">2. DESCRIÇÃO DA NECESSIDADE</div>
+              <div class="dfd-conteudo">${dfd?.necessidade_descricao || 'Descrição da necessidade não informada.'}</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">3. ESPECIFICAÇÃO DOS PRODUTOS/SERVIÇOS</div>
+              <div class="dfd-conteudo">${dfd?.produtos_especificacao || 'Especificação não informada.'}</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">4. ESPECIFICAÇÕES TÉCNICAS</div>
+              <div class="dfd-conteudo">${dfd?.especificacoes_tecnicas || 'Especificações técnicas não informadas.'}</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">5. CRITÉRIOS DE ACEITAÇÃO</div>
+              <div class="dfd-conteudo">${dfd?.criterios_aceitacao || 'Critérios de aceitação não informados.'}</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">6. QUANTIDADES E AMOSTRAGEM</div>
+              <div class="dfd-conteudo">
+                <strong>Quantidade de Amostras:</strong> ${dfd?.quantidade_amostras || 'Não informado'}<br>
+                <strong>Previsão de Aquisições:</strong> ${dfd?.previsao_aquisicoes || 'Não informado'}
+              </div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">7. CONDIÇÕES DE ENTREGA</div>
+              <div class="dfd-conteudo">
+                <strong>Local de Entrega das Amostras:</strong> ${dfd?.local_entrega_amostras || 'Não informado'}<br>
+                <strong>Prazo de Entrega das Amostras:</strong> ${dfd?.prazo_entrega_amostras || 'Não informado'}
+              </div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">8. ENSAIOS EXIGIDOS</div>
+              <div class="dfd-conteudo">${dfd?.ensaios_exigidos || 'Ensaios não informados.'}</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">9. OBSERVAÇÕES ESPECIAIS</div>
+              <div class="dfd-conteudo">${dfd?.observacoes_especiais || 'Observações especiais não informadas.'}</div>
+            </div>
+
+            <div style="margin-top: 2cm; page-break-inside: avoid;">
+              <div class="dfd-conteudo" style="text-align: justify;">Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.</div>
+
+              <div style="text-align: center; margin-top: 2cm;">
+                <p style="margin-bottom: 1cm; font-size: 10pt;"><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+                <div style="border-top: 1px solid #000; width: 8cm; margin: 1cm auto 0.5cm auto;"></div>
+                <p style="font-size: 10pt; font-weight: bold; margin-bottom: 0.3cm;">Equipe Técnica Responsável</p>
+                <p style="font-size: 10pt;">${processo.nome_orgao || 'Órgão Responsável'}</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      `
+    },
+
+    gerarPaginaAssinatura(processo, assinatura, numeroPagina, numeroAssinatura) {
+      console.log('✍️ Gerando página de assinatura:', {
+        numeroAssinatura,
+        nome_signatario: assinatura?.nome_signatario,
+        cargo_signatario: assinatura?.cargo_signatario,
+        data_assinatura: assinatura?.data_assinatura
+      })
+
+      // Formatar data e hora da assinatura
+      const dataAssinatura = new Date(assinatura?.data_assinatura || new Date())
+      const dataFormatada = dataAssinatura.toLocaleDateString('pt-BR')
+      const horaFormatada = dataAssinatura.toLocaleTimeString('pt-BR')
+
+      return `
+        <div class="documento-pagina">
+          <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
+
+          <div style="display: flex; justify-content: center; align-items: center; min-height: 20cm;">
+            <div style="margin: 2cm; padding: 2cm; text-align: justify; line-height: 1.8; font-size: 12pt;">
+              <p>
+                Documento assinado eletronicamente por <strong>${assinatura?.nome_signatario || 'Nome não informado'}</strong>,
+                <strong>${assinatura?.cargo_signatario || 'Cargo não informado'}</strong>, em <strong>${dataFormatada}</strong>,
+                às <strong>${horaFormatada}</strong>, conforme horário oficial de Brasília,
+                com fundamento no art. 6º, § 1º, do Decreto nº 47.222, de 26 de julho de 2017.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      `
+    },
+
+    gerarPaginaDocumentoAnexado(processo, documento, numeroPagina, numeroDocumento) {
+      console.log('📄 Gerando página de documento anexado:', {
+        numeroDocumento,
+        nome_documento: documento?.nome_documento,
+        tipo_documento: documento?.tipo_documento,
+        url_documento: documento?.url_documento
+      })
+
+      // Verificar se é PDF para aplicar classe especial
+      const urlDocumento = documento?.url_documento || documento?.arquivo_url || documento?.publicUrl
+      const isPDF = urlDocumento && urlDocumento.toLowerCase().includes('.pdf')
+      const classeEspecial = isPDF ? ' pdf-pagina-completa' : ''
+
+      return `
+        <div class="documento-pagina${classeEspecial}">
+          <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
+
+          <div class="documento-anexado-container">
+            ${this.gerarPreviewDocumento(documento)}
+          </div>
+        </div>
+      `
+    },
+
+    gerarPreviewDocumento(documento) {
+      // Tentar múltiplos campos para URL
+      const urlDocumento = documento?.url_documento || documento?.arquivo_url || documento?.publicUrl
+
+      if (!urlDocumento) {
+        return `
+          <div class="preview-indisponivel">
+            <div class="icone-documento">📄</div>
+            <div class="mensagem">Preview não disponível</div>
+            <div class="detalhes">Documento sem URL válida</div>
+            <div class="debug-campos" style="font-size: 8pt; margin-top: 1cm; color: #999;">
+              Campos disponíveis: ${Object.keys(documento || {}).join(', ')}
+            </div>
+          </div>
+        `
+      }
+
+      const urlLower = urlDocumento.toLowerCase()
+
+      // Se for PDF - incorporar o conteúdo diretamente (página completa)
+      if (urlLower.includes('.pdf')) {
+        return `
+          <div class="preview-pdf-pagina-completa">
+            <object
+              data="${urlDocumento}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0"
+              type="application/pdf"
+              width="100%"
+              height="23cm"
+              style="border: none; max-width: 100%;">
+
+              <!-- Fallback para navegadores que não suportam object -->
+              <iframe
+                src="${urlDocumento}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0"
+                width="100%"
+                height="23cm"
+                style="border: none; max-width: 100%;">
+
+                <!-- Fallback final se iframe também não funcionar -->
+                <div class="pdf-fallback" style="text-align: center; padding: 4cm; background: white; min-height: 20cm;">
+                  <div style="font-size: 4em; margin-bottom: 1cm;">📋</div>
+                  <div style="margin: 1cm 0; font-weight: bold; font-size: 14pt;">PDF não pode ser exibido diretamente</div>
+                  <div style="font-size: 12pt; margin-bottom: 2cm; color: #666;">
+                    O navegador não suporta visualização de PDF incorporada.
+                  </div>
+                  <a href="${urlDocumento}" target="_blank"
+                     style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
+                    📄 Abrir PDF em Nova Aba
+                  </a>
+                  <div style="margin-top: 2cm; font-size: 10pt; color: #999;">
+                    <strong>Arquivo:</strong> ${urlDocumento.split('/').pop()}
+                  </div>
+                </div>
+
+              </iframe>
+            </object>
+          </div>
+        `
+      }
+
+      // Se for imagem
+      if (urlLower.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/)) {
+        return `
+          <div class="preview-imagem">
+            <div class="imagem-container">
+              <img src="${urlDocumento}"
+                   alt="Documento anexado"
+                   style="max-width: 100%; max-height: 15cm; object-fit: contain; border: 1px solid #ddd;"
+                   onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+              <div style="display: none; text-align: center; padding: 2cm; background: #f5f5f5;">
+                <div class="icone-documento">🖼️</div>
+                <div>Erro ao carregar imagem</div>
+                <div style="font-size: 9pt; margin-top: 1cm;">${urlDocumento}</div>
+              </div>
+            </div>
+          </div>
+        `
+      }
+
+      // Outros tipos de arquivo
+      return `
+        <div class="preview-arquivo">
+          <div class="icone-documento">📎</div>
+          <div class="tipo-arquivo">Arquivo Anexado</div>
+          <div class="url-documento">
+            <strong>URL:</strong> <br>
+            <span style="font-size: 9pt; word-break: break-all;">${urlDocumento}</span>
+          </div>
+          <div class="observacao-preview">
+            Este arquivo foi anexado ao processo e está disponível na URL acima.
+          </div>
+        </div>
+      `
+    },
+
+    gerarPaginasAssinaturasOtimizadas(processo, assinaturas, numeroPaginaInicial) {
+      console.log('📝 Gerando páginas de assinaturas otimizadas:', {
+        totalAssinaturas: assinaturas.length,
+        assinaturasPorPagina: 3,
+        paginasNecessarias: Math.ceil(assinaturas.length / 3)
+      })
+
+      let htmlCompleto = ''
+      let numeroPagina = numeroPaginaInicial
+
+      // Agrupar assinaturas em grupos de 3
+      for (let i = 0; i < assinaturas.length; i += 3) {
+        const grupoAssinaturas = assinaturas.slice(i, i + 3)
+
+        htmlCompleto += `
+          <div class="documento-pagina">
+            <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
+
+            <div class="pagina-assinaturas-multiplas">
+              <div class="titulo-assinaturas">ASSINATURAS ELETRÔNICAS</div>
+        `
+
+        grupoAssinaturas.forEach((assinatura, indexGrupo) => {
+          const dataAssinatura = new Date(assinatura?.data_assinatura || new Date())
+          const dataFormatada = dataAssinatura.toLocaleDateString('pt-BR')
+          const horaFormatada = dataAssinatura.toLocaleTimeString('pt-BR')
+
+          htmlCompleto += `
+            <div class="assinatura-item">
+              <div class="assinatura-numero">${i + indexGrupo + 1}ª Assinatura:</div>
+              <div class="assinatura-texto">
+                Documento assinado eletronicamente por <strong>${assinatura?.nome_signatario || 'Nome não informado'}</strong>,
+                <strong>${assinatura?.cargo_signatario || 'Cargo não informado'}</strong>, em <strong>${dataFormatada}</strong>,
+                às <strong>${horaFormatada}</strong>, conforme horário oficial de Brasília,
+                com fundamento no art. 6º, § 1º, do Decreto nº 47.222, de 26 de julho de 2017.
+              </div>
+            </div>
+          `
+        })
+
+        htmlCompleto += `
+            </div>
+          </div>
+        `
+
+        numeroPagina++
+      }
+
+      return htmlCompleto
+    },
+
+    adicionarBotaoDownloadPDF(novaJanela, processo) {
+      if (!novaJanela || novaJanela.closed) return
+
+      // Criar container de controles
+      const controles = novaJanela.document.createElement('div')
+      controles.id = 'controles-pdf'
+      controles.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 9999;
+        font-family: 'Segoe UI', sans-serif;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      `
+
+      // Botão baixar PDF
+      const btnDownload = novaJanela.document.createElement('button')
+      btnDownload.innerHTML = 'Baixar'
+      btnDownload.style.cssText = `
+        background: rgba(255,255,255,0.2);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.3);
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 12px;
+        transition: all 0.3s ease;
+      `
+
+      btnDownload.onmouseover = () => {
+        btnDownload.style.background = 'rgba(255,255,255,0.3)'
+      }
+
+      btnDownload.onmouseout = () => {
+        btnDownload.style.background = 'rgba(255,255,255,0.2)'
+      }
+
+      btnDownload.onclick = () => {
+        console.log('💾 Download direto clicado')
+        try {
+          // Criar blob com o conteúdo HTML
+          const htmlContent = novaJanela.document.documentElement.outerHTML
+          const blob = new Blob([htmlContent], { type: 'text/html' })
+          const url = URL.createObjectURL(blob)
+
+          // Criar link temporário para download
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `Processo_${processo.numero_processo || processo.id}_${new Date().toISOString().slice(0,10)}.html`
+          link.style.display = 'none'
+
+          // Adicionar ao DOM, clicar e remover
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+
+          // Limpar URL
+          setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+          console.log('✅ Download HTML iniciado')
+
+        } catch (error) {
+          console.error('❌ Erro no download:', error)
+          alert('Erro no download. Tente usar Ctrl+P na janela.')
+        }
+      }
+
+      // Botão fechar
+      const btnFechar = novaJanela.document.createElement('button')
+      btnFechar.innerHTML = '✕'
+      btnFechar.style.cssText = `
+        background: rgba(255,0,0,0.7);
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 12px;
+        transition: all 0.3s ease;
+      `
+
+      btnFechar.onmouseover = () => {
+        btnFechar.style.background = 'rgba(255,0,0,0.9)'
+      }
+
+      btnFechar.onmouseout = () => {
+        btnFechar.style.background = 'rgba(255,0,0,0.7)'
+      }
+
+      btnFechar.onclick = () => {
+        novaJanela.close()
+      }
+
+      // Título do documento
+      const titulo = novaJanela.document.createElement('span')
+      titulo.innerHTML = `Caderno do Processo ${processo.numero_processo || processo.id}`
+      titulo.style.cssText = `
+        font-size: 11px;
+        font-weight: bold;
+        margin-right: 10px;
+        opacity: 0.9;
+      `
+
+
+      // Adicionar elementos ao container
+      controles.appendChild(titulo)
+      controles.appendChild(btnDownload)
+      controles.appendChild(btnFechar)
+
+      // Adicionar ao documento
+      novaJanela.document.body.appendChild(controles)
+
+      // CSS para esconder na impressão
+      const estiloPrint = novaJanela.document.createElement('style')
+      estiloPrint.textContent = `
+        @media print {
+          #controles-pdf {
+            display: none !important;
+          }
+        }
+      `
+      novaJanela.document.head.appendChild(estiloPrint)
+
+      console.log('✅ Controles de download adicionados')
+    },
+
     async enviarParaAnaliseAdministrativa(processo) {
       // Configurar dados do modal de confirmação
       this.dadosConfirmacaoTramitacao = {
