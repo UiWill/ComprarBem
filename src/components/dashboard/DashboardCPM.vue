@@ -3856,164 +3856,134 @@ export default {
           let currentY = margin
 
           // ========================================
-          // CABEÇALHO OFICIAL
+          // CABEÇALHO OFICIAL - MODELO PADRÃO DCB
           // ========================================
-          
-          // Logo/Brasão (simulado com texto)
-          doc.setFontSize(16)
-          doc.setFont('helvetica', 'bold')
-          doc.text('REPÚBLICA FEDERATIVA DO BRASIL', pageWidth/2, currentY, { align: 'center' })
-          currentY += 8
-          
+
+          // Configurar fonte
+          doc.setFont('helvetica')
+
+          // Cabeçalho
+          doc.setFontSize(9)
+          doc.text('(Logo do órgão ou entidade)', margin, currentY)
+          doc.text('(Nome do órgão ou entidade)', pageWidth - 80, currentY)
+          currentY += 7
+          doc.text('Comissão de Padronização de Materiais - CPM', pageWidth - 95, currentY)
+          currentY += 15
+
+          // ========================================
+          // TÍTULO PRINCIPAL - MODELO PADRÃO DCB
+          // ========================================
+
           doc.setFontSize(14)
-          doc.text('MINISTÉRIO DA SAÚDE', pageWidth/2, currentY, { align: 'center' })
-          currentY += 6
-          
-          doc.setFontSize(12)
-          doc.setFont('helvetica', 'normal')
-          doc.text('Comissão de Padronização de Materiais - CPM', pageWidth/2, currentY, { align: 'center' })
-          currentY += 15
-
-          // Linha separadora
-          doc.setDrawColor(0, 0, 0)
-          doc.setLineWidth(0.5)
-          doc.line(margin, currentY, pageWidth - margin, currentY)
-          currentY += 15
-
-          // ========================================
-          // TÍTULO PRINCIPAL
-          // ========================================
-          
-          doc.setFontSize(18)
           doc.setFont('helvetica', 'bold')
-          doc.text('DECLARAÇÃO DE CONFORMIDADE DE BEM', pageWidth/2, currentY, { align: 'center' })
-          currentY += 8
-          
-          doc.setFontSize(16)
-          doc.setTextColor(0, 100, 200)
-          doc.text(`DCB Nº ${dcb.numero_dcb}`, pageWidth/2, currentY, { align: 'center' })
-          doc.setTextColor(0, 0, 0)
+
+          // Se numero_dcb já contém ano (ex: 001/2025), usar direto, senão concatenar
+          const numeroAno = new Date().getFullYear()
+          const dcbCompleto = dcb.numero_dcb && dcb.numero_dcb.includes('/') ?
+            dcb.numero_dcb :
+            `${dcb.numero_dcb || '_____'}/${numeroAno}`
+          const titulo = `DECLARAÇÃO DE CONFORMIDADE DE BEM Nº ${dcbCompleto}`
+          const tituloWidth = doc.getTextWidth(titulo)
+          doc.text(titulo, (pageWidth - tituloWidth) / 2, currentY)
           currentY += 20
 
           // ========================================
-          // DADOS DO PRODUTO
+          // PRODUTO CERTIFICADO - MODELO PADRÃO DCB
           // ========================================
-          
-          doc.setFontSize(14)
+
+          doc.setFontSize(11)
           doc.setFont('helvetica', 'bold')
           doc.text('PRODUTO CERTIFICADO', margin, currentY)
-          currentY += 10
-          
-          doc.setFontSize(11)
-          doc.setFont('helvetica', 'normal')
-          
-          // Box com dados do produto
-          const boxHeight = 50
-          doc.setDrawColor(200, 200, 200)
-          doc.setFillColor(250, 250, 250)
-          doc.rect(margin, currentY, pageWidth - 2*margin, boxHeight, 'FD')
-          
-          currentY += 10
-          doc.setFont('helvetica', 'bold')
-          doc.text('Nome do Produto:', margin + 5, currentY)
-          doc.setFont('helvetica', 'normal')
-          doc.text(produto.nome || 'N/A', margin + 45, currentY)
-          currentY += 7
-          
-          doc.setFont('helvetica', 'bold')
-          doc.text('Marca:', margin + 5, currentY)
-          doc.setFont('helvetica', 'normal')
-          doc.text(produto.marca || 'N/A', margin + 20, currentY)
-          currentY += 7
-          
-          doc.setFont('helvetica', 'bold')
-          doc.text('Modelo:', margin + 5, currentY)
-          doc.setFont('helvetica', 'normal')
-          doc.text(produto.modelo || 'N/A', margin + 22, currentY)
-          currentY += 7
-          
-          doc.setFont('helvetica', 'bold')
-          doc.text('Fabricante:', margin + 5, currentY)
-          doc.setFont('helvetica', 'normal')
-          doc.text(produto.fabricante || 'N/A', margin + 30, currentY)
-          currentY += 7
-          
-          doc.setFont('helvetica', 'bold')
-          doc.text('CNPJ:', margin + 5, currentY)
-          doc.setFont('helvetica', 'normal')
-          doc.text(produto.cnpj_fabricante || produto.cnpj || 'N/A', margin + 20, currentY)
-          
-          currentY += 25
-
-          // ========================================
-          // DADOS DO CERTIFICADO
-          // ========================================
-          
-          doc.setFontSize(14)
-          doc.setFont('helvetica', 'bold')
-          doc.text('DADOS DO CERTIFICADO', margin, currentY)
-          currentY += 10
-          
-          doc.setFontSize(11)
-          doc.setFont('helvetica', 'normal')
-          
-          // Box com dados do certificado
-          doc.setDrawColor(200, 200, 200)
-          doc.setFillColor(250, 250, 250)
-          doc.rect(margin, currentY, pageWidth - 2*margin, 40, 'FD')
-          
-          currentY += 10
-          doc.setFont('helvetica', 'bold')
-          doc.text('Data de Emissão:', margin + 5, currentY)
-          doc.setFont('helvetica', 'normal')
-          doc.text(this.formatDate(dcb.data_emissao), margin + 40, currentY)
           currentY += 8
-          
-          doc.setFont('helvetica', 'bold')
-          doc.text('Data de Validade:', margin + 5, currentY)
-          doc.setFont('helvetica', 'normal')
-          doc.text(this.formatDate(dcb.data_validade), margin + 40, currentY)
-          currentY += 8
-          
-          doc.setFont('helvetica', 'bold')
-          doc.text('Status:', margin + 5, currentY)
-          doc.setFont('helvetica', 'normal')
-          doc.setTextColor(0, 150, 0)
-          doc.text(this.formatStatusDCB(dcb.status), margin + 20, currentY)
-          doc.setTextColor(0, 0, 0)
-          
-          currentY += 25
 
-          // ========================================
-          // DECLARAÇÃO LEGAL
-          // ========================================
-          
-          doc.setFontSize(12)
-          doc.setFont('helvetica', 'bold')
-          doc.text('DECLARAÇÃO', margin, currentY)
-          currentY += 10
-          
+          doc.setFont('helvetica', 'normal')
           doc.setFontSize(10)
+
+          // Dados do produto sem caixas (modelo padrão)
+          doc.text(`Nome do Produto: ${produto.nome || 'N/A'}`, margin, currentY)
+          currentY += 6
+          doc.text(`Marca: ${produto.marca || 'N/A'}`, margin, currentY)
+          currentY += 6
+          doc.text(`Modelo: ${produto.modelo || 'N/A'}`, margin, currentY)
+          currentY += 6
+          doc.text(`Fabricante: ${produto.fabricante || 'N/A'}`, margin, currentY)
+          currentY += 6
+          doc.text(`CNPJ do Fabricante: ${produto.cnpj || 'N/A'}`, margin, currentY)
+          
+          // ========================================
+          // DADOS DA CERTIFICAÇÃO - MODELO PADRÃO DCB
+          // ========================================
+
+          currentY += 8
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(11)
+          doc.text('DADOS DA CERTIFICAÇÃO', margin, currentY)
+
+          currentY += 8
           doc.setFont('helvetica', 'normal')
-          
-          const declaracao = `Declaramos que o produto acima identificado foi submetido a análise técnica pela Comissão de Padronização de Materiais (CPM) deste órgão, tendo sido APROVADO para utilização em processos licitatórios, conforme previsto na Lei Federal nº 14.133/2021 (Lei de Licitações e Contratos).
+          doc.setFontSize(10)
+          const editalTexto = produto.numero_edital ? produto.numero_edital : '_____/_____'
+          // Se já contém "Edital de Pré-Qualificação", usar direto, senão adicionar o prefixo
+          const textoOrigem = editalTexto.includes('Edital de Pré-Qualificação') ?
+            `Origem: ${editalTexto}` :
+            `Origem: Edital de Pré-Qualificação de Bens nº ${editalTexto}`
+          doc.text(textoOrigem, margin, currentY)
 
-O presente Documento de Comprovação de Bem (DCB) atesta que o produto atende aos requisitos técnicos mínimos exigidos e está apto para fornecimento no âmbito da Administração Pública.
+          // ========================================
+          // DECLARAÇÃO OFICIAL - MODELO PADRÃO DCB
+          // ========================================
 
-Esta declaração possui validade até ${this.formatDate(dcb.data_validade)}, podendo ser renovada mediante nova análise técnica.`
+          currentY += 10
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(11)
+          doc.text('DECLARAÇÃO', margin, currentY)
 
-          const splitDeclaracao = doc.splitTextToSize(declaracao, pageWidth - 2*margin)
-          
-          // Verificar se há espaço suficiente para a declaração
-          const espacoNecessario = splitDeclaracao.length * 4 + 80 // 80 para QR Code + assinatura
-          if (currentY + espacoNecessario > pageHeight - 30) {
-            // Adicionar nova página se necessário
-            doc.addPage()
-            currentY = margin
-          }
-          
-          doc.text(splitDeclaracao, margin, currentY)
-          currentY += splitDeclaracao.length * 4 + 25
+          currentY += 8
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(9)
+
+          // Texto da declaração - conforme modelo oficial da Lei 14.133/2021
+          const textoDeclaracao = [
+            'A Comissão de Padronização de Materiais – CPM do(a) _______ (nome do',
+            'órgão/entidade) _______, constituída por meio do(a) __________ [informar o tipo de',
+            'instrumento (resolução/portaria), número e ano de expedição], DECLARA que:',
+            '',
+            '1º) o produto especificado nesta DCB foi submetido à demonstração funcional',
+            'e análise técnica, devidamente monitoradas e documentadas por esta CPM em',
+            'processo administrativo próprio, com estrita observância às formalidades legais e',
+            'regulamentares, tendo sido considerado apto e, portanto, APROVADO para o uso e a',
+            'finalidade a que se destina, uma vez que atendeu aos requisitos técnicos exigidos pelo',
+            'Edital de Pré-Qualificação de Bens em referência, sendo a sua marca comercial e',
+            'modelo lançados no Catálogo Eletrônico de Bens Padronizados deste(a)',
+            'órgão/entidade, para fins de aquisições futuras e eventuais;',
+            '',
+            '2º) conforme previsto no art. 80, § 8º, inciso I, da Lei Federal nº 14.133/2021, o',
+            'prazo de validade desta DCB é de 1 (um) ano, contado da data de sua expedição,',
+            'podendo ser atualizada a qualquer tempo;',
+            '',
+            '3º) expirada a sua vigência, esta DCB somente poderá ser renovada mediante',
+            'a realização de nova demonstração do produto nela especificado, para fins de',
+            'reanálise técnica e funcional monitoradas e documentadas pela CPM.'
+          ]
+
+          textoDeclaracao.forEach(linha => {
+            doc.text(linha, margin, currentY)
+            currentY += linha === '' ? 2 : 4
+          })
+
+          // ========================================
+          // ASSINATURA OFICIAL - MODELO PADRÃO DCB
+          // ========================================
+
+          currentY += 10
+          doc.text('Local e data ___________', margin, currentY)
+          currentY += 15
+          doc.text('(Assinatura digital)', 70, currentY)
+          currentY += 5
+          doc.setFont('helvetica', 'bold')
+          doc.text('Comissão de Padronização de Materiais', 60, currentY)
+          currentY += 4
+          doc.text('- Presidente -', 85, currentY)
 
           // ========================================
           // QR CODE PARA VALIDAÇÃO

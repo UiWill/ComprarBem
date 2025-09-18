@@ -1,0 +1,81 @@
+📋 RELATÓRIO DE ATUALIZAÇÕES – SISTEMA COMPRAR BEM
+
+Data de Entrega: 18/09/2025
+
+---
+
+🔗 SISTEMA DE VINCULAÇÃO DE EDITAIS A PROCESSOS ADMINISTRATIVOS
+
+✅ Funcionalidades Implementadas:
+
+- Vinculação Automática: Integração entre processos administrativos e editais de pré-qualificação
+- Modal de Seleção: Interface para escolha múltipla de editais publicados no CPM
+- Controle de Permissões: Acesso restrito aos perfis CPM e Órgão Administrativo
+- Status Inteligente: Ativação automática para processos com "abertura autorizada"
+- Geração de PDF Integrada: Editais incluídos como páginas numeradas antes das assinaturas
+
+---
+
+🏗️ INFRAESTRUTURA DE DADOS
+
+✅ Implementações de Banco:
+
+- Tabela processo_editais: Nova estrutura para relacionamento processo-edital
+- RLS (Row Level Security): Isolamento automático por tenant
+- Foreign Keys: Relacionamentos consistentes entre tabelas
+- Índices Otimizados: Performance aprimorada para consultas
+- Auditoria Completa: Timestamps e controle de alterações
+
+---
+
+📄 PADRONIZAÇÃO DE DOCUMENTOS DCB
+
+✅ Melhorias Implementadas:
+
+- Modelo Unificado: DCB do Painel CPM alinhado com seção oficial
+- Conformidade Legal: Texto padronizado conforme Lei 14.133/2021
+- Layout Consistente: Formato linear substituindo caixas visuais
+- Cabeçalho Oficial: Padrão governamental implementado
+- Geração PDF Otimizada: Documentos com formatação profissional
+
+---
+
+🔧 CORREÇÕES E OTIMIZAÇÕES
+
+✅ Melhorias Técnicas:
+
+- Correção de Queries: Ajuste de colunas (created_at → criado_em)
+- Gestão de Tenant: Implementação correta de isolamento multi-inquilino
+- Escopo de Variáveis: Correção de undefined variables em JavaScript
+- Tratamento de Erros: Melhoria na captura e exibição de mensagens
+- Validação de Dados: Verificações adicionais antes de operações críticas
+
+---
+
+📊 IMPACTO NO SISTEMA
+
+✅ Benefícios Alcançados:
+
+- Workflow Otimizado: Processo de vinculação de editais automatizado
+- Experiência do Usuário: Interface mais intuitiva e responsiva
+- Conformidade Documental: Padronização total dos certificados DCB
+- Segurança Aprimorada: Isolamento de dados por tenant garantido
+- Performance Melhorada: Consultas otimizadas e índices estratégicos
+
+---
+
+🚀 STATUS ATUAL
+
+Sistema em produção com todas as funcionalidades testadas e validadas.
+Servidor de desenvolvimento rodando em http://localhost:8081/
+Código versionado e documentado para manutenções futuras.
+
+---
+
+📞 SUPORTE TÉCNICO
+
+Para dúvidas ou solicitações adicionais, favor entrar em contato através dos canais habituais de suporte.
+
+Atenciosamente,
+Equipe de Desenvolvimento
+Sistema Comprar Bem

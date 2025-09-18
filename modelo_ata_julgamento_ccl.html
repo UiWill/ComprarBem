@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modelo de Ata de Julgamento CCL</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            color: #000;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: white;
+        }
+
+        .documento-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+
+        .documento-header h1 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+        }
+
+        .documento-header h2 {
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 10px 0;
+            text-transform: uppercase;
+        }
+
+        .documento-header .numero-processo {
+            font-size: 12pt;
+            margin: 10px 0;
+        }
+
+        .secao {
+            margin-bottom: 25px;
+        }
+
+        .secao h3 {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        .tabela-info {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .tabela-info tr {
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tabela-info td {
+            padding: 8px;
+            vertical-align: top;
+        }
+
+        .tabela-info .label {
+            width: 30%;
+            font-weight: bold;
+            background: #f8f9fa;
+        }
+
+        .fundamentacao {
+            text-align: justify;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+
+        .assinaturas {
+            margin-top: 40px;
+            page-break-inside: avoid;
+        }
+
+        .linha-assinatura {
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .linha-assinatura .linha {
+            border-bottom: 1px solid #000;
+            width: 300px;
+            margin: 0 auto 5px auto;
+        }
+
+        .linha-assinatura .nome {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .linha-assinatura .cargo {
+            font-size: 10pt;
+            color: #666;
+        }
+
+        .observacoes {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .observacoes h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+
+        @media print {
+            body { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="documento-header">
+        <h1>[NOME DO ÓRGÃO]</h1>
+        <div style="margin: 10px 0;">
+            <strong>COMISSÃO CENTRAL DE LICITAÇÃO - CCL</strong>
+        </div>
+        <div style="border-top: 2px solid #333; margin: 20px 0;"></div>
+        <h2>ATA DE JULGAMENTO TÉCNICO - CCL</h2>
+        <div class="numero-processo">
+            Processo Administrativo nº [NÚMERO_PROCESSO]
+        </div>
+    </div>
+
+    <div class="secao">
+        <h3>1. IDENTIFICAÇÃO DO PROCESSO</h3>
+        <table class="tabela-info">
+            <tr>
+                <td class="label">Número do Processo:</td>
+                <td>[NÚMERO_PROCESSO]</td>
+            </tr>
+            <tr>
+                <td class="label">Órgão Solicitante:</td>
+                <td>[NOME_ORGAO]</td>
+            </tr>
+            <tr>
+                <td class="label">Tipo de Processo:</td>
+                <td>[TIPO_PROCESSO - Padronização/Despadronização]</td>
+            </tr>
+            <tr>
+                <td class="label">Data de Julgamento:</td>
+                <td>[DATA_JULGAMENTO]</td>
+            </tr>
+            <tr>
+                <td class="label">Ata CCL Número:</td>
+                <td>[NUMERO_ATA]</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="secao">
+        <h3>2. OBJETO DO PROCESSO</h3>
+        <p style="text-align: justify; padding: 10px 0;">
+            [OBJETO_PROCESSO]
+        </p>
+    </div>
+
+    <div class="secao">
+        <h3>3. COMPOSIÇÃO DA COMISSÃO</h3>
+        <p>A Comissão Central de Licitação - CCL, designada pela Portaria nº [NUMERO_PORTARIA], é composta pelos seguintes membros:</p>
+        <ul style="margin: 15px 0; padding-left: 30px;">
+            <li><strong>Presidente:</strong> [NOME_PRESIDENTE] - [CARGO_PRESIDENTE]</li>
+            <li><strong>Membro:</strong> [NOME_MEMBRO_1] - [CARGO_MEMBRO_1]</li>
+            <li><strong>Membro:</strong> [NOME_MEMBRO_2] - [CARGO_MEMBRO_2]</li>
+        </ul>
+    </div>
+
+    <div class="secao">
+        <h3>4. ANÁLISE TÉCNICA</h3>
+        <p style="text-align: justify;">
+            A Comissão Central de Licitação procedeu à análise técnica e documental do processo administrativo,
+            verificando os seguintes aspectos:
+        </p>
+        <ul style="margin: 15px 0; padding-left: 30px;">
+            <li>Conformidade técnica dos produtos/serviços;</li>
+            <li>Adequação às especificações estabelecidas;</li>
+            <li>Documentação técnica apresentada;</li>
+            <li>Atendimento aos requisitos normativos aplicáveis;</li>
+            <li>Compatibilidade com as necessidades da Administração.</li>
+        </ul>
+    </div>
+
+    <div class="secao">
+        <h3>5. FUNDAMENTAÇÃO TÉCNICA DA CCL</h3>
+        <div class="fundamentacao">
+            [FUNDAMENTACAO_TECNICA_CCL]
+
+            <br><br>
+
+            <em>A Comissão Central de Licitação, após análise técnica detalhada do processo administrativo,
+            considerando os aspectos técnicos, normativos e de conformidade, deliberou pela aprovação
+            do presente processo de [TIPO_PROCESSO].</em>
+
+            <br><br>
+
+            <em>A decisão foi baseada na avaliação dos documentos apresentados, verificação da adequação
+            técnica dos produtos/serviços, e observância aos dispositivos legais aplicáveis,
+            especialmente a Lei nº 14.133/2021 (Nova Lei de Licitações e Contratos Administrativos).</em>
+        </div>
+    </div>
+
+    <div class="secao">
+        <h3>6. DECISÃO</h3>
+        <table class="tabela-info">
+            <tr>
+                <td class="label">Parecer CCL:</td>
+                <td><strong>[APROVADO/REPROVADO]</strong></td>
+            </tr>
+            <tr>
+                <td class="label">Recomendação:</td>
+                <td>[RECOMENDACAO_CCL]</td>
+            </tr>
+            <tr>
+                <td class="label">Observações:</td>
+                <td>[OBSERVACOES_ADICIONAIS]</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="secao">
+        <h3>7. PRÓXIMOS PASSOS</h3>
+        <p style="text-align: justify;">
+            Com base na decisão da CCL, os próximos encaminhamentos são:
+        </p>
+        <ul style="margin: 15px 0; padding-left: 30px;">
+            <li>Encaminhamento do processo para homologação pela autoridade competente;</li>
+            <li>Publicação da decisão no sistema oficial;</li>
+            <li>Comunicação aos interessados sobre a decisão;</li>
+            <li>Atualização do catálogo de materiais/serviços, se aplicável.</li>
+        </ul>
+    </div>
+
+    <div class="observacoes">
+        <h4>📋 Observações Importantes:</h4>
+        <ul style="margin: 0; padding-left: 20px;">
+            <li>Esta ata foi elaborada em conformidade com a Lei nº 14.133/2021;</li>
+            <li>O prazo recursal é de 5 (cinco) dias úteis, conforme legislação vigente;</li>
+            <li>Cópia desta ata será anexada ao processo administrativo;</li>
+            <li>A decisão da CCL tem caráter técnico e subsidiará a decisão final da autoridade competente.</li>
+        </ul>
+    </div>
+
+    <div class="secao">
+        <h3>8. ENCERRAMENTO</h3>
+        <p style="text-align: justify;">
+            Nada mais havendo a tratar, foi encerrada a presente sessão de julgamento,
+            da qual se lavrou esta ata que, depois de lida e aprovada, vai assinada pelos
+            membros da Comissão Central de Licitação.
+        </p>
+
+        <p style="text-align: right; margin-top: 20px;">
+            [CIDADE], [DATA_EXTENSO].
+        </p>
+    </div>
+
+    <div class="assinaturas">
+        <div class="linha-assinatura">
+            <div class="linha"></div>
+            <div class="nome">[NOME_PRESIDENTE]</div>
+            <div class="cargo">Presidente da CCL</div>
+        </div>
+
+        <div class="linha-assinatura">
+            <div class="linha"></div>
+            <div class="nome">[NOME_MEMBRO_1]</div>
+            <div class="cargo">Membro da CCL</div>
+        </div>
+
+        <div class="linha-assinatura">
+            <div class="linha"></div>
+            <div class="nome">[NOME_MEMBRO_2]</div>
+            <div class="cargo">Membro da CCL</div>
+        </div>
+    </div>
+
+</body>
+</html>

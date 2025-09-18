@@ -322,13 +322,23 @@
                   </button>
                   
                   <!-- Botão Universal de Assinatura Digital -->
-                  <button 
-                    v-if="podeUsuarioAssinar(processoSelecionado)" 
-                    @click="assinarProcesso(processoSelecionado)" 
+                  <button
+                    v-if="podeUsuarioAssinar(processoSelecionado)"
+                    @click="assinarProcesso(processoSelecionado)"
                     class="action-btn action-btn-signature"
                   >
                     <span class="btn-icon">✍️</span>
                     <span class="btn-text">Assinar Digitalmente</span>
+                  </button>
+
+                  <!-- Botão para Vincular Edital -->
+                  <button
+                    v-if="podeVincularEdital(processoSelecionado)"
+                    @click="abrirModalVincularEdital(processoSelecionado)"
+                    class="action-btn action-btn-edital"
+                  >
+                    <span class="btn-icon">📋</span>
+                    <span class="btn-text">Vincular Edital</span>
                   </button>
                   
                   <button 
@@ -1275,7 +1285,86 @@
         </div>
       </div>
     </div>
-    
+
+    <!-- Modal para Vincular Editais Selecionados -->
+    <div v-if="mostrarModalVincularEditaisSelecionados" class="modal-overlay" @click="fecharModalVincularEditais">
+      <div class="modal-vincular-editais" @click.stop>
+        <div class="modal-header">
+          <h3>📋 Vincular Editais ao Processo</h3>
+          <button @click="fecharModalVincularEditais" class="btn-close">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="processo-info">
+            <h4>{{ processoSelecionado?.numero_processo || 'Processo em edição' }}</h4>
+            <p>{{ processoSelecionado?.tipo_processo === 'padronizacao' ? '✅ Padronização' : '❌ Despadronização' }}</p>
+          </div>
+
+          <div v-if="carregandoEditais" class="loading-editais">
+            <div class="loading-spinner"></div>
+            <p>Carregando editais publicados...</p>
+          </div>
+
+          <div v-else>
+            <div class="editais-info">
+              <p><strong>📋 {{ editaisDisponiveis.length }}</strong> editais publicados disponíveis</p>
+              <p v-if="editaisSelecionados.length > 0"><strong>✅ {{ editaisSelecionados.length }}</strong> editais selecionados</p>
+            </div>
+
+            <div v-if="editaisDisponiveis.length === 0" class="sem-editais">
+              <div class="sem-editais-icon">📋</div>
+              <h4>Nenhum edital publicado encontrado</h4>
+              <p>Não há editais com status "PUBLICADO" disponíveis para vinculação.</p>
+            </div>
+
+            <div v-else class="editais-lista">
+              <div v-for="edital in editaisDisponiveis" :key="edital.id" class="edital-item">
+                <div class="edital-checkbox">
+                  <input
+                    type="checkbox"
+                    :id="`edital-${edital.id}`"
+                    :value="edital.id"
+                    v-model="editaisSelecionados"
+                    class="checkbox-edital"
+                  >
+                  <label :for="`edital-${edital.id}`" class="checkbox-label"></label>
+                </div>
+
+                <div class="edital-content">
+                  <div class="edital-header">
+                    <h4>{{ edital.numero }}</h4>
+                    <span class="edital-status">📋 Publicado</span>
+                  </div>
+
+                  <div class="edital-info">
+                    <p><strong>Descrição:</strong> {{ edital.descricao || 'Sem descrição' }}</p>
+                    <p><strong>Data de Publicação:</strong> {{ formatarData(edital.data_publicacao) }}</p>
+                    <p v-if="edital.pdf_convertido_url || edital.url_documento">
+                      <strong>📄 Arquivo:</strong>
+                      <span class="arquivo-disponivel">PDF disponível</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button @click="fecharModalVincularEditais" class="btn-secondary">
+            Cancelar
+          </button>
+          <button
+            @click="confirmarVinculacaoEditais"
+            class="btn-primary"
+            :disabled="editaisSelecionados.length === 0 || carregandoEditais"
+          >
+            Vincular {{ editaisSelecionados.length }} Edital{{ editaisSelecionados.length !== 1 ? 's' : '' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -1355,6 +1444,12 @@ export default {
       motivoDevolucao: '',
       observacoesDevolucao: '',
       processandoDevolucao: false,
+
+      // Modal de vincular editais selecionados
+      mostrarModalVincularEditaisSelecionados: false,
+      editaisDisponiveis: [],
+      editaisSelecionados: [],
+      carregandoEditais: false,
     }
   },
 
@@ -1761,15 +1856,18 @@ export default {
         const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
         const statusProcesso = processo?.status?.toLowerCase() || ''
         
+        // Verificar se pode tramitar (inicializar como true para CCL em status apropriados)
+        let podeTrampitar = true
+
         // CCL pode assinar nos status de julgamento e ata
         const statusCCL = ['julgamento_ccl', 'ata_ccl']
         if (perfilUsuario === 'ccl' && statusCCL.includes(statusProcesso)) {
           console.log(`🔍 DEBUG - CCL pode assinar no status ${statusProcesso}`)
-          // Continuar para verificar se já assinou
+          podeTrampitar = true
         } else {
           // Para outros perfis, verificar se pode tramitar
-          const podeTrampitar = await TramitacaoProcessosService.podeUsuarioTramitar(processo)
-          
+          podeTrampitar = await TramitacaoProcessosService.podeUsuarioTramitar(processo)
+
           if (!podeTrampitar) {
             console.log(`🔍 DEBUG - Usuário não pode tramitar, não pode assinar`)
             return false
@@ -1830,6 +1928,30 @@ export default {
         
       } catch (error) {
         console.error('❌ Erro ao verificar se usuário pode assinar:', error)
+        return false
+      }
+    },
+
+    // Função para verificar se pode vincular edital ao processo
+    podeVincularEdital(processo) {
+      try {
+        if (!processo) return false
+
+        // Apenas processos com status "abertura autorizada" podem vincular editais
+        const statusPermitidos = ['abertura_autorizada', 'abertura_autorizada_desp']
+
+        if (!statusPermitidos.includes(processo.status)) {
+          return false
+        }
+
+        // Verificar se o usuário tem permissão (CPM ou Orgao Administrativo)
+        const perfilUsuario = this.perfilUsuario?.toLowerCase() || ''
+        const perfisPermitidos = ['cpm', 'orgao_administrativo']
+
+        return perfisPermitidos.includes(perfilUsuario)
+
+      } catch (error) {
+        console.error('❌ Erro ao verificar se pode vincular edital:', error)
         return false
       }
     },
@@ -4085,8 +4207,57 @@ export default {
         const assinaturas = await this.carregarAssinaturasProcesso(processo.id)
         console.log('✍️ Assinaturas encontradas:', assinaturas?.length || 0)
 
-        // 6. Gerar HTML limpo do PDF (incluindo documentos anexados e assinaturas)
-        const htmlLimpo = this.gerarHTMLPDFLimpo(processoCompleto, dfdsReais || [], produtos, documentosAnexados || [], assinaturas)
+        // 6. Buscar editais vinculados ao processo
+        let editaisVinculados = []
+        try {
+          console.log('🔍 Buscando editais vinculados ao processo:', processo.id)
+
+          // Primeiro, buscar as vinculações
+          const { data: vinculacoes, error: erroVinculacoes } = await supabase
+            .from('processo_editais')
+            .select('edital_id, data_vinculacao')
+            .eq('processo_id', processo.id)
+            .order('data_vinculacao', { ascending: true })
+
+          if (erroVinculacoes) {
+            console.error('❌ Erro ao buscar vinculações:', erroVinculacoes)
+          } else if (vinculacoes && vinculacoes.length > 0) {
+            console.log('📋 Vinculações encontradas:', vinculacoes.length)
+
+            // Buscar os editais correspondentes
+            const editaisIds = vinculacoes.map(v => v.edital_id)
+            const { data: editaisData, error: erroEditais } = await supabase
+              .from('editais')
+              .select(`
+                id,
+                numero,
+                descricao,
+                pdf_convertido_url,
+                url_documento,
+                data_publicacao
+              `)
+              .in('id', editaisIds)
+
+            if (erroEditais) {
+              console.error('❌ Erro ao buscar editais:', erroEditais)
+            } else {
+              editaisVinculados = editaisData || []
+              console.log('📋 Editais vinculados encontrados:', editaisVinculados.length)
+              console.log('📋 Detalhes dos editais:', editaisVinculados.map(e => ({
+                numero: e.numero,
+                descricao: e.descricao,
+                tem_pdf: !!(e.pdf_convertido_url || e.url_documento)
+              })))
+            }
+          } else {
+            console.log('📋 Nenhuma vinculação encontrada para este processo')
+          }
+        } catch (error) {
+          console.error('❌ Erro na busca de editais vinculados:', error)
+        }
+
+        // 7. Gerar HTML limpo do PDF (incluindo documentos anexados, editais e assinaturas)
+        const htmlLimpo = this.gerarHTMLPDFLimpo(processoCompleto, dfdsReais || [], produtos, documentosAnexados || [], editaisVinculados || [], assinaturas)
 
         // 5. Abrir em nova janela
         const novaJanela = window.open('', '_blank')
@@ -4111,11 +4282,12 @@ export default {
       }
     },
 
-    gerarHTMLPDFLimpo(processo, dfds, produtos, documentosAnexados = [], assinaturas = []) {
+    gerarHTMLPDFLimpo(processo, dfds, produtos, documentosAnexados = [], editaisVinculados = [], assinaturas = []) {
       console.log('🎨 Gerando HTML limpo do PDF', {
         dfds: dfds?.length || 0,
         produtos: produtos?.length || 0,
         documentosAnexados: documentosAnexados?.length || 0,
+        editaisVinculados: editaisVinculados?.length || 0,
         assinaturas: assinaturas?.length || 0
       })
 
@@ -4608,6 +4780,13 @@ export default {
         })
       }
 
+      // PÁGINAS DE EDITAIS VINCULADOS: Se existirem editais
+      if (editaisVinculados && editaisVinculados.length > 0) {
+        editaisVinculados.forEach((edital, index) => {
+          htmlCompleto += this.gerarPaginaEditalVinculado(processo, edital, numeroPagina++, index + 1)
+        })
+      }
+
       // PÁGINAS DE ASSINATURA: Se existirem assinaturas (múltiplas por página)
       if (assinaturas && assinaturas.length > 0) {
         htmlCompleto += this.gerarPaginasAssinaturasOtimizadas(processo, assinaturas, numeroPagina)
@@ -4818,6 +4997,86 @@ export default {
           <div class="documento-anexado-container">
             ${this.gerarPreviewDocumento(documento)}
           </div>
+        </div>
+      `
+    },
+
+    gerarPaginaEditalVinculado(processo, edital, numeroPagina, numeroEdital) {
+      console.log('📋 Gerando página de edital vinculado:', {
+        numeroEdital,
+        numero: edital?.numero,
+        descricao: edital?.descricao,
+        pdf_url: edital?.pdf_convertido_url || edital?.url_documento
+      })
+
+      const urlEdital = edital?.pdf_convertido_url || edital?.url_documento
+      const dataPublicacao = edital?.data_publicacao ? new Date(edital.data_publicacao).toLocaleDateString('pt-BR') : 'Não informada'
+
+      return `
+        <div class="documento-pagina pdf-pagina-completa">
+          <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
+
+          <div class="edital-anexado-container">
+            <div class="edital-header-info">
+              <h3>📋 EDITAL DE PRÉ-QUALIFICAÇÃO ${edital?.numero || 'N/A'}</h3>
+              <p><strong>Descrição:</strong> ${edital?.descricao || 'Não informada'}</p>
+              <p><strong>Data de Publicação:</strong> ${dataPublicacao}</p>
+            </div>
+
+            ${this.gerarPreviewEdital(edital)}
+          </div>
+        </div>
+      `
+    },
+
+    gerarPreviewEdital(edital) {
+      const urlEdital = edital?.pdf_convertido_url || edital?.url_documento
+
+      if (!urlEdital) {
+        return `
+          <div class="preview-indisponivel">
+            <div class="icone-documento">📋</div>
+            <div class="mensagem">Edital não disponível</div>
+            <div class="detalhes">URL do edital não encontrada</div>
+          </div>
+        `
+      }
+
+      // Para editais, sempre tratar como PDF
+      return `
+        <div class="preview-pdf-pagina-completa">
+          <object
+            data="${urlEdital}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0"
+            type="application/pdf"
+            width="100%"
+            height="22cm"
+            style="border: none; max-width: 100%;">
+
+            <!-- Fallback para navegadores que não suportam object -->
+            <iframe
+              src="${urlEdital}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0"
+              width="100%"
+              height="22cm"
+              style="border: none; max-width: 100%;">
+
+              <!-- Fallback final se iframe também não funcionar -->
+              <div class="pdf-fallback" style="text-align: center; padding: 4cm; background: white; min-height: 18cm;">
+                <div style="font-size: 4em; margin-bottom: 1cm;">📋</div>
+                <div style="margin: 1cm 0; font-weight: bold; font-size: 14pt;">Edital não pode ser exibido diretamente</div>
+                <div style="font-size: 12pt; margin-bottom: 2cm; color: #666;">
+                  O navegador não suporta visualização de PDF incorporada.
+                </div>
+                <a href="${urlEdital}" target="_blank"
+                   style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
+                  📋 Abrir Edital em Nova Aba
+                </a>
+                <div style="margin-top: 2cm; font-size: 10pt; color: #999;">
+                  <strong>Edital:</strong> ${edital?.numero || 'N/A'}
+                </div>
+              </div>
+
+            </iframe>
+          </object>
         </div>
       `
     },
@@ -5191,6 +5450,145 @@ export default {
     abrirModalEdital(processo) {
       this.processoSelecionado = processo
       this.mostrarModalEdital = true
+    },
+
+    async abrirModalVincularEdital(processo) {
+      this.processoSelecionado = processo
+      this.editaisSelecionados = []
+      await this.carregarEditaisDisponiveis()
+      this.mostrarModalVincularEditaisSelecionados = true
+    },
+
+    async carregarEditaisDisponiveis() {
+      try {
+        this.carregandoEditais = true
+        console.log('🔍 Carregando editais publicados disponíveis...')
+
+        const { data, error } = await supabase
+          .from('editais')
+          .select(`
+            id,
+            numero,
+            descricao,
+            status,
+            data_publicacao,
+            pdf_convertido_url,
+            pdf_convertido_nome,
+            url_documento,
+            tenant_id,
+            criado_em
+          `)
+          .eq('tenant_id', await ProcessosAdministrativosService.getTenantId())
+          .eq('status', 'PUBLICADO')
+          .order('data_publicacao', { ascending: false })
+
+        if (error) throw error
+
+        this.editaisDisponiveis = data || []
+        console.log('✅ Editais carregados:', this.editaisDisponiveis.length)
+
+      } catch (error) {
+        console.error('❌ Erro ao carregar editais:', error)
+        this.$swal?.fire({
+          title: 'Erro',
+          text: 'Erro ao carregar editais disponíveis',
+          icon: 'error'
+        })
+      } finally {
+        this.carregandoEditais = false
+      }
+    },
+
+    fecharModalVincularEditais() {
+      this.mostrarModalVincularEditaisSelecionados = false
+      this.editaisDisponiveis = []
+      this.editaisSelecionados = []
+      this.processoSelecionado = null
+    },
+
+    async confirmarVinculacaoEditais() {
+      try {
+        if (this.editaisSelecionados.length === 0) {
+          this.$swal?.fire({
+            title: 'Atenção',
+            text: 'Selecione pelo menos um edital para vincular',
+            icon: 'warning'
+          })
+          return
+        }
+
+        // Confirmar ação
+        const resultado = await this.$swal?.fire({
+          title: 'Confirmar Vinculação',
+          text: `Vincular ${this.editaisSelecionados.length} edital${this.editaisSelecionados.length !== 1 ? 's' : ''} ao processo ${this.processoSelecionado?.numero_processo}?`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'Sim, vincular',
+          cancelButtonText: 'Cancelar'
+        })
+
+        if (!resultado?.isConfirmed) return
+
+        console.log('🔗 Vinculando editais ao processo:', {
+          processoId: this.processoSelecionado.id,
+          editaisSelecionados: this.editaisSelecionados
+        })
+
+        // Salvar vinculação no banco
+        await this.salvarVinculacaoEditais(this.processoSelecionado.id, this.editaisSelecionados)
+
+        // Fechar modal
+        this.fecharModalVincularEditais()
+
+        // Mostrar sucesso
+        this.$swal?.fire({
+          title: 'Sucesso!',
+          text: `${this.editaisSelecionados.length} edital${this.editaisSelecionados.length !== 1 ? 's' : ''} vinculado${this.editaisSelecionados.length !== 1 ? 's' : ''} com sucesso!`,
+          icon: 'success',
+          timer: 3000
+        })
+
+        // Recarregar dados do processo
+        await this.carregarProcessos()
+
+      } catch (error) {
+        console.error('❌ Erro ao vincular editais:', error)
+        this.$swal?.fire({
+          title: 'Erro',
+          text: error.message || 'Erro ao vincular editais ao processo',
+          icon: 'error'
+        })
+      }
+    },
+
+    async salvarVinculacaoEditais(processoId, editaisIds) {
+      try {
+        // Criar registros de vinculação na tabela processo_editais
+        const tenantId = await ProcessosAdministrativosService.getTenantId()
+        const vinculacoes = editaisIds.map(editalId => ({
+          processo_id: processoId,
+          edital_id: editalId,
+          tenant_id: tenantId,
+          data_vinculacao: new Date().toISOString()
+        }))
+
+        const { error } = await supabase
+          .from('processo_editais')
+          .insert(vinculacoes)
+
+        if (error) throw error
+
+        console.log('✅ Vinculações salvas com sucesso')
+
+      } catch (error) {
+        console.error('❌ Erro ao salvar vinculações:', error)
+        throw error
+      }
+    },
+
+    formatarData(data) {
+      if (!data) return 'Não informada'
+      return new Date(data).toLocaleDateString('pt-BR')
     },
     
     fecharModalEdital() {
@@ -7142,6 +7540,19 @@ export default {
   border-color: #7c3aed;
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+}
+
+.action-btn-edital {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border: 2px solid #0ea5e9;
+}
+
+.action-btn-edital:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-color: #0284c7;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3);
 }
 
 .action-btn-signature .btn-icon {
@@ -9335,6 +9746,256 @@ export default {
 .processo-actions .tramitar-reminder {
   flex-basis: 100%;
   order: 10; /* Coloca o lembrete no final */
+}
+
+/* ========================================= */
+/* MODAL DE VINCULAR EDITAIS SELECIONADOS */
+/* ========================================= */
+
+.modal-vincular-editais {
+  background: white;
+  border-radius: 12px;
+  width: 95%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-vincular-editais .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  max-height: 60vh;
+}
+
+.loading-editais {
+  text-align: center;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+.editais-info {
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #3b82f6;
+}
+
+.editais-info p {
+  margin: 0.25rem 0;
+  color: #475569;
+}
+
+.sem-editais {
+  text-align: center;
+  padding: 3rem;
+  color: #64748b;
+}
+
+.sem-editais-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.sem-editais h4 {
+  margin: 0 0 1rem;
+  color: #475569;
+}
+
+.editais-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.edital-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.edital-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.edital-checkbox {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.checkbox-edital {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.checkbox-edital:checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.checkbox-edital:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.checkbox-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.edital-content {
+  flex: 1;
+}
+
+.edital-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.edital-header h4 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1.1rem;
+}
+
+.edital-status {
+  background: #10b981;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.edital-info {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.edital-info p {
+  margin: 0.25rem 0;
+}
+
+.arquivo-disponivel {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.btn-primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ========================================= */
+/* ESTILOS PARA EDITAIS ANEXADOS NO PDF */
+/* ========================================= */
+
+.edital-anexado-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.edital-header-info {
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #0ea5e9;
+  margin-bottom: 1rem;
+}
+
+.edital-header-info h3 {
+  margin: 0 0 0.5rem;
+  color: #1e40af;
+  font-size: 1.2rem;
+}
+
+.edital-header-info p {
+  margin: 0.25rem 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.edital-header-info strong {
+  color: #1e293b;
+}
+
+/* Ajustes específicos para editais em páginas completas */
+.pdf-pagina-completa .edital-anexado-container {
+  padding: 0;
+  background: white;
+}
+
+.pdf-pagina-completa .edital-header-info {
+  position: absolute;
+  top: 0.5cm;
+  left: 0.5cm;
+  right: 0.5cm;
+  z-index: 10;
+  background: rgba(248, 250, 252, 0.95);
+  backdrop-filter: blur(5px);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.pdf-pagina-completa .preview-pdf-pagina-completa {
+  margin-top: 3cm;
+  height: calc(100% - 3cm);
 }
 
 </style>
