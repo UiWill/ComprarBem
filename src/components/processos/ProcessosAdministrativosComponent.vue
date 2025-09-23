@@ -17,12 +17,20 @@
                 <small>Inclusão de marcas de produtos no Catálogo</small>
               </div>
             </button>
-            
+
             <button @click="abrirAssistente('despadronizacao')" class="btn-processo despadronizacao">
               <span class="icone">❌</span>
               <div class="texto">
                 <strong>Despadronização</strong>
                 <small>Exclusão de marcas de produtos do Catálogo</small>
+              </div>
+            </button>
+
+            <button @click="abrirModelosDFD" class="btn-processo modelos-dfd">
+              <span class="icone">📄</span>
+              <div class="texto">
+                <strong>Modelos DFD</strong>
+                <small>Baixar modelos de documentos</small>
               </div>
             </button>
           </div>
@@ -1365,6 +1373,69 @@
       </div>
     </div>
 
+    <!-- Modal de Modelos DFD -->
+    <div v-if="mostrarModalModelosDFD" class="modal-overlay" @click="fecharModalModelosDFD">
+      <div class="modal-modelos-dfd" @click.stop>
+        <div class="modal-header">
+          <h3>📄 Modelos DFD (Documento de Formalização da Demanda)</h3>
+          <button @click="fecharModalModelosDFD" class="btn-close">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="modelos-info">
+            <p>Selecione e baixe o modelo de DFD apropriado para o seu processo:</p>
+          </div>
+
+          <div class="modelos-lista">
+            <div class="modelo-item" @click="baixarModeloDFD(1)">
+              <div class="modelo-icon">📋</div>
+              <div class="modelo-content">
+                <h4>Modelo 1</h4>
+                <p>Para processos de padronização com produtos específicos e quantidades definidas</p>
+              </div>
+              <div class="modelo-action">
+                <button class="btn-download">
+                  ⬇️ Baixar
+                </button>
+              </div>
+            </div>
+
+            <div class="modelo-item" @click="baixarModeloDFD(2)">
+              <div class="modelo-icon">📋</div>
+              <div class="modelo-content">
+                <h4>Modelo 2</h4>
+                <p>Para processos de despadronização com base em reclamações e RDM</p>
+              </div>
+              <div class="modelo-action">
+                <button class="btn-download">
+                  ⬇️ Baixar
+                </button>
+              </div>
+            </div>
+
+            <div class="modelo-item" @click="baixarModeloDFD(3)">
+              <div class="modelo-icon">📋</div>
+              <div class="modelo-content">
+                <h4>Modelo 3</h4>
+                <p>Modelo flexível para situações especiais e processos customizados</p>
+              </div>
+              <div class="modelo-action">
+                <button class="btn-download">
+                  ⬇️ Baixar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button @click="fecharModalModelosDFD" class="btn-secondary">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -1409,6 +1480,7 @@ export default {
       mostrarModalEdital: false,
       mostrarDocumentacao: false,
       mostrarModalAdicionarDoc: false,
+      mostrarModalModelosDFD: false,
       processoSelecionado: null,
       
       // Edição
@@ -4012,12 +4084,43 @@ export default {
       this.modoEdicao = false
       this.processoParaEditar = null
       this.tipoProcessoInicial = tipo // Passar o tipo clicado para o assistente
-      
+
       this.mostrarAssistente = true
       // Prevenir scroll da página de fundo
       document.body.style.overflow = 'hidden'
-      
+
       console.log('🆕 Abrindo assistente para criar NOVO processo. Tipo pré-selecionado:', tipo)
+    },
+
+    abrirModelosDFD() {
+      this.mostrarModalModelosDFD = true
+      document.body.style.overflow = 'hidden'
+      console.log('📄 Abrindo modal de modelos DFD')
+    },
+
+    fecharModalModelosDFD() {
+      this.mostrarModalModelosDFD = false
+      document.body.style.overflow = 'auto'
+    },
+
+    baixarModeloDFD(modelo) {
+      const modelos = {
+        1: 'https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/minutas-padrao/sistema/MODELO%201%20DFD.doc',
+        2: 'https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/minutas-padrao/sistema/MODELO%202%20DFD.doc',
+        3: 'https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/minutas-padrao/sistema/MODELO%203%20DFD.doc'
+      }
+
+      const url = modelos[modelo]
+      if (url) {
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `MODELO_${modelo}_DFD.doc`
+        link.target = '_blank'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        console.log(`📥 Baixando modelo ${modelo} DFD`)
+      }
     },
     
     processoCriado(processo) {
@@ -9996,6 +10099,127 @@ export default {
 .pdf-pagina-completa .preview-pdf-pagina-completa {
   margin-top: 3cm;
   height: calc(100% - 3cm);
+}
+
+/* ========================================= */
+/* ESTILOS PARA MODAL DE MODELOS DFD */
+/* ========================================= */
+
+.btn-processo.modelos-dfd {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid #667eea;
+  color: white;
+}
+
+.btn-processo.modelos-dfd:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b4696 100%);
+  border-color: #5a67d8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn-processo.modelos-dfd .texto strong {
+  color: white;
+}
+
+.btn-processo.modelos-dfd .texto small {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.modal-modelos-dfd {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modelos-info {
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.modelos-info p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.modelos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modelo-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.modelo-item:hover {
+  border-color: #667eea;
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.modelo-icon {
+  font-size: 2.5rem;
+  color: #667eea;
+  flex-shrink: 0;
+}
+
+.modelo-content {
+  flex: 1;
+}
+
+.modelo-content h4 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.modelo-content p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.modelo-action {
+  flex-shrink: 0;
+}
+
+.btn-download {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-download:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 </style>

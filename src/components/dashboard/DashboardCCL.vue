@@ -336,9 +336,14 @@
                 <h4>✏️ Atas em Elaboração</h4>
                 <p class="section-description">Atas que estão sendo criadas após julgamentos recentes</p>
               </div>
-              <button @click="abrirModalCriarAta" class="btn-criar-nova-ata">
-                ➕ Criar Nova Ata
-              </button>
+              <div class="atas-actions">
+                <button @click="baixarModeloAta" class="btn-modelo-ata">
+                  📄 Baixar Modelo
+                </button>
+                <button @click="abrirModalCriarAta" class="btn-criar-nova-ata">
+                  ➕ Criar Nova Ata
+                </button>
+              </div>
             </div>
           </div>
           
@@ -371,6 +376,9 @@
                     <div class="action-buttons">
                       <button @click="editarAta(ata)" class="btn-small btn-primary" title="Continuar elaborando a ata">
                         ✏️ Continuar
+                      </button>
+                      <button @click="abrirImportarAta(ata)" class="btn-small btn-info" title="Importar ata preenchida">
+                        📥 Importar
                       </button>
                       <button @click="finalizarAtaElaboracao(ata)" class="btn-small btn-success" title="Finalizar e publicar ata">
                         🎯 Finalizar
@@ -547,7 +555,62 @@
           </div>
         </div>
       </div>
-      
+
+      <!-- Modal Importar Ata -->
+      <div v-if="mostrarModalImportarAta" class="modal-overlay" @click="fecharModalImportarAta">
+        <div class="modal-importar-ata" @click.stop>
+          <div class="modal-header">
+            <h3>📥 Importar Ata Preenchida</h3>
+            <button @click="fecharModalImportarAta" class="btn-fechar-modal">✖️</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="importar-info">
+              <h4>{{ ataSelecionadaParaImportar?.numero_ata || `ATA-CCL-${String(ataSelecionadaParaImportar?.id).slice(-4)}` }}</h4>
+              <p>Selecione o arquivo da ata preenchida para vincular ao processo administrativo:</p>
+            </div>
+
+            <div class="upload-area">
+              <div class="upload-box" @click="$refs.fileInput.click()">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">
+                  <p v-if="!arquivoAtaImportada">Clique para selecionar a ata preenchida</p>
+                  <p v-else>{{ arquivoAtaImportada.name }}</p>
+                </div>
+              </div>
+              <input
+                ref="fileInput"
+                type="file"
+                @change="selecionarArquivo"
+                accept=".doc,.docx,.pdf"
+                style="display: none"
+              />
+            </div>
+
+            <div class="import-instructions">
+              <h5>📋 Instruções:</h5>
+              <ul>
+                <li>1. Baixe o modelo da ata usando o botão "📄 Baixar Modelo"</li>
+                <li>2. Preencha o modelo com os dados do julgamento</li>
+                <li>3. Importe o arquivo preenchido aqui</li>
+                <li>4. O arquivo será vinculado automaticamente ao processo administrativo</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button @click="fecharModalImportarAta" class="btn-secondary">
+              Cancelar
+            </button>
+            <button @click="confirmarImportarAta"
+                    class="btn-primary"
+                    :disabled="!arquivoAtaImportada">
+              📥 Importar e Vincular
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Aba Homologações -->
       <div v-show="activeTab === 'homologacoes'" class="homologacoes tab-pane">
       <div class="homologacoes-header" style="margin-bottom: 30px;">
@@ -668,6 +731,10 @@ export default {
       processosDisponiveis: [],
       processosSelecionadosModal: [],
       carregandoProcessosModal: false,
+      // Modal Importar Ata
+      mostrarModalImportarAta: false,
+      ataSelecionadaParaImportar: null,
+      arquivoAtaImportada: null,
       // Dados para Homologações
       homologacoesPendentes: 0,
       homologacoesAprovadas: 0,
@@ -972,6 +1039,147 @@ export default {
       this.processosDisponiveis = []
       this.processosSelecionadosModal = []
       this.carregandoProcessosModal = false
+    },
+
+    // Métodos para baixar modelo e importar ata
+    baixarModeloAta() {
+      const url = 'https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/minutas-padrao/sistema/MODELO%20Ata%20de%20Julgamento.docx'
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'MODELO_Ata_de_Julgamento.docx'
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      console.log('📥 Baixando modelo da ata de julgamento')
+    },
+
+    abrirImportarAta(ata) {
+      this.ataSelecionadaParaImportar = ata
+      this.arquivoAtaImportada = null
+      this.mostrarModalImportarAta = true
+    },
+
+    fecharModalImportarAta() {
+      this.mostrarModalImportarAta = false
+      this.ataSelecionadaParaImportar = null
+      this.arquivoAtaImportada = null
+    },
+
+    selecionarArquivo(event) {
+      const file = event.target.files[0]
+      if (file) {
+        // Validar tipo de arquivo
+        const validTypes = [
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/pdf'
+        ]
+
+        if (!validTypes.includes(file.type)) {
+          this.$swal({
+            title: '⚠️ Tipo de arquivo inválido',
+            text: 'Por favor, selecione um arquivo .doc, .docx ou .pdf',
+            icon: 'warning'
+          })
+          return
+        }
+
+        this.arquivoAtaImportada = file
+        console.log('📄 Arquivo selecionado:', file.name)
+      }
+    },
+
+    async confirmarImportarAta() {
+      if (!this.arquivoAtaImportada || !this.ataSelecionadaParaImportar) {
+        return
+      }
+
+      try {
+        console.log('📥 Iniciando importação da ata:', this.arquivoAtaImportada.name)
+        console.log('🎯 Ata destino:', this.ataSelecionadaParaImportar.id)
+
+        // Fazer upload do arquivo para o Supabase Storage
+        const fileName = `ata_${this.ataSelecionadaParaImportar.id}_${Date.now()}_${this.arquivoAtaImportada.name}`
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('atas-julgamento')
+          .upload(fileName, this.arquivoAtaImportada)
+
+        if (uploadError) {
+          throw new Error(`Erro no upload: ${uploadError.message}`)
+        }
+
+        // Obter URL pública do arquivo
+        const { data: urlData } = supabase.storage
+          .from('atas-julgamento')
+          .getPublicUrl(fileName)
+
+        // Atualizar a ata com o arquivo importado
+        const { error: updateError } = await supabase
+          .from('atas_julgamento')
+          .update({
+            arquivo_ata_url: urlData.publicUrl,
+            arquivo_ata_nome: this.arquivoAtaImportada.name,
+            ata_importada_em: new Date().toISOString(),
+            status: 'ata_importada'
+          })
+          .eq('id', this.ataSelecionadaParaImportar.id)
+          .eq('tenant_id', this.currentTenantId)
+
+        if (updateError) {
+          throw new Error(`Erro ao atualizar ata: ${updateError.message}`)
+        }
+
+        // Buscar os processos vinculados à ata para vincular o arquivo
+        const { data: processosVinculados, error: processosError } = await supabase
+          .from('atas_julgamento_processos')
+          .select('processo_id')
+          .eq('ata_id', this.ataSelecionadaParaImportar.id)
+
+        if (!processosError && processosVinculados.length > 0) {
+          // Vincular o arquivo aos processos administrativos
+          for (const vinculo of processosVinculados) {
+            await supabase
+              .from('documentos_processos')
+              .insert({
+                processo_id: vinculo.processo_id,
+                tenant_id: this.currentTenantId,
+                tipo_documento: 'ata_julgamento_ccl',
+                nome_documento: this.arquivoAtaImportada.name,
+                url_documento: urlData.publicUrl,
+                data_upload: new Date().toISOString(),
+                usuario_upload: this.$store.state.user?.id
+              })
+          }
+        }
+
+        this.fecharModalImportarAta()
+        await this.carregarAtasEmElaboracao()
+
+        this.$swal({
+          title: '🎉 Ata Importada com Sucesso!',
+          html: `
+            <div style="text-align: center; padding: 20px;">
+              <h4>${this.ataSelecionadaParaImportar.numero_ata || `ATA-CCL-${String(this.ataSelecionadaParaImportar.id).slice(-4)}`}</h4>
+              <p>✅ Arquivo: <strong>${this.arquivoAtaImportada.name}</strong></p>
+              <p>📋 Status atualizado para: <strong>Ata Importada</strong></p>
+              <hr style="margin: 20px 0;">
+              <p style="color: #28a745; font-weight: bold;">
+                🔗 Arquivo vinculado automaticamente aos processos administrativos
+              </p>
+            </div>
+          `,
+          icon: 'success'
+        })
+
+      } catch (error) {
+        console.error('❌ Erro ao importar ata:', error)
+        this.$swal({
+          title: '❌ Erro na Importação',
+          text: `Erro: ${error.message}`,
+          icon: 'error'
+        })
+      }
     },
 
     async carregarProcessosDisponiveis() {
@@ -9585,6 +9793,138 @@ tr:hover {
   background: #218838;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+/* Estilos para ações das atas */
+.atas-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.btn-modelo-ata {
+  background: #6f42c1;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-modelo-ata:hover {
+  background: #5a2d8c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(111, 66, 193, 0.3);
+}
+
+.btn-small.btn-info {
+  background: #17a2b8;
+  color: white;
+  border: none;
+}
+
+.btn-small.btn-info:hover {
+  background: #138496;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+}
+
+/* Modal Importar Ata */
+.modal-importar-ata {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.importar-info {
+  background: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.importar-info h4 {
+  margin: 0 0 0.5rem;
+  color: #2d3748;
+  font-size: 1.2rem;
+}
+
+.importar-info p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.upload-area {
+  margin-bottom: 1.5rem;
+}
+
+.upload-box {
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f7fafc;
+}
+
+.upload-box:hover {
+  border-color: #6366f1;
+  background: #eef2ff;
+}
+
+.upload-box.has-file {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.upload-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #6b7280;
+}
+
+.upload-text p {
+  margin: 0;
+  font-size: 1rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.import-instructions {
+  background: #e0f2fe;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #0ea5e9;
+}
+
+.import-instructions h5 {
+  margin: 0 0 1rem;
+  color: #0c4a6e;
+  font-size: 1rem;
+}
+
+.import-instructions ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #0f172a;
+}
+
+.import-instructions li {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
 }
 
 /* Estilos para o Modal */
