@@ -1,0 +1,811 @@
+<html><head>
+          <meta charset="utf-8">
+          <title>Processo 1001/2025</title>
+          
+        <style>
+          @page {
+            size: A4;
+            margin: 3cm 2.5cm 2.5cm 3cm;
+          }
+
+          body {
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.4;
+            color: #000;
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
+
+          .page-break {
+            page-break-before: always;
+          }
+
+          .documento-pagina {
+            width: 100%;
+            min-height: 24cm;
+            position: relative;
+            padding: 1cm;
+            background: white;
+            border: 1px solid #ddd;
+            margin: 0.5cm auto;
+            max-width: 19cm;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+
+          .documento-pagina:not(:last-child) {
+            page-break-after: always;
+          }
+
+          .folha-numero {
+            position: absolute;
+            top: 0.3cm;
+            right: 0.5cm;
+            font-size: 10pt;
+            font-weight: bold;
+            color: #666;
+            z-index: 999;
+            font-family: 'Times New Roman', serif;
+          }
+
+          .caixa-bordered {
+            border: 2px solid #000;
+            padding: 2cm 1.5cm;
+            margin: 1cm auto;
+            background: white;
+          }
+
+          .campo {
+            margin-bottom: 1cm;
+            text-align: justify;
+            line-height: 1.5;
+          }
+
+          .campo strong {
+            font-weight: bold;
+          }
+
+          .titulo-processo {
+            font-weight: bold;
+            font-size: 14pt;
+            text-align: center;
+            margin-bottom: 1.5cm;
+            text-transform: uppercase;
+          }
+
+          .folha-rosto {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 20cm;
+          }
+
+          /* DFD Específico */
+          .dfd-container {
+            padding: 0.5cm;
+          }
+
+          .dfd-titulo {
+            font-weight: bold;
+            font-size: 12pt;
+            text-align: center;
+            margin-bottom: 1.5cm;
+            text-transform: uppercase;
+            border-bottom: 2px solid #000;
+            padding-bottom: 0.5cm;
+            line-height: 1.3;
+          }
+
+          .dfd-secao {
+            margin-bottom: 0.8cm;
+            page-break-inside: avoid;
+          }
+
+          .dfd-secao-titulo {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-bottom: 0.3cm;
+            text-transform: uppercase;
+            color: #000;
+          }
+
+          .dfd-conteudo {
+            text-align: justify;
+            line-height: 1.2;
+            font-size: 10pt;
+            margin-bottom: 0.3cm;
+            text-indent: 0;
+          }
+
+          .dfd-campo-inline {
+            margin-bottom: 0.1cm;
+          }
+
+          .dfd-campo-inline strong {
+            font-weight: bold;
+          }
+
+          /* Estilos para Assinaturas */
+          .pagina-assinatura {
+            width: 100%;
+            min-height: 24cm;
+            position: relative;
+            padding: 1cm 0;
+            page-break-before: always;
+          }
+
+          .header-assinatura {
+            text-align: center;
+            margin-bottom: 2cm;
+            border-bottom: 2px solid #000;
+            padding-bottom: 0.5cm;
+          }
+
+          .titulo-assinatura {
+            font-size: 14pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 0.5cm;
+          }
+
+          .info-assinatura {
+            background: #f8f9fa;
+            border: 1px solid #ccc;
+            padding: 1cm;
+            margin-bottom: 1cm;
+            border-radius: 5px;
+          }
+
+          .campo-assinatura {
+            margin-bottom: 0.8cm;
+            display: flex;
+            align-items: flex-start;
+          }
+
+          .label-assinatura {
+            font-weight: bold;
+            min-width: 150px;
+            margin-right: 10px;
+          }
+
+          .valor-assinatura {
+            flex: 1;
+            border-bottom: 1px solid #000;
+            min-height: 20px;
+            padding-bottom: 2px;
+          }
+
+          .espaco-assinatura {
+            border: 1px solid #333;
+            height: 100px;
+            margin: 1.5cm 0;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9f9f9;
+            font-style: italic;
+            color: #666;
+          }
+
+          /* Layout para páginas com múltiplas assinaturas */
+          .pagina-assinaturas-multiplas {
+            padding: 1cm 0.5cm;
+          }
+
+          .titulo-assinaturas {
+            font-size: 14pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2cm;
+            border-bottom: 2px solid #333;
+            padding-bottom: 0.5cm;
+          }
+
+          .assinatura-item {
+            margin-bottom: 1.5cm;
+            padding: 0.8cm;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+          }
+
+          .assinatura-numero {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5cm;
+          }
+
+          .assinatura-texto {
+            font-size: 10pt;
+            line-height: 1.6;
+            text-align: justify;
+          }
+
+          /* ✨ NOVOS ESTILOS PARA MELHOR POSICIONAMENTO DE ASSINATURAS */
+          .pagina-assinaturas-melhoradas {
+            padding: 1.5cm;
+            font-family: 'Times New Roman', serif;
+          }
+
+          .subtitulo-assinaturas {
+            font-size: 12pt;
+            text-align: center;
+            margin-bottom: 2.5cm;
+            color: #666;
+            font-style: italic;
+          }
+
+          .assinatura-container {
+            margin-bottom: 3.5cm;
+            page-break-inside: avoid;
+            border: 1px solid #e0e0e0;
+            padding: 1.5cm;
+            border-radius: 8px;
+            background: #fdfdfd;
+          }
+
+          .area-assinatura-visual {
+            margin-bottom: 1.5cm;
+            text-align: center;
+          }
+
+          .linha-assinatura {
+            border-bottom: 2px solid #333;
+            width: 12cm;
+            margin: 0 auto 0.5cm auto;
+            padding-bottom: 0.3cm;
+            position: relative;
+          }
+
+          .indicacao-assinatura {
+            font-size: 10pt;
+            color: #0066cc;
+            font-weight: bold;
+            position: absolute;
+            right: 0;
+            top: -1.2cm;
+            font-style: italic;
+          }
+
+          .dados-signatario {
+            margin-top: 0.8cm;
+          }
+
+          .nome-signatario {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin-bottom: 0.3cm;
+          }
+
+          .cargo-signatario {
+            font-size: 11pt;
+            color: #666;
+            text-align: center;
+            font-style: italic;
+          }
+
+          .detalhes-assinatura {
+            background: #f8f9fa;
+            padding: 1cm;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+          }
+
+          .texto-validacao {
+            font-size: 10pt;
+            line-height: 1.6;
+            text-align: justify;
+            margin-bottom: 0.8cm;
+            color: #444;
+          }
+
+          .observacoes-assinatura {
+            font-size: 10pt;
+            margin-bottom: 0.5cm;
+            padding: 0.5cm;
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            color: #856404;
+          }
+
+          .hash-validacao {
+            font-size: 8pt;
+            color: #6c757d;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+            padding-top: 0.5cm;
+            font-family: monospace;
+          }
+
+          /* Layout para páginas de documentos anexados */
+          .documento-anexado-container {
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+          }
+
+          /* Página especial para PDFs - sem padding */
+          .documento-pagina.pdf-pagina-completa {
+            padding: 0 !important;
+            margin: 0.5cm auto !important;
+            position: relative;
+            max-width: 19cm;
+            display: block;
+          }
+
+          /* Ajustar posição do número da folha em PDFs completos */
+          .documento-pagina.pdf-pagina-completa .folha-numero {
+            position: absolute;
+            top: 0.5cm;
+            right: 0.5cm;
+            z-index: 1000;
+            background: white;
+            border: 2px solid #000;
+            padding: 4px 8px;
+            font-size: 10pt;
+            font-weight: bold;
+          }
+
+          .titulo-documento-anexado {
+            font-size: 14pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2cm;
+            border-bottom: 2px solid #333;
+            padding-bottom: 0.5cm;
+          }
+
+          .info-documento {
+            margin-bottom: 2cm;
+            background: #f9f9f9;
+            padding: 1cm;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+          }
+
+          .campo-documento {
+            margin-bottom: 0.8cm;
+            font-size: 11pt;
+            line-height: 1.4;
+          }
+
+          .preview-documento {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1cm;
+            background: white;
+            min-height: 10cm;
+          }
+
+          .preview-indisponivel,
+          .preview-pdf,
+          .preview-arquivo {
+            text-align: center;
+            padding: 2cm;
+          }
+
+          .preview-imagem {
+            text-align: center;
+          }
+
+          /* Layout para PDFs página completa */
+          .preview-pdf-pagina-completa {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            border: none;
+            position: relative;
+          }
+
+          .preview-pdf-pagina-completa object,
+          .preview-pdf-pagina-completa iframe {
+            width: 100% !important;
+            height: calc(100vh - 2cm) !important;
+            min-height: 22cm;
+            max-height: 24cm;
+            border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block;
+          }
+
+          .pdf-fallback {
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+          }
+
+          .icone-documento {
+            font-size: 3em;
+            margin-bottom: 1cm;
+          }
+
+          .tipo-arquivo {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 1cm;
+          }
+
+          .url-documento {
+            background: #f5f5f5;
+            padding: 0.5cm;
+            border-radius: 4px;
+            margin: 1cm 0;
+            font-family: monospace;
+          }
+
+          .observacao-preview {
+            font-style: italic;
+            color: #666;
+            margin-top: 1cm;
+            font-size: 10pt;
+          }
+
+          @media print {
+            * {
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            body {
+              background: white !important;
+              margin: 0 !important;
+            }
+
+            .documento-pagina {
+              background: white !important;
+              border: 2px solid #000 !important;
+              margin: 0.5cm auto !important;
+              padding: 1cm !important;
+              width: 19cm !important;
+              min-height: 24cm !important;
+              box-sizing: border-box !important;
+              page-break-after: always !important;
+            }
+
+            .documento-pagina:last-child {
+              page-break-after: avoid !important;
+            }
+
+            .folha-numero {
+              position: absolute !important;
+              top: 0.3cm !important;
+              right: 0.5cm !important;
+              background: white !important;
+              border: 2px solid #000 !important;
+              padding: 4px 8px !important;
+              font-size: 10pt !important;
+              font-weight: bold !important;
+            }
+
+            .caixa-bordered {
+              border: 2px solid #000 !important;
+              background: white !important;
+            }
+
+            .assinatura-item {
+              border: 1px solid #000 !important;
+              background: white !important;
+              margin-bottom: 1.2cm !important;
+              page-break-inside: avoid !important;
+            }
+
+            .titulo-assinaturas {
+              border-bottom: 2px solid #000 !important;
+            }
+
+            .info-documento {
+              border: 1px solid #000 !important;
+              background: white !important;
+            }
+
+            .preview-documento {
+              border: 1px solid #000 !important;
+              background: white !important;
+            }
+
+            .titulo-documento-anexado {
+              border-bottom: 2px solid #000 !important;
+            }
+
+            .url-documento {
+              background: #f5f5f5 !important;
+              border: 1px solid #000 !important;
+            }
+
+            .preview-pdf-pagina-completa {
+              background: white !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+
+            .preview-pdf-pagina-completa object,
+            .preview-pdf-pagina-completa iframe {
+              border: none !important;
+              background: white !important;
+              width: 100% !important;
+              height: 100% !important;
+            }
+
+            .documento-pagina.pdf-pagina-completa {
+              padding: 0 !important;
+              margin: 0.5cm auto !important;
+              max-width: 19cm !important;
+              display: block !important;
+            }
+
+            .documento-pagina.pdf-pagina-completa .folha-numero {
+              position: absolute !important;
+              top: 0.3cm !important;
+              right: 0.3cm !important;
+              z-index: 1000 !important;
+              background: white !important;
+              border: 2px solid #000 !important;
+            }
+          }
+        </style>
+      
+        <style>
+        @media print {
+          #controles-pdf {
+            display: none !important;
+          }
+        }
+      </style></head>
+        <body>
+      
+        <div class="documento-pagina">
+          <div class="folha-numero">Fl. 001</div>
+
+          <div class="folha-rosto">
+            <div class="caixa-bordered">
+
+              <div class="titulo-processo">
+                PROCESSO ADMINISTRATIVO Nº 1001/2025
+              </div>
+
+              <div class="campo">
+                <strong>NOME DO ÓRGÃO:</strong> Aloísio - Simulação
+              </div>
+
+              <div class="campo">
+                <strong>INTERESSADO(A):</strong> Aloísio - Simulação
+              </div>
+
+              <div class="campo">
+                <strong>DATA DE AUTUAÇÃO:</strong> 23/09/2025
+              </div>
+
+              <div class="campo" style="text-align: justify; line-height: 1.4;">
+                <strong>OBJETO:</strong> CHAMAMENTO PÚBLICO DESTINADO À REALIZAÇÃO DO PROCEDIMENTO AUXILIAR DE PRÉ-QUALIFICAÇÃO DE BENS PREVISTO NO ART. 80, INCISO II, DA LEI FEDERAL Nº 14.133/2021, OBJETIVANDO PROMOVER A SELEÇÃO TÉCNICA DE MARCAS E MODELOS DE PRODUTOS QUE POSSUAM OS PADRÕES MÍNIMOS DE QUALIDADE, ESTÉTICA, RENDIMENTO, DURABILIDADE, ADEQUAÇÃO AO USO E À FINALIDADE A QUE SE DESTINAM, CONFORME AS CARACTERÍSTICAS E CONDIÇÕES CONSTANTES NO EDITAL E SEUS ANEXOS, PARA SEREM INCLUÍDOS NO CATÁLOGO ELETRÔNICO DE BENS PADRONIZADOS, COM VISTAS ÀS AQUISIÇÕES EVENTUAIS E FUTURAS.
+              </div>
+
+            </div>
+          </div>
+        </div>
+      <div class="page-break"></div>
+        <div class="documento-pagina">
+          <div class="folha-numero">Fl. 002</div>
+
+          <div class="dfd-container">
+            <div class="dfd-titulo">
+              Aloísio - Simulação<br>
+              DOCUMENTO DE FORMALIZAÇÃO DE DEMANDA - MODELO_1<br>
+              <span style="font-size: 10pt; font-weight: normal;">PROCESSO Nº 1001/2025</span>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">1. JUSTIFICATIVA</div>
+              <div class="dfd-conteudo">dasdasdasd</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">2. DESCRIÇÃO DA NECESSIDADE</div>
+              <div class="dfd-conteudo">sadsa</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">3. ESPECIFICAÇÃO DOS PRODUTOS/SERVIÇOS</div>
+              <div class="dfd-conteudo">dsadsadsa</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">4. ESPECIFICAÇÕES TÉCNICAS</div>
+              <div class="dfd-conteudo">sadsadsad</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">5. CRITÉRIOS DE ACEITAÇÃO</div>
+              <div class="dfd-conteudo">sad</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">6. QUANTIDADES E AMOSTRAGEM</div>
+              <div class="dfd-conteudo">
+                <strong>Quantidade de Amostras:</strong> 4234<br>
+                <strong>Previsão de Aquisições:</strong> 32432
+              </div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">7. CONDIÇÕES DE ENTREGA</div>
+              <div class="dfd-conteudo">
+                <strong>Local de Entrega das Amostras:</strong> dsdsa<br>
+                <strong>Prazo de Entrega das Amostras:</strong> dsadasd
+              </div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">8. ENSAIOS EXIGIDOS</div>
+              <div class="dfd-conteudo">sadasdasdasdas</div>
+            </div>
+
+            <div class="dfd-secao">
+              <div class="dfd-secao-titulo">9. OBSERVAÇÕES ESPECIAIS</div>
+              <div class="dfd-conteudo">sadasdasd</div>
+            </div>
+
+            <div style="margin-top: 2cm; page-break-inside: avoid;">
+              <div class="dfd-conteudo" style="text-align: justify;">Nestes termos, encaminha-se o presente DFD à autoridade competente, para ciência da presente demanda e autorização para a abertura e instrução do pertinente processo administrativo.</div>
+
+              <div style="text-align: center; margin-top: 2cm;">
+                <p style="margin-bottom: 1cm; font-size: 10pt;"><strong>Data:</strong> 25/09/2025</p>
+                <div style="border-top: 1px solid #000; width: 8cm; margin: 1cm auto 0.5cm auto;"></div>
+                <p style="font-size: 10pt; font-weight: bold; margin-bottom: 0.3cm;">Equipe Técnica Responsável</p>
+                <p style="font-size: 10pt;">Aloísio - Simulação</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      
+        <div class="documento-pagina pdf-pagina-completa">
+          <div class="folha-numero">Fl. 003</div>
+
+          <div class="documento-anexado-container">
+            
+          <div class="preview-pdf-pagina-completa">
+            <object data="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845128965_0_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p1.pdf#page=1#toolbar=0&amp;navpanes=0&amp;scrollbar=0&amp;statusbar=0&amp;messages=0&amp;scrollbar=0" type="application/pdf" width="100%" height="23cm" style="border: none; max-width: 100%;">
+
+              <!-- Fallback para navegadores que não suportam object -->
+              <iframe src="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845128965_0_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p1.pdf#page=1#toolbar=0&amp;navpanes=0&amp;scrollbar=0&amp;statusbar=0&amp;messages=0&amp;scrollbar=0" width="100%" height="23cm" style="border: none; max-width: 100%;">
+
+                <!-- Fallback final se iframe também não funcionar -->
+                <div class="pdf-fallback" style="text-align: center; padding: 4cm; background: white; min-height: 20cm;">
+                  <div style="font-size: 4em; margin-bottom: 1cm;">📋</div>
+                  <div style="margin: 1cm 0; font-weight: bold; font-size: 14pt;">PDF não pode ser exibido diretamente</div>
+                  <div style="font-size: 12pt; margin-bottom: 2cm; color: #666;">
+                    O navegador não suporta visualização de PDF incorporada.
+                  </div>
+                  <a href="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845128965_0_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p1.pdf#page=1" target="_blank"
+                     style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
+                    📄 Abrir PDF em Nova Aba
+                  </a>
+                  <div style="margin-top: 2cm; font-size: 10pt; color: #999;">
+                    <strong>Arquivo:</strong> 1758845128965_0_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p1.pdf#page=1
+                  </div>
+                </div>
+
+              </iframe>
+            </object>
+          </div>
+        
+          </div>
+        </div>
+      
+        <div class="documento-pagina pdf-pagina-completa">
+          <div class="folha-numero">Fl. 004</div>
+
+          <div class="documento-anexado-container">
+            
+          <div class="preview-pdf-pagina-completa">
+            <object data="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845129346_1_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p2.pdf#page=2#toolbar=0&amp;navpanes=0&amp;scrollbar=0&amp;statusbar=0&amp;messages=0&amp;scrollbar=0" type="application/pdf" width="100%" height="23cm" style="border: none; max-width: 100%;">
+
+              <!-- Fallback para navegadores que não suportam object -->
+              <iframe src="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845129346_1_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p2.pdf#page=2#toolbar=0&amp;navpanes=0&amp;scrollbar=0&amp;statusbar=0&amp;messages=0&amp;scrollbar=0" width="100%" height="23cm" style="border: none; max-width: 100%;">
+
+                <!-- Fallback final se iframe também não funcionar -->
+                <div class="pdf-fallback" style="text-align: center; padding: 4cm; background: white; min-height: 20cm;">
+                  <div style="font-size: 4em; margin-bottom: 1cm;">📋</div>
+                  <div style="margin: 1cm 0; font-weight: bold; font-size: 14pt;">PDF não pode ser exibido diretamente</div>
+                  <div style="font-size: 12pt; margin-bottom: 2cm; color: #666;">
+                    O navegador não suporta visualização de PDF incorporada.
+                  </div>
+                  <a href="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845129346_1_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p2.pdf#page=2" target="_blank"
+                     style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
+                    📄 Abrir PDF em Nova Aba
+                  </a>
+                  <div style="margin-top: 2cm; font-size: 10pt; color: #999;">
+                    <strong>Arquivo:</strong> 1758845129346_1_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p2.pdf#page=2
+                  </div>
+                </div>
+
+              </iframe>
+            </object>
+          </div>
+        
+          </div>
+        </div>
+      
+        <div class="documento-pagina pdf-pagina-completa">
+          <div class="folha-numero">Fl. 005</div>
+
+          <div class="documento-anexado-container">
+            
+          <div class="preview-pdf-pagina-completa">
+            <object data="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845381685_0_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p1.pdf#page=1#toolbar=0&amp;navpanes=0&amp;scrollbar=0&amp;statusbar=0&amp;messages=0&amp;scrollbar=0" type="application/pdf" width="100%" height="23cm" style="border: none; max-width: 100%;">
+
+              <!-- Fallback para navegadores que não suportam object -->
+              <iframe src="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845381685_0_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p1.pdf#page=1#toolbar=0&amp;navpanes=0&amp;scrollbar=0&amp;statusbar=0&amp;messages=0&amp;scrollbar=0" width="100%" height="23cm" style="border: none; max-width: 100%;">
+
+                <!-- Fallback final se iframe também não funcionar -->
+                <div class="pdf-fallback" style="text-align: center; padding: 4cm; background: white; min-height: 20cm;">
+                  <div style="font-size: 4em; margin-bottom: 1cm;">📋</div>
+                  <div style="margin: 1cm 0; font-weight: bold; font-size: 14pt;">PDF não pode ser exibido diretamente</div>
+                  <div style="font-size: 12pt; margin-bottom: 2cm; color: #666;">
+                    O navegador não suporta visualização de PDF incorporada.
+                  </div>
+                  <a href="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845381685_0_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p1.pdf#page=1" target="_blank"
+                     style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
+                    📄 Abrir PDF em Nova Aba
+                  </a>
+                  <div style="margin-top: 2cm; font-size: 10pt; color: #999;">
+                    <strong>Arquivo:</strong> 1758845381685_0_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p1.pdf#page=1
+                  </div>
+                </div>
+
+              </iframe>
+            </object>
+          </div>
+        
+          </div>
+        </div>
+      
+        <div class="documento-pagina pdf-pagina-completa">
+          <div class="folha-numero">Fl. 006</div>
+
+          <div class="documento-anexado-container">
+            
+          <div class="preview-pdf-pagina-completa">
+            <object data="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845382110_1_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p2.pdf#page=2#toolbar=0&amp;navpanes=0&amp;scrollbar=0&amp;statusbar=0&amp;messages=0&amp;scrollbar=0" type="application/pdf" width="100%" height="23cm" style="border: none; max-width: 100%;">
+
+              <!-- Fallback para navegadores que não suportam object -->
+              <iframe src="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845382110_1_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p2.pdf#page=2#toolbar=0&amp;navpanes=0&amp;scrollbar=0&amp;statusbar=0&amp;messages=0&amp;scrollbar=0" width="100%" height="23cm" style="border: none; max-width: 100%;">
+
+                <!-- Fallback final se iframe também não funcionar -->
+                <div class="pdf-fallback" style="text-align: center; padding: 4cm; background: white; min-height: 20cm;">
+                  <div style="font-size: 4em; margin-bottom: 1cm;">📋</div>
+                  <div style="margin: 1cm 0; font-weight: bold; font-size: 14pt;">PDF não pode ser exibido diretamente</div>
+                  <div style="font-size: 12pt; margin-bottom: 2cm; color: #666;">
+                    O navegador não suporta visualização de PDF incorporada.
+                  </div>
+                  <a href="https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/documentosprocessos/1758845382110_1_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p2.pdf#page=2" target="_blank"
+                     style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
+                    📄 Abrir PDF em Nova Aba
+                  </a>
+                  <div style="margin-top: 2cm; font-size: 10pt; color: #999;">
+                    <strong>Arquivo:</strong> 1758845382110_1_INSTRU__O_PROCESSUAL_-_23-09-2025__1__p2.pdf#page=2
+                  </div>
+                </div>
+
+              </iframe>
+            </object>
+          </div>
+        
+          </div>
+        </div>
+      
+        
+        
+      <div id="controles-pdf" style="position: fixed; top: 10px; right: 10px; background: linear-gradient(135deg, rgb(102, 126, 234) 0%, rgb(118, 75, 162) 100%); color: white; border: none; border-radius: 8px; padding: 15px; box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 12px; z-index: 9999; font-family: &quot;Segoe UI&quot;, sans-serif; display: flex; gap: 10px; align-items: center;"><span style="font-size: 11px; font-weight: bold; margin-right: 10px; opacity: 0.9;">Caderno do Processo 1001/2025</span><button style="background: rgba(255, 255, 255, 0.3); color: white; border: 1px solid rgba(255, 255, 255, 0.3); padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.3s;">Baixar</button><button style="background: rgba(255, 0, 0, 0.7); color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.3s;">✕</button></div></body></html>

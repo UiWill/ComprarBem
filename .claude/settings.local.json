@@ -20,7 +20,9 @@
       "WebFetch(domain:www.tce.sp.gov.br)",
       "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\create_processo_editais_table.sql\")",
       "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\add_foreign_key_processo_editais.sql\")",
-      "Bash(\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" http://localhost:8081/)"
+      "Bash(\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" http://localhost:8081/)",
+      "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\add_pdf_pages_fields.sql\")",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": [],

@@ -696,20 +696,32 @@ export default {
     },
     
     async voltarEtapa() {
-      // Auto-save antes de voltar para etapa anterior
-      await this.salvarProgressoEtapaAtual()
-      
-      if (this.etapaAtual > 0) {
-        this.etapaAtual--
-        // Carregar dados salvos da etapa anterior
-        await this.carregarProgressoEtapa(this.etapaAtual)
+      try {
+        console.log('🔄 Voltando para etapa anterior...')
+
+        // Auto-save CRÍTICO antes de voltar para etapa anterior
+        await this.salvarProgressoEtapaAtual()
+
+        if (this.etapaAtual > 0) {
+          this.etapaAtual--
+          console.log(`🔄 Etapa alterada para: ${this.etapaAtual}`)
+
+          // Carregar dados salvos da etapa anterior
+          await this.carregarProgressoEtapa(this.etapaAtual)
+
+          // Force reactive update
+          this.$forceUpdate()
+        }
+      } catch (error) {
+        console.error('❌ Erro ao voltar etapa:', error)
+        alert('Erro ao voltar para etapa anterior. Seus dados foram preservados.')
       }
     },
     
     async salvarProgressoEtapaAtual() {
       try {
         let chaveStorage = null
-        
+
         if (this.modoEdicao && this.processoEdicao?.id) {
           chaveStorage = `processo_edicao_${this.processoEdicao.id}`
         } else {
@@ -720,22 +732,32 @@ export default {
             localStorage.setItem('processo_atual_novo', chaveStorage)
           }
         }
-        
+
+        // SALVAMENTO COMPLETO E DETALHADO
         const progressoSalvo = {
           etapaAtual: this.etapaAtual,
-          dadosProcesso: { ...this.dadosProcesso },
-          dadosBasicos: { ...this.dadosBasicos },
-          dadosDFD: { ...this.dadosDFD },
-          produtosSelecionados: Array.isArray(this.produtosSelecionados) ? [...this.produtosSelecionados] : [],
-          documentosUpload: [...(this.documentosUpload || [])],
+          dadosProcesso: JSON.parse(JSON.stringify(this.dadosProcesso)), // Deep clone
+          dadosBasicos: JSON.parse(JSON.stringify(this.dadosBasicos)), // Deep clone
+          dadosDFD: JSON.parse(JSON.stringify(this.dadosDFD)), // Deep clone
+          produtosSelecionados: Array.isArray(this.produtosSelecionados) ?
+            JSON.parse(JSON.stringify(this.produtosSelecionados)) : [],
+          documentosUpload: JSON.parse(JSON.stringify(this.documentosUpload || [])),
           timestamp: new Date().toISOString(),
           processoId: this.processoTemporario?.id || this.processoEdicao?.id,
-          modoEdicao: this.modoEdicao
+          modoEdicao: this.modoEdicao,
+          tipoProcesso: this.dadosProcesso?.tipo_processo,
+          versao: '1.1' // Versão do formato de dados para compatibilidade futura
         }
-        
+
         localStorage.setItem(chaveStorage, JSON.stringify(progressoSalvo))
-        console.log(`📄 Auto-save realizado - Etapa ${this.etapaAtual}`)
-        console.log(`📄 DEBUG: Produtos selecionados salvos:`, progressoSalvo.produtosSelecionados)
+
+        // Log detalhado para debug
+        console.log(`✅ AUTO-SAVE CRÍTICO realizado - Etapa ${this.etapaAtual}`)
+        console.log(`📄 Chave de storage: ${chaveStorage}`)
+        console.log(`📊 Dados básicos preservados:`, Object.keys(this.dadosBasicos).length > 0 ? '✓' : '✗')
+        console.log(`📄 Dados DFD preservados:`, Object.keys(this.dadosDFD).length > 0 ? '✓' : '✗')
+        console.log(`🛍️ Produtos preservados:`, this.produtosSelecionados?.length || 0)
+        console.log(`📁 Documentos preservados:`, this.documentosUpload?.length || 0)
         
       } catch (error) {
         console.error('Erro ao salvar progresso da etapa:', error)
@@ -744,28 +766,61 @@ export default {
     
     async carregarProgressoEtapa(etapa) {
       try {
-        const chaveStorage = this.modoEdicao ? 
-          `processo_edicao_${this.processoEdicao?.id}` : 
+        const chaveStorage = this.modoEdicao ?
+          `processo_edicao_${this.processoEdicao?.id}` :
           localStorage.getItem('processo_atual_novo')
-        
-        if (!chaveStorage) return
-        
+
+        if (!chaveStorage) {
+          console.log('⚠️ Nenhuma chave de storage encontrada para carregar dados')
+          return
+        }
+
         const progressoSalvo = localStorage.getItem(chaveStorage)
         if (progressoSalvo) {
           const dados = JSON.parse(progressoSalvo)
-          
-          // Carregar apenas os dados relevantes para a etapa
-          this.dadosProcesso = { ...dados.dadosProcesso }
-          this.dadosBasicos = { ...dados.dadosBasicos }
-          this.dadosDFD = { ...dados.dadosDFD }
-          this.produtosSelecionados = [...(dados.produtosSelecionados || [])]
-          console.log('📄 DEBUG: Produtos selecionados carregados do auto-save:', this.produtosSelecionados)
-          this.documentosUpload = [...(dados.documentosUpload || [])]
-          
-          console.log(`📄 Dados carregados - Etapa ${etapa}`)
+
+          // CARREGAMENTO COMPLETO E DETALHADO
+          console.log(`🔄 Carregando dados salvos da etapa ${etapa}...`)
+
+          // Restaurar todos os dados com validação
+          if (dados.dadosProcesso) {
+            this.dadosProcesso = JSON.parse(JSON.stringify(dados.dadosProcesso))
+            console.log(`📊 Dados do processo restaurados:`, Object.keys(this.dadosProcesso).length > 0 ? '✓' : '✗')
+          }
+
+          if (dados.dadosBasicos) {
+            this.dadosBasicos = JSON.parse(JSON.stringify(dados.dadosBasicos))
+            console.log(`📋 Dados básicos restaurados:`, Object.keys(this.dadosBasicos).length > 0 ? '✓' : '✗')
+          }
+
+          if (dados.dadosDFD) {
+            this.dadosDFD = JSON.parse(JSON.stringify(dados.dadosDFD))
+            console.log(`📄 Dados DFD restaurados:`, Object.keys(this.dadosDFD).length > 0 ? '✓' : '✗')
+          }
+
+          if (dados.produtosSelecionados) {
+            this.produtosSelecionados = JSON.parse(JSON.stringify(dados.produtosSelecionados))
+            console.log(`🛍️ Produtos restaurados:`, this.produtosSelecionados?.length || 0)
+          }
+
+          if (dados.documentosUpload) {
+            this.documentosUpload = JSON.parse(JSON.stringify(dados.documentosUpload))
+            console.log(`📁 Documentos restaurados:`, this.documentosUpload?.length || 0)
+          }
+
+          // Restaurar processo temporário se existir
+          if (dados.processoId && !this.modoEdicao) {
+            this.processoTemporario = { id: dados.processoId }
+          }
+
+          console.log(`✅ DADOS RESTAURADOS COMPLETAMENTE - Etapa ${etapa}`)
+        } else {
+          console.log(`⚠️ Nenhum progresso salvo encontrado para a etapa ${etapa}`)
         }
+
       } catch (error) {
-        console.error('Erro ao carregar progresso da etapa:', error)
+        console.error('❌ Erro ao carregar progresso da etapa:', error)
+        alert('Erro ao carregar dados salvos. Os campos podem estar vazios.')
       }
     },
     

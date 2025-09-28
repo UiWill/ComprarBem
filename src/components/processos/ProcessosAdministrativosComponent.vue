@@ -319,15 +319,14 @@
                     <span class="btn-text">Gerar Relatório PDF</span>
                   </button>
                   
-                  <!-- Botão para enviar para análise administrativa (CPM apenas) -->
-                  <button 
-                    v-if="podeEnviarParaAnalise(processoSelecionado)" 
-                    @click="enviarParaAnaliseAdministrativa(processoSelecionado)" 
-                    class="action-btn action-btn-success"
-                  >
-                    <span class="btn-icon">🚀</span>
-                    <span class="btn-text">Enviar para Análise/Aprovação</span>
-                  </button>
+                  <!-- NOVO SISTEMA DE FLUXO LIVRE - Substitui botão antigo de tramitação -->
+                  <SeletorDestinoLivre
+                    v-if="podeEnviarParaAnalise(processoSelecionado) || temAcaoTramitacaoEnviar(processoSelecionado)"
+                    :processo="processoSelecionado"
+                    :pode-enviar="true"
+                    @processo-enviado="onProcessoEnviado"
+                    @erro="onErroTramitacao"
+                  />
                   
                   <!-- Botão Universal de Assinatura Digital -->
                   <button
@@ -358,25 +357,26 @@
                     <span class="btn-text">Devolver para CPM</span>
                   </button>
                   
-                  <!-- Botão para tramitar processo assinado para CCL -->
-                  <button 
-                    v-if="podeTramitarParaCCL(processoSelecionado)" 
-                    @click="tramitarProcessoParaCCL(processoSelecionado)" 
+                  <!-- BOTÕES ANTIGOS - DESABILITADOS PELO NOVO SISTEMA DE FLUXO LIVRE -->
+                  <!--
+                  <button
+                    v-if="podeTramitarParaCCL(processoSelecionado)"
+                    @click="tramitarProcessoParaCCL(processoSelecionado)"
                     class="action-btn action-btn-success"
                   >
                     <span class="btn-icon">⚖️</span>
                     <span class="btn-text">{{ obterTextoBotaoTramitacao(processoSelecionado) }}</span>
                   </button>
-                  
-                  <!-- Botões de Tramitação Geral -->
-                  <button 
-                    v-if="temAcaoTramitacaoEnviar(processoSelecionado) && !podeEnviarParaAnalise(processoSelecionado)" 
-                    @click="enviarParaProximaEtapa(processoSelecionado)" 
+
+                  <button
+                    v-if="temAcaoTramitacaoEnviar(processoSelecionado) && !podeEnviarParaAnalise(processoSelecionado)"
+                    @click="enviarParaProximaEtapa(processoSelecionado)"
                     class="action-btn action-btn-success"
                   >
                     <span class="btn-icon">🚀</span>
                     <span class="btn-text">Enviar para Próxima Etapa</span>
                   </button>
+                  -->
                   
                   <button 
                     v-if="temAcaoTramitacaoDevolver(processoSelecionado)" 
@@ -1384,14 +1384,33 @@
         <div class="modal-body">
           <div class="modelos-info">
             <p>Selecione e baixe o modelo de DFD apropriado para o seu processo:</p>
+
+            <!-- Seletor de tipo de processo -->
+            <div class="tipo-processo-selector">
+              <label>📋 Tipo de processo:</label>
+              <select v-model="tipoProcessoParaDFD" @change="filtrarModelosDFD">
+                <option value="">Selecione o tipo de processo</option>
+                <option value="padronizacao">✅ Padronização</option>
+                <option value="despadronizacao">❌ Despadronização</option>
+                <option value="todos">📄 Todos os modelos</option>
+              </select>
+            </div>
           </div>
 
           <div class="modelos-lista">
-            <div class="modelo-item" @click="baixarModeloDFD(1)">
+            <!-- Modelo 1 - APENAS PARA PADRONIZAÇÃO -->
+            <div
+              v-if="modelosDisponiveis.includes(1)"
+              class="modelo-item"
+              @click="baixarModeloDFD(1)"
+            >
               <div class="modelo-icon">📋</div>
               <div class="modelo-content">
-                <h4>Modelo 1</h4>
-                <p>Para processos de padronização com produtos específicos e quantidades definidas</p>
+                <h4>Modelo 1 - Padronização</h4>
+                <p>Para processos de <strong>padronização</strong> de bens e marcas no catálogo eletrônico</p>
+                <div class="modelo-tags">
+                  <span class="tag verde">✅ Padronização</span>
+                </div>
               </div>
               <div class="modelo-action">
                 <button class="btn-download">
@@ -1400,11 +1419,19 @@
               </div>
             </div>
 
-            <div class="modelo-item" @click="baixarModeloDFD(2)">
+            <!-- Modelo 2 - APENAS PARA DESPADRONIZAÇÃO -->
+            <div
+              v-if="modelosDisponiveis.includes(2)"
+              class="modelo-item"
+              @click="baixarModeloDFD(2)"
+            >
               <div class="modelo-icon">📋</div>
               <div class="modelo-content">
-                <h4>Modelo 2</h4>
-                <p>Para processos de despadronização com base em reclamações e RDM</p>
+                <h4>Modelo 2 - Despadronização</h4>
+                <p>Para processos de <strong>despadronização</strong> com base em reclamações e RDM</p>
+                <div class="modelo-tags">
+                  <span class="tag vermelho">❌ Despadronização</span>
+                </div>
               </div>
               <div class="modelo-action">
                 <button class="btn-download">
@@ -1413,23 +1440,81 @@
               </div>
             </div>
 
-            <div class="modelo-item" @click="baixarModeloDFD(3)">
-              <div class="modelo-icon">📋</div>
+            <!-- Modelo 3 - Edital de Chamamento Público -->
+            <div
+              v-if="modelosDisponiveis.includes(3)"
+              class="modelo-item"
+              @click="baixarModeloDFD(3)"
+            >
+              <div class="modelo-icon">📢</div>
               <div class="modelo-content">
-                <h4>Modelo 3</h4>
-                <p>Modelo flexível para situações especiais e processos customizados</p>
+                <h4>Modelo 3 - Edital de Chamamento</h4>
+                <p>Template para edital de chamamento público em processos de padronização</p>
+                <div class="modelo-tags">
+                  <span class="tag azul">📢 Edital</span>
+                </div>
               </div>
               <div class="modelo-action">
                 <button class="btn-download">
                   ⬇️ Baixar
                 </button>
               </div>
+            </div>
+
+            <!-- Mensagem quando nenhum modelo está disponível -->
+            <div v-if="modelosDisponiveis.length === 0" class="modelos-vazio">
+              <p>ℹ️ Selecione um tipo de processo para ver os modelos apropriados.</p>
             </div>
           </div>
         </div>
 
         <div class="modal-footer">
           <button @click="fecharModalModelosDFD" class="btn-secondary">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Visualização de Documento -->
+    <div v-if="mostrarModalVisualizacao" class="modal-overlay" @click="fecharModalVisualizacao">
+      <div class="modal-content modal-visualizacao" @click.stop>
+        <div class="modal-header">
+          <h3>📄 {{ documentoVisualizacao?.nome_documento }}</h3>
+          <div class="documento-info" v-if="documentoVisualizacao?.pagina_pdf">
+            <span class="pagina-info">
+              Página {{ documentoVisualizacao.pagina_pdf }} de {{ documentoVisualizacao.total_paginas_pdf }}
+            </span>
+            <span class="folha-info">
+              {{ documentoVisualizacao.folha_numero }}
+            </span>
+          </div>
+          <button @click="fecharModalVisualizacao" class="btn-close">✕</button>
+        </div>
+
+        <div class="modal-body modal-pdf">
+          <div class="pdf-viewer">
+            <object
+              v-if="documentoVisualizacao"
+              :data="obterUrlDocumento(documentoVisualizacao)"
+              type="application/pdf"
+              class="pdf-object-limpo"
+            >
+              <iframe
+                :src="obterUrlDocumento(documentoVisualizacao)"
+                class="pdf-iframe-fallback"
+                frameborder="0"
+                scrolling="no"
+              ></iframe>
+            </object>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button @click="abrirDocumentoNovaAba" class="btn btn-secondary">
+            🔗 Abrir em Nova Aba
+          </button>
+          <button @click="fecharModalVisualizacao" class="btn btn-primary">
             Fechar
           </button>
         </div>
@@ -1447,6 +1532,9 @@ import TramitacaoProcessosService from '../../services/tramitacaoProcessosServic
 import AssistenteProcesso from './AssistenteProcesso.vue'
 import ModalVincularEdital from './ModalVincularEdital.vue'
 import DocumentacaoProdutos from './DocumentacaoProdutos.vue'
+import SeletorDestinoLivre from './SeletorDestinoLivre.vue'
+import PDFPagesService from '../../services/pdfPagesService'
+import PDFRenderService from '../../services/pdfRenderService'
 import { supabase } from '../../services/supabase'
 
 export default {
@@ -1454,7 +1542,8 @@ export default {
   components: {
     AssistenteProcesso,
     ModalVincularEdital,
-    DocumentacaoProdutos
+    DocumentacaoProdutos,
+    SeletorDestinoLivre
   },
   data() {
     return {
@@ -1481,7 +1570,13 @@ export default {
       mostrarDocumentacao: false,
       mostrarModalAdicionarDoc: false,
       mostrarModalModelosDFD: false,
+      mostrarModalVisualizacao: false,
       processoSelecionado: null,
+      documentoVisualizacao: null,
+
+      // Controle de filtragem dos modelos DFD
+      tipoProcessoParaDFD: '',
+      modelosDisponiveis: [],
       
       // Edição
       modoEdicao: false,
@@ -1627,6 +1722,8 @@ export default {
     await this.carregarPerfilUsuario()
     await this.carregarProcessos()
     await this.carregarEstatisticas()
+
+    // Agora usando iframe simples - não precisa de configuração especial
   },
   
   beforeUnmount() {
@@ -4100,7 +4197,41 @@ export default {
 
     fecharModalModelosDFD() {
       this.mostrarModalModelosDFD = false
+      this.tipoProcessoParaDFD = ''
+      this.modelosDisponiveis = []
       document.body.style.overflow = 'auto'
+    },
+
+    filtrarModelosDFD() {
+      console.log('🔍 Filtrando modelos DFD para tipo:', this.tipoProcessoParaDFD)
+
+      switch (this.tipoProcessoParaDFD) {
+        case 'padronizacao':
+          // CORREÇÃO CONFORME SOLICITAÇÃO: Apenas Modelo 1 para padronização
+          this.modelosDisponiveis = [1]
+          console.log('✅ Padronização: Mostrando apenas Modelo 1')
+          break
+
+        case 'despadronizacao':
+          // Modelo 2 para despadronização
+          this.modelosDisponiveis = [2]
+          console.log('❌ Despadronização: Mostrando apenas Modelo 2')
+          break
+
+        case 'todos':
+          // Mostrar todos os modelos para usuários que querem ver tudo
+          this.modelosDisponiveis = [1, 2, 3]
+          console.log('📄 Todos: Mostrando todos os modelos')
+          break
+
+        default:
+          // Nenhum modelo se não selecionou tipo
+          this.modelosDisponiveis = []
+          console.log('⚠️ Nenhum tipo selecionado: Ocultando todos os modelos')
+      }
+
+      // Forçar reatividade
+      this.$forceUpdate()
     },
 
     baixarModeloDFD(modelo) {
@@ -4162,6 +4293,12 @@ export default {
     },
     
     visualizarProcesso(processo) {
+      // ✨ VALIDAÇÃO: Verificar se processo existe e tem numero_processo
+      if (!processo || !processo.numero_processo) {
+        console.error('❌ Erro: processo inválido ou sem numero_processo:', processo)
+        return
+      }
+
       console.log('🔍 DEBUG - Visualizando processo:', processo.numero_processo, 'Status:', `"${processo.status}"`)
       console.log('🔍 DEBUG - Processo completo:', processo)
       console.log('🔍 DEBUG - Comparação:', processo.status === 'em_criacao', processo.status, typeof processo.status)
@@ -4619,6 +4756,104 @@ export default {
             text-align: justify;
           }
 
+          /* ✨ NOVOS ESTILOS PARA MELHOR POSICIONAMENTO DE ASSINATURAS */
+          .pagina-assinaturas-melhoradas {
+            padding: 1.5cm;
+            font-family: 'Times New Roman', serif;
+          }
+
+          .subtitulo-assinaturas {
+            font-size: 12pt;
+            text-align: center;
+            margin-bottom: 2.5cm;
+            color: #666;
+            font-style: italic;
+          }
+
+          .assinatura-container {
+            margin-bottom: 3.5cm;
+            page-break-inside: avoid;
+            border: 1px solid #e0e0e0;
+            padding: 1.5cm;
+            border-radius: 8px;
+            background: #fdfdfd;
+          }
+
+          .area-assinatura-visual {
+            margin-bottom: 1.5cm;
+            text-align: center;
+          }
+
+          .linha-assinatura {
+            border-bottom: 2px solid #333;
+            width: 12cm;
+            margin: 0 auto 0.5cm auto;
+            padding-bottom: 0.3cm;
+            position: relative;
+          }
+
+          .indicacao-assinatura {
+            font-size: 10pt;
+            color: #0066cc;
+            font-weight: bold;
+            position: absolute;
+            right: 0;
+            top: -1.2cm;
+            font-style: italic;
+          }
+
+          .dados-signatario {
+            margin-top: 0.8cm;
+          }
+
+          .nome-signatario {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin-bottom: 0.3cm;
+          }
+
+          .cargo-signatario {
+            font-size: 11pt;
+            color: #666;
+            text-align: center;
+            font-style: italic;
+          }
+
+          .detalhes-assinatura {
+            background: #f8f9fa;
+            padding: 1cm;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+          }
+
+          .texto-validacao {
+            font-size: 10pt;
+            line-height: 1.6;
+            text-align: justify;
+            margin-bottom: 0.8cm;
+            color: #444;
+          }
+
+          .observacoes-assinatura {
+            font-size: 10pt;
+            margin-bottom: 0.5cm;
+            padding: 0.5cm;
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            color: #856404;
+          }
+
+          .hash-validacao {
+            font-size: 8pt;
+            color: #6c757d;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+            padding-top: 0.5cm;
+            font-family: monospace;
+          }
+
           /* Layout para páginas de documentos anexados */
           .documento-anexado-container {
             padding: 0;
@@ -4630,10 +4865,15 @@ export default {
           /* Página especial para PDFs - sem padding */
           .documento-pagina.pdf-pagina-completa {
             padding: 0 !important;
-            margin: 0.5cm auto !important;
+            margin: 0 auto !important;
             position: relative;
-            max-width: 19cm;
-            display: block;
+            width: 21cm;
+            height: 29.7cm;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: white;
+            page-break-before: always;
           }
 
           /* Ajustar posição do número da folha em PDFs completos */
@@ -4660,7 +4900,7 @@ export default {
 
           .info-documento {
             margin-bottom: 2cm;
-            background: #f9f9f9;
+            background: white;
             padding: 1cm;
             border-radius: 8px;
             border: 1px solid #ddd;
@@ -4694,23 +4934,144 @@ export default {
           /* Layout para PDFs página completa */
           .preview-pdf-pagina-completa {
             width: 100%;
-            height: 100%;
-            margin: 0;
+            height: 29.7cm; /* Altura fixa A4 */
+            margin: 0 auto;
             padding: 0;
             border: none;
             position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: white;
+          }
+
+          /* Container para ocultar controles do PDF */
+          .pdf-container-sem-controles {
+            width: 21cm; /* Largura fixa A4 */
+            height: 29.7cm; /* Altura fixa A4 */
+            position: relative;
+            overflow: hidden !important;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: white;
+            -webkit-overflow-scrolling: none !important;
+            touch-action: none !important;
           }
 
           .preview-pdf-pagina-completa object,
           .preview-pdf-pagina-completa iframe {
-            width: 100% !important;
-            height: calc(100vh - 2cm) !important;
-            min-height: 22cm;
-            max-height: 24cm;
+            width: 21cm !important;
+            height: 29.7cm !important;
             border: none !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            display: block !important;
+            overflow: hidden !important;
+            position: relative;
+            background: white;
+            pointer-events: none !important;
+          }
+
+          /* BLOQUEIO TOTAL DE SCROLL E INTERAÇÕES */
+          .pdf-container-sem-controles {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+          }
+
+          .pdf-container-sem-controles object,
+          .pdf-container-sem-controles iframe {
+            pointer-events: auto !important; /* Permitir visualização */
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            user-select: none !important;
+            overflow: hidden !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+          }
+
+          .pdf-container-sem-controles object::-webkit-scrollbar,
+          .pdf-container-sem-controles iframe::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+          }
+
+          /* Forçar ocultação de scrollbars em todos os navegadores */
+          .preview-pdf-pagina-completa,
+          .pdf-container-sem-controles,
+          .preview-pdf-pagina-completa object,
+          .preview-pdf-pagina-completa iframe {
+            scrollbar-width: none !important; /* Firefox */
+            -ms-overflow-style: none !important; /* IE e Edge */
+            overflow: hidden !important;
+          }
+
+          .preview-pdf-pagina-completa::-webkit-scrollbar,
+          .pdf-container-sem-controles::-webkit-scrollbar,
+          .preview-pdf-pagina-completa object::-webkit-scrollbar,
+          .preview-pdf-pagina-completa iframe::-webkit-scrollbar {
+            display: none !important;
+            width: 0px !important;
+            height: 0px !important;
+            background: transparent !important;
+          }
+
+          /* ✨ CSS PARA IFRAME PDF - SOLUÇÃO SIMPLES E FUNCIONAL */
+          .preview-pdf-iframe {
+            width: 21cm !important;
+            height: 29.7cm !important;
+            overflow: hidden !important;
+            background: white !important;
+            border: none !important;
+            margin: 0 auto !important;
+            display: block !important;
+            position: relative !important;
+          }
+
+          .preview-pdf-iframe iframe {
+            border: none !important;
+            overflow: hidden !important;
+            display: block !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: white !important;
+            pointer-events: none !important;
+            width: 100% !important;
+            height: 100% !important;
+          }
+
+          /* CSS para novo sistema de renderização PDF (LEGADO) */
+          .preview-pdf-renderizado {
+            width: 21cm;
+            height: 29.7cm;
+            margin: 0 auto;
+            position: relative;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          }
+
+          .pdf-loading,
+          .pdf-rendered,
+          .pdf-error {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+          }
+
+          .pdf-rendered img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
             display: block;
+            margin: 0 auto;
           }
 
           .pdf-fallback {
@@ -4733,11 +5094,12 @@ export default {
           }
 
           .url-documento {
-            background: #f5f5f5;
+            background: white;
             padding: 0.5cm;
             border-radius: 4px;
             margin: 1cm 0;
             font-family: monospace;
+            border: 1px solid #ddd;
           }
 
           .observacao-preview {
@@ -4816,7 +5178,7 @@ export default {
             }
 
             .url-documento {
-              background: #f5f5f5 !important;
+              background: white !important;
               border: 1px solid #000 !important;
             }
 
@@ -4836,9 +5198,14 @@ export default {
 
             .documento-pagina.pdf-pagina-completa {
               padding: 0 !important;
-              margin: 0.5cm auto !important;
-              max-width: 19cm !important;
-              display: block !important;
+              margin: 0 auto !important;
+              width: 21cm !important;
+              height: 29.7cm !important;
+              display: flex !important;
+              justify-content: center !important;
+              align-items: center !important;
+              background: white !important;
+              page-break-before: always !important;
             }
 
             .documento-pagina.pdf-pagina-completa .folha-numero {
@@ -4893,13 +5260,11 @@ export default {
       // PÁGINAS DE ASSINATURA: Se existirem assinaturas (múltiplas por página)
       if (assinaturas && assinaturas.length > 0) {
         htmlCompleto += this.gerarPaginasAssinaturasOtimizadas(processo, assinaturas, numeroPagina)
-        numeroPagina += Math.ceil(assinaturas.length / 3) // 3 assinaturas por página
+        numeroPagina += Math.ceil(assinaturas.length / 2) // ✨ ATUALIZADO: 2 assinaturas por página para melhor posicionamento
       }
 
-      htmlCompleto += `
-        </body>
-        </html>
-      `
+      // Fechamento simples do HTML - remover JavaScript por enquanto
+      htmlCompleto += '</body></html>'
 
       return htmlCompleto
     },
@@ -5081,15 +5446,16 @@ export default {
     },
 
     gerarPaginaDocumentoAnexado(processo, documento, numeroPagina, numeroDocumento) {
+      // Verificar se é PDF para aplicar classe especial
+      const urlDocumento = documento?.arquivo_url || documento?.url_documento || documento?.publicUrl
+
       console.log('📄 Gerando página de documento anexado:', {
         numeroDocumento,
         nome_documento: documento?.nome_documento,
         tipo_documento: documento?.tipo_documento,
-        url_documento: documento?.url_documento
+        url_documento: urlDocumento,
+        todas_as_chaves: Object.keys(documento || {})
       })
-
-      // Verificar se é PDF para aplicar classe especial
-      const urlDocumento = documento?.url_documento || documento?.arquivo_url || documento?.publicUrl
       const isPDF = urlDocumento && urlDocumento.toLowerCase().includes('.pdf')
       const classeEspecial = isPDF ? ' pdf-pagina-completa' : ''
 
@@ -5145,48 +5511,39 @@ export default {
         `
       }
 
-      // Para editais, sempre tratar como PDF
+      // Para editais, sempre tratar como PDF com renderização
+      const editalId = `edital-${edital?.id || Date.now()}`
       return `
-        <div class="preview-pdf-pagina-completa">
-          <object
-            data="${urlEdital}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0"
-            type="application/pdf"
-            width="100%"
-            height="22cm"
-            style="border: none; max-width: 100%;">
-
-            <!-- Fallback para navegadores que não suportam object -->
-            <iframe
-              src="${urlEdital}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0"
-              width="100%"
-              height="22cm"
-              style="border: none; max-width: 100%;">
-
-              <!-- Fallback final se iframe também não funcionar -->
-              <div class="pdf-fallback" style="text-align: center; padding: 4cm; background: white; min-height: 18cm;">
-                <div style="font-size: 4em; margin-bottom: 1cm;">📋</div>
-                <div style="margin: 1cm 0; font-weight: bold; font-size: 14pt;">Edital não pode ser exibido diretamente</div>
-                <div style="font-size: 12pt; margin-bottom: 2cm; color: #666;">
-                  O navegador não suporta visualização de PDF incorporada.
-                </div>
-                <a href="${urlEdital}" target="_blank"
-                   style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
-                  📋 Abrir Edital em Nova Aba
-                </a>
-                <div style="margin-top: 2cm; font-size: 10pt; color: #999;">
-                  <strong>Edital:</strong> ${edital?.numero || 'N/A'}
-                </div>
-              </div>
-
-            </iframe>
-          </object>
+        <div class="preview-pdf-renderizado" data-pdf-url="${urlEdital}" data-page-number="1" data-doc-id="${editalId}">
+          <div class="pdf-loading" id="pdf-loading-${editalId}">
+            <div style="text-align: center; padding: 4cm;">
+              <div style="font-size: 3em; margin-bottom: 1cm;">📋</div>
+              <div style="font-size: 14pt; font-weight: bold;">Carregando Edital...</div>
+              <div style="font-size: 12pt; margin-top: 1cm; color: #666;">Página 1</div>
+            </div>
+          </div>
+          <div class="pdf-rendered" id="pdf-rendered-${editalId}" style="display: none;">
+            <img id="pdf-image-${editalId}"
+                 style="width: 21cm; height: 29.7cm; object-fit: contain; display: block; margin: 0 auto; background: white;"
+                 alt="Página 1 do Edital" />
+          </div>
+          <div class="pdf-error" id="pdf-error-${editalId}" style="display: none;">
+            <div style="text-align: center; padding: 4cm; background: white;">
+              <div style="font-size: 3em; margin-bottom: 1cm;">⚠️</div>
+              <div style="font-size: 14pt; font-weight: bold; margin-bottom: 1cm;">Erro ao carregar Edital</div>
+              <a href="${urlEdital}" target="_blank"
+                 style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
+                📋 Abrir Edital em Nova Aba
+              </a>
+            </div>
+          </div>
         </div>
       `
     },
 
     gerarPreviewDocumento(documento) {
-      // Tentar múltiplos campos para URL
-      const urlDocumento = documento?.url_documento || documento?.arquivo_url || documento?.publicUrl
+      // Tentar múltiplos campos para URL (priorizar arquivo_url que é o que vem dos dados)
+      const urlDocumento = documento?.arquivo_url || documento?.url_documento || documento?.publicUrl
 
       if (!urlDocumento) {
         return `
@@ -5203,42 +5560,41 @@ export default {
 
       const urlLower = urlDocumento.toLowerCase()
 
-      // Se for PDF - incorporar o conteúdo diretamente (página completa)
+      // ✨ SOLUÇÃO SIMPLES E FUNCIONAL: Usar iframe diretamente
       if (urlLower.includes('.pdf')) {
+        const pageNumber = documento.pagina_pdf || 1
+
+        // Construir URL com parâmetros para controlar visualização
+        const urlComParametros = `${urlDocumento}#page=${pageNumber}&toolbar=0&navpanes=0&scrollbar=0&view=FitH&zoom=page-width`
+
         return `
-          <div class="preview-pdf-pagina-completa">
-            <object
-              data="${urlDocumento}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0"
-              type="application/pdf"
+          <div class="preview-pdf-iframe" style="
+            width: 21cm;
+            height: 29.7cm;
+            overflow: hidden;
+            background: white;
+            border: none;
+            margin: 0 auto;
+            display: block;
+            position: relative;
+          ">
+            <iframe
+              src="${urlComParametros}"
               width="100%"
-              height="23cm"
-              style="border: none; max-width: 100%;">
-
-              <!-- Fallback para navegadores que não suportam object -->
-              <iframe
-                src="${urlDocumento}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&scrollbar=0"
-                width="100%"
-                height="23cm"
-                style="border: none; max-width: 100%;">
-
-                <!-- Fallback final se iframe também não funcionar -->
-                <div class="pdf-fallback" style="text-align: center; padding: 4cm; background: white; min-height: 20cm;">
-                  <div style="font-size: 4em; margin-bottom: 1cm;">📋</div>
-                  <div style="margin: 1cm 0; font-weight: bold; font-size: 14pt;">PDF não pode ser exibido diretamente</div>
-                  <div style="font-size: 12pt; margin-bottom: 2cm; color: #666;">
-                    O navegador não suporta visualização de PDF incorporada.
-                  </div>
-                  <a href="${urlDocumento}" target="_blank"
-                     style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
-                    📄 Abrir PDF em Nova Aba
-                  </a>
-                  <div style="margin-top: 2cm; font-size: 10pt; color: #999;">
-                    <strong>Arquivo:</strong> ${urlDocumento.split('/').pop()}
-                  </div>
-                </div>
-
-              </iframe>
-            </object>
+              height="100%"
+              frameborder="0"
+              scrolling="no"
+              style="
+                border: none;
+                overflow: hidden;
+                display: block;
+                margin: 0;
+                padding: 0;
+                background: white;
+                pointer-events: none;
+              "
+              onload="this.style.border='none'; this.style.background='white';"
+            ></iframe>
           </div>
         `
       }
@@ -5279,25 +5635,26 @@ export default {
     },
 
     gerarPaginasAssinaturasOtimizadas(processo, assinaturas, numeroPaginaInicial) {
-      console.log('📝 Gerando páginas de assinaturas otimizadas:', {
+      console.log('📝 Gerando páginas de assinaturas otimizadas com melhor posicionamento:', {
         totalAssinaturas: assinaturas.length,
-        assinaturasPorPagina: 3,
-        paginasNecessarias: Math.ceil(assinaturas.length / 3)
+        assinaturasPorPagina: 2, // ✨ REDUZIDO: Apenas 2 por página para melhor espaçamento
+        paginasNecessarias: Math.ceil(assinaturas.length / 2)
       })
 
       let htmlCompleto = ''
       let numeroPagina = numeroPaginaInicial
 
-      // Agrupar assinaturas em grupos de 3
-      for (let i = 0; i < assinaturas.length; i += 3) {
-        const grupoAssinaturas = assinaturas.slice(i, i + 3)
+      // ✨ MELHORIA: Agrupar assinaturas em grupos menores (2 por página)
+      for (let i = 0; i < assinaturas.length; i += 2) {
+        const grupoAssinaturas = assinaturas.slice(i, i + 2)
 
         htmlCompleto += `
           <div class="documento-pagina">
             <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
 
-            <div class="pagina-assinaturas-multiplas">
-              <div class="titulo-assinaturas">ASSINATURAS ELETRÔNICAS</div>
+            <div class="pagina-assinaturas-melhoradas">
+              <div class="titulo-assinaturas">ASSINATURAS ELETRÔNICAS DO PROCESSO</div>
+              <div class="subtitulo-assinaturas">Processo: ${processo.numero_processo}</div>
         `
 
         grupoAssinaturas.forEach((assinatura, indexGrupo) => {
@@ -5306,13 +5663,34 @@ export default {
           const horaFormatada = dataAssinatura.toLocaleTimeString('pt-BR')
 
           htmlCompleto += `
-            <div class="assinatura-item">
-              <div class="assinatura-numero">${i + indexGrupo + 1}ª Assinatura:</div>
-              <div class="assinatura-texto">
-                Documento assinado eletronicamente por <strong>${assinatura?.nome_signatario || 'Nome não informado'}</strong>,
-                <strong>${assinatura?.cargo_signatario || 'Cargo não informado'}</strong>, em <strong>${dataFormatada}</strong>,
-                às <strong>${horaFormatada}</strong>, conforme horário oficial de Brasília,
-                com fundamento no art. 6º, § 1º, do Decreto nº 47.222, de 26 de julho de 2017.
+            <div class="assinatura-container">
+              <!-- ✨ MELHORIA: Área dedicada para a assinatura visual -->
+              <div class="area-assinatura-visual">
+                <div class="linha-assinatura">
+                  <span class="indicacao-assinatura">Assinado eletronicamente</span>
+                </div>
+                <div class="dados-signatario">
+                  <div class="nome-signatario">${assinatura?.nome_signatario || 'Nome não informado'}</div>
+                  <div class="cargo-signatario">${assinatura?.cargo_signatario || 'Cargo não informado'}</div>
+                </div>
+              </div>
+
+              <!-- ✨ MELHORIA: Informações da assinatura posicionadas logo abaixo -->
+              <div class="detalhes-assinatura">
+                <p class="texto-validacao">
+                  Documento assinado eletronicamente por <strong>${assinatura?.nome_signatario || 'Nome não informado'}</strong>,
+                  <strong>${assinatura?.cargo_signatario || 'Cargo não informado'}</strong>, em <strong>${dataFormatada}</strong>,
+                  às <strong>${horaFormatada}</strong>, conforme horário oficial de Brasília,
+                  com fundamento no art. 6º, § 1º, do Decreto nº 47.222, de 26 de julho de 2017.
+                </p>
+                ${assinatura?.observacoes ? `
+                <div class="observacoes-assinatura">
+                  <strong>Observações:</strong> ${assinatura.observacoes}
+                </div>
+                ` : ''}
+                <div class="hash-validacao">
+                  <small><strong>Hash de validação:</strong> ${assinatura?.hash_validacao || 'N/A'}</small>
+                </div>
               </div>
             </div>
           `
@@ -5908,11 +6286,48 @@ export default {
       const url = documento.arquivo_url || documento.url_arquivo
       if (url) {
         console.log('📄 Abrindo documento:', documento.nome_documento, 'URL:', url)
-        // Abrir documento em nova aba
-        window.open(url, '_blank')
+
+        // ✨ ABRIR MODAL CUSTOMIZADO para visualização sem controles
+        this.documentoVisualizacao = documento
+        this.mostrarModalVisualizacao = true
+
       } else {
         console.warn('⚠️ Documento sem URL:', documento)
         alert('Este documento não possui arquivo anexo para visualização.')
+      }
+    },
+
+    fecharModalVisualizacao() {
+      this.mostrarModalVisualizacao = false
+      this.documentoVisualizacao = null
+    },
+
+    obterUrlDocumento(documento) {
+      const url = documento.arquivo_url || documento.url_arquivo
+
+      // ✨ PARÂMETROS MAIS RESTRITIVOS para ocultar TODOS os controles
+      const parametros = [
+        'toolbar=0',           // Remove toolbar
+        'navpanes=0',         // Remove painel de navegação
+        'scrollbar=0',        // Remove scrollbar
+        'statusbar=0',        // Remove barra de status
+        'messages=0',         // Remove mensagens
+        'view=FitH',          // Ajustar à largura
+        'zoom=page-width',    // Zoom para largura da página
+        'pagemode=none'       // Sem painéis laterais
+      ].join('&')
+
+      if (documento.pagina_pdf && documento.total_paginas_pdf > 1) {
+        return `${url}#page=${documento.pagina_pdf}&${parametros}`
+      } else {
+        return `${url}#page=1&${parametros}`
+      }
+    },
+
+    abrirDocumentoNovaAba() {
+      if (this.documentoVisualizacao) {
+        const url = this.obterUrlDocumento(this.documentoVisualizacao)
+        window.open(url, '_blank')
       }
     },
     
@@ -6045,102 +6460,167 @@ export default {
             
             // Definir tipo do documento
             const tipoDocumento = this.isOrgaoAdministrativo() ? 'ASSINADO' : this.tipoDocumentoSelecionado
-            
-            // Obter próxima numeração sequencial usando o serviço
-            // Para documentos ASSINADOS, usar numeração especial para garantir que fiquem no final
-            let numero, folha
-            if (tipoDocumento === 'ASSINADO') {
-              // Documentos assinados recebem numeração alta para ficarem no final
-              const timestamp = Date.now()
-              numero = 9000 + (timestamp % 1000) // Número alto mas único
-              folha = `AS-${String(timestamp % 100).padStart(2, '0')}` // Folha especial
-              console.log(`🖊️ Documento ASSINADO - Numeração especial: ${folha} (número ${numero})`)
-            } else {
-              const result = await NumeracaoDocumentosService.obterProximoNumero(this.processoSelecionado.id)
-              numero = result.numero
-              folha = result.folha
-              console.log(`📋 Numeração normal gerada: ${folha} (número ${numero})`)
-            }
-            
-            // Inserir registro na tabela documentos_processo com retry
-            const documentoData = {
-              processo_id: this.processoSelecionado.id,
-              tenant_id: await ProcessosAdministrativosService.getTenantId(),
-              numero_sequencial: numero,
-              folha_numero: folha,
-              tipo_documento: tipoDocumento,
-              nome_documento: arquivo.name,
-              titulo: arquivo.name,
-              descricao: this.observacoesDocumento || `Documento ${tipoDocumento.toLowerCase()} adicionado pelo órgão administrativo`,
-              arquivo_url: publicUrl,
-              data_autuacao: new Date().toISOString(),
-              assinado: false,
-              status: 'ativo'
-            }
-            
-            let dbTentativas = 0
-            let dbSucesso = false
-            let dbError
-            
-            while (dbTentativas < 3 && !dbSucesso) {
-              dbTentativas++
-              console.log(`🔄 Tentativa ${dbTentativas} de registro no banco para: ${arquivo.name}`)
-              
-              const result = await supabase
-                .from('documentos_processo')
-                .insert([documentoData])
-              
-              dbError = result.error
-              
-              if (!dbError) {
-                dbSucesso = true
-                console.log(`✅ Registro no banco realizado com sucesso: ${arquivo.name}`)
-              } else {
-                console.warn(`⚠️ Tentativa ${dbTentativas} do banco falhou:`, dbError)
-                if (dbTentativas < 3) {
-                  await new Promise(resolve => setTimeout(resolve, 1000)) // Aguardar 1s antes da próxima tentativa
+
+            console.log(`📄 NOVA LÓGICA: Processando PDF com numeração individual de páginas`)
+
+            // ✨ NOVA FUNCIONALIDADE: Processar PDF para páginas individuais
+            const dadosPDF = await PDFPagesService.processarPDFParaPaginas(
+              arquivo,
+              this.processoSelecionado.id,
+              tipoDocumento
+            )
+
+            console.log(`📊 PDF ${arquivo.name}: ${dadosPDF.numeroPaginas} página${dadosPDF.numeroPaginas > 1 ? 's' : ''} processada${dadosPDF.numeroPaginas > 1 ? 's' : ''}`)
+
+            // Criar uma entrada na tabela para cada página do PDF
+            for (let i = 0; i < dadosPDF.numeracoes.length; i++) {
+              const paginaInfo = dadosPDF.numeracoes[i]
+
+              // ✨ UPLOAD INDIVIDUAL: Fazer upload da página específica
+              const arquivoPagina = paginaInfo.arquivoPagina
+              const nomeArquivoPagina = `${Date.now()}_${i}_${arquivoPagina.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+
+              console.log(`📤 Fazendo upload da página ${i + 1}: ${arquivoPagina.name}`)
+
+              let uploadPaginaTentativas = 0
+              let uploadPaginaSucesso = false
+              let uploadPaginaData, uploadPaginaError
+
+              while (uploadPaginaTentativas < 3 && !uploadPaginaSucesso) {
+                uploadPaginaTentativas++
+
+                const resultPagina = await supabase.storage
+                  .from('documentosprocessos')
+                  .upload(nomeArquivoPagina, arquivoPagina)
+
+                uploadPaginaData = resultPagina.data
+                uploadPaginaError = resultPagina.error
+
+                if (!uploadPaginaError) {
+                  uploadPaginaSucesso = true
+                  console.log(`✅ Upload da página ${i + 1} realizado com sucesso`)
+                } else {
+                  console.warn(`⚠️ Tentativa ${uploadPaginaTentativas} da página ${i + 1} falhou:`, uploadPaginaError)
+                  if (uploadPaginaTentativas < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 1000))
+                  }
                 }
               }
+
+              if (!uploadPaginaSucesso) {
+                throw new Error(`Falha no upload da página ${i + 1}: ${uploadPaginaError?.message}`)
+              }
+
+              // Obter URL pública da página
+              const { data: { publicUrl: publicUrlBase } } = supabase.storage
+                .from('documentosprocessos')
+                .getPublicUrl(nomeArquivoPagina)
+
+              // ✨ ADICIONAR PARÂMETRO DE PÁGINA: Para visualizadores que suportam
+              const publicUrlPagina = `${publicUrlBase}#page=${paginaInfo.pagina}`
+
+              console.log(`🔗 URL da página ${paginaInfo.pagina}: ${publicUrlPagina}`)
+
+              let numero, folha
+              if (tipoDocumento === 'ASSINADO') {
+                // Documentos assinados recebem numeração especial para ficarem no final
+                const timestamp = Date.now() + i // Adicionar i para garantir unicidade
+                numero = 9000 + (timestamp % 1000)
+                folha = `AS-${String((timestamp % 100) + i).padStart(2, '0')}`
+                console.log(`🖊️ Página ${paginaInfo.pagina} ASSINADA - Numeração especial: ${folha} (número ${numero})`)
+              } else {
+                numero = paginaInfo.numero
+                folha = paginaInfo.folha
+                console.log(`📋 Página ${paginaInfo.pagina} - Numeração normal: ${folha} (número ${numero})`)
+              }
+
+              // Inserir registro na tabela documentos_processo para cada página
+              const documentoData = {
+                processo_id: this.processoSelecionado.id,
+                tenant_id: await ProcessosAdministrativosService.getTenantId(),
+                numero_sequencial: numero,
+                folha_numero: folha,
+                tipo_documento: tipoDocumento,
+                nome_documento: paginaInfo.nomeDocumento,
+                titulo: paginaInfo.nomeDocumento,
+                descricao: dadosPDF.numeroPaginas > 1
+                  ? `${this.observacoesDocumento || `Documento ${tipoDocumento.toLowerCase()}`} - Página ${paginaInfo.pagina} de ${dadosPDF.numeroPaginas}`
+                  : this.observacoesDocumento || `Documento ${tipoDocumento.toLowerCase()} adicionado`,
+                arquivo_url: publicUrlPagina, // ✨ USAR URL DA PÁGINA INDIVIDUAL
+                pagina_pdf: paginaInfo.pagina, // ✨ NOVO CAMPO: Indica qual página do PDF original
+                total_paginas_pdf: dadosPDF.numeroPaginas, // ✨ NOVO CAMPO: Total de páginas do PDF original
+                nome_arquivo_original: dadosPDF.nomeOriginal, // ✨ NOVO CAMPO: Nome original do arquivo
+                data_autuacao: new Date().toISOString(),
+                assinado: false,
+                status: 'ativo'
+              }
+
+              // Inserir registro no banco para esta página específica
+              let dbTentativas = 0
+              let dbSucesso = false
+              let dbError
+
+              while (dbTentativas < 3 && !dbSucesso) {
+                dbTentativas++
+                console.log(`🔄 Tentativa ${dbTentativas} de registro no banco para página ${paginaInfo.pagina}: ${paginaInfo.nomeDocumento}`)
+
+                const result = await supabase
+                  .from('documentos_processo')
+                  .insert([documentoData])
+
+                dbError = result.error
+
+                if (!dbError) {
+                  dbSucesso = true
+                  console.log(`✅ Página ${paginaInfo.pagina} registrada com sucesso: ${paginaInfo.folha}`)
+                } else {
+                  console.warn(`⚠️ Tentativa ${dbTentativas} do banco falhou para página ${paginaInfo.pagina}:`, dbError)
+                  if (dbTentativas < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 1000))
+                  }
+                }
+              }
+
+              if (!dbSucesso) {
+                throw new Error(`Falha no registro da página ${paginaInfo.pagina} no banco após 3 tentativas: ${dbError?.message || 'Erro desconhecido'}`)
+              }
             }
-            
-            if (!dbSucesso) {
-              throw new Error(`Falha no registro no banco após 3 tentativas: ${dbError?.message || 'Erro desconhecido'}`)
-            }
-            
+
+            // ✨ Sucesso: PDF processado com numeração individual
+            console.log(`🎉 PDF processado com sucesso: ${dadosPDF.numeroPaginas} página${dadosPDF.numeroPaginas > 1 ? 's' : ''} numerada${dadosPDF.numeroPaginas > 1 ? 's' : ''} individualmente`)
+
+            // Atualizar o contador de sucessos
             sucessos++
-            console.log(`✅ Arquivo processado com sucesso: ${arquivo.name}`)
-            
-          } catch (fileError) {
-            console.error(`❌ Erro ao processar ${arquivo.name}:`, fileError)
-            falhas.push(`${arquivo.name}: ${fileError.message}`)
+
+          } catch (error) {
+            console.error(`❌ Erro ao processar ${arquivo.name}:`, error)
+            falhas.push(`${arquivo.name}: ${error.message}`)
           }
         }
-        
-        // Mostrar resultado
+
+        // Finalização do processamento
         if (sucessos > 0) {
-          let mensagem = `✅ ${sucessos} documento(s) adicionado(s) com sucesso!`
-          if (falhas.length > 0) {
-            mensagem += `\n\n❌ ${falhas.length} falha(s):\n${falhas.join('\n')}`
-          }
-          alert(mensagem)
-          
-          // Limpar formulário apenas se houve pelo menos um sucesso
-          this.documentosParaUpload = []
-          this.tipoDocumentoSelecionado = ''
-          this.observacoesDocumento = ''
-          
-          // Recarregar documentos do processo
-          try {
-            await this.carregarDocumentosProcesso(this.processoSelecionado.id)
-          } catch (reloadError) {
-            console.warn('Erro ao recarregar documentos:', reloadError)
-          }
-          
+          let totalPaginasProcessadas = 0
+          // Calcular total de páginas processadas seria complexo aqui, então usamos uma mensagem genérica
+
+          alert(`✅ ${sucessos} arquivo${sucessos > 1 ? 's' : ''} processado${sucessos > 1 ? 's' : ''} com sucesso!\n\n` +
+            `📄 Cada página do PDF foi numerada individualmente no processo.\n` +
+            `🗂️ Os documentos foram integrados ao processo administrativo.`)
+
           this.fecharModalAdicionarDoc()
+
+          // ✨ VALIDAÇÃO: Verificar se processoSelecionado existe
+          if (this.processoSelecionado && this.processoSelecionado.numero_processo) {
+            await this.visualizarProcesso(this.processoSelecionado)
+          } else {
+            console.warn('⚠️ Processo selecionado não encontrado após upload')
+            await this.carregarProcessos() // Recarregar lista de processos
+          }
         } else {
           alert(`❌ Nenhum documento foi adicionado.\n\nErros:\n${falhas.join('\n')}`)
         }
-        
+
+
       } catch (error) {
         console.error('Erro geral no upload de documentos:', error)
         alert('❌ Erro inesperado no upload: ' + error.message)
@@ -6658,6 +7138,40 @@ export default {
         alert(`❌ Erro ao reenviar processo: ${error.message}`)
       }
     },
+
+    // =====================================================
+    // CALLBACKS PARA O NOVO SISTEMA DE FLUXO LIVRE
+    // =====================================================
+
+    onProcessoEnviado(dadosTramitacao) {
+      console.log('✅ Processo enviado com fluxo livre:', dadosTramitacao)
+
+      // Mostrar mensagem de sucesso detalhada
+      this.$toast?.success(
+        `✅ Processo enviado para ${dadosTramitacao.destinoEscolhido.nomeEtapa}!`
+      ) || alert(
+        `✅ Processo enviado com sucesso para ${dadosTramitacao.destinoEscolhido.nomeEtapa} (${dadosTramitacao.destinoEscolhido.nomeResponsavel})`
+      )
+
+      // Recarregar a lista de processos para refletir as mudanças
+      this.carregarProcessos()
+
+      // Fechar modal de detalhes se estiver aberto
+      if (this.processoSelecionado) {
+        this.fecharModalProcessos()
+      }
+    },
+
+    onErroTramitacao(mensagemErro) {
+      console.error('❌ Erro na tramitação com fluxo livre:', mensagemErro)
+
+      // Mostrar erro para o usuário
+      this.$toast?.error(mensagemErro) || alert(`❌ ${mensagemErro}`)
+    },
+
+    // =====================================================
+    // OBSERVAÇÃO: Agora usando iframe simples para PDFs
+    // =====================================================
   }
 }
 </script>
@@ -10149,6 +10663,76 @@ export default {
   font-size: 0.95rem;
 }
 
+.tipo-processo-selector {
+  margin: 16px 0 0 0;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.tipo-processo-selector label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.tipo-processo-selector select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  color: #495057;
+  transition: all 0.2s ease;
+}
+
+.tipo-processo-selector select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.modelo-tags {
+  margin-top: 8px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+}
+
+.tag.verde {
+  background: #28a745;
+}
+
+.tag.vermelho {
+  background: #dc3545;
+}
+
+.tag.azul {
+  background: #007bff;
+}
+
+.modelos-vazio {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.modelos-vazio p {
+  margin: 0;
+  font-size: 16px;
+}
+
 .modelos-lista {
   display: flex;
   flex-direction: column;
@@ -10220,6 +10804,128 @@ export default {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Modal de Visualização de Documento - Tamanho de Folha Padrão A4 */
+.modal-visualizacao {
+  width: 90vw;
+  max-width: 800px;
+  height: 95vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-visualizacao .modal-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  background: white;
+}
+
+.documento-info {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.pagina-info {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.folha-info {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.modal-pdf {
+  flex: 1;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+.pdf-viewer {
+  width: 100%;
+  height: 100%;
+  background: white;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  position: relative;
+}
+
+/* Visualizador de PDF sem controles */
+.pdf-object-limpo,
+.pdf-iframe-fallback {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* FORÇAR remoção de todos os controles do PDF */
+.pdf-object-limpo {
+  pointer-events: none; /* Impede interações que possam mostrar controles */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.modal-visualizacao .modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  background: white;
+}
+
+/* CSS agressivo para ocultar controles do navegador */
+.pdf-viewer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px; /* Altura da barra de controles típica */
+  background: white;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Remover scrollbars completamente */
+.pdf-object-limpo::-webkit-scrollbar,
+.pdf-iframe-fallback::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.pdf-object-limpo,
+.pdf-iframe-fallback {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  overflow: hidden !important;
 }
 
 </style>

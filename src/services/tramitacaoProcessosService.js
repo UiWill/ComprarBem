@@ -94,6 +94,109 @@ export class TramitacaoProcessosService {
   }
 
   // =====================================================
+  // SISTEMA DE FLUXO LIVRE - NOVA FUNCIONALIDADE
+  // =====================================================
+
+  /**
+   * Obter todas as opções de destino disponíveis para tramitação livre
+   * Permite que qualquer usuário autorizado envie para qualquer etapa válida
+   */
+  static obterOpcoesDestinoLivre(tipoProcesso) {
+    const opcoes = []
+
+    // Definir fluxo baseado no tipo de processo
+    const fluxo = tipoProcesso === 'padronizacao' ? this.FLUXO_PADRONIZACAO : this.FLUXO_DESPADRONIZACAO
+
+    // Para cada status no fluxo, criar uma opção de destino
+    fluxo.forEach(status => {
+      // Pular status de criação e finalizados
+      if (status === 'em_criacao' ||
+          status === 'em_criacao_desp' ||
+          status === 'finalizado' ||
+          status.startsWith('devolvido_')) {
+        return
+      }
+
+      const responsavel = this.RESPONSAVEL_POR_STATUS[status]
+      if (!responsavel) return // Pular status sem responsável definido
+
+      // Obter nome amigável do perfil
+      const nomeResponsavel = this.obterNomePerfilResponsavel(responsavel)
+      const nomeEtapa = this.obterNomeProximaEtapa(status)
+
+      // ✨ VALIDAÇÃO: Garantir que nomeEtapa não seja null ou undefined
+      if (!nomeEtapa) {
+        console.warn(`⚠️ Nome da etapa não encontrado para status: ${status}`)
+        return // Pular este status se não tiver nome
+      }
+
+      opcoes.push({
+        status: status,
+        responsavel: responsavel,
+        nomeResponsavel: nomeResponsavel,
+        nomeEtapa: nomeEtapa,
+        descricao: `${nomeEtapa} (${nomeResponsavel})`,
+        icone: this.obterIconeStatus(status)
+      })
+    })
+
+    return opcoes.sort((a, b) => {
+      // Ordenar por ordem do fluxo
+      const indiceA = fluxo.indexOf(a.status)
+      const indiceB = fluxo.indexOf(b.status)
+      return indiceA - indiceB
+    })
+  }
+
+  /**
+   * Obter nome amigável do perfil responsável
+   */
+  static obterNomePerfilResponsavel(perfil) {
+    const nomes = {
+      'cpm': 'CPM',
+      'ccl': 'CCL',
+      'orgao_administrativo': 'Órgão Administrativo',
+      'assessoria_juridica': 'Assessoria Jurídica'
+    }
+    return nomes[perfil] || perfil
+  }
+
+  /**
+   * Obter ícone para cada status
+   */
+  static obterIconeStatus(status) {
+    const icones = {
+      // PADRONIZAÇÃO
+      'criado_cpm': '🎯',
+      'submetido_autoridade': '📋',
+      'abertura_autorizada': '✅',
+      'edital_chamamento': '📢',
+      'analise_juridica': '⚖️',
+      'edital_publicado': '📃',
+      'com_impugnacao': '❓',
+      'recebendo_amostras': '📦',
+      'avaliacao_cpm': '🔍',
+      'julgamento_ccl': '⚖️',
+      'ata_ccl': '📋',
+      'publicacao_ata': '📰',
+      'com_recurso': '📝',
+      'homologado': '✅',
+      'expedindo_dcbs': '📄',
+      'incluindo_marcas': '➕',
+
+      // DESPADRONIZAÇÃO
+      'criado_cpm_desp': '🎯',
+      'submetido_autoridade_desp': '📋',
+      'abertura_autorizada_desp': '✅',
+      'aviso_publicado_desp': '📢',
+      'com_recurso_desp': '📝',
+      'homologado_desp': '✅',
+      'excluindo_marcas': '❌'
+    }
+    return icones[status] || '📄'
+  }
+
+  // =====================================================
   // TRAMITAÇÃO DE PROCESSOS
   // =====================================================
 
@@ -171,6 +274,100 @@ export class TramitacaoProcessosService {
       
     } catch (error) {
       console.error('❌ Erro ao enviar processo:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Enviar processo para destino escolhido livremente (NOVA FUNCIONALIDADE)
+   * Substitui o fluxo pré-definido por uma seleção livre de destino
+   */
+  static async enviarProcessoLivre(processoId, statusDestino, observacoes = '') {
+    try {
+      console.log('🆓 Enviando processo com fluxo livre:', processoId, 'para', statusDestino)
+
+      // Obter dados do processo
+      const { data: processo, error: errorProcesso } = await supabase
+        .from('processos_administrativos')
+        .select('*')
+        .eq('id', processoId)
+        .single()
+
+      if (errorProcesso) throw errorProcesso
+
+      // Validar se o destino é válido para o tipo de processo
+      const opcoesDisponiveis = this.obterOpcoesDestinoLivre(processo.tipo_processo)
+      const destinoValido = opcoesDisponiveis.find(opcao => opcao.status === statusDestino)
+
+      if (!destinoValido) {
+        throw new Error(`Status de destino ${statusDestino} não é válido para processo do tipo ${processo.tipo_processo}`)
+      }
+
+      console.log(`✅ Destino validado: ${destinoValido.nomeEtapa} (${destinoValido.nomeResponsavel})`)
+
+      // Atualizar status do processo
+      const { error: errorUpdate } = await supabase
+        .from('processos_administrativos')
+        .update({
+          status: statusDestino
+        })
+        .eq('id', processoId)
+
+      if (errorUpdate) throw errorUpdate
+
+      // ✨ LÓGICA ESPECIAL: Inclusão automática no catálogo
+      if (statusDestino === 'incluindo_marcas') {
+        console.log('🎯 Status "incluindo_marcas" detectado no fluxo livre - incluindo produtos no catálogo automaticamente')
+        await this.incluirProdutosNoCatalogo(processoId)
+
+        // Após incluir no catálogo, finalizar automaticamente o processo
+        console.log('🏁 Finalizando processo automaticamente após inclusão no catálogo (fluxo livre)')
+        const { error: errorFinalizar } = await supabase
+          .from('processos_administrativos')
+          .update({
+            status: 'finalizado',
+            finalizado_em: new Date().toISOString()
+          })
+          .eq('id', processoId)
+
+        if (errorFinalizar) {
+          console.error('❌ Erro ao finalizar processo automaticamente:', errorFinalizar)
+        } else {
+          // Registrar tramitação para finalização
+          await this.registrarTramitacao(processoId, 'incluindo_marcas', 'finalizado', 'FINALIZACAO_AUTOMATICA_LIVRE', 'Processo finalizado automaticamente após inclusão das marcas no catálogo (fluxo livre)')
+          console.log('✅ Processo finalizado automaticamente (fluxo livre)')
+        }
+      }
+
+      // Registrar histórico de tramitação
+      await this.registrarTramitacao(
+        processoId,
+        processo.status,
+        statusDestino,
+        'FLUXO_LIVRE',
+        `Processo enviado livremente para ${destinoValido.nomeEtapa}. ${observacoes}`
+      )
+
+      // Enviar notificação por email
+      await EmailNotificationService.enviarNotificacaoTramitacao(
+        processoId,
+        processo.status,
+        statusDestino,
+        `Processo tramitado para ${destinoValido.nomeEtapa} (${destinoValido.nomeResponsavel}). ${observacoes}`
+      )
+
+      console.log(`✅ Processo ${processoId} tramitado livre: ${processo.status} → ${statusDestino}`)
+
+      return {
+        sucesso: true,
+        statusAnterior: processo.status,
+        statusNovo: statusDestino,
+        destinoEscolhido: destinoValido,
+        proximoResponsavel: destinoValido.responsavel
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao enviar processo com fluxo livre:', error)
       throw error
     }
   }
@@ -794,7 +991,12 @@ export class TramitacaoProcessosService {
       'devolvido_pelo_juridico': 'Reenviar para Jurídico'
     }
     
-    return nomes[status] || 'Próxima Etapa'
+    const nomeEncontrado = nomes[status]
+    if (!nomeEncontrado) {
+      console.warn(`⚠️ Nome não encontrado para status: ${status}`)
+      return `Status: ${status}` // Fallback mais informativo
+    }
+    return nomeEncontrado
   }
 
   /**
