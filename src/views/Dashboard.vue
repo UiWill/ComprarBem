@@ -58,19 +58,9 @@
             
             <hr class="dropdown-divider">
             
-            <button @click="abrirConfiguracoes" class="dropdown-item">
-              <span class="item-icon">⚙️</span>
-              <span>Configurações</span>
-            </button>
-            
-            <button @click="abrirConfiguracoesEmail" class="dropdown-item">
-              <span class="item-icon">📧</span>
-              <span>Configurar Email</span>
-            </button>
-            
-            <button @click="testarEmailJS" class="dropdown-item">
-              <span class="item-icon">🧪</span>
-              <span>Testar Email</span>
+            <button @click="baixarManual" class="dropdown-item">
+              <span class="item-icon">📖</span>
+              <span>Baixar Manual</span>
             </button>
             
             <hr class="dropdown-divider">
@@ -284,65 +274,48 @@ export default {
       }, 30000)
     },
 
-    // 🧪 TESTE DE EMAIL
-    async testarEmailJS() {
+    // 📖 DOWNLOAD DO MANUAL
+    baixarManual() {
       this.closeDropdown()
-      
+
       try {
+        // URL do manual no Supabase
+        const manualUrl = 'https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/minutas-padrao/sistema/MANUAL.pdf'
+
+        // Criar link temporário para download
+        const link = document.createElement('a')
+        link.href = manualUrl
+        link.download = 'Manual_Usuario_ComprarBem.pdf'
+        link.target = '_blank'
+
+        // Adicionar ao DOM temporariamente e clicar
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        // Mostrar confirmação
         this.$swal({
-          title: '🧪 Testando EmailJS',
-          text: 'Enviando email de teste...',
-          allowOutsideClick: false,
-          didOpen: () => {
-            this.$swal.showLoading()
-          }
-        })
-
-        // Usar o serviço de email para enviar teste
-        const emailParams = {
-          numero_edital: 'TESTE-EMAIL',
-          email_empresa: this.usuarioEmail,
-          message: `
-            <h2>🧪 Email de Teste - Sistema Comprar Bem</h2>
-            <p>Este é um email de teste enviado em ${new Date().toLocaleString('pt-BR')}</p>
-            <p><strong>Usuário:</strong> ${this.usuarioNome}</p>
-            <p><strong>Email:</strong> ${this.usuarioEmail}</p>
-            <hr>
-            <p>Se você recebeu este email, o sistema de notificações está funcionando corretamente!</p>
-            <p><em>Sistema Comprar Bem - Notificações de Tramitação</em></p>
-          `,
-          name: this.usuarioNome,
-          email: 'comprarbemteste@gmail.com',
-          subject: '🧪 TESTE: Sistema de Email Funcionando - Comprar Bem',
-          status_participante: 'teste_sistema',
-          motivo_rejeicao: ''
-        }
-
-        await EmailNotificationService.enviarEmailsReais([{
-          destinatario: this.usuarioEmail,
-          nome: this.usuarioNome,
-          assunto: emailParams.subject,
-          conteudo: emailParams.message
-        }])
-
-        this.$swal({
-          title: '✅ Email Enviado!',
+          title: '📖 Manual do Usuário',
           html: `
-            <p>Email de teste enviado com sucesso para:</p>
-            <p><strong>${this.usuarioEmail}</strong></p>
+            <p>O download do manual foi iniciado!</p>
             <br>
-            <p>Verifique sua caixa de entrada (e spam/lixo eletrônico)</p>
+            <p>Se o download não iniciou automaticamente, <a href="${manualUrl}" target="_blank" style="color: #007bff; text-decoration: underline;">clique aqui</a> para abrir o manual.</p>
           `,
           icon: 'success',
           confirmButtonText: 'OK'
         })
 
       } catch (error) {
-        console.error('Erro ao testar email:', error)
+        console.error('Erro ao baixar manual:', error)
+
+        // Fallback: abrir em nova aba
+        const manualUrl = 'https://ruagsbbczuwgfflgcaol.supabase.co/storage/v1/object/public/minutas-padrao/sistema/MANUAL.pdf'
+        window.open(manualUrl, '_blank')
+
         this.$swal({
-          title: '❌ Erro no Teste',
-          text: 'Falha ao enviar email de teste: ' + error.message,
-          icon: 'error',
+          title: '📖 Manual do Usuário',
+          text: 'Manual aberto em nova aba do navegador.',
+          icon: 'info',
           confirmButtonText: 'OK'
         })
       }

@@ -4496,8 +4496,43 @@ export default {
           console.error('❌ Erro na busca de editais vinculados:', error)
         }
 
-        // 7. Gerar HTML limpo do PDF (incluindo documentos anexados, editais e assinaturas)
-        const htmlLimpo = this.gerarHTMLPDFLimpo(processoCompleto, dfdsReais || [], produtos, documentosAnexados || [], editaisVinculados || [], assinaturas)
+        // 7. Buscar atas CCL vinculadas ao processo
+        let atasVinculadas = []
+        try {
+          console.log('🔍 Buscando atas CCL vinculadas ao processo:', processo.id)
+
+          const { data: atasData, error: erroAtas } = await supabase
+            .from('atas_julgamento')
+            .select(`
+              id,
+              numero,
+              descricao,
+              arquivo_ata_url,
+              arquivo_ata_nome,
+              data_publicacao,
+              status_ata,
+              ata_importada_em
+            `)
+            .eq('processo_id', processo.id)
+            .order('data_publicacao', { ascending: true })
+
+          if (erroAtas) {
+            console.error('❌ Erro ao buscar atas CCL:', erroAtas)
+          } else {
+            atasVinculadas = atasData || []
+            console.log('📋 Atas CCL vinculadas encontradas:', atasVinculadas.length)
+            console.log('📋 Detalhes das atas:', atasVinculadas.map(a => ({
+              numero: a.numero,
+              status: a.status_ata,
+              tem_arquivo: !!a.arquivo_ata_url
+            })))
+          }
+        } catch (error) {
+          console.error('❌ Erro na busca de atas CCL vinculadas:', error)
+        }
+
+        // 8. Gerar HTML limpo do PDF (incluindo documentos anexados, editais, atas e assinaturas)
+        const htmlLimpo = this.gerarHTMLPDFLimpo(processoCompleto, dfdsReais || [], produtos, documentosAnexados || [], editaisVinculados || [], atasVinculadas || [], assinaturas)
 
         // 5. Abrir em nova janela
         const novaJanela = window.open('', '_blank')
@@ -4522,12 +4557,13 @@ export default {
       }
     },
 
-    gerarHTMLPDFLimpo(processo, dfds, produtos, documentosAnexados = [], editaisVinculados = [], assinaturas = []) {
+    gerarHTMLPDFLimpo(processo, dfds, produtos, documentosAnexados = [], editaisVinculados = [], atasVinculadas = [], assinaturas = []) {
       console.log('🎨 Gerando HTML limpo do PDF', {
         dfds: dfds?.length || 0,
         produtos: produtos?.length || 0,
         documentosAnexados: documentosAnexados?.length || 0,
         editaisVinculados: editaisVinculados?.length || 0,
+        atasVinculadas: atasVinculadas?.length || 0,
         assinaturas: assinaturas?.length || 0
       })
 
@@ -5253,7 +5289,16 @@ export default {
       // PÁGINAS DE EDITAIS VINCULADOS: Se existirem editais
       if (editaisVinculados && editaisVinculados.length > 0) {
         editaisVinculados.forEach((edital, index) => {
-          htmlCompleto += this.gerarPaginaEditalVinculado(processo, edital, numeroPagina++, index + 1)
+          htmlCompleto += this.gerarPaginaEditalVinculado(processo, edital, numeroPagina, index + 1)
+          numeroPagina += 2 // Cada edital gera 2 páginas: identificação + PDF
+        })
+      }
+
+      // PÁGINAS DE ATAS CCL VINCULADAS: Se existirem atas
+      if (atasVinculadas && atasVinculadas.length > 0) {
+        atasVinculadas.forEach((ata, index) => {
+          htmlCompleto += this.gerarPaginaAtaVinculada(processo, ata, numeroPagina, index + 1)
+          numeroPagina += 2 // Cada ata gera 2 páginas: identificação + arquivo
         })
       }
 
@@ -5480,20 +5525,168 @@ export default {
 
       const urlEdital = edital?.pdf_convertido_url || edital?.url_documento
       const dataPublicacao = edital?.data_publicacao ? new Date(edital.data_publicacao).toLocaleDateString('pt-BR') : 'Não informada'
+      const dataVinculacao = edital?.data_autuacao ? new Date(edital.data_autuacao).toLocaleDateString('pt-BR') : 'Não informada'
 
-      return `
-        <div class="documento-pagina pdf-pagina-completa">
+      // Primeiro gerar página de identificação do edital
+      const paginaIdentificacao = `
+        <div class="documento-pagina">
           <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
 
-          <div class="edital-anexado-container">
-            <div class="edital-header-info">
-              <h3>📋 EDITAL DE PRÉ-QUALIFICAÇÃO ${edital?.numero || 'N/A'}</h3>
-              <p><strong>Descrição:</strong> ${edital?.descricao || 'Não informada'}</p>
-              <p><strong>Data de Publicação:</strong> ${dataPublicacao}</p>
-            </div>
-
-            ${this.gerarPreviewEdital(edital)}
+          <div class="documento-header">
+            <h1>${processo.nome_orgao || 'ÓRGÃO PÚBLICO'}</h1>
+            <h2>PROCESSO ADMINISTRATIVO Nº ${processo.numero_processo}</h2>
+            <h3>EDITAL VINCULADO</h3>
           </div>
+
+          <div class="documento-conteudo" style="margin-top: 3cm;">
+            <div class="edital-identificacao">
+              <h2 style="text-align: center; color: #1e40af; margin-bottom: 2cm;">📋 EDITAL DE PRÉ-QUALIFICAÇÃO</h2>
+
+              <div class="info-edital">
+                <table style="width: 100%; border-collapse: collapse; margin: 2cm 0;">
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; width: 40%; background: #f8fafc;">Número do Edital:</td>
+                    <td style="padding: 0.8cm;">${edital?.numero || 'N/A'}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Descrição:</td>
+                    <td style="padding: 0.8cm;">${edital?.descricao || 'Não informada'}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Data de Publicação:</td>
+                    <td style="padding: 0.8cm;">${dataPublicacao}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Data de Vinculação:</td>
+                    <td style="padding: 0.8cm;">${dataVinculacao}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Status:</td>
+                    <td style="padding: 0.8cm;">Documento anexado ao processo</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="margin-top: 3cm; padding: 1cm; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+                <p style="text-align: center; margin: 0; font-weight: bold; color: #475569;">
+                  📄 O conteúdo completo do edital encontra-se na(s) página(s) seguinte(s)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+
+      // Depois gerar página com o PDF do edital
+      const paginaPDF = `
+        <div class="documento-pagina pdf-pagina-completa">
+          <div class="folha-numero">Fl. ${String(numeroPagina + 1).padStart(3, '0')}</div>
+          ${this.gerarPreviewEdital(edital)}
+        </div>
+      `
+
+      return paginaIdentificacao + paginaPDF
+    },
+
+    gerarPaginaAtaVinculada(processo, ata, numeroPagina, numeroAta) {
+      console.log('📋 Gerando página de ata CCL vinculada:', {
+        numeroAta,
+        numero: ata?.numero,
+        status: ata?.status_ata,
+        arquivo_url: ata?.arquivo_ata_url
+      })
+
+      const urlAta = ata?.arquivo_ata_url
+      const dataPublicacao = ata?.data_publicacao ? new Date(ata.data_publicacao).toLocaleDateString('pt-BR') : 'Não informada'
+      const dataImportacao = ata?.ata_importada_em ? new Date(ata.ata_importada_em).toLocaleDateString('pt-BR') : 'Não informada'
+
+      // Primeiro gerar página de identificação da ata
+      const paginaIdentificacao = `
+        <div class="documento-pagina">
+          <div class="folha-numero">Fl. ${String(numeroPagina).padStart(3, '0')}</div>
+
+          <div class="documento-header">
+            <h1>${processo.nome_orgao || 'ÓRGÃO PÚBLICO'}</h1>
+            <h2>PROCESSO ADMINISTRATIVO Nº ${processo.numero_processo}</h2>
+            <h3>ATA DE JULGAMENTO CCL</h3>
+          </div>
+
+          <div class="documento-conteudo" style="margin-top: 3cm;">
+            <div class="ata-identificacao">
+              <h2 style="text-align: center; color: #dc2626; margin-bottom: 2cm;">📋 ATA DE JULGAMENTO CCL</h2>
+
+              <div class="info-ata">
+                <table style="width: 100%; border-collapse: collapse; margin: 2cm 0;">
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; width: 40%; background: #f8fafc;">Número da Ata:</td>
+                    <td style="padding: 0.8cm;">${ata?.numero || 'N/A'}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Descrição:</td>
+                    <td style="padding: 0.8cm;">${ata?.descricao || 'Ata de Julgamento da Comissão de Cadastramento e Licitação'}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Status:</td>
+                    <td style="padding: 0.8cm;">${ata?.status_ata || 'N/A'}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Data de Publicação:</td>
+                    <td style="padding: 0.8cm;">${dataPublicacao}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Data de Importação:</td>
+                    <td style="padding: 0.8cm;">${dataImportacao}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 0.8cm; font-weight: bold; background: #f8fafc;">Arquivo Original:</td>
+                    <td style="padding: 0.8cm;">${ata?.arquivo_ata_nome || 'Arquivo não disponível'}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="margin-top: 3cm; padding: 1cm; border: 2px solid #dc2626; border-radius: 8px; background: #fef2f2;">
+                <p style="text-align: center; margin: 0; font-weight: bold; color: #dc2626;">
+                  📄 O conteúdo completo da ata encontra-se na(s) página(s) seguinte(s)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+
+      // Depois gerar página com o arquivo da ata
+      const paginaArquivo = `
+        <div class="documento-pagina pdf-pagina-completa">
+          <div class="folha-numero">Fl. ${String(numeroPagina + 1).padStart(3, '0')}</div>
+          ${this.gerarPreviewAta(ata)}
+        </div>
+      `
+
+      return paginaIdentificacao + paginaArquivo
+    },
+
+    gerarPreviewAta(ata) {
+      const urlAta = ata?.arquivo_ata_url
+
+      if (!urlAta) {
+        return `
+          <div style="display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center;">
+            <div>
+              <div style="font-size: 4rem; margin-bottom: 2rem;">📄</div>
+              <h2 style="color: #dc2626; margin-bottom: 1rem;">Arquivo da Ata Não Disponível</h2>
+              <p style="color: #6b7280;">O arquivo original da ata não foi encontrado no sistema.</p>
+            </div>
+          </div>
+        `
+      }
+
+      return `
+        <div class="pdf-container" style="width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center;">
+          <iframe
+            src="${urlAta}"
+            style="width: 95%; height: 95%; border: 1px solid #e2e8f0;"
+            title="Ata de Julgamento CCL">
+          </iframe>
         </div>
       `
     },
@@ -5511,32 +5704,11 @@ export default {
         `
       }
 
-      // Para editais, sempre tratar como PDF com renderização
-      const editalId = `edital-${edital?.id || Date.now()}`
+      // ✨ SOLUÇÃO SIMPLES E FUNCIONAL: Usar iframe diretamente para editais
+      const urlComParametros = `${urlEdital}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH&zoom=page-width`
       return `
-        <div class="preview-pdf-renderizado" data-pdf-url="${urlEdital}" data-page-number="1" data-doc-id="${editalId}">
-          <div class="pdf-loading" id="pdf-loading-${editalId}">
-            <div style="text-align: center; padding: 4cm;">
-              <div style="font-size: 3em; margin-bottom: 1cm;">📋</div>
-              <div style="font-size: 14pt; font-weight: bold;">Carregando Edital...</div>
-              <div style="font-size: 12pt; margin-top: 1cm; color: #666;">Página 1</div>
-            </div>
-          </div>
-          <div class="pdf-rendered" id="pdf-rendered-${editalId}" style="display: none;">
-            <img id="pdf-image-${editalId}"
-                 style="width: 21cm; height: 29.7cm; object-fit: contain; display: block; margin: 0 auto; background: white;"
-                 alt="Página 1 do Edital" />
-          </div>
-          <div class="pdf-error" id="pdf-error-${editalId}" style="display: none;">
-            <div style="text-align: center; padding: 4cm; background: white;">
-              <div style="font-size: 3em; margin-bottom: 1cm;">⚠️</div>
-              <div style="font-size: 14pt; font-weight: bold; margin-bottom: 1cm;">Erro ao carregar Edital</div>
-              <a href="${urlEdital}" target="_blank"
-                 style="display: inline-block; padding: 1cm 2cm; background: #007bff; color: white; text-decoration: none; border-radius: 8px; font-size: 12pt;">
-                📋 Abrir Edital em Nova Aba
-              </a>
-            </div>
-          </div>
+        <div class="preview-pdf-iframe" style="width: 21cm; height: 29.7cm; overflow: hidden; background: white; border: none; margin: 0 auto; display: block; position: relative;">
+          <iframe src="${urlComParametros}" width="100%" height="100%" frameborder="0" scrolling="no" style="border: none; overflow: hidden; display: block; margin: 0; padding: 0; background: white; pointer-events: none;" onload="this.style.border='none'; this.style.background='white';"></iframe>
         </div>
       `
     },

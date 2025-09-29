@@ -438,10 +438,13 @@
                       <button @click="baixarAta(ata)" class="btn-small btn-primary" title="Baixar arquivo PDF da ata">
                         📄 Baixar PDF
                       </button>
-                      <button 
+                      <button @click="alterarStatusAta(ata)" class="btn-small btn-warning" title="Alterar status da ata">
+                        🔄 Status
+                      </button>
+                      <button
                         v-if="podeExibirBotaoTramitar(ata)"
-                        @click="tramitarProcessoAta(ata)" 
-                        class="btn-small btn-success" 
+                        @click="tramitarProcessoAta(ata)"
+                        class="btn-small btn-success"
                         title="Continuar tramitação do processo">
                         ⚖️ Tramitar
                       </button>
@@ -611,6 +614,7 @@
         </div>
       </div>
 
+
       <!-- Aba Homologações -->
       <div v-show="activeTab === 'homologacoes'" class="homologacoes tab-pane">
       <div class="homologacoes-header" style="margin-bottom: 30px;">
@@ -683,7 +687,86 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Tramitação de Ata - Dentro do container principal -->
+  <div v-if="mostrarModalTramitacaoAta" class="modal-overlay-ata-ccl" @click="fecharModalTramitacaoAta">
+    <div class="modal-confirmacao-tramitacao" @click.stop>
+      <div class="modal-header-tramitacao">
+        <div class="header-icon">
+          <span class="tramitacao-icon">{{ dadosConfirmacaoTramitacaoAta.icone }}</span>
+        </div>
+        <div class="header-content">
+          <h3>{{ dadosConfirmacaoTramitacaoAta.titulo }}</h3>
+          <p class="processo-numero">Ata: {{ dadosConfirmacaoTramitacaoAta.numeroAta }}</p>
+        </div>
+        <button @click="fecharModalTramitacaoAta" class="btn-close-tramitacao">&times;</button>
+      </div>
+
+      <div class="modal-body-tramitacao">
+        <div class="confirmacao-info">
+          <div class="status-flow">
+            <div class="status-atual">
+              <span class="status-label">Status Atual</span>
+              <span class="status-badge atual">{{ dadosConfirmacaoTramitacaoAta.statusAtual }}</span>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="status-proximo">
+              <span class="status-label">Próximo Status</span>
+              <span class="status-badge proximo">{{ dadosConfirmacaoTramitacaoAta.proximoStatus }}</span>
+            </div>
+          </div>
+
+          <div class="observacoes-section">
+            <label for="observacoesTramitacaoAta" class="obs-label">
+              💭 Observações (opcional)
+            </label>
+            <textarea
+              id="observacoesTramitacaoAta"
+              v-model="observacoesTramitacaoAta"
+              class="obs-textarea"
+              :placeholder="dadosConfirmacaoTramitacaoAta.placeholderObservacoes"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <div class="tramitacao-aviso">
+            <div class="aviso-icon">ℹ️</div>
+            <div class="aviso-texto">
+              <p><strong>O que acontece após a tramitação:</strong></p>
+              <ul>
+                <li>{{ dadosConfirmacaoTramitacaoAta.consequencia1 }}</li>
+                <li>{{ dadosConfirmacaoTramitacaoAta.consequencia2 }}</li>
+                <li>{{ dadosConfirmacaoTramitacaoAta.consequencia3 }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer-tramitacao">
+        <button
+          @click="fecharModalTramitacaoAta"
+          class="btn-cancelar"
+        >
+          ❌ Cancelar
+        </button>
+        <button
+          @click="confirmarTramitacaoAta"
+          class="btn-confirmar"
+          :disabled="processandoTramitacaoAta"
+        >
+          <span v-if="!processandoTramitacaoAta">
+            {{ dadosConfirmacaoTramitacaoAta.icone }} {{ dadosConfirmacaoTramitacaoAta.textoBotao }}
+          </span>
+          <span v-else>
+            ⏳ Processando...
+          </span>
+        </button>
+      </div>
+    </div>
   </div>
+  </div>
+
 </template>
 
 <script>
@@ -735,6 +818,13 @@ export default {
       mostrarModalImportarAta: false,
       ataSelecionadaParaImportar: null,
       arquivoAtaImportada: null,
+      // Modal Tramitação Ata
+      mostrarModalTramitacaoAta: false,
+      ataSelecionadaTramitacao: null,
+      dadosConfirmacaoTramitacaoAta: {},
+      observacoesTramitacaoAta: '',
+      processandoTramitacaoAta: false,
+      callbackConfirmacaoAta: null,
       // Dados para Homologações
       homologacoesPendentes: 0,
       homologacoesAprovadas: 0,
@@ -1066,6 +1156,181 @@ export default {
       this.arquivoAtaImportada = null
     },
 
+    async alterarStatusAta(ata) {
+      // Usar padrão de seleção de opções como nos processos administrativos
+      const { value: opcaoSelecionada } = await this.$swal({
+        title: '🔄 Selecionar Nova Etapa',
+        html: `
+          <div style="text-align: center; padding: 20px;">
+            <h4>📋 ${ata.numero || `ATA-${String(ata.id).slice(-4)}`}</h4>
+            <p style="margin-bottom: 20px;">Selecione para onde deseja enviar esta ata:</p>
+          </div>
+        `,
+        input: 'select',
+        inputOptions: {
+          'ELABORACAO': '📝 Voltar para Elaboração',
+          'FINALIZADA': '✅ Finalizar Prazo Recursal',
+          'HOMOLOGAR': '🎯 Enviar para Homologação'
+        },
+        inputPlaceholder: 'Selecione a nova etapa',
+        showCancelButton: true,
+        confirmButtonText: '➡️ Executar Agora',
+        cancelButtonText: '❌ Cancelar',
+        inputValidator: (value) => {
+          if (!value) {
+            return 'Você precisa selecionar uma etapa!'
+          }
+        }
+      })
+
+      if (!opcaoSelecionada) return
+
+      // Executar diretamente sem modal de confirmação
+      await this.executarTramitacaoAta(opcaoSelecionada, ata)
+    },
+
+    async confirmarTramitacaoAta() {
+      if (!this.callbackConfirmacaoAta) return
+
+      this.processandoTramitacaoAta = true
+
+      try {
+        await this.callbackConfirmacaoAta()
+        this.fecharModalTramitacaoAta()
+      } catch (error) {
+        console.error('Erro na tramitação da ata:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: `Erro ao alterar status: ${error.message}`,
+          icon: 'error'
+        })
+      } finally {
+        this.processandoTramitacaoAta = false
+      }
+    },
+
+    async executarTramitacaoAta(opcaoSelecionada, ata) {
+      try {
+        let statusParaAta = ''
+        let statusParaHomologacao = ''
+        let mensagem = ''
+        let criarHomologacao = false
+
+        // Definir ação baseada na opção
+        switch (opcaoSelecionada) {
+          case 'ELABORACAO':
+            statusParaAta = 'ELABORACAO'
+            mensagem = 'Ata movida para "Atas em Elaboração"'
+            break
+
+          case 'FINALIZADA':
+            statusParaAta = 'EM PRAZO' // Manter em EM PRAZO mas com flag interna
+            mensagem = 'Prazo recursal finalizado - Ata pronta para homologação'
+            break
+
+          case 'HOMOLOGAR':
+            // Para homologação, atualizar o processo administrativo vinculado
+            criarHomologacao = true
+            statusParaAta = 'EM PRAZO' // Manter status válido
+            statusParaHomologacao = 'ata_julgamento_ccl_homologacao'
+            mensagem = 'Ata enviada para seção "Homologações"'
+            break
+        }
+
+        // Atualizar ata
+        const { error: ataError } = await supabase
+          .from('atas_julgamento')
+          .update({
+            status_ata: statusParaAta,
+            tramitada_em: new Date().toISOString(),
+            tramitada_por: this.$store.state.user?.id
+          })
+          .eq('id', ata.id)
+          .eq('tenant_id', this.currentTenantId)
+
+        if (ataError) {
+          throw new Error(`Erro ao atualizar ata: ${ataError.message}`)
+        }
+
+        // Se for homologação, atualizar o processo administrativo vinculado
+        if (criarHomologacao) {
+          // Encontrar o processo administrativo vinculado à ata
+          const { data: processos, error: buscarError } = await supabase
+            .from('processos_administrativos')
+            .select('id, numero_processo')
+            .eq('tenant_id', this.currentTenantId)
+            .or(`ata_julgamento_ccl.eq.${ata.numero},ata_julgamento_ccl.ilike.%${ata.numero}%`)
+
+          if (buscarError) {
+            console.warn('Erro ao buscar processo vinculado:', buscarError)
+          } else if (processos && processos.length > 0) {
+            // Atualizar status do processo para homologação
+            const { error: homologacaoError } = await supabase
+              .from('processos_administrativos')
+              .update({
+                status: statusParaHomologacao,
+                ata_emitida_ccl_em: new Date().toISOString()
+              })
+              .eq('id', processos[0].id)
+              .eq('tenant_id', this.currentTenantId)
+
+            if (homologacaoError) {
+              console.warn('Erro ao enviar para homologação:', homologacaoError)
+            } else {
+              console.log(`✅ Processo ${processos[0].numero_processo} enviado para homologação`)
+            }
+          } else {
+            console.warn('⚠️ Nenhum processo encontrado vinculado à ata:', ata.numero)
+          }
+        }
+
+        // Recarregar dados
+        await this.carregarAtasJulgamento()
+        await this.carregarAtasEmElaboracao()
+
+        // Mostrar confirmação
+        this.$swal({
+          title: '✅ Operação Concluída!',
+          html: `
+            <div style="text-align: center; padding: 20px;">
+              <h4>📋 ${ata.numero || `ATA-${String(ata.id).slice(-4)}`}</h4>
+              <p>${mensagem}</p>
+              <p style="color: #28a745;">✅ Sucesso!</p>
+            </div>
+          `,
+          icon: 'success',
+          timer: 3000
+        })
+      } catch (error) {
+        console.error('Erro na tramitação da ata:', error)
+        this.$swal({
+          title: '❌ Erro',
+          text: `Erro ao alterar status: ${error.message}`,
+          icon: 'error'
+        })
+      }
+    },
+
+    fecharModalTramitacaoAta() {
+      this.mostrarModalTramitacaoAta = false
+      this.ataSelecionadaTramitacao = null
+      this.dadosConfirmacaoTramitacaoAta = {}
+      this.observacoesTramitacaoAta = ''
+      this.processandoTramitacaoAta = false
+      this.callbackConfirmacaoAta = null
+    },
+
+    getStatusLabel(status) {
+      const labels = {
+        'ELABORACAO': '📝 Em Elaboração',
+        'EM_ELABORACAO': '📝 Em Elaboração',
+        'EM PRAZO': '⏰ Em Prazo Recursal',
+        'FINALIZADA': '✅ Finalizada',
+        'HOMOLOGADA': '🎯 Homologada'
+      }
+      return labels[status] || status
+    },
+
     selecionarArquivo(event) {
       const file = event.target.files[0]
       if (file) {
@@ -1096,14 +1361,25 @@ export default {
       }
 
       try {
-        console.log('📥 Iniciando importação da ata:', this.arquivoAtaImportada.name)
-        console.log('🎯 Ata destino:', this.ataSelecionadaParaImportar.id)
+        // Salvar dados localmente antes de processar para evitar null reference
+        const ataInfo = {
+          id: this.ataSelecionadaParaImportar.id,
+          numero_ata: this.ataSelecionadaParaImportar.numero_ata,
+          numero: this.ataSelecionadaParaImportar.numero
+        }
+        const arquivoNome = this.arquivoAtaImportada.name
+
+        console.log('📥 Iniciando importação da ata:', arquivoNome)
+        console.log('🎯 Ata destino:', ataInfo.id)
 
         // Fazer upload do arquivo para o Supabase Storage
-        const fileName = `ata_${this.ataSelecionadaParaImportar.id}_${Date.now()}_${this.arquivoAtaImportada.name}`
+        const fileName = `atas-ccl/${this.currentTenantId}/ata_${this.ataSelecionadaParaImportar.id}_${Date.now()}_${this.arquivoAtaImportada.name}`
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('atas-julgamento')
-          .upload(fileName, this.arquivoAtaImportada)
+          .from('documentos')
+          .upload(fileName, this.arquivoAtaImportada, {
+            cacheControl: '3600',
+            upsert: false
+          })
 
         if (uploadError) {
           throw new Error(`Erro no upload: ${uploadError.message}`)
@@ -1111,7 +1387,7 @@ export default {
 
         // Obter URL pública do arquivo
         const { data: urlData } = supabase.storage
-          .from('atas-julgamento')
+          .from('documentos')
           .getPublicUrl(fileName)
 
         // Atualizar a ata com o arquivo importado
@@ -1121,7 +1397,7 @@ export default {
             arquivo_ata_url: urlData.publicUrl,
             arquivo_ata_nome: this.arquivoAtaImportada.name,
             ata_importada_em: new Date().toISOString(),
-            status: 'ata_importada'
+            status_ata: 'EM PRAZO'
           })
           .eq('id', this.ataSelecionadaParaImportar.id)
           .eq('tenant_id', this.currentTenantId)
@@ -1160,8 +1436,8 @@ export default {
           title: '🎉 Ata Importada com Sucesso!',
           html: `
             <div style="text-align: center; padding: 20px;">
-              <h4>${this.ataSelecionadaParaImportar.numero_ata || `ATA-CCL-${String(this.ataSelecionadaParaImportar.id).slice(-4)}`}</h4>
-              <p>✅ Arquivo: <strong>${this.arquivoAtaImportada.name}</strong></p>
+              <h4>${ataInfo.numero_ata || ataInfo.numero || `ATA-CCL-${String(ataInfo.id).slice(-4)}`}</h4>
+              <p>✅ Arquivo: <strong>${arquivoNome}</strong></p>
               <p>📋 Status atualizado para: <strong>Ata Importada</strong></p>
               <hr style="margin: 20px 0;">
               <p style="color: #28a745; font-weight: bold;">
@@ -1896,6 +2172,19 @@ CCL - Comissão de Compra e Licitação`
           console.log('✅ Ata completa encontrada no banco:', ataCompleta.numero)
           // Usar ataCompleta se os dados forem encontrados
           ata = { ...ata, ...ataCompleta }
+
+          // Se existe arquivo da ata importada, baixar diretamente
+          if (ataCompleta.arquivo_ata_url) {
+            console.log('📥 Baixando arquivo da ata importada:', ataCompleta.arquivo_ata_nome)
+            const link = document.createElement('a')
+            link.href = ataCompleta.arquivo_ata_url
+            link.download = ataCompleta.arquivo_ata_nome || `Ata_${ataCompleta.numero}_importada.pdf`
+            link.target = '_blank'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            return // Sair da função, não gerar PDF
+          }
         }
         
         // Para atas publicadas, buscar processo(s) vinculado(s)
@@ -6021,7 +6310,7 @@ Exemplo:
         if (!tipoTramitacao) return
 
         // QUARTO: Executar a tramitação
-        await this.executarTramitacaoAta(processos, tipoTramitacao, ataCompleta)
+        await this.executarTramitacaoProcessosViaAta(processos, tipoTramitacao, ataCompleta)
 
       } catch (error) {
         console.error('Erro na tramitação:', error)
@@ -6033,7 +6322,7 @@ Exemplo:
       }
     },
 
-    async executarTramitacaoAta(processos, opcaoTramitacao, ata) {
+    async executarTramitacaoProcessosViaAta(processos, opcaoTramitacao, ata) {
       try {
         let novoStatus = ''
         let mensagemSucesso = ''
@@ -10558,6 +10847,317 @@ tr:hover {
   }
   to {
     opacity: 1;
+  }
+}
+
+/* ============================================ */
+/* Modal Tramitação de Ata CCL */
+/* ============================================ */
+
+.modal-overlay-ata-ccl {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  z-index: 10000 !important;
+  backdrop-filter: blur(4px) !important;
+  animation: fadeInModal 0.3s ease-out !important;
+}
+
+.modal-overlay-ata-ccl .modal-confirmacao-tramitacao {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  animation: modalSlideIn 0.3s ease-out;
+  position: relative;
+  z-index: 10001;
+}
+
+.modal-overlay-ata-ccl .modal-header-tramitacao {
+  display: flex;
+  align-items: center;
+  padding: 2rem 2rem 1rem 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-bottom: 3px solid #e2e8f0;
+  position: relative;
+}
+
+.modal-overlay-ata-ccl .header-icon {
+  margin-right: 1rem;
+}
+
+.modal-overlay-ata-ccl .tramitacao-icon {
+  font-size: 3rem;
+  animation: bounce 2s infinite;
+}
+
+.modal-overlay-ata-ccl .header-content h3 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.modal-overlay-ata-ccl .processo-numero {
+  margin: 0.5rem 0 0 0;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.modal-overlay-ata-ccl .btn-close-tramitacao {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #718096;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.modal-overlay-ata-ccl .btn-close-tramitacao:hover {
+  background: #fed7d7;
+  color: #e53e3e;
+}
+
+.modal-overlay-ata-ccl .modal-body-tramitacao {
+  padding: 2rem;
+}
+
+.modal-overlay-ata-ccl .status-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f7fafc;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+}
+
+.modal-overlay-ata-ccl .status-atual,
+.modal-overlay-ata-ccl .status-proximo {
+  text-align: center;
+  flex: 1;
+}
+
+.modal-overlay-ata-ccl .status-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #718096;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-overlay-ata-ccl .status-badge {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: white;
+}
+
+.modal-overlay-ata-ccl .status-badge.atual {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.modal-overlay-ata-ccl .status-badge.proximo {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.modal-overlay-ata-ccl .flow-arrow {
+  font-size: 1.5rem;
+  color: #4a5568;
+  margin: 0 1rem;
+  font-weight: bold;
+}
+
+.modal-overlay-ata-ccl .observacoes-section {
+  margin-bottom: 2rem;
+}
+
+.modal-overlay-ata-ccl .obs-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #4a5568;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.modal-overlay-ata-ccl .obs-textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+}
+
+.modal-overlay-ata-ccl .obs-textarea:focus {
+  outline: none;
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.modal-overlay-ata-ccl .tramitacao-aviso {
+  display: flex;
+  background: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.modal-overlay-ata-ccl .aviso-icon {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  color: #3182ce;
+}
+
+.modal-overlay-ata-ccl .aviso-texto p {
+  margin: 0 0 0.5rem 0;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.modal-overlay-ata-ccl .aviso-texto ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: #4a5568;
+}
+
+.modal-overlay-ata-ccl .aviso-texto li {
+  margin-bottom: 0.25rem;
+}
+
+.modal-overlay-ata-ccl .modal-footer-tramitacao {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding: 1.5rem 2rem 2rem 2rem;
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+}
+
+.modal-overlay-ata-ccl .btn-cancelar {
+  padding: 0.875rem 1.5rem;
+  background: #e2e8f0;
+  color: #4a5568;
+  border: 2px solid #cbd5e0;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.modal-overlay-ata-ccl .btn-cancelar:hover {
+  background: #cbd5e0;
+  border-color: #a0aec0;
+}
+
+.modal-overlay-ata-ccl .btn-confirmar {
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.modal-overlay-ata-ccl .btn-confirmar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.modal-overlay-ata-ccl .btn-confirmar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: scale(0.9) translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-overlay-ata-ccl .modal-confirmacao-tramitacao {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .modal-overlay-ata-ccl .modal-header-tramitacao {
+    padding: 1.5rem;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .modal-overlay-ata-ccl .header-icon {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+
+  .modal-overlay-ata-ccl .status-flow {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .modal-overlay-ata-ccl .flow-arrow {
+    transform: rotate(90deg);
+  }
+
+  .modal-overlay-ata-ccl .modal-footer-tramitacao {
+    flex-direction: column;
+  }
+
+  .modal-overlay-ata-ccl .btn-cancelar,
+  .modal-overlay-ata-ccl .btn-confirmar {
+    width: 100%;
   }
 }
 
