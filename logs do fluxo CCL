@@ -1,0 +1,481 @@
+🔍 DEBUG - Perfil do usuário atual retornado: {id: '6ab8c999-a9a1-4c12-8878-3adb0e68cbd3', email: 'comprarbemccl@gmail.com', nome: 'PainelCCL', perfil_usuario: 'ccl', tenant_id: '8329e25e-8a01-4fc6-ab15-7a83dd874bde', …}
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:199 🔄 [DEBUG CCL] Tenant ID mudou, recarregando dados: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1923 🔍 [DEBUG CCL] Iniciando busca de processos...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1924 🔍 [DEBUG CCL] Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:291 🔄 Atualizando dados das atas automaticamente...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:4162 Sistema de monitoramento de prazos iniciado
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/views/CCL.vue?vue&type=script&lang=js:61 🔍 Dados do usuário CCL: {usuario: {…}, errorUsuario: null, userId: '6ab8c999-a9a1-4c12-8878-3adb0e68cbd3'}
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/views/CCL.vue?vue&type=script&lang=js:67 ✅ IsUsuarioCCL: true
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/views/CCL.vue?vue&type=script&lang=js:69 🔒 Usuário CCL logado - Navegação restrita
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1937 📊 [DEBUG CCL] TODOS os processos do tenant: 3
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 1001/2025 - Status: julgamento_ccl - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 0002/2025 - Status: abertura_autorizada - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 003 - Status: criado_cpm - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1945 🎯 [DEBUG CCL] Status filtrados para CCL: ['julgamento_ccl']
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1946 🎯 [DEBUG CCL] Processos que deveriam aparecer:
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1949 ✅ DEVE APARECER: 1001/2025 - Status: julgamento_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1951 ❌ NÃO APARECE: 0002/2025 - Status: abertura_autorizada
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1951 ❌ NÃO APARECE: 003 - Status: criado_cpm
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1954 🎯 [DEBUG CCL] Processos FILTRADOS para CCL: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1956 ✅ [DEBUG CCL] Processo para CCL: 1001/2025 - Status: julgamento_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1958 📊 CCL Dashboard - Processos encontrados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1960 📋 Processo 1001/2025 - Status: julgamento_ccl - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3456 Nenhuma homologação encontrada no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2677 ✅ Homologações recentes carregadas: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3487 Debug Processos Homologação:
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3488 - Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3489 - Query error: null
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3490 - Processos encontrados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3491 - Dados dos processos: []
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3530 Nenhum processo encontrado
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1975 ✅ [DEBUG CCL] Dados completos carregados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:161 🖥️ [DEBUG CCL TEMPLATE] processosPendentesPaginados chamado
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:162 🖥️ [DEBUG CCL TEMPLATE] this.processosPendentesArray.length: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:163 🖥️ [DEBUG CCL TEMPLATE] resultado.length: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:166 🖥️ [DEBUG CCL TEMPLATE] Processo para template: 1001/2025 - Status: julgamento_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3673 Nenhuma DCB ativa encontrada no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 001/2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3205 Nenhum recurso encontrado no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1991 🔍 [DEBUG CCL] Iniciando contagem por status...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1992 🔍 [DEBUG CCL] Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: (2) ['aprovado', 'reprovado'] para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: (2) ['julgado_aprovado', 'julgado_reprovado'] para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: homologado para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.001%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3341 ✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento): 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem aprovado,reprovado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem homologado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3398 Nenhuma ata em elaboração encontrada no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:309 📋 Carregando processos prontos para criação de ata...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem julgado_aprovado,julgado_reprovado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1999 🔍 [DEBUG CCL] Stats counts: (3) [0, 0, 0]
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2006 🔍 [DEBUG CCL] Contadores finais:
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2007 - Pendentes: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2008 - Aprovados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2009 - Homologados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2013 - Recursos em análise: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:330 ✅ Processos prontos para ata carregados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:296 ✅ Dados das atas atualizados automaticamente
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:300 📊 Atas em elaboração: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:301 📋 Atas publicadas: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:302 🎯 Processos prontos para ata: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1923 🔍 [DEBUG CCL] Iniciando busca de processos...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1924 🔍 [DEBUG CCL] Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1937 📊 [DEBUG CCL] TODOS os processos do tenant: 3
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 1001/2025 - Status: julgamento_ccl - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 0002/2025 - Status: abertura_autorizada - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 003 - Status: criado_cpm - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1945 🎯 [DEBUG CCL] Status filtrados para CCL: ['julgamento_ccl']
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1946 🎯 [DEBUG CCL] Processos que deveriam aparecer:
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1949 ✅ DEVE APARECER: 1001/2025 - Status: julgamento_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1951 ❌ NÃO APARECE: 0002/2025 - Status: abertura_autorizada
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1951 ❌ NÃO APARECE: 003 - Status: criado_cpm
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1954 🎯 [DEBUG CCL] Processos FILTRADOS para CCL: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1956 ✅ [DEBUG CCL] Processo para CCL: 1001/2025 - Status: julgamento_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1958 📊 CCL Dashboard - Processos encontrados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1960 📋 Processo 1001/2025 - Status: julgamento_ccl - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1975 ✅ [DEBUG CCL] Dados completos carregados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:161 🖥️ [DEBUG CCL TEMPLATE] processosPendentesPaginados chamado
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:162 🖥️ [DEBUG CCL TEMPLATE] this.processosPendentesArray.length: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:163 🖥️ [DEBUG CCL TEMPLATE] resultado.length: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:166 🖥️ [DEBUG CCL TEMPLATE] Processo para template: 1001/2025 - Status: julgamento_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3205 Nenhum recurso encontrado no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1991 🔍 [DEBUG CCL] Iniciando contagem por status...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1992 🔍 [DEBUG CCL] Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: (2) ['aprovado', 'reprovado'] para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: (2) ['julgado_aprovado', 'julgado_reprovado'] para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: homologado para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem aprovado,reprovado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem homologado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem julgado_aprovado,julgado_reprovado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1999 🔍 [DEBUG CCL] Stats counts: (3) [0, 0, 0]
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2006 🔍 [DEBUG CCL] Contadores finais:
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2007 - Pendentes: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2008 - Aprovados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2009 - Homologados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2013 - Recursos em análise: 0
+vue-sweetalert.mjs:29 SweetAlert2: Unknown parameter "maxWidth"
+d @ vue-sweetalert.mjs:29
+kt @ vue-sweetalert.mjs:141
+St @ vue-sweetalert.mjs:151
+_main @ vue-sweetalert.mjs:1385
+_main @ vue-sweetalert.mjs:1283
+N @ vue-sweetalert.mjs:1380
+t @ vue-sweetalert.mjs:1281
+Yo @ vue-sweetalert.mjs:1278
+B @ vue-sweetalert.mjs:1464
+iniciarJulgamentoCCL @ index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:7083
+click @ index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=template&id=ae7635ba&scoped=true:143
+invokeWithErrorHandling @ vue.runtime.esm.js:2897
+invoker @ vue.runtime.esm.js:1787
+original_1._wrapper @ vue.runtime.esm.js:7015
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:7136 🔍 [DEBUG] Decisão selecionada: aprovar
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:7137 🔍 [DEBUG] Fundamentação: tert
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:7143 🔍 [DEBUG] Executando caso APROVAR - enviando para ata_ccl
+tramitacaoProcessosService.js:380 🔄 Enviando processo flexível: dd9c03c9-16ec-4a8a-9791-94505f8b98f2 ata_ccl GERAR_ATA_CCL
+emailNotificationService.js:241 🔄 INICIANDO enviarNotificacaoTramitacao: {processoId: 'dd9c03c9-16ec-4a8a-9791-94505f8b98f2', statusAnterior: 'julgamento_ccl', statusNovo: 'ata_ccl'}
+fetch.js:46 
+            
+            
+           POST https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/notificacoes_processo 404 (Not Found)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+emailNotificationService.js:370 Erro ao registrar notificação: {}
+registrarNotificacao @ emailNotificationService.js:370
+await in registrarNotificacao
+enviarNotificacaoTramitacao @ emailNotificationService.js:329
+await in enviarNotificacaoTramitacao
+enviarProcessoFlexivel @ tramitacaoProcessosService.js:435
+await in enviarProcessoFlexivel
+iniciarJulgamentoCCL @ index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:7145
+await in iniciarJulgamentoCCL
+click @ index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/loaders/templateLoader.js??ruleSet[1].rules[3]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=template&id=ae7635ba&scoped=true:143
+invokeWithErrorHandling @ vue.runtime.esm.js:2897
+invoker @ vue.runtime.esm.js:1787
+original_1._wrapper @ vue.runtime.esm.js:7015
+emailNotificationService.js:348 📧 Enviando notificações REAIS via EmailJS: 1 destinatários
+emailNotificationService.js:609 📧 ENVIANDO EMAILS REAIS VIA EMAILJS:
+emailNotificationService.js:610 =====================================
+emailNotificationService.js:619 📧 Enviando email 1/1:
+emailNotificationService.js:620 Para: comprarbemccl@gmail.com (PainelCCL)
+emailNotificationService.js:621 Assunto: COMPRAR BEM: Processo 1001/2025 requer sua atenção
+emailNotificationService.js:645 ✅ Email enviado com sucesso para PainelCCL!
+emailNotificationService.js:663 📊 RESULTADO DO ENVIO:
+emailNotificationService.js:664 ✅ Sucessos: 1
+emailNotificationService.js:665 ❌ Erros: 0
+emailNotificationService.js:666 📧 Total: 1
+tramitacaoProcessosService.js:442 ✅ Processo dd9c03c9-16ec-4a8a-9791-94505f8b98f2 tramitado flexível: julgamento_ccl → ata_ccl (GERAR_ATA_CCL)
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:7146 🔍 [DEBUG] Resultado da tramitação APROVAR: {sucesso: true, statusAnterior: 'julgamento_ccl', statusNovo: 'ata_ccl', tipoFlexivel: 'GERAR_ATA_CCL', proximoResponsavel: 'ccl'}
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:7160 ✅ Campos ata_ccl preenchidos para aprovação normal
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:7207 ✅ Processo aprovado e disponível para criação de ata manual
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1923 🔍 [DEBUG CCL] Iniciando busca de processos...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1924 🔍 [DEBUG CCL] Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1937 📊 [DEBUG CCL] TODOS os processos do tenant: 3
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 1001/2025 - Status: ata_ccl - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 0002/2025 - Status: abertura_autorizada - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1939 📋 [DEBUG CCL] Processo: 003 - Status: criado_cpm - Tipo: padronizacao
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1945 🎯 [DEBUG CCL] Status filtrados para CCL: ['julgamento_ccl']
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1946 🎯 [DEBUG CCL] Processos que deveriam aparecer:
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1951 ❌ NÃO APARECE: 1001/2025 - Status: ata_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1951 ❌ NÃO APARECE: 0002/2025 - Status: abertura_autorizada
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1951 ❌ NÃO APARECE: 003 - Status: criado_cpm
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1954 🎯 [DEBUG CCL] Processos FILTRADOS para CCL: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1958 📊 CCL Dashboard - Processos encontrados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1978 ⚠️ [DEBUG CCL] Nenhum processo filtrado encontrado
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3205 Nenhum recurso encontrado no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1991 🔍 [DEBUG CCL] Iniciando contagem por status...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1992 🔍 [DEBUG CCL] Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: (2) ['aprovado', 'reprovado'] para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: (2) ['julgado_aprovado', 'julgado_reprovado'] para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2030 🔍 [DEBUG CCL] Contando status: homologado para tenant: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem aprovado,reprovado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem julgado_aprovado,julgado_reprovado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2047 🔍 [DEBUG CCL] Resultado contagem homologado: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:1999 🔍 [DEBUG CCL] Stats counts: (3) [0, 0, 0]
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2006 🔍 [DEBUG CCL] Contadores finais:
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2007 - Pendentes: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2008 - Aprovados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2009 - Homologados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:2013 - Recursos em análise: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:291 🔄 Atualizando dados das atas automaticamente...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 001/2025
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.001%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3341 ✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento): 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3398 Nenhuma ata em elaboração encontrada no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:309 📋 Carregando processos prontos para criação de ata...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:330 ✅ Processos prontos para ata carregados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:296 ✅ Dados das atas atualizados automaticamente
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:300 📊 Atas em elaboração: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:301 📋 Atas publicadas: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:302 🎯 Processos prontos para ata: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:229 Entrando na aba atas de julgamento - recarregando dados específicos...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:291 🔄 Atualizando dados das atas automaticamente...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 001/2025
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.001%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3341 ✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento): 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3398 Nenhuma ata em elaboração encontrada no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:309 📋 Carregando processos prontos para criação de ata...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:330 ✅ Processos prontos para ata carregados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:296 ✅ Dados das atas atualizados automaticamente
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:300 📊 Atas em elaboração: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:301 📋 Atas publicadas: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:302 🎯 Processos prontos para ata: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:640 📋 Carregando processos disponíveis para criação de ata...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:641 🔍 Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:642 🔍 Buscando processos com status: ata_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:662 🔍 Consulta resultado - Error: null
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:663 🔍 Consulta resultado - Dados: [{…}]
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:664 🔍 Processos encontrados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:670 ✅ Processos disponíveis carregados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:673 📋 Processo disponível: 1001/2025 - Status: ata_ccl
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:716 📝 Criando nova ata CCL para processos: ['dd9c03c9-16ec-4a8a-9791-94505f8b98f2', __ob__: Observer]
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:717 🔍 Tipo de criação: modal
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:718 🔍 Número de processos selecionados: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:719 🔍 Current Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:809 🔍 Atas existentes do ano: [{…}]
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:819 🔍 Números existentes: [1]
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:825 🔍 Número gerado: ATA-CCL-002-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:731 🔍 Número da ata gerado: ATA-CCL-002-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:735 🔍 Conteúdo da ata gerado: Ata de Julgamento da Comissão Central de Licitação (CCL) referente aos processos: 1001/2025. Ata cri...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:747 🔍 Dados a serem inseridos: {tenant_id: '8329e25e-8a01-4fc6-ab15-7a83dd874bde', numero: 'ATA-CCL-002-2025', periodo: '10/2025', descricao: 'Ata de Julgamento CCL - Processo Individual', total_processos: 1, …}
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:872 🔗 Iniciando vinculação de produtos à ata: 6b439142-8fa4-47f7-a06a-86fb5207a53f
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:873 🔍 Processos: ['dd9c03c9-16ec-4a8a-9791-94505f8b98f2', __ob__: Observer]
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:889 🔍 Produtos aprovados encontrados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:907 ℹ️ Nenhum produto aprovado disponível para vincular à ata
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:291 🔄 Atualizando dados das atas automaticamente...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 001/2025
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.001%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3341 ✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento): 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3394 Atas em elaboração carregadas do banco: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:309 📋 Carregando processos prontos para criação de ata...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:330 ✅ Processos prontos para ata carregados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:296 ✅ Dados das atas atualizados automaticamente
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:300 📊 Atas em elaboração: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:301 📋 Atas publicadas: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:302 🎯 Processos prontos para ata: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:777 ✅ Ata criada com sucesso: {id: '6b439142-8fa4-47f7-a06a-86fb5207a53f', tenant_id: '8329e25e-8a01-4fc6-ab15-7a83dd874bde', numero: 'ATA-CCL-002-2025', data_publicacao: null, periodo: '10/2025', …}
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:543 📄 Arquivo selecionado: NFS.pdf
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:558 📥 Iniciando importação da ata: NFS.pdf
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:559 🎯 Ata destino: 6b439142-8fa4-47f7-a06a-86fb5207a53f
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/atas_julgamento_processos?select=processo_id&ata_id=eq.6b439142-8fa4-47f7-a06a-86fb5207a53f 404 (Not Found)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3398 Nenhuma ata em elaboração encontrada no banco
+
+
+
+🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 001/2025
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.001%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3341 ✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento): 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3394 Atas em elaboração carregadas do banco: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:309 📋 Carregando processos prontos para criação de ata...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:330 ✅ Processos prontos para ata carregados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:296 ✅ Dados das atas atualizados automaticamente
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:300 📊 Atas em elaboração: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:301 📋 Atas publicadas: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:302 🎯 Processos prontos para ata: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:777 ✅ Ata criada com sucesso: {id: '6b439142-8fa4-47f7-a06a-86fb5207a53f', tenant_id: '8329e25e-8a01-4fc6-ab15-7a83dd874bde', numero: 'ATA-CCL-002-2025', data_publicacao: null, periodo: '10/2025', …}
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:543 📄 Arquivo selecionado: NFS.pdf
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:558 📥 Iniciando importação da ata: NFS.pdf
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:559 🎯 Ata destino: 6b439142-8fa4-47f7-a06a-86fb5207a53f
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/atas_julgamento_processos?select=processo_id&ata_id=eq.6b439142-8fa4-47f7-a06a-86fb5207a53f 404 (Not Found)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3398 Nenhuma ata em elaboração encontrada no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:291 🔄 Atualizando dados das atas automaticamente...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-002-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-002-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 002/2025
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.002%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-002-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 001/2025
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.001%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3341 ✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento): 2
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3398 Nenhuma ata em elaboração encontrada no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:309 📋 Carregando processos prontos para criação de ata...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:330 ✅ Processos prontos para ata carregados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:296 ✅ Dados das atas atualizados automaticamente
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:300 📊 Atas em elaboração: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:301 📋 Atas publicadas: 2
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:302 🎯 Processos prontos para ata: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:291 🔄 Atualizando dados das atas automaticamente...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-002-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-002-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 002/2025
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.002%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-002-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3292 🔍 Número do processo extraído: 001/2025
+fetch.js:46 
+            
+            
+           GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?select=id%2Cstatus%2Cnumero_processo&numero_processo=eq.001%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+eval @ fetch.js:46
+eval @ fetch.js:67
+fulfilled @ fetch.js:17
+Promise.then
+step @ fetch.js:30
+eval @ fetch.js:32
+__awaiter @ fetch.js:14
+eval @ fetch.js:57
+then @ PostgrestBuilder.js:66
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-001-2025
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3341 ✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento): 2
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:3398 Nenhuma ata em elaboração encontrada no banco
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:309 📋 Carregando processos prontos para criação de ata...
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:330 ✅ Processos prontos para ata carregados: 0
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:296 ✅ Dados das atas atualizados automaticamente
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:300 📊 Atas em elaboração: 1
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:301 📋 Atas publicadas: 2
+index.js??clonedRuleSet-40.use[0]!./node_modules/@vue/vue-loader-v15/lib/index.js??vue-loader-options!./src/components/dashboard/DashboardCCL.vue?vue&type=script&lang=js:302 🎯 Processos prontos para ata: 0
+
+index.js??clonedRule…=script&lang=js:481 ⚠️ Nenhum processo encontrado vinculado à ata: ATA-CCL-002-2025
+index.js??clonedRule…script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-002-2025
+index.js??clonedRule…script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-002-2025
+index.js??clonedRule…script&lang=js:3292 🔍 Número do processo extraído: 002/2025
+fetch.js:46 
+ GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?…o_processo=eq.002%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+index.js??clonedRule…script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-002-2025
+index.js??clonedRule…script&lang=js:3263 🔍 Tentativa 2: Buscando processo por ata_julgamento_ccl contendo: ATA-CCL-001-2025
+index.js??clonedRule…script&lang=js:3287 🔍 Tentativa 3: Extraindo número do processo da ata: ATA-CCL-001-2025
+index.js??clonedRule…script&lang=js:3292 🔍 Número do processo extraído: 001/2025
+fetch.js:46 
+ GET https://ruagsbbczuwgfflgcaol.supabase.co/rest/v1/processos_administrativos?…o_processo=eq.001%2F2025&tenant_id=eq.8329e25e-8a01-4fc6-ab15-7a83dd874bde 406 (Not Acceptable)
+index.js??clonedRule…script&lang=js:3311 ❌ Nenhum processo encontrado para ata: ATA-CCL-001-2025
+index.js??clonedRule…script&lang=js:3341 ✅ Atas PUBLICADAS carregadas (da tabela atas_julgamento): 2
+index.js??clonedRule…script&lang=js:3398 Nenhuma ata em elaboração encontrada no banco
+index.js??clonedRule…=script&lang=js:224 Entrando na aba homologações - recarregando dados específicos...
+index.js??clonedRule…script&lang=js:3456 Nenhuma homologação encontrada no banco
+index.js??clonedRule…script&lang=js:3487 Debug Processos Homologação:
+index.js??clonedRule…script&lang=js:3488 - Tenant ID: 8329e25e-8a01-4fc6-ab15-7a83dd874bde
+index.js??clonedRule…script&lang=js:3489 - Query error: null
+index.js??clonedRule…script&lang=js:3490 - Processos encontrados: 0
+index.js??clonedRule…script&lang=js:3491 - Dados dos processos: 
+[]
+index.js??clonedRule…script&lang=js:3530 Nenhum processo encontrado
+index.js??clonedRule…script&lang=js:2677 ✅ Homologações recentes carregadas: 0
+
+
+

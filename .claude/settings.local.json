@@ -23,7 +23,8 @@
       "Bash(\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" http://localhost:8081/)",
       "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\add_pdf_pages_fields.sql\")",
       "Bash(npm install:*)",
-      "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\add_arquivo_ata_nome_column.sql\")"
+      "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\add_arquivo_ata_nome_column.sql\")",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": [],

@@ -5680,13 +5680,11 @@ export default {
         `
       }
 
+      // ✨ USAR OS MESMOS PARÂMETROS DO EDITAL: toolbar=0 remove a barra cinza com botões
+      const urlComParametros = `${urlAta}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH&zoom=page-width`
       return `
-        <div class="pdf-container" style="width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center;">
-          <iframe
-            src="${urlAta}"
-            style="width: 95%; height: 95%; border: 1px solid #e2e8f0;"
-            title="Ata de Julgamento CCL">
-          </iframe>
+        <div class="preview-pdf-iframe" style="width: 21cm; height: 29.7cm; overflow: hidden; background: white; border: none; margin: 0 auto; display: block; position: relative;">
+          <iframe src="${urlComParametros}" width="100%" height="100%" frameborder="0" scrolling="no" style="border: none; overflow: hidden; display: block; margin: 0; padding: 0; background: white; pointer-events: none;" onload="this.style.border='none'; this.style.background='white';"></iframe>
         </div>
       `
     },

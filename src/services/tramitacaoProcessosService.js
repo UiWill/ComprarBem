@@ -957,24 +957,24 @@ export class TramitacaoProcessosService {
    */
   static obterNomeProximaEtapa(status) {
     const nomes = {
-      // FLUXO PADRONIZAÇÃO - Novos status conforme cliente
+      // FLUXO PADRONIZAÇÃO - Nome da ETAPA ATUAL (não da próxima!)
       'em_criacao': 'CPM - Criação',
-      'criado_cpm': 'Autoridade Competente',
+      'criado_cpm': 'Criado pela CPM',
       'submetido_autoridade': 'Autorização de Abertura',
-      'abertura_autorizada': 'Edital de Chamamento',
-      'edital_chamamento': 'Análise Jurídica',
-      'analise_juridica': 'Publicação do Edital',
-      'edital_publicado': 'Recebimento de Impugnações',
-      'com_impugnacao': 'Recebimento de Amostras',
-      'recebendo_amostras': 'Avaliação CPM',
-      'avaliacao_cpm': 'Julgamento CCL',
-      'julgamento_ccl': 'Ata de Julgamento',
-      'ata_ccl': 'Publicação da Ata',
-      'publicacao_ata': 'Prazo Recursal',
-      'com_recurso': 'Homologação',
-      'homologado': 'Expedição DCBs',
-      'expedindo_dcbs': 'Inclusão no Catálogo',
-      'incluindo_marcas': 'Finalização do Processo',
+      'abertura_autorizada': 'Abertura Autorizada',
+      'edital_chamamento': 'Edital de Chamamento',
+      'analise_juridica': 'Análise Jurídica',
+      'edital_publicado': 'Edital Publicado',
+      'com_impugnacao': 'Recebimento de Impugnações',
+      'recebendo_amostras': 'Recebimento de Amostras',
+      'avaliacao_cpm': 'Avaliação CPM',
+      'julgamento_ccl': 'Julgamento CCL',
+      'ata_ccl': 'Ata de Julgamento',
+      'publicacao_ata': 'Publicação da Ata',
+      'com_recurso': 'Prazo Recursal',
+      'homologado': 'Homologação',
+      'expedindo_dcbs': 'Expedição DCBs',
+      'incluindo_marcas': 'Inclusão no Catálogo',
       
       // FLUXO DESPADRONIZAÇÃO - Novos status conforme cliente
       'em_criacao_desp': 'CPM - Criação',

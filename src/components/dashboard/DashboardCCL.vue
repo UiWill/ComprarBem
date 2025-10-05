@@ -438,15 +438,12 @@
                       <button @click="baixarAta(ata)" class="btn-small btn-primary" title="Baixar arquivo PDF da ata">
                         📄 Baixar PDF
                       </button>
-                      <button @click="alterarStatusAta(ata)" class="btn-small btn-warning" title="Alterar status da ata">
-                        🔄 Status
-                      </button>
                       <button
                         v-if="podeExibirBotaoTramitar(ata)"
                         @click="tramitarProcessoAta(ata)"
                         class="btn-small btn-success"
-                        title="Continuar tramitação do processo">
-                        ⚖️ Tramitar
+                        title="Tramitar processo vinculado à ata">
+                        🚀 Tramitar
                       </button>
                     </div>
                   </td>
@@ -1027,7 +1024,7 @@ export default {
     podeExibirBotaoTramitar(ata) {
       // Verificar diferentes estruturas possíveis dos dados
       let statusProcesso = null
-      
+
       if (ata.ata_completa?.processos_administrativos) {
         if (Array.isArray(ata.ata_completa.processos_administrativos)) {
           // Se é array, pegar o primeiro
@@ -1037,9 +1034,29 @@ export default {
           statusProcesso = ata.ata_completa.processos_administrativos.status
         }
       }
-      
-      const podeTrarmitar = statusProcesso && ['ata_ccl', 'publicacao_ata'].includes(statusProcesso)
-      
+
+      // CORREÇÃO: Só mostrar botão se o processo ainda NÃO foi tramitado
+      // Status permitidos: ata_ccl (processo julgado mas ainda não tramitado)
+      // NÃO mostrar se já está em: homologação, análise jurídica, ou status posteriores
+      const statusPermitidosParaTramitar = ['ata_ccl', 'publicacao_ata']
+      const statusJaTramitados = [
+        'ata_julgamento_ccl_homologacao',
+        'ata_julgamento_ccl_indeferimento',
+        'analise_juridica',
+        'homologado',
+        'expedindo_dcbs',
+        'incluindo_marcas',
+        'finalizado'
+      ]
+
+      // Não mostrar se já foi tramitado
+      if (statusProcesso && statusJaTramitados.includes(statusProcesso)) {
+        return false
+      }
+
+      // Mostrar apenas se está nos status permitidos
+      const podeTrarmitar = statusProcesso && statusPermitidosParaTramitar.includes(statusProcesso)
+
       return podeTrarmitar
     },
 
@@ -1254,33 +1271,29 @@ export default {
 
         // Se for homologação, atualizar o processo administrativo vinculado
         if (criarHomologacao) {
-          // Encontrar o processo administrativo vinculado à ata
-          const { data: processos, error: buscarError } = await supabase
-            .from('processos_administrativos')
-            .select('id, numero_processo')
-            .eq('tenant_id', this.currentTenantId)
-            .or(`ata_julgamento_ccl.eq.${ata.numero},ata_julgamento_ccl.ilike.%${ata.numero}%`)
+          // CORREÇÃO: Usar processo_id diretamente da ata
+          if (ata.processo_id) {
+            console.log(`🔗 Enviando processo ${ata.processo_id} para homologação`)
 
-          if (buscarError) {
-            console.warn('Erro ao buscar processo vinculado:', buscarError)
-          } else if (processos && processos.length > 0) {
             // Atualizar status do processo para homologação
             const { error: homologacaoError } = await supabase
               .from('processos_administrativos')
               .update({
                 status: statusParaHomologacao,
-                ata_emitida_ccl_em: new Date().toISOString()
+                ata_emitida_ccl_em: new Date().toISOString(),
+                updated_at: new Date().toISOString()
               })
-              .eq('id', processos[0].id)
+              .eq('id', ata.processo_id)
               .eq('tenant_id', this.currentTenantId)
 
             if (homologacaoError) {
-              console.warn('Erro ao enviar para homologação:', homologacaoError)
+              throw new Error(`Erro ao enviar processo para homologação: ${homologacaoError.message}`)
             } else {
-              console.log(`✅ Processo ${processos[0].numero_processo} enviado para homologação`)
+              console.log(`✅ Processo enviado para homologação com sucesso`)
             }
           } else {
-            console.warn('⚠️ Nenhum processo encontrado vinculado à ata:', ata.numero)
+            console.warn('⚠️ Ata não possui processo_id vinculado:', ata.numero)
+            throw new Error('Esta ata não possui um processo administrativo vinculado')
           }
         }
 
@@ -1365,15 +1378,17 @@ export default {
         const ataInfo = {
           id: this.ataSelecionadaParaImportar.id,
           numero_ata: this.ataSelecionadaParaImportar.numero_ata,
-          numero: this.ataSelecionadaParaImportar.numero
+          numero: this.ataSelecionadaParaImportar.numero,
+          processo_id: this.ataSelecionadaParaImportar.processo_id
         }
         const arquivoNome = this.arquivoAtaImportada.name
 
         console.log('📥 Iniciando importação da ata:', arquivoNome)
         console.log('🎯 Ata destino:', ataInfo.id)
+        console.log('🔗 Processo vinculado:', ataInfo.processo_id)
 
-        // Fazer upload do arquivo para o Supabase Storage
-        const fileName = `atas-ccl/${this.currentTenantId}/ata_${this.ataSelecionadaParaImportar.id}_${Date.now()}_${this.arquivoAtaImportada.name}`
+        // 1. Fazer upload do arquivo para o Supabase Storage
+        const fileName = `atas-ccl/${this.currentTenantId}/ata_${ataInfo.id}_${Date.now()}_${this.arquivoAtaImportada.name}`
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documentos')
           .upload(fileName, this.arquivoAtaImportada, {
@@ -1385,52 +1400,77 @@ export default {
           throw new Error(`Erro no upload: ${uploadError.message}`)
         }
 
-        // Obter URL pública do arquivo
+        // 2. Obter URL pública do arquivo
         const { data: urlData } = supabase.storage
           .from('documentos')
           .getPublicUrl(fileName)
 
-        // Atualizar a ata com o arquivo importado
+        console.log('✅ Arquivo enviado para storage:', urlData.publicUrl)
+
+        // 3. Atualizar a ata com o arquivo importado e marcar como publicada
         const { error: updateError } = await supabase
           .from('atas_julgamento')
           .update({
             arquivo_ata_url: urlData.publicUrl,
             arquivo_ata_nome: this.arquivoAtaImportada.name,
             ata_importada_em: new Date().toISOString(),
-            status_ata: 'EM PRAZO'
+            data_publicacao: new Date().toISOString(),
+            status_ata: 'EM PRAZO', // Ata publicada e em prazo recursal
+            progresso_elaboracao: 100
           })
-          .eq('id', this.ataSelecionadaParaImportar.id)
+          .eq('id', ataInfo.id)
           .eq('tenant_id', this.currentTenantId)
 
         if (updateError) {
           throw new Error(`Erro ao atualizar ata: ${updateError.message}`)
         }
 
-        // Buscar os processos vinculados à ata para vincular o arquivo
-        const { data: processosVinculados, error: processosError } = await supabase
-          .from('atas_julgamento_processos')
-          .select('processo_id')
-          .eq('ata_id', this.ataSelecionadaParaImportar.id)
+        console.log('✅ Ata atualizada no banco')
 
-        if (!processosError && processosVinculados.length > 0) {
-          // Vincular o arquivo aos processos administrativos
-          for (const vinculo of processosVinculados) {
-            await supabase
-              .from('documentos_processos')
-              .insert({
-                processo_id: vinculo.processo_id,
-                tenant_id: this.currentTenantId,
-                tipo_documento: 'ata_julgamento_ccl',
-                nome_documento: this.arquivoAtaImportada.name,
-                url_documento: urlData.publicUrl,
-                data_upload: new Date().toISOString(),
-                usuario_upload: this.$store.state.user?.id
-              })
+        // 4. LÓGICA IGUAL AOS PROCESSOS ADMINISTRATIVOS: Vincular arquivo ao processo
+        if (ataInfo.processo_id) {
+          console.log('📎 Vinculando arquivo ao processo:', ataInfo.processo_id)
+
+          // Vincular arquivo na tabela documentos_processos (igual aos editais/documentos)
+          const { error: docError } = await supabase
+            .from('documentos_processos')
+            .insert({
+              processo_id: ataInfo.processo_id,
+              tenant_id: this.currentTenantId,
+              tipo_documento: 'ata_julgamento_ccl',
+              nome_documento: this.arquivoAtaImportada.name,
+              url_documento: urlData.publicUrl,
+              data_upload: new Date().toISOString(),
+              usuario_upload: this.$store.state.user?.id
+            })
+
+          if (docError) {
+            console.warn('⚠️ Erro ao vincular documento ao processo:', docError)
+          } else {
+            console.log('✅ Documento vinculado ao processo com sucesso')
+          }
+
+          // Atualizar o processo administrativo com referência à ata
+          const { error: processoError } = await supabase
+            .from('processos_administrativos')
+            .update({
+              ata_julgamento_ccl: `Ata ${ataInfo.numero_ata || ataInfo.numero} importada - Arquivo: ${this.arquivoAtaImportada.name}`,
+              ata_emitida_ccl_em: new Date().toISOString(),
+              arquivo_ata_url: urlData.publicUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', ataInfo.processo_id)
+            .eq('tenant_id', this.currentTenantId)
+
+          if (processoError) {
+            console.warn('⚠️ Erro ao atualizar processo:', processoError)
+          } else {
+            console.log('✅ Processo administrativo atualizado com a ata')
           }
         }
 
         this.fecharModalImportarAta()
-        await this.carregarAtasEmElaboracao()
+        await this.atualizarDadosAtas()
 
         this.$swal({
           title: '🎉 Ata Importada com Sucesso!',
@@ -1438,10 +1478,13 @@ export default {
             <div style="text-align: center; padding: 20px;">
               <h4>${ataInfo.numero_ata || ataInfo.numero || `ATA-CCL-${String(ataInfo.id).slice(-4)}`}</h4>
               <p>✅ Arquivo: <strong>${arquivoNome}</strong></p>
-              <p>📋 Status atualizado para: <strong>Ata Importada</strong></p>
+              <p>📋 Status: <strong>Ata Publicada (Em Prazo Recursal)</strong></p>
               <hr style="margin: 20px 0;">
               <p style="color: #28a745; font-weight: bold;">
-                🔗 Arquivo vinculado automaticamente aos processos administrativos
+                🔗 Arquivo vinculado ao processo administrativo
+              </p>
+              <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                A ata agora aparece na seção "📋 Atas Publicadas" e está vinculada ao processo.
               </p>
             </div>
           `,
@@ -1577,11 +1620,15 @@ export default {
           descricao: `Ata de Julgamento CCL - ${processosIds.length === 1 ? 'Processo Individual' : 'Processos Múltiplos'}`,
           total_processos: processosIds.length,
           status_ata: 'ELABORACAO',
-          conteudo_ata: conteudoAta
+          conteudo_ata: conteudoAta,
+          // CORREÇÃO: Vincular processo à ata se for processo único
+          processo_id: processosIds.length === 1 ? processosIds[0] : null,
+          // Se múltiplos processos, guardar array de IDs
+          processos_incluidos: processosIds.length > 1 ? processosIds : null
         }
-        
+
         console.log('🔍 Dados a serem inseridos:', dadosAta)
-        
+
         // Criar ata no banco
         const { data: novaAta, error: errorAta } = await supabase
           .from('atas_julgamento')
@@ -1591,15 +1638,8 @@ export default {
 
         if (errorAta) throw errorAta
 
-        // Marcar processos como publicados (mudar status)
-        const { error: errorUpdate } = await supabase
-          .from('processos_administrativos')
-          .update({ 
-            status: 'publicacao_ata'
-          })
-          .in('id', processosIds)
-
-        if (errorUpdate) throw errorUpdate
+        // CORREÇÃO: NÃO mudar o status ainda - processo fica em ata_ccl até finalizar
+        // Não precisa atualizar o status aqui, só quando finalizar a ata
 
         // Vincular produtos aprovados à ata
         await this.vincularProdutosAta(novaAta.id, processosIds)
@@ -6330,7 +6370,8 @@ Exemplo:
         // Definir novo status baseado na opção escolhida
         switch (opcaoTramitacao) {
           case 'autoridade':
-            novoStatus = 'homologado'
+            // CORREÇÃO: usar status que aparece em HomologacoesCCL
+            novoStatus = 'ata_julgamento_ccl_homologacao'
             mensagemSucesso = `Processo${processos.length > 1 ? 's' : ''} submetido${processos.length > 1 ? 's' : ''} à Autoridade Competente para decisão`
             break
           case 'juridico':
@@ -6419,6 +6460,16 @@ Exemplo:
         const dataFimPrazoRecursal = new Date(dataPublicacao)
         dataFimPrazoRecursal.setDate(dataFimPrazoRecursal.getDate() + 3) // 3 dias para recurso
 
+        // Buscar dados completos da ata para obter o conteúdo e processos vinculados
+        const { data: ataCompleta, error: errorAta } = await supabase
+          .from('atas_julgamento')
+          .select('*')
+          .eq('id', ata.id)
+          .eq('tenant_id', this.currentTenantId)
+          .single()
+
+        if (errorAta) throw errorAta
+
         // Atualizar status da ata para publicada
         const { error } = await supabase
           .from('atas_julgamento')
@@ -6432,8 +6483,25 @@ Exemplo:
           })
           .eq('id', ata.id)
           .eq('tenant_id', this.currentTenantId)
-        
+
         if (error) throw error
+
+        // CORREÇÃO: Atualizar o processo administrativo com o conteúdo da ata
+        if (ataCompleta.processo_id) {
+          const { error: errorProcesso } = await supabase
+            .from('processos_administrativos')
+            .update({
+              ata_julgamento_ccl: ataCompleta.conteudo_ata || ataCompleta.texto_completo || '',
+              ata_emitida_ccl_em: dataPublicacao.toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', ataCompleta.processo_id)
+            .eq('tenant_id', this.currentTenantId)
+
+          if (errorProcesso) {
+            console.warn('Aviso: Não foi possível atualizar o processo com a ata:', errorProcesso)
+          }
+        }
         
         // Recarregar dados automaticamente com melhor timing
         await this.atualizarDadosAtas()

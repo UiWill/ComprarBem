@@ -33,12 +33,6 @@
             <button @click="visualizarAta(homologacao)" class="btn-small btn-primary">
               📋 Ver Ata
             </button>
-            <button @click="baixarPDF(homologacao)" class="btn-small btn-secondary">
-              📥 PDF
-            </button>
-            <button @click="verDCBs(homologacao)" class="btn-small btn-success">
-              📜 DCBs
-            </button>
             <!-- Botão de Decisão da Autoridade (apenas para processos pendentes) -->
             <button 
               v-if="homologacao.tipo === 'diligencia'" 
@@ -421,51 +415,67 @@ export default {
 
     async visualizarAta(homologacao) {
       try {
-        // Buscar o conteúdo da ata no processo
+        // CORREÇÃO: Buscar o arquivo_ata_url do processo
         const { data: processo, error } = await supabase
           .from('processos_administrativos')
-          .select('ata_julgamento_ccl, numero_processo, status')
+          .select('arquivo_ata_url, numero_processo, status, ata_julgamento_ccl')
           .eq('id', homologacao.processo.id)
           .eq('tenant_id', this.currentTenantId)
           .single()
 
         if (error) throw error
 
-        const conteudoAta = processo.ata_julgamento_ccl || 'Conteúdo da ata não encontrado.'
+        // Se existe arquivo PDF importado, baixar diretamente
+        if (processo.arquivo_ata_url) {
+          console.log('📥 Baixando arquivo da ata importada:', processo.arquivo_ata_url)
 
-        this.$swal({
-          title: `📋 Ata de Julgamento - ${processo.numero_processo}`,
-          html: `
-            <div style="text-align: left; padding: 20px; max-height: 400px; overflow-y: auto;">
-              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #007bff;">
-                <h4 style="margin: 0 0 10px 0; color: #007bff;">📄 Informações do Processo</h4>
-                <p style="margin: 5px 0;"><strong>Processo:</strong> ${processo.numero_processo}</p>
-                <p style="margin: 5px 0;"><strong>Status:</strong> ${processo.status}</p>
-                <p style="margin: 5px 0;"><strong>Data:</strong> ${this.formatDate(homologacao.dataHomologacao)}</p>
-              </div>
-              
-              <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
-                <h5 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">📋 Conteúdo da Ata:</h5>
-                <div style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; color: #333;">
-                  ${conteudoAta}
+          // Abrir o PDF em uma nova aba
+          window.open(processo.arquivo_ata_url, '_blank')
+
+          this.$swal({
+            title: '✅ Ata Aberta!',
+            text: `O arquivo PDF da ata do processo ${processo.numero_processo} foi aberto em uma nova aba.`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          })
+
+        } else {
+          // FALLBACK: Se não tem arquivo, mostrar conteúdo de texto
+          const conteudoAta = processo.ata_julgamento_ccl || 'Conteúdo da ata não encontrado.'
+
+          this.$swal({
+            title: `📋 Ata de Julgamento - ${processo.numero_processo}`,
+            html: `
+              <div style="text-align: left; padding: 20px; max-height: 400px; overflow-y: auto;">
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ffc107;">
+                  <h4 style="margin: 0 0 10px 0; color: #856404;">⚠️ Arquivo PDF não disponível</h4>
+                  <p style="margin: 5px 0; font-size: 13px;">O arquivo PDF da ata não foi importado. Exibindo conteúdo de texto:</p>
+                </div>
+
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #007bff;">
+                  <h4 style="margin: 0 0 10px 0; color: #007bff;">📄 Informações do Processo</h4>
+                  <p style="margin: 5px 0;"><strong>Processo:</strong> ${processo.numero_processo}</p>
+                  <p style="margin: 5px 0;"><strong>Status:</strong> ${processo.status}</p>
+                  <p style="margin: 5px 0;"><strong>Data:</strong> ${this.formatDate(homologacao.dataHomologacao)}</p>
+                </div>
+
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                  <h5 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">📋 Conteúdo da Ata:</h5>
+                  <div style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; color: #333;">
+                    ${conteudoAta}
+                  </div>
                 </div>
               </div>
-            </div>
-          `,
-          showCancelButton: true,
-          cancelButtonText: '❌ Fechar',
-          showConfirmButton: true,
-          confirmButtonText: '📄 Baixar PDF',
-          confirmButtonColor: '#007bff',
-          width: '700px',
-          customClass: {
-            htmlContainer: 'custom-swal-container'
-          }
-        }).then((result) => {
-          if (result.isConfirmed) {
-            this.baixarPDF(homologacao)
-          }
-        })
+            `,
+            confirmButtonText: '✅ OK',
+            confirmButtonColor: '#007bff',
+            width: '700px',
+            customClass: {
+              htmlContainer: 'custom-swal-container'
+            }
+          })
+        }
 
       } catch (error) {
         console.error('Erro ao visualizar ata:', error)
