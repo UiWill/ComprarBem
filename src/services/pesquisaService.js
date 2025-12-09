@@ -1,7 +1,7 @@
 // Serviço especializado para pesquisas técnicas de produtos
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const API_KEY = 'AIzaSyAf-Oe56q4Rao0OodEOtnEjtI_FpOmDg6I';
+const API_KEY = 'AIzaSyCm9ku5Y5oonPZ5c-LgX4AHLIyK_7I3deY';
 
 class PesquisaService {
   constructor() {

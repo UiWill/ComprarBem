@@ -1,4 +1,4 @@
-const GEMINI_API_KEY = 'AIzaSyAf-Oe56q4Rao0OodEOtnEjtI_FpOmDg6I';
+const GEMINI_API_KEY = 'AIzaSyCm9ku5Y5oonPZ5c-LgX4AHLIyK_7I3deY';
 
 // Lista de modelos em ordem de prioridade (do mais novo e rápido para o mais antigo)
 const GEMINI_MODELS = [
