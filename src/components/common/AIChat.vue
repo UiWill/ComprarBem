@@ -127,79 +127,30 @@ export default {
       this.currentMessage = '';
       this.isLoading = true;
 
-      // Adicionar mensagem de status para tentativas
+      // Adicionar mensagem de status genérica (sem expor qual modelo esta sendo usado)
       const statusMessage = {
         type: 'assistant',
-        text: 'Processando sua solicitação...',
+        text: 'Pensando na resposta...',
         isStatus: true
       };
       this.messages.push(statusMessage);
-      
-      // Função para atualizar status
-      const updateStatus = (newText) => {
-        const statusIndex = this.messages.findIndex(msg => msg.isStatus);
-        if (statusIndex !== -1) {
-          this.messages[statusIndex].text = newText;
-        }
-      };
-
-      // Interceptar logs do console para atualizar status
-      const originalLog = console.log;
-      console.log = (...args) => {
-        const message = args.join(' ');
-        
-        // Atualizar status baseado nos logs do geminiService
-        if (message.includes('🚀 Tentando modelo')) {
-          const modelMatch = message.match(/🚀 Tentando modelo \d+\/\d+: (.+)/);
-          if (modelMatch) {
-            updateStatus(`Tentando modelo ${modelMatch[1]}...`);
-          }
-        } else if (message.includes('Erro temporário')) {
-          updateStatus('Erro temporário detectado, tentando novamente...');
-        } else if (message.includes('🔄 Tentando próximo modelo')) {
-          const modelMatch = message.match(/🔄 Tentando próximo modelo: (.+)/);
-          if (modelMatch) {
-            let modelName = modelMatch[1];
-            // Simplificar nome do modelo para exibição
-            if (modelName.includes('gemini-2.0-flash-exp')) {
-              modelName = 'Gemini 2.0 Flash (Experimental)';
-            } else if (modelName.includes('gemini-1.5-flash')) {
-              modelName = 'Gemini 1.5 Flash';
-            } else if (modelName.includes('gemini-1.5-pro')) {
-              modelName = 'Gemini 1.5 Pro';
-            } else if (modelName.includes('gemini-1.0-pro')) {
-              modelName = 'Gemini 1.0 Pro';
-            }
-            updateStatus(`Tentando modelo alternativo: ${modelName}...`);
-          }
-        }
-        
-        // Chamar o log original
-        originalLog.apply(console, args);
-      };
 
       try {
         const response = await geminiService.chat(userMessage);
-        
-        // Restaurar console.log original
-        console.log = originalLog;
-        
+
         // Remover mensagem de status
         const statusIndex = this.messages.findIndex(msg => msg.isStatus);
         if (statusIndex !== -1) {
           this.messages.splice(statusIndex, 1);
         }
-        
+
         this.messages.push({
           type: 'assistant',
           text: response
         });
       } catch (error) {
         console.error('Erro no chat:', error);
-        
-        // Restaurar console.log original
-        console.log = originalLog;
-        
+
         // Remover mensagem de status
         const statusIndex = this.messages.findIndex(msg => msg.isStatus);
         if (statusIndex !== -1) {
