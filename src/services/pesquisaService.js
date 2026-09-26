@@ -1,13 +1,28 @@
 // Serviço especializado para pesquisas técnicas de produtos
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { supabase } from './supabase';
 
-const API_KEY = 'AIzaSyCm9ku5Y5oonPZ5c-LgX4AHLIyK_7I3deY';
+let cachedModel = null;
+
+const getModel = async () => {
+  if (cachedModel) return cachedModel;
+
+  const { data, error } = await supabase
+    .from('configuracoes_api')
+    .select('valor')
+    .eq('chave', 'gemini_api_key')
+    .single();
+
+  if (error || !data) {
+    throw new Error('Não foi possível obter a chave da API do Gemini');
+  }
+
+  const genAI = new GoogleGenerativeAI(data.valor);
+  cachedModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  return cachedModel;
+};
 
 class PesquisaService {
-  constructor() {
-    this.genAI = new GoogleGenerativeAI(API_KEY);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  }
 
   // Categorias de busca disponíveis
   getCategoriasBusca() {
@@ -216,8 +231,9 @@ class PesquisaService {
       console.log(`📝 PesquisaService: Prompt gerado para ${categoria}:`, prompt.substring(0, 200) + '...');
       
       console.log(`🤖 PesquisaService: Enviando para Gemini API...`);
-      
-      const result = await this.model.generateContent(prompt);
+
+      const model = await getModel();
+      const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
       
@@ -299,7 +315,8 @@ class PesquisaService {
       `;
       
       try {
-        const consolidacao = await this.model.generateContent(promptConsolidacao);
+        const model = await getModel();
+        const consolidacao = await model.generateContent(promptConsolidacao);
         const response = await consolidacao.response;
         const relatorio = response.text();
         

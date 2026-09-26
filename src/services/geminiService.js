@@ -1,26 +1,45 @@
-const GEMINI_API_KEY = 'AIzaSyCm9ku5Y5oonPZ5c-LgX4AHLIyK_7I3deY';
+import { supabase } from './supabase';
+
+let cachedApiKey = null;
+
+const getApiKey = async () => {
+  if (cachedApiKey) return cachedApiKey;
+
+  const { data, error } = await supabase
+    .from('configuracoes_api')
+    .select('valor')
+    .eq('chave', 'gemini_api_key')
+    .single();
+
+  if (error || !data) {
+    throw new Error('Não foi possível obter a chave da API do Gemini');
+  }
+
+  cachedApiKey = data.valor;
+  return cachedApiKey;
+};
 
 // Lista de modelos em ordem de prioridade (do mais novo e rápido para o mais antigo)
 const GEMINI_MODELS = [
   {
-    name: 'gemini-2.0-flash-exp',
-    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
-    description: 'Gemini 2.0 Flash (Mais Novo e Rápido - Experimental)'
+    name: 'gemini-2.5-flash',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    description: 'Gemini 2.5 Flash (Rápido e Eficiente)'
   },
   {
-    name: 'gemini-1.5-flash',
-    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-    description: 'Gemini 1.5 Flash (Rápido e Eficiente)'
+    name: 'gemini-flash-latest',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+    description: 'Gemini Flash (Última Versão Estável)'
   },
   {
-    name: 'gemini-1.5-pro',
-    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
-    description: 'Gemini 1.5 Pro (Mais Avançado)'
+    name: 'gemini-2.5-pro',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
+    description: 'Gemini 2.5 Pro (Mais Avançado)'
   },
   {
-    name: 'gemini-1.0-pro',
-    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent',
-    description: 'Gemini 1.0 Pro (Versão Estável)'
+    name: 'gemini-pro-latest',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent',
+    description: 'Gemini Pro (Última Versão Estável)'
   }
 ];
 
@@ -87,9 +106,9 @@ const safeJsonParse = (text) => {
 };
 
 // Função para tentar um modelo específico
-const tryModel = async (model, message, attempt = 0) => {
+const tryModel = async (model, message, apiKey, attempt = 0) => {
   try {
-    const apiUrl = `${model.url}?key=${GEMINI_API_KEY}`;
+    const apiUrl = `${model.url}?key=${apiKey}`;
 
     console.log(`Tentando modelo ${model.name} (tentativa ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1})`);
 
@@ -124,7 +143,7 @@ const tryModel = async (model, message, attempt = 0) => {
         const delay = calculateDelay(attempt);
         console.log(`Erro temporário (${response.status}) no modelo ${model.name}. Aguardando ${delay}ms...`);
         await sleep(delay);
-        return tryModel(model, message, attempt + 1);
+        return tryModel(model, message, apiKey, attempt + 1);
       }
       
       // Erro permanente ou esgotaram tentativas
@@ -157,7 +176,7 @@ const tryModel = async (model, message, attempt = 0) => {
         const delay = calculateDelay(attempt);
         console.log(`Erro de parse no modelo ${model.name}. Aguardando ${delay}ms...`);
         await sleep(delay);
-        return tryModel(model, message, attempt + 1);
+        return tryModel(model, message, apiKey, attempt + 1);
       }
       
       throw new Error(`Modelo ${model.name} retornou resposta inválida`);
@@ -171,7 +190,7 @@ const tryModel = async (model, message, attempt = 0) => {
         const delay = calculateDelay(attempt);
         console.log(`Formato inválido no modelo ${model.name}. Aguardando ${delay}ms...`);
         await sleep(delay);
-        return tryModel(model, message, attempt + 1);
+        return tryModel(model, message, apiKey, attempt + 1);
       }
       
       throw new Error(`Modelo ${model.name} retornou formato inválido`);
@@ -192,7 +211,7 @@ const tryModel = async (model, message, attempt = 0) => {
       const delay = calculateDelay(attempt);
       console.log(`Erro de rede no modelo ${model.name}. Aguardando ${delay}ms...`);
       await sleep(delay);
-      return tryModel(model, message, attempt + 1);
+      return tryModel(model, message, apiKey, attempt + 1);
     }
 
     // Re-throw o erro para ser tratado no nível superior
@@ -204,15 +223,16 @@ export const geminiService = {
   async chat(message) {
     let lastError = null;
     let modelsAttempted = [];
-    
+    const apiKey = await getApiKey();
+
     // Tentar cada modelo em ordem de prioridade
     for (let i = 0; i < GEMINI_MODELS.length; i++) {
       const model = GEMINI_MODELS[i];
       modelsAttempted.push(model.name);
-      
+
       try {
         console.log(`🚀 Tentando modelo ${i + 1}/${GEMINI_MODELS.length}: ${model.name}`);
-        const result = await tryModel(model, message);
+        const result = await tryModel(model, message, apiKey);
         
         // Adicionar informação sobre qual modelo foi usado (apenas no console)
         console.log(`✅ Resposta obtida com sucesso usando: ${result.modelUsed}`);
