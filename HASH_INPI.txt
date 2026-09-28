@@ -1,0 +1,32 @@
+REGISTRO INPI - COMPRAR BEM
+═══════════════════════════════════════════════════════════
+
+INFORMAÇÕES PARA PREENCHIMENTO DO FORMULÁRIO INPI
+
+1. ALGORITMO HASH:
+   SHA-256
+
+2. RESUMO DIGITAL (HASH):
+   a3a11732ccaa500d5e207452f1f98426d9c7929fc4dbdee6102086e453382a28
+
+3. TIPO DE PROGRAMA:
+   Aplicativo - Sistema de Gestão de Compras Públicas
+
+4. DESCRIÇÃO DO SOFTWARE:
+   Sistema de gestão de compras e licitações públicas com funcionalidades de:
+   - Pré-qualificação e padronização de produtos (DCB)
+   - Catálogo eletrônico de produtos padronizados
+   - Pesquisa de mercado e referência de preços
+   - Gestão de processos administrativos
+   - Avaliação de desempenho pós-compra (RDM)
+   - Assistente de IA especializado em licitações (QualiBot 2.0)
+
+5. TECNOLOGIAS UTILIZADAS:
+   - JavaScript
+
+6. INFORMAÇÕES DO HASH:
+   - Total de arquivos analisados: 88
+   - Tamanho total: 2732 KB
+   - Data de geração: 11/12/2025, 13:03:33
+
+═══════════════════════════════════════════════════════════

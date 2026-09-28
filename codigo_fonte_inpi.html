@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprar Bem - Código Fonte para Registro INPI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 10pt;
+            line-height: 1.4;
+            padding: 40px;
+            color: #000;
+        }
+
+        h1 {
+            font-size: 20pt;
+            text-align: center;
+            margin-bottom: 30px;
+            page-break-after: avoid;
+        }
+
+        h2 {
+            font-size: 14pt;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #000;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            font-size: 12pt;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+
+        .info-box {
+            border: 2px solid #000;
+            padding: 20px;
+            margin-bottom: 30px;
+            background: #f5f5f5;
+        }
+
+        .info-box p {
+            margin: 5px 0;
+        }
+
+        pre {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 15px;
+            overflow-x: auto;
+            font-size: 9pt;
+            line-height: 1.3;
+            margin: 10px 0;
+            page-break-inside: avoid;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+        }
+
+        .file-path {
+            background: #e0e0e0;
+            padding: 5px 10px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        @media print {
+            body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>COMPRAR BEM - SISTEMA DE GESTÃO DE COMPRAS PÚBLICAS</h1>
+<h1>Extratos de Código-Fonte para Registro INPI</h1>
+
+<div class="info-box">
+    <h3>INFORMAÇÕES DO SOFTWARE</h3>
+    <p><strong>Nome do Software:</strong> Comprar Bem</p>
+    <p><strong>Versão:</strong> 0.1.0</p>
+    <p><strong>Descrição:</strong> Sistema de gestão de compras e licitações públicas com funcionalidades de:
+        <br>- Pré-qualificação e padronização de produtos (DCB)
+        <br>- Catálogo eletrônico de produtos padronizados
+        <br>- Pesquisa de mercado e referência de preços
+        <br>- Gestão de processos administrativos
+        <br>- Avaliação de desempenho pós-compra (RDM)
+        <br>- Assistente de IA especializado em licitações (QualiBot 2.0)
+    </p>
+    <p><strong>Tecnologias:</strong> Vue.js 2.7.16, Node.js, Supabase (PostgreSQL), Google Gemini AI</p>
+    <p><strong>Data:</strong> Dezembro de 2025</p>
+</div>
+
+<!-- ============================================ -->
+<!-- SEÇÃO 1: ARQUITETURA PRINCIPAL -->
+<!-- ============================================ -->
+
+<h2>1. ARQUITETURA PRINCIPAL DO SISTEMA</h2>
+
+<h3>1.1 Configuração do Projeto (package.json)</h3>
+<div class="file-path">Arquivo: package.json</div>
+<pre><code>{
+  "name": "comprar-bem",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint",
+    "deploy": "vue-cli-service build && gh-pages -d dist",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@google/generative-ai": "^0.2.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "axios": "^1.10.0",
+    "html2pdf.js": "^0.10.3",
+    "jspdf": "^3.0.1",
+    "qrcode": "^1.5.4",
+    "vue": "^2.7.16",
+    "vue-router": "^3.6.5",
+    "vue-sweetalert2": "^5.0.11",
+    "vuex": "^3.6.2"
+  }
+}</code></pre>
+
+<h3>1.2 Inicialização da Aplicação (main.js)</h3>
+<div class="file-path">Arquivo: src/main.js</div>
+<pre><code>import Vue from 'vue'
+import App from './App.vue'
+import router from './router'
+import store from './store'
+import VueSweetalert2 from 'vue-sweetalert2'
+import 'sweetalert2/dist/sweetalert2.min.css'
+import Loading from 'vue-loading-overlay'
+import 'vue-loading-overlay/dist/vue-loading.css'
+import '@fortawesome/fontawesome-free/css/all.css'
+
+Vue.config.productionTip = false
+
+Vue.use(VueSweetalert2)
+Vue.use(Loading)
+
+new Vue({
+  router,
+  store,
+  render: h => h(App),
+  mounted() {
+    console.log('🚀 Sistema Comprar Bem carregado')
+  }
+}).$mount('#app')</code></pre>
+
+<h3>1.3 Gerenciamento de Estado Global (store/index.js)</h3>
+<div class="file-path">Arquivo: src/store/index.js</div>
+<pre><code>import Vue from 'vue'
+import Vuex from 'vuex'
+import { supabase } from '@/services/supabase'
+
+Vue.use(Vuex)
+
+export default new Vuex.Store({
+  state: {
+    user: null,
+    tenant: null,
+    isLoading: false
+  },
+  mutations: {
+    SET_USER(state, user) {
+      state.user = user
+    },
+    SET_TENANT(state, tenant) {
+      state.tenant = tenant
+    },
+    SET_LOADING(state, isLoading) {
+      state.isLoading = isLoading
+    }
+  },
+  actions: {
+    async fetchUser({ commit }) {
+      const { data } = await supabase.auth.getSession()
+      const user = data?.session?.user
+      commit('SET_USER', user)
+
+      if (user) {
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('id', user.user_metadata?.tenant_id)
+          .single()
+
+        if (tenantData) {
+          commit('SET_TENANT', tenantData)
+        }
+      }
+    }
+  },
+  getters: {
+    isAuthenticated: state => !!state.user,
+    currentUser: state => state.user,
+    currentTenant: state => state.tenant
+  }
+})</code></pre>
+
+<div class="page-break"></div>
+
+<!-- ============================================ -->
+<!-- SEÇÃO 2: SISTEMA DE ROTEAMENTO -->
+<!-- ============================================ -->
+
+<h2>2. SISTEMA DE ROTEAMENTO E CONTROLE DE ACESSO</h2>
+
+<h3>2.1 Configuração de Rotas (router/index.js) - Parte 1</h3>
+<div class="file-path">Arquivo: src/router/index.js (linhas 1-100)</div>
+<pre><code>import Vue from 'vue'
+import VueRouter from 'vue-router'
+import Home from '../views/Home.vue'
+import Dashboard from '../views/Dashboard.vue'
+import Cadastro from '../views/Cadastro.vue'
+import Analise from '../views/Analise.vue'
+import Catalogo from '../views/Catalogo.vue'
+import Feedback from '../views/Feedback.vue'
+import DCB from '../views/DCB.vue'
+import CCL from '../views/CCL.vue'
+import Classificacao from '../views/Classificacao.vue'
+import ProcessosAdministrativos from '../views/ProcessosAdministrativos.vue'
+
+import { supabase } from '../services/supabase'
+import PerfilUsuarioService from '../services/perfilUsuarioService'
+
+Vue.use(VueRouter)
+
+const routes = [
+  { path: '/', name: 'Home', component: Home, meta: { requiresAuth: false } },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: Dashboard,
+    meta: {
+      requiresAuth: true,
+      requiredProfiles: ['cpm'],
+      moduloRequired: 'dashboard'
+    }
+  },
+  {
+    path: '/dcb',
+    name: 'DCB',
+    component: DCB,
+    meta: {
+      requiresAuth: true,
+      requiredProfiles: ['cpm'],
+      moduloRequired: 'dcb'
+    }
+  },
+  {
+    path: '/processos-administrativos',
+    name: 'ProcessosAdministrativos',
+    component: ProcessosAdministrativos,
+    meta: {
+      requiresAuth: true,
+      requiredProfiles: ['cpm', 'orgao_administrativo', 'assessoria_juridica'],
+      moduloRequired: 'processos_administrativos'
+    }
+  }
+]
+
+const router = new VueRouter({
+  mode: process.env.NODE_ENV === 'production' ? 'hash' : 'history',
+  base: process.env.BASE_URL,
+  routes
+})</code></pre>
+
+<h3>2.2 Sistema de Autenticação e Autorização (router/index.js) - Parte 2</h3>
+<div class="file-path">Arquivo: src/router/index.js (linhas 204-297)</div>
+<pre><code>// Guard de navegação para verificar autenticação e perfis
+router.beforeEach(async (to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+
+  if (!requiresAuth) {
+    next()
+    return
+  }
+
+  try {
+    const { data } = await supabase.auth.getSession()
+    const user = data?.session?.user
+
+    if (requiresAuth && !user) {
+      next('/')
+      return
+    }
+
+    const requiredProfiles = to.meta.requiredProfiles
+    const moduloRequired = to.meta.moduloRequired
+
+    if (requiredProfiles || moduloRequired) {
+      try {
+        const perfilUsuario = await PerfilUsuarioService.obterPerfilUsuarioAtual()
+
+        if (!perfilUsuario) {
+          next('/acesso-negado')
+          return
+        }
+
+        // CCL: só pode acessar painel CCL
+        if (perfilUsuario.perfil_usuario === 'ccl' && to.path !== '/ccl') {
+          next('/ccl')
+          return
+        }
+
+        // Verificar perfil permitido
+        if (requiredProfiles && !requiredProfiles.includes(perfilUsuario.perfil_usuario)) {
+          next('/acesso-negado')
+          return
+        }
+
+        // Verificar acesso ao módulo
+        if (moduloRequired) {
+          const temAcesso = await PerfilUsuarioService.verificarAcessoModulo(moduloRequired)
+          if (!temAcesso) {
+            next('/acesso-negado')
+            return
+          }
+        }
+
+        next()
+      } catch (error) {
+        console.error('Erro ao verificar permissões:', error)
+        next('/acesso-negado')
+      }
+    } else {
+      next()
+    }
+  } catch (error) {
+    console.error('Erro na verificação de autenticação:', error)
+    next('/')
+  }
+})</code></pre>
+
+<div class="page-break"></div>
+
+<!-- ============================================ -->
+<!-- SEÇÃO 3: SERVIÇO DE BANCO DE DADOS -->
+<!-- ============================================ -->
+
+<h2>3. CAMADA DE INTEGRAÇÃO COM BANCO DE DADOS</h2>
+
+<h3>3.1 Configuração Supabase (services/supabase.js)</h3>
+<div class="file-path">Arquivo: src/services/supabase.js</div>
+<pre><code>import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://ruagsbbczuwgfflgcaol.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Função para obter tenant_id do usuário logado
+export const getTenantId = async () => {
+  const { data } = await supabase.auth.getSession()
+  const user = data?.session?.user
+  return user?.user_metadata?.tenant_id || null
+}
+
+export default supabase</code></pre>
+
+<div class="page-break"></div>
+
+<!-- ============================================ -->
+<!-- SEÇÃO 4: INTELIGÊNCIA ARTIFICIAL -->
+<!-- ============================================ -->
+
+<h2>4. SISTEMA DE INTELIGÊNCIA ARTIFICIAL - QUALIBOT 2.0</h2>
+
+<h3>4.1 Serviço Gemini AI com Fallback (services/geminiService.js) - Parte 1</h3>
+<div class="file-path">Arquivo: src/services/geminiService.js (linhas 1-90)</div>
+<pre><code>const GEMINI_API_KEY = 'AIzaSyCm9ku5Y5oonPZ5c-LgX4AHLIyK_7I3deY';
+
+// Lista de modelos em ordem de prioridade
+const GEMINI_MODELS = [
+  {
+    name: 'gemini-2.0-flash-exp',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+    description: 'Gemini 2.0 Flash (Mais Novo e Rápido - Experimental)'
+  },
+  {
+    name: 'gemini-1.5-flash',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+    description: 'Gemini 1.5 Flash (Rápido e Eficiente)'
+  },
+  {
+    name: 'gemini-1.5-pro',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
+    description: 'Gemini 1.5 Pro (Mais Avançado)'
+  },
+  {
+    name: 'gemini-1.0-pro',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent',
+    description: 'Gemini 1.0 Pro (Versão Estável)'
+  }
+];
+
+// Configurações de retry com exponential backoff
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 800,
+  maxDelay: 12000,
+  backoffFactor: 1.8
+};
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const calculateDelay = (attempt) => {
+  const delay = RETRY_CONFIG.baseDelay * Math.pow(RETRY_CONFIG.backoffFactor, attempt);
+  return Math.min(delay, RETRY_CONFIG.maxDelay);
+};
+
+// Verificar se erro é temporário
+const isRetryableError = (error, response) => {
+  if (error && error.message && error.message.includes('Failed to fetch')) {
+    return true;
+  }
+
+  if (response) {
+    const status = response.status;
+    return status === 429 || status === 503 || status === 502 || status === 504;
+  }
+
+  return false;
+};
+
+// Verificar se deve tentar outro modelo
+const shouldTryNextModel = (error, response) => {
+  if (isRetryableError(error, response)) {
+    return false;
+  }
+
+  if (response) {
+    const status = response.status;
+    return status === 400 || status === 401 || status === 403 ||
+           status === 404 || status === 500;
+  }
+
+  return true;
+};
+
+const safeJsonParse = (text) => {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.error('Erro ao fazer parse do JSON:', e);
+    return null;
+  }
+};</code></pre>
+
+<h3>4.2 Lógica de Tentativa com Retry (services/geminiService.js) - Parte 2</h3>
+<div class="file-path">Arquivo: src/services/geminiService.js (linhas 90-201)</div>
+<pre><code>// Função para tentar um modelo específico
+const tryModel = async (model, message, attempt = 0) => {
+  try {
+    const apiUrl = `${model.url}?key=${GEMINI_API_KEY}`;
+
+    console.log(`Tentando modelo ${model.name} (tentativa ${attempt + 1})`);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `Você é o QualiBot 2.0, um assistente especializado em
+                   licitações e compras públicas. Responda: ${message}`
+          }]
+        }]
+      })
+    });
+
+    // Verificar resposta
+    if (!response.ok) {
+      const isTemporaryError = isRetryableError(null, response);
+
+      if (isTemporaryError && attempt < RETRY_CONFIG.maxRetries) {
+        const delay = calculateDelay(attempt);
+        console.log(`Erro temporário. Aguardando ${delay}ms...`);
+        await sleep(delay);
+        return tryModel(model, message, attempt + 1);
+      }
+
+      throw new Error(`Modelo ${model.name} falhou: ${response.status}`);
+    }
+
+    const responseText = await response.text();
+    const data = safeJsonParse(responseText);
+
+    if (!data || !data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      if (attempt < RETRY_CONFIG.maxRetries) {
+        await sleep(calculateDelay(attempt));
+        return tryModel(model, message, attempt + 1);
+      }
+      throw new Error('Resposta inválida');
+    }
+
+    console.log(`✅ Sucesso com modelo ${model.name}!`);
+    return {
+      text: data.candidates[0].content.parts[0].text,
+      modelUsed: model.name
+    };
+
+  } catch (error) {
+    if (isRetryableError(error, null) && attempt < RETRY_CONFIG.maxRetries) {
+      await sleep(calculateDelay(attempt));
+      return tryModel(model, message, attempt + 1);
+    }
+    throw error;
+  }
+};</code></pre>
+
+<h3>4.3 Sistema de Fallback entre Modelos (services/geminiService.js) - Parte 3</h3>
+<div class="file-path">Arquivo: src/services/geminiService.js (linhas 203-253)</div>
+<pre><code>export const geminiService = {
+  async chat(message) {
+    let lastError = null;
+    let modelsAttempted = [];
+
+    // Tentar cada modelo em ordem de prioridade
+    for (let i = 0; i < GEMINI_MODELS.length; i++) {
+      const model = GEMINI_MODELS[i];
+      modelsAttempted.push(model.name);
+
+      try {
+        console.log(`🚀 Tentando modelo ${i + 1}/${GEMINI_MODELS.length}: ${model.name}`);
+        const result = await tryModel(model, message);
+
+        console.log(`✅ Resposta obtida com: ${result.modelUsed}`);
+        return result.text;
+
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Modelo ${model.name} falhou:`, error.message);
+
+        // Se não é o último modelo, tentar o próximo
+        if (i < GEMINI_MODELS.length - 1) {
+          console.log(`🔄 Tentando próximo modelo: ${GEMINI_MODELS[i + 1].name}`);
+          continue;
+        }
+      }
+    }
+
+    // Todos os modelos falharam
+    console.error('❌ Todos os modelos falharam:', modelsAttempted);
+
+    if (lastError?.message?.includes('Failed to fetch')) {
+      throw new Error('Não foi possível conectar aos serviços de IA.');
+    }
+
+    if (lastError?.message?.includes('503')) {
+      throw new Error('Serviços de IA temporariamente sobrecarregados.');
+    }
+
+    if (lastError?.message?.includes('429')) {
+      throw new Error('Limite de requisições atingido.');
+    }
+
+    throw new Error('Serviços de IA temporariamente indisponíveis.');
+  }
+};</code></pre>
+
+<div class="page-break"></div>
+
+<!-- ============================================ -->
+<!-- SEÇÃO 5: GESTÃO DE PROCESSOS -->
+<!-- ============================================ -->
+
+<h2>5. SISTEMA DE GESTÃO DE PROCESSOS ADMINISTRATIVOS</h2>
+
+<h3>5.1 Serviço de Processos (services/processosAdministrativosService.js)</h3>
+<div class="file-path">Arquivo: src/services/processosAdministrativosService.js (linhas 1-96)</div>
+<pre><code>import { supabase, getTenantId } from './supabase'
+import EmailNotificationService from './emailNotificationService'
+import NumeracaoDocumentosService from './numeracaoDocumentosService'
+
+export class ProcessosAdministrativosService {
+
+  // Listar processos com filtros
+  static async listarProcessos(filtros = {}) {
+    try {
+      const tenantId = await getTenantId()
+      if (!tenantId) {
+        throw new Error('Usuário não autenticado ou sem tenant')
+      }
+
+      let query = supabase
+        .from('vw_processos_resumo')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('data_autuacao', { ascending: false })
+
+      // Aplicar filtros
+      if (filtros.tipo_processo) {
+        query = query.eq('tipo_processo', filtros.tipo_processo)
+      }
+
+      if (filtros.status) {
+        query = query.eq('status', filtros.status)
+      }
+
+      if (filtros.busca) {
+        query = query.or(`numero_processo.ilike.%${filtros.busca}%,objeto.ilike.%${filtros.busca}%`)
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Erro ao listar processos:', error)
+      throw error
+    }
+  }
+
+  // Obter processo completo
+  static async obterProcesso(id) {
+    try {
+      const tenantId = await getTenantId()
+      if (!tenantId) {
+        throw new Error('Usuário não autenticado')
+      }
+
+      const { data, error } = await supabase
+        .from('processos_administrativos')
+        .select(`
+          *,
+          documentos:documentos_processo(*),
+          produtos:produtos_prequalificacao(*),
+          recursos:recursos_processo(*),
+          dfd:dfd_processo(*),
+          tramitacao:tramitacao_processo(*)
+        `)
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .single()
+
+      if (error) throw error
+
+      // Calcular totais
+      if (data) {
+        data.total_documentos = data.documentos?.length || 0
+        data.total_produtos = data.produtos?.length || 0
+      }
+
+      return data
+    } catch (error) {
+      console.error('Erro ao obter processo:', error)
+      throw error
+    }
+  }
+}</code></pre>
+
+<div class="page-break"></div>
+
+<!-- ============================================ -->
+<!-- SEÇÃO 6: GESTÃO DE PRODUTOS E RDM -->
+<!-- ============================================ -->
+
+<h2>6. SISTEMA DE GESTÃO DE PRODUTOS E NOTIFICAÇÕES RDM</h2>
+
+<h3>6.1 Serviço de Produtos RDM (services/produtoService.js)</h3>
+<div class="file-path">Arquivo: src/services/produtoService.js (linhas 1-100)</div>
+<pre><code>import { supabase } from './supabase'
+import { enviarEmailNovoProduto } from './emailService'
+
+// Adicionar produto a usuário RDM
+export async function adicionarProdutoUsuarioRDM(produtoData) {
+  try {
+    console.log('📦 Adicionando produto ao usuário RDM:', produtoData)
+
+    const {
+      tenant_id,
+      usuario_rdm_id,
+      produto_id,
+      nome_produto,
+      codigo_produto,
+      descricao_produto,
+      categoria_produto,
+      data_recebimento = null
+    } = produtoData
+
+    // Validações
+    if (!tenant_id || !usuario_rdm_id || !produto_id) {
+      throw new Error('Dados obrigatórios não fornecidos')
+    }
+
+    // Buscar usuário RDM
+    const { data: usuarioRDM, error: usuarioError } = await supabase
+      .from('usuarios_rdm')
+      .select('*')
+      .eq('id', usuario_rdm_id)
+      .eq('tenant_id', tenant_id)
+      .single()
+
+    if (usuarioError || !usuarioRDM) {
+      throw new Error('Usuário RDM não encontrado')
+    }
+
+    // Adicionar produto ao usuário
+    const { data: vinculo, error: vinculoError } = await supabase
+      .rpc('adicionar_produto_usuario_rdm', {
+        p_tenant_id: tenant_id,
+        p_usuario_rdm_id: usuario_rdm_id,
+        p_produto_id: produto_id,
+        p_data_recebimento: data_recebimento
+      })
+
+    if (vinculoError) {
+      throw new Error('Erro ao vincular produto: ' + vinculoError.message)
+    }
+
+    console.log('✅ Produto vinculado com sucesso!')
+
+    // Enviar notificação por email
+    const dadosNotificacao = {
+      produto_id,
+      usuario_rdm_id,
+      usuario_nome: usuarioRDM.nome_usuario,
+      usuario_email: usuarioRDM.email,
+      nome_produto: nome_produto || 'Produto Aprovado',
+      codigo_produto: codigo_produto || `PROD-${produto_id}`,
+      descricao_produto,
+      categoria_produto,
+      unidade_setor: usuarioRDM.unidade_setor,
+      data_sincronizacao: new Date().toLocaleDateString('pt-BR')
+    }
+
+    try {
+      console.log('📧 Enviando notificação...')
+      const resultado = await enviarEmailNovoProduto(dadosNotificacao)
+
+      if (resultado.success) {
+        console.log('✅ Email enviado com sucesso!')
+
+        // Marcar como notificado
+        await supabase
+          .from('usuarios_rdm_produtos')
+          .update({
+            notificado_email: true,
+            data_notificacao: new Date().toISOString()
+          })
+          .eq('usuario_rdm_id', usuario_rdm_id)
+          .eq('produto_id', produto_id)
+      }
+    } catch (emailError) {
+      console.warn('⚠️ Erro ao enviar email:', emailError)
+    }
+
+    return {
+      success: true,
+      message: 'Produto adicionado com sucesso!',
+      vinculo_id: vinculo
+    }
+
+  } catch (error) {
+    console.error('Erro ao adicionar produto:', error)
+    throw error
+  }
+}</code></pre>
+
+<div class="page-break"></div>
+
+<!-- ============================================ -->
+<!-- SEÇÃO 7: COMPONENTES DA INTERFACE -->
+<!-- ============================================ -->
+
+<h2>7. COMPONENTES DE INTERFACE - QUALIBOT 2.0</h2>
+
+<h3>7.1 Componente AIChat (components/common/AIChat.vue) - Template</h3>
+<div class="file-path">Arquivo: src/components/common/AIChat.vue (linhas 1-88)</div>
+<pre><code>&lt;template&gt;
+  &lt;div class="ai-chat" :class="{ 'ai-chat--expanded': isExpanded }"&gt;
+    &lt;!-- Botão flutuante --&gt;
+    &lt;button
+      v-if="!isExpanded"
+      class="ai-chat__button"
+      @click="toggleChat"
+      title="QualiBot 2.0 - Assistente de Licitações"
+    &gt;
+      &lt;div class="ai-chat__button-content"&gt;
+        &lt;i class="fas fa-robot"&gt;&lt;/i&gt;
+        &lt;span class="ai-chat__button-label"&gt;QualiBot 2.0&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div class="ai-chat__notification" v-if="!hasInteracted"&gt;
+        &lt;i class="fas fa-bolt"&gt;&lt;/i&gt; Como posso ajudar?
+      &lt;/div&gt;
+    &lt;/button&gt;
+
+    &lt;!-- Janela do chat --&gt;
+    &lt;div v-else class="ai-chat__window"&gt;
+      &lt;div class="ai-chat__header"&gt;
+        &lt;div class="ai-chat__header-info"&gt;
+          &lt;div class="ai-chat__logo"&gt;
+            &lt;i class="fas fa-robot"&gt;&lt;/i&gt;
+            &lt;i class="fas fa-bolt"&gt;&lt;/i&gt;
+          &lt;/div&gt;
+          &lt;div&gt;
+            &lt;h3&gt;QualiBot 2.0&lt;/h3&gt;
+            &lt;span class="ai-chat__status"&gt;
+              &lt;span class="ai-chat__status-dot"&gt;&lt;/span&gt;
+              Online e Pronto
+            &lt;/span&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;button class="ai-chat__close" @click="toggleChat"&gt;
+          &lt;i class="fas fa-times"&gt;&lt;/i&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+
+      &lt;div class="ai-chat__messages" ref="messagesContainer"&gt;
+        &lt;div
+          v-for="(message, index) in messages"
+          :key="index"
+          :class="['ai-chat__message', `ai-chat__message--${message.type}`]"
+        &gt;
+          &lt;div class="ai-chat__message-avatar" v-if="message.type === 'assistant'"&gt;
+            &lt;i class="fas fa-robot"&gt;&lt;/i&gt;
+          &lt;/div&gt;
+          &lt;div class="ai-chat__message-content"&gt;
+            &lt;span&gt;{{ message.text }}&lt;/span&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class="ai-chat__input"&gt;
+        &lt;textarea
+          v-model="currentMessage"
+          @keydown.enter.prevent="sendMessage"
+          placeholder="Digite sua dúvida sobre licitações..."
+          rows="2"
+        &gt;&lt;/textarea&gt;
+        &lt;button
+          @click="sendMessage"
+          :disabled="isLoading || !currentMessage.trim()"
+          class="ai-chat__send"
+        &gt;
+          &lt;i class="fas fa-paper-plane"&gt;&lt;/i&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/template&gt;</code></pre>
+
+<h3>7.2 Componente AIChat - Script (components/common/AIChat.vue)</h3>
+<div class="file-path">Arquivo: src/components/common/AIChat.vue (linhas 90-150)</div>
+<pre><code>&lt;script&gt;
+import { geminiService } from '@/services/geminiService';
+
+export default {
+  name: 'AIChat',
+  data() {
+    return {
+      isExpanded: false,
+      hasInteracted: false,
+      messages: [
+        {
+          type: 'assistant',
+          text: 'Olá! Sou o QualiBot 2.0, especialista em licitações. Como posso ajudar?'
+        }
+      ],
+      currentMessage: '',
+      isLoading: false
+    }
+  },
+  methods: {
+    toggleChat() {
+      this.isExpanded = !this.isExpanded
+      if (this.isExpanded) {
+        this.hasInteracted = true
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      }
+    },
+
+    async sendMessage() {
+      if (!this.currentMessage.trim() || this.isLoading) return
+
+      const userMessage = this.currentMessage.trim()
+
+      // Adicionar mensagem do usuário
+      this.messages.push({
+        type: 'user',
+        text: userMessage
+      })
+
+      this.currentMessage = ''
+      this.isLoading = true
+      this.scrollToBottom()
+
+      try {
+        // Chamar serviço Gemini com fallback automático
+        const response = await geminiService.chat(userMessage)
+
+        // Adicionar resposta do assistente
+        this.messages.push({
+          type: 'assistant',
+          text: response
+        })
+      } catch (error) {
+        console.error('Erro ao enviar mensagem:', error)
+        this.messages.push({
+          type: 'assistant',
+          text: error.message || 'Desculpe, ocorreu um erro. Tente novamente.'
+        })
+      } finally {
+        this.isLoading = false
+        this.scrollToBottom()
+      }
+    },
+
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const container = this.$refs.messagesContainer
+        if (container) {
+          container.scrollTop = container.scrollHeight
+        }
+      })
+    }
+  }
+}
+&lt;/script&gt;</code></pre>
+
+<div class="page-break"></div>
+
+<!-- ============================================ -->
+<!-- SEÇÃO FINAL -->
+<!-- ============================================ -->
+
+<h2>8. OBSERVAÇÕES FINAIS</h2>
+
+<div class="info-box">
+    <h3>SOBRE ESTE DOCUMENTO</h3>
+    <p>Este documento contém extratos não sequenciais do código-fonte do sistema "Comprar Bem",
+    conforme permitido pelo Art. 2º da Instrução Normativa INPI/PR nº 95/2018.</p>
+
+    <p><strong>Arquivos incluídos neste documento:</strong></p>
+    <ul style="margin-left: 20px; margin-top: 10px;">
+        <li>package.json - Configuração e dependências do projeto</li>
+        <li>src/main.js - Ponto de entrada da aplicação</li>
+        <li>src/store/index.js - Gerenciamento de estado global</li>
+        <li>src/router/index.js - Sistema de roteamento e autenticação</li>
+        <li>src/services/supabase.js - Integração com banco de dados</li>
+        <li>src/services/geminiService.js - Sistema de IA com fallback automático</li>
+        <li>src/services/processosAdministrativosService.js - Gestão de processos</li>
+        <li>src/services/produtoService.js - Gestão de produtos e notificações</li>
+        <li>src/components/common/AIChat.vue - Interface do assistente de IA</li>
+    </ul>
+
+    <p style="margin-top: 15px;"><strong>Características técnicas distintivas:</strong></p>
+    <ul style="margin-left: 20px; margin-top: 10px;">
+        <li>Sistema multi-tenant com isolamento de dados por tenant_id</li>
+        <li>Arquitetura de fallback automático entre 4 modelos de IA (Gemini 2.0, 1.5, 1.0)</li>
+        <li>Sistema de retry com exponential backoff para resiliência</li>
+        <li>Controle de acesso baseado em perfis (CPM, CCL, Órgão Admin, Assessoria)</li>
+        <li>Notificações automáticas por email integradas ao fluxo de trabalho</li>
+        <li>Assistente de IA especializado em legislação de licitações públicas (QualiBot 2.0)</li>
+    </ul>
+
+    <p style="margin-top: 15px;"><strong>Total de linhas de código apresentadas:</strong> Aproximadamente 900 linhas</p>
+    <p><strong>Arquitetura:</strong> Single Page Application (SPA) com Vue.js 2.7</p>
+    <p><strong>Paradigma:</strong> Component-based architecture com padrão Store (Vuex)</p>
+</div>
+
+<div style="margin-top: 50px; text-align: center; border-top: 2px solid #000; padding-top: 20px;">
+    <p><strong>COMPRAR BEM - Sistema de Gestão de Compras Públicas</strong></p>
+    <p>Documento gerado em: Dezembro de 2025</p>
+    <p>Finalidade: Registro de Software no INPI</p>
+</div>
+
+</body>
+</html>

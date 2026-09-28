@@ -24,7 +24,14 @@
       "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\add_pdf_pages_fields.sql\")",
       "Bash(npm install:*)",
       "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\add_arquivo_ata_nome_column.sql\")",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(find:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAtualizar chave API do Google Gemini\n\n- Atualizada chave API no geminiService.js\n- Atualizada chave API no pesquisaService.js\n- Build de produção atualizado\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm run deploy:*)",
+      "Bash(\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --headless --disable-gpu --print-to-pdf=\"C:\\ERP_SISTEMAS\\COMPRAR BEM\\Codigo_Fonte_INPI_ComprarBem.pdf\" --no-margins --print-to-pdf-no-header \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\codigo_fonte_inpi.html\")",
+      "Bash(start \"C:\\ERP_SISTEMAS\\COMPRAR BEM\\Codigo_Fonte_INPI_ComprarBem.pdf\")",
+      "Bash(ls:*)",
+      "Bash(node gerar_hash_inpi.js:*)"
     ],
     "deny": [],
     "ask": [],
